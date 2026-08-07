@@ -1,7 +1,7 @@
 # 01 — Come produciamo lo sprite di Michele
 
 Type: prototype
-Status: open
+Status: resolved
 
 ## Question
 
@@ -55,3 +55,21 @@ Misurati con lo stesso metodo head-aligned di v2: v4 è l'unico sheet dei quattr
 ### Correzione pronta, se serve
 
 Se il ribollimento risulta inaccettabile, **non servono nuove generazioni**: si scompone. Un solo frame fa da corpo canonico dalla vita in su; sotto gli si montano le gambe delle diverse pose, allineate sulla fascia in vita. La coerenza diventa garantita per costruzione — testa e busto sono gli stessi pixel a ogni frame — e si conserva la qualità del disegno. È la sintesi delle due strade elencate nella domanda: qualità dell'AI, coerenza del procedurale.
+
+## Answer
+
+Status: resolved
+
+**Scelto il v4**, giudicato dall'umano sull'animazione a scala reale: «migliore, non perfetto, per le nostre prime prove va bene».
+
+Conferma la misura: v4 è l'unico dei quattro sheet in cui il cambiamento tra frame si concentra nelle gambe (37%) invece che nel busto (35%), contro il 51-56% di busto degli altri tre.
+
+`tools/build_sprite.py` lo porta in formato di gioco: individua i frame per contrasto con il colore d'angolo dello sheet, li ritaglia, li scala **tutti con lo stesso fattore** preso dal frame più alto — se ogni frame si normalizzasse da solo, una falcata più larga uscirebbe di altezza diversa e il personaggio sembrerebbe saltellare — e li impagina in una striscia con i piedi sul bordo inferiore di ogni cella. Risultato: 8 frame da 59x100, 32 colori.
+
+Dettaglio che costava un alone: la quantizzazione va fatta sul colore e non sull'alfa. Un passaggio di palette su RGBA trasforma i bordi morbidi in frangia; il canale alfa va estratto prima e rimesso dopo.
+
+### Debiti dichiarati
+
+- **Solo vista laterale.** Il v4 ha una riga sola. Sinistra è lo specchio di destra e costa zero, ma **frontale e di spalle mancano**. Servono prima che il personaggio possa risalire il vicolo verso l'arco in modo credibile.
+- **La palette non è quella del fondale.** Michele è più saturo e più chiaro della scena al tramonto: si stacca invece di starci dentro. Va riportato sulla palette del vicolo.
+- **Il ribollimento resta**, attenuato dalla riduzione a 84-100px ma presente. Se darà fastidio, la correzione è già descritta sopra: corpo canonico da un frame, gambe dalle pose.

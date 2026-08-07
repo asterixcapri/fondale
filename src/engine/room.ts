@@ -148,3 +148,42 @@ export function isInside(polygon: Polygon, point: Point): boolean {
 export function isWalkable(room: Room, point: Point): boolean {
   return room.walkable.some((polygon) => isInside(polygon, point));
 }
+
+/** The point on a segment closest to p. */
+function closestOnSegment(a: Point, b: Point, p: Point): Point {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const lengthSquared = dx * dx + dy * dy;
+  if (lengthSquared === 0) return { ...a };
+
+  const t = Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / lengthSquared));
+  return { x: a.x + t * dx, y: a.y + t * dy };
+}
+
+/**
+ * The walkable point nearest to where the player clicked.
+ *
+ * Clicks land on walls, sky and scenery constantly — a player pointing at a
+ * door is pointing at the door, not at the cobbles in front of it. Rather than
+ * refusing to move, the character walks to the closest place they *can* stand,
+ * which is what the genre has always done and what makes a click feel obeyed.
+ */
+export function nearestWalkable(room: Room, point: Point): Point {
+  if (isWalkable(room, point)) return { ...point };
+
+  let best: Point | undefined;
+  let bestDistance = Infinity;
+
+  for (const polygon of room.walkable) {
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+      const candidate = closestOnSegment(polygon[j]!, polygon[i]!, point);
+      const distance = Math.hypot(candidate.x - point.x, candidate.y - point.y);
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        best = candidate;
+      }
+    }
+  }
+
+  return best ?? { ...point };
+}
