@@ -39,8 +39,14 @@ Decisioni prese nella sessione di charting, prima che la mappa esistesse:
 - **L'editor visuale è una pagina web che costruiamo noi** — scioglie il conflitto tra "serve un editor col mouse" e "l'agente non può cliccare in una GUI".
 - **Tracker: markdown locale sotto `.scratch/`**, versionato su git.
 
+Ticket chiusi:
+
+- [02 — Pipeline dei fondali](issues/02-pipeline-fondali.md) — `tools/process_background.py`: ritaglio al rapporto d'aspetto, riduzione, quantizzazione. Palette per scena, 64 colori, senza dithering. Dimensioni parametriche, così il ticket 04 non costringe a riscrivere.
+- [10 — Banco di verifica nel browser](issues/10-banco-di-verifica-nel-browser.md) — `npm run verify` apre il gioco nel Chromium preinstallato, aspetta il primo fotogramma, fotografa. Fa fallire errori di console e risorse mancanti.
+
 ## Not yet specified
 
+- **Palette condivisa tra tutte le scene** — emersa chiudendo il ticket 02. Darebbe coerenza cromatica al gioco intero e renderebbe quasi gratuiti gli effetti di palette (notte, tramonto, lampi). Giudicabile solo quando le scene saranno abbastanza da vedere se stonano tra loro.
 - **Audio** — musica, effetti, eventuale doppiaggio. Nessuna idea ancora di che ruolo abbia.
 - **Salvataggi** — il modello dichiarativo li rende quasi gratuiti (serializzi lo stato globale), ma il formato e la UI non sono stati guardati.
 - **Impacchettamento desktop / Steam** — Tauri o Electron, achievement, overlay. Si decide solo se e quando il progetto punta alla vendita.
