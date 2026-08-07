@@ -15,4 +15,6 @@ Domande aperte da chiudere lavorando:
 - 64 colori è il numero giusto, o conviene salire?
 - dithering in fase di quantizzazione: sì o no, e quale.
 
+Non bloccato dal ticket 04, ma ne dipende: l'altezza utile della stanza cambia se l'interfaccia a verbi si mangia il quarto inferiore dello schermo. Lo strumento va quindi scritto con le dimensioni finali come parametro, non cablate.
+
 Risolto quando esiste un comando che, dato un PNG, produce il fondale definitivo, e i quattro concept esistenti sono passati attraverso di esso.
