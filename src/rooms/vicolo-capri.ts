@@ -1,3 +1,5 @@
+import backgroundUrl from "../../art/rooms/vicolo-capri.png";
+
 import type { Room } from "../engine/room";
 
 /**
@@ -9,7 +11,7 @@ import type { Room } from "../engine/room";
  */
 export const vicoloCapri: Room = {
   id: "vicolo-capri",
-  background: "/rooms/vicolo-capri.png",
+  background: backgroundUrl,
 
   // The cobbles, narrowing towards the archway. The stone bench, the baskets
   // and the doorway steps are all outside it: the character walks the street,

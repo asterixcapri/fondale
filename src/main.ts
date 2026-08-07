@@ -38,9 +38,16 @@ async function main(): Promise<void> {
   background.height = ROOM_HEIGHT;
   scene.addChild(background);
 
-  if (new URLSearchParams(window.location.search).has("debug")) {
-    scene.addChild(buildDebugOverlay(room));
-  }
+  // The overlay is how scene setup gets checked. `?debug` is what the
+  // screenshot harness uses; the D key is for whoever opens the built page,
+  // where there is no address bar to edit.
+  const overlay = buildDebugOverlay(room);
+  overlay.visible = new URLSearchParams(window.location.search).has("debug");
+  scene.addChild(overlay);
+
+  window.addEventListener("keydown", (event) => {
+    if (event.key === "d" || event.key === "D") overlay.visible = !overlay.visible;
+  });
 
   fitToWindow(app, scene);
 

@@ -86,7 +86,8 @@ export type Facing = "front" | "back" | "left" | "right";
 
 export interface Room {
   id: string;
-  /** URL of the processed background, served out of art/rooms. */
+  /** The processed background. Imported as a module so the single-file build
+   *  can inline it; in dev Vite serves it as a URL either way. */
   background: string;
   /**
    * Where the character may stand. Several polygons are treated as one region:
