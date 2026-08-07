@@ -2,9 +2,11 @@ import { defineConfig } from "vite";
 import { viteSingleFile } from "vite-plugin-singlefile";
 
 export default defineConfig({
-  // Processed room art is served straight from where the pipeline writes it,
-  // so there is no copy step to forget: art/rooms/x.png -> /rooms/x.png
-  publicDir: "art",
+  // No public directory: rooms import their background as a module, so Vite
+  // fingerprints and inlines exactly the art that is actually referenced.
+  // Serving art/ wholesale would also drag 15MB of concept sketches into
+  // every deploy.
+  publicDir: false,
   // The build collapses to one self-contained HTML file with the script and
   // the art inlined, so the game can be handed over as a single link with no
   // server, no install and no network requests of its own.
