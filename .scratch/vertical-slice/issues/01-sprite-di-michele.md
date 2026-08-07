@@ -44,6 +44,14 @@ Verificato che non fosse un artefatto della normalizzazione guardando i frame in
 
 **Attenuante importante:** nello sheet la figura è alta 182px, nel gioco ne serve 84-100. La riduzione assorbe gran parte del tremolio. Prodotta una GIF alla scala reale sul fondale del vicolo e sottoposta all'umano, che è l'unico dei due a poter guardare un'animazione in movimento.
 
+### Sheet v3 e v4 — nuove generazioni, misurate contro v2
+
+`art/concept/personaggi/michele-walk-cycle-v3.png` e `-v4.png`, generati per verificare se una richiesta più esplicita (pose ancorate a una sequenza, non suggerite) riduce il ribollimento diagnosticato su v2.
+
+Misurati con lo stesso metodo head-aligned di v2: v4 è l'unico sheet dei quattro dove il cambiamento tra frame consecutivi si concentra nelle **gambe** (37%) invece che nel busto — il rapporto giusto per un ciclo di camminata vero. v3 resta col difetto di v2.
+
+`tools/preview_walk.py` (nuovo in questo commit) genera la GIF alla scala di gioco (84px, 10fps) da qualunque sheet, sul fondale del vicolo — serve a sottoporre il movimento, non lo sheet, al giudizio umano. GIF prodotte per v3 e v4 in `test/shots/`, in attesa del giudizio dell'umano su quale (se una) è utilizzabile così com'è o se serve la scomposizione di riserva descritta sotto.
+
 ### Correzione pronta, se serve
 
 Se il ribollimento risulta inaccettabile, **non servono nuove generazioni**: si scompone. Un solo frame fa da corpo canonico dalla vita in su; sotto gli si montano le gambe delle diverse pose, allineate sulla fascia in vita. La coerenza diventa garantita per costruzione — testa e busto sono gli stessi pixel a ogni frame — e si conserva la qualità del disegno. È la sintesi delle due strade elencate nella domanda: qualità dell'AI, coerenza del procedurale.
