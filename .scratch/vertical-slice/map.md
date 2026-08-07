@@ -14,7 +14,12 @@ Il tetto contro il rischio "costruisco un motore invece di un gioco": si costrui
 
 **Dominio:** avventura grafica punta-e-clicca, Capri 1535. Il documento di progetto è `docs/capri-adventure-game-handoff.md` — leggerlo prima di decidere qualsiasi cosa di narrativa o estetica.
 
-**Divisione del lavoro:** l'umano è il designer — genera i fondali con l'AI, allestisce le scene nell'editor web, descrive gli enigmi in italiano. L'agente scrive tutto il codice; l'umano non lo rilegge. Ne consegue che **la verifica automatica è l'unico controllo qualità**: ogni ticket che produce codice deve produrre anche il modo di verificarlo senza un umano che legga i diff.
+**Divisione del lavoro: l'agente lavora in autonomia.** L'umano è il designer e il committente — genera i fondali con l'AI, decide narrativa ed estetica, giudica il risultato. Tutto il resto è dell'agente: il motore, il codice, **la derivazione delle aree camminabili e delle maschere**, e **la verifica di giocabilità nel browser**. L'umano non rilegge il codice, non allestisce le scene e non fa da collaudatore.
+
+Ne discendono due vincoli non negoziabili su ogni ticket che produce codice:
+
+1. **Deve essere verificabile senza umani.** Chromium e Playwright sono disponibili in ambiente: il gioco si avvia, si clicca e si fotografa a comando. Un ticket non è risolto finché l'agente non ha *visto* funzionare la cosa, non quando il codice sembra giusto.
+2. **L'allestimento delle scene è un problema dell'agente, non un lavoro manuale da delegare.** Aree camminabili, maschere di foreground e hotspot si ricavano dal fondale e si validano per sovrapposizione visiva.
 
 **Esecuzione dentro la mappa:** questa mappa deroga al "pianifica, non fare" di wayfinder. La destinazione è un artefatto costruito, non una decisione: i ticket di prototipo producono codice funzionante, non raccomandazioni.
 
