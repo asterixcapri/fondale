@@ -1,7 +1,9 @@
 import { Application, Assets, Container, Sprite, TexturePool } from "pixi.js";
 
 import { ROOM_HEIGHT, ROOM_WIDTH } from "./engine/constants";
+import { buildDebugOverlay } from "./engine/debug-overlay";
 import { fitToWindow } from "./engine/viewport";
+import { vicoloCapri } from "./rooms/vicolo-capri";
 
 declare global {
   interface Window {
@@ -16,26 +18,31 @@ async function main(): Promise<void> {
   await app.init({
     resizeTo: window,
     background: "#000000",
-    // Nearest-neighbour everywhere: the art is a 64-colour indexed image and
-    // any filtering turns the quantised bands back into mush.
     roundPixels: true,
   });
+  // Nearest-neighbour everywhere: the art is quantised to 64 colours and any
+  // filtering turns those bands back into mush.
   TexturePool.textureOptions.scaleMode = "nearest";
 
   document.body.appendChild(app.canvas);
 
-  const room = new Container();
-  app.stage.addChild(room);
+  const room = vicoloCapri;
+  const scene = new Container();
+  app.stage.addChild(scene);
 
-  const texture = await Assets.load("/rooms/vicolo-capri.png");
+  const texture = await Assets.load(room.background);
   texture.source.scaleMode = "nearest";
 
   const background = new Sprite(texture);
   background.width = ROOM_WIDTH;
   background.height = ROOM_HEIGHT;
-  room.addChild(background);
+  scene.addChild(background);
 
-  fitToWindow(app, room);
+  if (new URLSearchParams(window.location.search).has("debug")) {
+    scene.addChild(buildDebugOverlay(room));
+  }
+
+  fitToWindow(app, scene);
 
   window.__gameReady = true;
 }

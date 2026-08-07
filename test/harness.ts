@@ -9,14 +9,14 @@ export const SHOTS_DIR = "test/shots";
  * nobody reads the browser console in an autonomous run — an error that only
  * shows up there is an error that never gets found.
  */
-export async function openGame(page: Page): Promise<{ errors: string[] }> {
+export async function openGame(page: Page, url = "/"): Promise<{ errors: string[] }> {
   const errors: string[] = [];
   page.on("console", (message) => {
     if (message.type() === "error") errors.push(message.text());
   });
   page.on("pageerror", (error) => errors.push(String(error)));
 
-  await page.goto("/");
+  await page.goto(url);
   await page.waitForFunction(() => window.__gameReady === true, undefined, { timeout: 20_000 });
 
   return { errors };
