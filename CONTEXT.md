@@ -84,10 +84,16 @@ a Sequence; at most one Game Activity controls play at a time.
 _Avoid_: Animation frame, ambient rendering, unmanaged task
 
 **Sequence**:
-The authored progression of narrative and world actions that temporarily
-controls play as the dominant Game Activity. It may combine lines, choices,
+A named, authored progression of narrative and world actions that temporarily
+controls play as the dominant Game Activity. It may combine Lines, choices,
 Character movement, waits, and Game Operations.
 _Avoid_: Cutscene, Dialogue as a separate activity model, scripted async function
+
+**Line**:
+A single authored unit of speech, thought, or narration within a Sequence.
+Speech and thought identify their Character; a Line awaits Player advancement
+unless the Author gives it a logical duration.
+_Avoid_: Subtitle, dialogue node, renderer text
 
 ## Interaction language
 
