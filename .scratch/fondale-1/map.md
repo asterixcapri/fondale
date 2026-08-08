@@ -93,6 +93,9 @@ stabilizza soltanto capacità esercitate dal suo Example di accettazione.
 - [Determinare le dimensioni dell'Inventory Appearance](issues/17-dimensioni-inventory-appearance.md)
   — usa una misura quadrata condivisa dal progetto, `32×32` nell'Example, e
   scala Inventory, cursore e mondo insieme verso lo schermo.
+- [Definire Fondale come libreria per progetti esterni](issues/12-pacchetto-e-progetto-esterno.md)
+  — distribuisce una sola interface pubblica consumabile da un Game Project
+  indipendente, lasciando applicazione, asset, storage e build al consumer.
 
 ## Not yet specified
 
