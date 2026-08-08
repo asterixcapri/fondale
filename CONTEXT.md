@@ -208,6 +208,11 @@ The acquisition-ordered collection of Objects currently carried by the Player,
 with at most one of them selected for an Inventory Use.
 _Avoid_: Container, equipment, item stack
 
+**Inventory Appearance**:
+The visual presentation of an Object within the Inventory and while selected
+for an Inventory Use, distinct from its Appearance in a Scene.
+_Avoid_: World Appearance, generic HUD icon
+
 **Interaction**:
 A meaningful response of the world to a Player Intent; a Scene freely defines
 its label, such as Look, Talk, Knock, or Pay.
