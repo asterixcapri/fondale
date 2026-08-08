@@ -1,7 +1,7 @@
 # Definire il ciclo del runtime e la proprietà dello stato
 
 Type: grilling
-Status: open
+Status: claimed
 Blocked by: 01, 02
 
 ## Question
