@@ -1,7 +1,7 @@
 # Classificare l'eredità della vertical slice
 
 Type: grilling
-Status: open
+Status: claimed
 
 ## Question
 
