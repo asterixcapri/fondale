@@ -2,37 +2,46 @@
 
 ## Git workflow
 
-Fase attuale del progetto: design/pre-produzione.
+Current project phase: design/pre-production.
 
-In questa fase tutto il lavoro va committato e pushato direttamente su `main`, senza branch di feature né PR. Questo vale finché l'utente non indica un cambio di fase (es. inizio sviluppo del codice di gioco), a quel punto questa nota va aggiornata.
+During this phase, commit and push all work directly to `main`, without feature
+branches or pull requests. This remains in effect until the user announces a
+phase change, such as the start of game-code development; update this note when
+that happens.
 
-## Avvio locale
+## Project language
 
-In un checkout o container nuovo, installare le dipendenze e ripristinare le
-skill registrate nel repository:
+Use English for the ubiquitous language, source code, code comments, and public
+interfaces. Follow the canonical terms in `CONTEXT.md`. Planning issues and
+human discussion may be written in Italian.
+
+## Local development
+
+In a fresh checkout or container, install dependencies and restore the skills
+registered in the repository:
 
 ```sh
 npm ci
 npx skills experimental_install
 ```
 
-Avviare quindi il server di sviluppo:
+Then start the development server:
 
 ```sh
 npm run dev
 ```
 
-Il gioco è disponibile su `http://localhost:5173`.
+The game is available at `http://localhost:5173`.
 
-Comandi di controllo:
+Verification commands:
 
 ```sh
-npm run build   # type-check e build single-file in dist/
-npm run verify  # test browser con Playwright
+npm run build   # type-check and build the single-file bundle in dist/
+npm run verify  # run browser tests with Playwright
 ```
 
-I test usano il canale `chrome` di Playwright e richiedono Google Chrome. Se
-non è già disponibile nell'ambiente, installarlo con:
+The tests use Playwright's `chrome` channel and require Google Chrome. If it is
+not available in the environment, install it with:
 
 ```sh
 npx playwright install chrome
@@ -40,14 +49,15 @@ npx playwright install chrome
 
 ## Agent skills
 
-Le skill installate nel progetto sono ricostruibili da `skills-lock.json`; la
-directory generata `.agents/` è ignorata da Git. Per ripristinarle tutte:
+The skills installed for this project can be reconstructed from
+`skills-lock.json`; the generated `.agents/` directory is ignored by Git. To
+restore all skills:
 
 ```sh
 npx skills experimental_install
 ```
 
-Per cercare, ispezionare e installare una nuova skill:
+To find, inspect, and install a new skill:
 
 ```sh
 npx skills find <query>
@@ -55,11 +65,11 @@ npx skills add <owner/repo> --list
 npx skills add <owner/repo> --skill <skill-name> --agent codex -y
 ```
 
-Prima dell'installazione esaminare provenienza, contenuto e valutazioni di
-sicurezza della skill. Dopo l'installazione verificare che `skills-lock.json`
-sia stato aggiornato e committarlo; non committare `.agents/`.
+Before installation, inspect the skill's provenance, contents, and security
+assessments. After installation, verify that `skills-lock.json` was updated and
+commit it; leave `.agents/` uncommitted.
 
-Per vedere le skill attualmente disponibili nel progetto:
+To list the skills currently available in the project:
 
 ```sh
 npx skills list
@@ -67,12 +77,17 @@ npx skills list
 
 ### Issue tracker
 
-Issues live as markdown files under `.scratch/` (tracked in git, not ignored). See `docs/agents/issue-tracker.md`.
+Issues live as Markdown files under `.scratch/`, which is tracked by Git. See
+`docs/agents/issue-tracker.md` when working with issues or specs.
 
 ### Triage labels
 
-Default five canonical roles (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+Use the five canonical roles (`needs-triage`, `needs-info`, `ready-for-agent`,
+`ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md` when triaging
+issues.
 
 ### Domain docs
 
-Single-context layout: `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+The repository uses a single domain context: `CONTEXT.md` and `docs/adr/` at the
+repository root. See `docs/agents/domain.md` when changing the domain model or
+recording architectural decisions.
