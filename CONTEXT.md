@@ -67,6 +67,11 @@ A Game Project distributed with Fondale to demonstrate and verify supported
 Engine Capabilities; Capri 1535 is the first Example.
 _Avoid_: Engine code, throwaway demo
 
+**Support Baseline**:
+The explicitly verified browser, input, and basic usability commitments that a
+Fondale release guarantees to Players and Game Projects.
+_Avoid_: Accessibility compliance, universal browser support, best-effort compatibility
+
 **Authoring Diagnostic**:
 A structured explanation of one invalid Game Definition, Game Project, Save
 Snapshot, asset, or startup condition that helps an Author locate and correct

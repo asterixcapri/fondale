@@ -100,6 +100,9 @@ stabilizza soltanto capacità esercitate dal suo Example di accettazione.
   — assegna ogni controllo al primo livello competente e rende diagnostiche,
   documentazione completa, ricette verificate ed Example vincoli di
   pubblicazione del pacchetto.
+- [Definire qualità, compatibilità e accessibilità di base](issues/14-qualita-e-compatibilita.md)
+  — limita la Support Baseline a Chrome desktop corrente, input realmente
+  esercitati, determinismo dello stato e gate di pubblicazione non aggirabili.
 
 ## Not yet specified
 
