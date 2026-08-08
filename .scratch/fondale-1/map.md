@@ -43,6 +43,10 @@ avventura completa senza modificare gli interni del motore.
   — helper tipizzati compongono registri di dominio in un `GameProject`
   immutabile; callback locali usano operazioni controllate e l'avvio esplicito
   supporta nuova partita o ripristino senza esporre gli interni del motore.
+- [Definire il ciclo del runtime e la proprietà dello stato](issues/04-ciclo-runtime-e-stato.md)
+  — una `Game Session` isolata evolve il proprio `Game State` con operazioni
+  atomiche e clock fisso, separando il core deterministico dagli adapter di
+  browser e test e rendendo transazionali lifecycle e cambi di `Scene`.
 
 ## Not yet specified
 
