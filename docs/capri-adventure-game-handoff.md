@@ -585,8 +585,8 @@ Riferimenti:
 
 Caratteristiche:
 
-- sensazione di risoluzione "320x200";
-- aspect ratio "16:10";
+- sensazione VGA a bassa risoluzione;
+- aspect ratio 16:9;
 - palette limitata;
 - circa 64 colori percepiti;
 - gradienti airbrush;
@@ -605,6 +605,9 @@ I luoghi reali devono rimanere:
 «geograficamente riconoscibili.»
 
 L'immagine può essere stilizzata, ma Capri deve continuare a essere Capri.
+
+La specifica operativa corrente per generazione, composizione giocabile e
+controllo dei fondali è `docs/background-art-spec.md`.
 
 ---
 
@@ -808,22 +811,14 @@ Questo permette una forte sensazione di profondità senza utilizzare 3D.
 
 ## 24. Risoluzione
 
-Risoluzione logica suggerita:
+Risoluzione logica decisa:
 
-320x200
+426x240, 16:9.
 
-Output scalato tramite nearest-neighbour.
-
-Esempi:
-
-320x200 → 1280x800
-320x200 → 1920x1200
-
-Alternativa da valutare:
-
-640x400
-
-ma "320x200" rimane la soluzione preferita per ottenere un autentico look VGA.
+L'immagine viene scalata alla massima scala intera disponibile tramite
+nearest-neighbour, con letterbox sullo spazio residuo. I sorgenti dei fondali
+sono generati ad alta risoluzione e portati a 426x240 dalla pipeline descritta
+in `docs/background-art-spec.md`.
 
 ---
 
@@ -865,32 +860,15 @@ Il motore non è ancora una decisione irrevocabile.
 
 ## 26. UI
 
-Non ancora definita.
+Decisa un'interfaccia contestuale moderna con forte estetica LucasArts. Il
+fondale resta interamente giocabile a 426x240; inventario e rivelazione degli
+hotspot sono controlli HUD sovrapposti.
 
-Da valutare:
-
-### Variante classica
-
-Verbi LucasArts:
-
-GUARDA
-PARLA
-PRENDI
-USA
-APRI
-CHIUDI
-
-### Variante moderna
-
-Click contestuale con:
-
-- guarda;
-- usa;
-- parla.
-
-Possibile compromesso:
-
-gameplay moderno ma forte estetica LucasArts.
+Ogni hotspot espone una sola azione primaria scritta per la situazione. Un
+click comprende avvicinamento, orientamento e interazione; selezionare un
+oggetto dell'inventario trasforma invece il click successivo in un uso di
+inventario. La decisione completa è in
+`docs/adr/0001-full-scene-contextual-interaction.md`.
 
 ---
 
@@ -935,7 +913,6 @@ Durante lo sviluppo NON perdere questi punti:
 
 ### Gameplay
 
-- interfaccia classica o contestuale;
 - dimensione inventory;
 - struttura lineare o semi-aperta;
 - travel map;
