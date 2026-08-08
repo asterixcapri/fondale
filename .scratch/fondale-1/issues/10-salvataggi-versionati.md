@@ -40,8 +40,10 @@ nuovo `Game Behavior` abbia cambiato il significato narrativo dello stato.
 Lo snapshot rappresenta uno e un solo `Game State` committed. Contiene tutti e
 soltanto i fatti canonici necessari alla ripresa deterministica:
 
-- Scene corrente e stato logico, posizione e orientamento dei Character;
-- collocazione di ogni Object, ordine dell'Inventory e selezione corrente;
+- Scene corrente, stato logico locale e Appearance selezionato delle Scenery;
+- stato logico, posizione, orientamento e Appearance dei Character;
+- collocazione e Appearance di ogni Object, ordine dell'Inventory e selezione
+  corrente;
 - Game Variable;
 - identità e progresso logico dell'eventuale Game Activity dominante,
   compresi Player Intent, movimento, Sequence, Line o Choice attivi.

@@ -82,6 +82,10 @@ stabilizza soltanto capacità esercitate dal suo Example di accettazione.
 - [Definire salvataggi e caricamento versionati](issues/10-salvataggi-versionati.md)
   — uno snapshot JSON-safe dell'ultimo stato committed viene validato contro
   formato, progetto e invarianti prima di riprendere esattamente l'attività.
+- [Definire il contratto degli asset visivi](issues/11-asset-e-audio.md)
+  — usa PNG riferiti direttamente e mai corretti nelle dimensioni, con
+  Appearance uniformi, camminata direzionale minima e caricamento atomico
+  completo all'avvio.
 
 ## Not yet specified
 

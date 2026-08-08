@@ -27,11 +27,11 @@ canonico.
   occupato viene rifiutato.
 - Appartiene al `Game State` ogni fatto necessario affinché `GameProject`, stato
   corrente, input futuri e passi temporali uguali producano la stessa
-  evoluzione: `Scene` corrente, posizioni e stato logico di `Character` e
-  `Object`, inventario, selezione, variabili del gioco e progresso della
-  `Game Activity` dominante. Definizioni, asset caricati, geometrie derivate,
-  input non ancora elaborati, oggetti PixiJS e interpolazione
-  visiva restano fuori.
+  evoluzione: `Scene` corrente, stato logico delle `Scenery`, posizioni e stato
+  logico di `Character` e `Object`, selezioni persistenti degli `Appearance`,
+  inventario, selezione, variabili del gioco e progresso della `Game Activity`
+  dominante. Definizioni, asset caricati, geometrie derivate, input non ancora
+  elaborati, oggetti PixiJS e interpolazione visiva restano fuori.
 - Input, callback e clock logico producono `Game Operation`. Il core della
   sessione le valida, serializza e applica come transizioni atomiche dallo stato
   committed precedente al successivo, insieme agli effetti da realizzare. Un

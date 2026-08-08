@@ -29,11 +29,12 @@ partita e permette al Player di:
 3. raggiungere un `Hotspot` attraverso il suo unico `Approach Point` ed eseguire
    una `Primary Action`;
 4. parlare con un `Character` attraverso una `Sequence` finita composta da
-   `Line`, una `Choice`, condizioni e `Game Operation`;
+   `Line`, una `Choice`, condizioni e `Game Operation`, cambiandone una volta
+   l'`Appearance` statico;
 5. raccogliere un `Object`, selezionarlo nell'inventario e usarlo su un
    bersaglio; un esito invalido conserva la selezione, quello valido cambia una
-   `Game Variable` booleana, consuma o ricolloca l'Object e rende disponibile il
-   passaggio finale;
+   `Game Variable` booleana, cambia gli `Appearance` dell'Object e di una
+   `Scenery`, ricolloca l'Object e rende disponibile il passaggio finale;
 6. esercitare un piccolo `Game Behavior` sincrono attraverso lo stesso contesto
    ristretto delle operazioni dichiarative;
 7. esportare un salvataggio durante la `Choice`, arrestare la sessione,
@@ -53,8 +54,9 @@ ripristino e finale usando la sola interface pubblica.
   avvia una nuova partita o uno snapshot validato.
 - Renderer WebGL interno con profilo `pixel`, una `Logical Resolution`, quadro
   fisso, `Background`, `Scenery`, `Character`, `Object`, ordinamento tramite
-  `Ground Point` o `Baseline`, animazione basilare del Character e asset visivi
-  caricati all'avvio.
+  `Ground Point` o `Baseline`, `Appearance` statici alternativi selezionabili
+  uniformemente per `Scenery`, `Character` e `Object`, animazione basilare del
+  Character e asset visivi caricati all'avvio.
 - Una `Walkable Region` per `Scene`, geometria statica, un `Approach Point` per
   bersaglio, pathfinding interno, `Scene Entrance` e `Scene Passage` direzionali.
 - `Primary Action`, `Inventory Use`, condizioni e operazioni minime richieste

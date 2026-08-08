@@ -58,6 +58,12 @@ la forma concreta. L'HUD posseduto dal motore elenca gli Object, evidenzia
 quello selezionato e ne usa l'aspetto da inventario come cursore sul mondo.
 Layout e stile non sono personalizzabili nella Versione 1.
 
+[Definire il contratto degli asset visivi](11-asset-e-audio.md) stabilisce che
+l'`Inventory Appearance` è un PNG distinto usato alla propria dimensione
+logica, senza adattamento automatico. [Determinare le dimensioni dell'Inventory
+Appearance](17-dimensioni-inventory-appearance.md) deve fissare e provare i
+vincoli dimensionali pubblici dell'interfaccia sovrapposta.
+
 Mouse e tastiera possono attivare un elemento dell'Inventory. Attivare un
 Object non selezionato lo seleziona e sostituisce l'eventuale selezione
 precedente; attivarlo di nuovo o premere `Escape` lo deseleziona. La selezione

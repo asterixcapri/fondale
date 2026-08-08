@@ -156,8 +156,8 @@ _Avoid_: Scenery, visual layer
 
 **Appearance**:
 The semantic visual presentation of a Character, Object, or Scenery. Its named
-selection may belong to the Game State, while the file that depicts it has no
-game identity.
+selection belongs to the Game State, while the file that depicts it has no game
+identity.
 _Avoid_: Asset, sprite, texture
 
 **Ground Point**:

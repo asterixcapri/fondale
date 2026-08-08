@@ -70,6 +70,11 @@ entrambi gli esiti possono produrre risposta e modifiche al mondo.
   cambiamento di collocazione degli `Object`, l'attivazione dei
   `Navigation Obstacle` e l'avvio di `Game Activity` nominate. I ticket su
   inventario, dialoghi e sequenze ne preciseranno le forme specifiche.
+- Una stessa operazione controllata seleziona un `Appearance` statico dichiarato
+  per una `Scenery`, un `Character` o un `Object`. La selezione semantica entra
+  nel `Game State` e si applica atomicamente con le altre operazioni; il file che
+  rappresenta l'Appearance e gli oggetti del renderer restano fuori dallo stato.
+  Bersagli o nomi di Appearance inesistenti rendono l'operazione invalida.
 - Non sono ammesse scritture generiche nello stato, nuovi tipi di operazione
   definiti dal gioco o transizioni che aggirano un `Scene Passage`.
 - Ogni caso sceglie una sola modalità: una lista di operazioni dichiarative

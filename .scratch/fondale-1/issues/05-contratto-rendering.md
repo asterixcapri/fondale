@@ -82,7 +82,8 @@ Ogni `Scene` può dichiarare una `Perspective Scale` opzionale come fermate
 `{ y, scale }` interpolate linearmente; in assenza della curva la scala è `1`.
 Il motore la applica automaticamente a `Character` e `Object` in base al loro
 `Ground Point`. La `Scenery`, collocata direttamente nella composizione, è
-dimensionata dall'autore.
+dimensionata dall'autore: un asset autonomo conserva la propria dimensione in
+pixel logici e non viene adattato implicitamente dal renderer.
 
 ### Aspetti, animazioni e renderer
 
