@@ -67,6 +67,12 @@ A Game Project distributed with Fondale to demonstrate and verify supported
 Engine Capabilities; Capri 1535 is the first Example.
 _Avoid_: Engine code, throwaway demo
 
+**Authoring Diagnostic**:
+A structured explanation of one invalid Game Definition, Game Project, Save
+Snapshot, asset, or startup condition that helps an Author locate and correct
+the problem.
+_Avoid_: Player error, log message, debugging tool
+
 ## Playthrough language
 
 **Game Session**:

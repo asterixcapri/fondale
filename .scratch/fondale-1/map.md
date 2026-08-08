@@ -96,6 +96,10 @@ stabilizza soltanto capacità esercitate dal suo Example di accettazione.
 - [Definire Fondale come libreria per progetti esterni](issues/12-pacchetto-e-progetto-esterno.md)
   — distribuisce una sola interface pubblica consumabile da un Game Project
   indipendente, lasciando applicazione, asset, storage e build al consumer.
+- [Definire validazione, diagnostica e documentazione pubblica](issues/13-strumenti-autore.md)
+  — assegna ogni controllo al primo livello competente e rende diagnostiche,
+  documentazione completa, ricette verificate ed Example vincoli di
+  pubblicazione del pacchetto.
 
 ## Not yet specified
 
