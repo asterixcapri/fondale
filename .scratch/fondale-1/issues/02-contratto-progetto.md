@@ -1,7 +1,7 @@
 # Definire il contratto pubblico di un progetto di gioco
 
 Type: grilling
-Status: open
+Status: claimed
 Blocked by: 01
 
 ## Question
