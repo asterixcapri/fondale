@@ -105,6 +105,11 @@ The Scene Space depth at which Scenery meets the ground and joins the world's
 visual ordering.
 _Avoid_: z-index, rendering layer
 
+**Perspective Scale**:
+The Scene-defined relationship between a Ground Point's depth and the visual
+size of a Character or Object placed there.
+_Avoid_: Camera zoom, sprite scale
+
 **Character**:
 A persistent entity capable of acting in the world, controlled by either the
 Player or the game. Its definition does not belong to a Scene; a Scene may only
