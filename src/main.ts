@@ -9,6 +9,8 @@ import { loadFrames } from "./engine/sprite";
 import { fitToWindow } from "./engine/viewport";
 import { vicoloCapri } from "./rooms/vicolo-capri";
 import { micheleWalk } from "./sprites/michele-walk";
+import { micheleWalkBack } from "./sprites/michele-walk-back";
+import { micheleWalkFront } from "./sprites/michele-walk-front";
 
 declare global {
   interface Window {
@@ -21,6 +23,7 @@ declare global {
       walkTo(x: number, y: number): void;
       isWalking(): boolean;
       where(): { x: number; y: number };
+      facing(): "front" | "back" | "left" | "right";
     };
   }
 }
@@ -56,7 +59,13 @@ async function main(): Promise<void> {
   depthSorted.sortableChildren = true;
   scene.addChild(depthSorted);
 
-  const michele = new Character(await loadFrames(micheleWalk), room.entrances["dal-basso"]!.at);
+  const entrance = room.entrances["dal-basso"]!;
+  const [side, front, back] = await Promise.all([
+    loadFrames(micheleWalk),
+    loadFrames(micheleWalkFront),
+    loadFrames(micheleWalkBack),
+  ]);
+  const michele = new Character({ side, front, back }, entrance.at, entrance.facing);
   depthSorted.addChild(michele.view);
 
   depthSorted.addChild(...buildForeground(room, backgroundTexture));
@@ -94,6 +103,7 @@ async function main(): Promise<void> {
     walkTo,
     isWalking: () => michele.walking,
     where: () => michele.at,
+    facing: () => michele.direction,
   };
   window.__gameReady = true;
 }

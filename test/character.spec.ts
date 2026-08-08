@@ -43,3 +43,31 @@ test("a click outside the walkable area still moves him somewhere he can stand",
   const where = await page.evaluate(() => window.__game!.where());
   expect(where.y).toBeGreaterThan(140);
 });
+
+test("Michele uses the walk cycle that matches his direction", async ({ page }) => {
+  const { errors } = await openGame(page);
+
+  // The lower entrance points into the alley, away from the camera.
+  expect(await page.evaluate(() => window.__game!.facing())).toBe("back");
+  await shoot(page, "michele-di-spalle");
+
+  await page.evaluate(() => window.__game!.walkTo(205, 150));
+  await page.waitForFunction(() => window.__game!.isWalking() && window.__game!.facing() === "back");
+  await page.waitForTimeout(250);
+  await shoot(page, "michele-cammina-di-spalle");
+  await page.waitForFunction(() => window.__game!.isWalking() === false);
+
+  await page.evaluate(() => window.__game!.walkTo(180, 230));
+  await page.waitForFunction(() => window.__game!.isWalking() && window.__game!.facing() === "front");
+  await page.waitForTimeout(250);
+  await shoot(page, "michele-cammina-frontale");
+  await page.waitForFunction(() => window.__game!.isWalking() === false);
+
+  await page.evaluate(() => window.__game!.walkTo(320, 220));
+  await page.waitForFunction(() => window.__game!.isWalking() && window.__game!.facing() === "right");
+  await page.waitForTimeout(250);
+  await shoot(page, "michele-cammina-laterale");
+  await page.waitForFunction(() => window.__game!.isWalking() === false);
+
+  expect(errors).toEqual([]);
+});

@@ -9,6 +9,14 @@ const WALK_FPS = 10;
  *  character crossing the back of a room does not appear to sprint. */
 const WALK_SPEED = 70;
 
+/** Walk cycles drawn for each camera-relative direction.
+ * Left reuses the side cycle mirrored by the renderer. */
+export interface CharacterWalkFrames {
+  front: Texture[];
+  back: Texture[];
+  side: Texture[];
+}
+
 /**
  * The player's character.
  *
@@ -21,13 +29,16 @@ export class Character {
   readonly view: Container;
 
   private readonly sprite: AnimatedSprite;
+  private readonly walkFrames: CharacterWalkFrames;
   private position: Point;
-  private facing: Facing = "front";
+  private facing: Facing;
   private path: Point[] = [];
   private arrived?: () => void;
 
-  constructor(frames: Texture[], start: Point) {
-    this.sprite = new AnimatedSprite(frames);
+  constructor(walkFrames: CharacterWalkFrames, start: Point, facing: Facing = "front") {
+    this.walkFrames = walkFrames;
+    this.facing = facing;
+    this.sprite = new AnimatedSprite(this.framesFor(facing));
     this.sprite.animationSpeed = WALK_FPS / 60;
     // Anchored at the bottom centre, matching where the sprite tool put the
     // feet in each cell.
@@ -48,10 +59,14 @@ export class Character {
     return this.path.length > 0;
   }
 
+  get direction(): Facing {
+    return this.facing;
+  }
+
   place(point: Point, facing: Facing = this.facing): void {
     this.position = { ...point };
-    this.facing = facing;
     this.path = [];
+    this.face(facing);
     this.sprite.gotoAndStop(0);
   }
 
@@ -103,6 +118,8 @@ export class Character {
       const dy = target.y - this.position.y;
       const gap = Math.hypot(dx, dy);
 
+      if (gap > 0) this.faceAlong(dx, dy);
+
       if (gap <= remaining) {
         this.position = { ...target };
         this.path.shift();
@@ -114,7 +131,6 @@ export class Character {
         x: this.position.x + (dx / gap) * remaining,
         y: this.position.y + (dy / gap) * remaining,
       };
-      this.faceAlong(dx, dy);
       remaining = 0;
     }
 
@@ -135,9 +151,31 @@ export class Character {
    */
   private faceAlong(dx: number, dy: number): void {
     if (Math.abs(dx) * 1.4 >= Math.abs(dy)) {
-      this.facing = dx < 0 ? "left" : "right";
+      this.face(dx < 0 ? "left" : "right");
     } else {
-      this.facing = dy > 0 ? "front" : "back";
+      this.face(dy > 0 ? "front" : "back");
+    }
+  }
+
+  /** Changes the artwork without changing the character's feet or walk state. */
+  private face(facing: Facing): void {
+    if (facing === this.facing) return;
+
+    const wasPlaying = this.sprite.playing;
+    this.facing = facing;
+    this.sprite.textures = this.framesFor(facing);
+    if (wasPlaying) this.sprite.play();
+  }
+
+  private framesFor(facing: Facing): Texture[] {
+    switch (facing) {
+      case "front":
+        return this.walkFrames.front;
+      case "back":
+        return this.walkFrames.back;
+      case "left":
+      case "right":
+        return this.walkFrames.side;
     }
   }
 }

@@ -43,8 +43,8 @@ Ticket chiusi:
 
 - [01 — Sprite di Michele](issues/01-sprite-di-michele.md) — scelto e misurato
   lo sheet v4; `tools/build_sprite.py` produce la striscia laterale usata dal
-  gioco. Frontale, retro e riallineamento della palette restano debiti
-  dichiarati.
+  gioco; due sheet successivi completano frontale e retro. Il riallineamento
+  della palette resta un debito dichiarato.
 - [02 — Pipeline dei fondali](issues/02-pipeline-fondali.md) — `tools/process_background.py`: ritaglio al rapporto d'aspetto, riduzione, quantizzazione. Palette per scena, 64 colori, senza dithering. Dimensioni parametriche, così il ticket 04 non costringe a riscrivere.
 - [03 — Modello dati di scena](issues/03-modello-dati-di-scena.md) — stanze
   TypeScript tipizzate, poligoni di foreground con baseline, scala a fermate e

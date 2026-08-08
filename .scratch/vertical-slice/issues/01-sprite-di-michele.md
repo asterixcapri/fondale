@@ -70,6 +70,17 @@ Dettaglio che costava un alone: la quantizzazione va fatta sul colore e non sull
 
 ### Debiti dichiarati
 
-- **Solo vista laterale.** Il v4 ha una riga sola. Sinistra è lo specchio di destra e costa zero, ma **frontale e di spalle mancano**. Servono prima che il personaggio possa risalire il vicolo verso l'arco in modo credibile.
 - **La palette non è quella del fondale.** Michele è più saturo e più chiaro della scena al tramonto: si stacca invece di starci dentro. Va riportato sulla palette del vicolo.
 - **Il ribollimento resta**, attenuato dalla riduzione a 84-100px ma presente. Se darà fastidio, la correzione è già descritta sopra: corpo canonico da un frame, gambe dalle pose.
+
+### Completamento delle direzioni
+
+Ricevuti e integrati due sheet da otto frame per la camminata **frontale** e
+**di spalle**. La stessa pipeline produce `michele-walk-front.png` e
+`michele-walk-back.png`, entrambi alti 100px, con i piedi ancorati al bordo
+inferiore; la vista laterale continua a servire sia destra sia sinistra tramite
+specchio.
+
+Il motore ora cambia strip dalla direzione effettiva di marcia e usa
+l'orientamento dichiarato dall'entrata della stanza già al primo fotogramma.
+La verifica browser fotografa Michele fermo e in cammino nelle tre viste.
