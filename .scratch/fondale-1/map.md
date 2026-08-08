@@ -75,6 +75,10 @@ stabilizza soltanto capacità esercitate dal suo Example di accettazione.
 - [Definire dialoghi e sequenze controllate](issues/08-dialoghi-e-sequenze.md)
   — una `Sequence` nominata compone soltanto Line manuali, Choice finite,
   diramazioni e operazioni atomiche in un'attività modale e ripristinabile.
+- [Definire inventario e oggetti utilizzabili](issues/09-inventario.md)
+  — riduce l'Inventory a Object collocati, posseduti o consumati, con raccolta,
+  ordine di acquisizione, selezione singola e uso contestuale governati dal
+  motore.
 
 ## Not yet specified
 

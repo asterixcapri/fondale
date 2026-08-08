@@ -177,9 +177,15 @@ Player Intent.
 _Avoid_: Interactive object, world entity, clickable point
 
 **Object**:
-A persistent entity the Player can collect. Its identity and lifecycle belong
-to the Game Project rather than a Scene.
+A persistent entity the Player can collect. It is always present in one Scene,
+carried in the Inventory, or terminally consumed; its identity and lifecycle
+belong to the Game Project rather than a Scene.
 _Avoid_: Scenery, synonym for Hotspot
+
+**Inventory**:
+The acquisition-ordered collection of Objects currently carried by the Player,
+with at most one of them selected for an Inventory Use.
+_Avoid_: Container, equipment, item stack
 
 **Interaction**:
 A meaningful response of the world to a Player Intent; a Scene freely defines
