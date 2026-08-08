@@ -1,7 +1,7 @@
 # Definire il contratto degli asset visivi
 
 Type: grilling
-Status: open
+Status: claimed
 Blocked by: 02, 03, 05, 15
 
 ## Question
