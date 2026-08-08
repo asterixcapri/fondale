@@ -40,7 +40,7 @@ Caratteristiche comuni:
   moderazione;
 - atmosfera avventurosa e abitata, mai da cartolina turistica moderna.
 
-I quattro riferimenti canonici sono in `art/concept/backgrounds/`. Allegare a
+I cinque riferimenti canonici sono in `art/concept/backgrounds/`. Allegare a
 ogni nuova generazione il fondale esistente più simile e, quando utile,
 `vicolo-capri.png` come riferimento generale di palette e trattamento. Il
 riferimento definisce lo stile, non la composizione da copiare.

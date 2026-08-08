@@ -618,6 +618,7 @@ Sono stati sviluppati concept visivi per:
 - costa caprese;
 - Marina Grande cinquecentesca;
 - vicolo di Capri;
+- piccolo approdo dei pescatori presso Marina Grande;
 - Certosa di San Giacomo;
 - fortificazione costiera / Castello;
 - panorami sul mare.
