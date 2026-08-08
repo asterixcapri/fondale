@@ -20,3 +20,6 @@ rendere configurabili layout o stile dell'interfaccia nella Versione 1.
 - [Prototipo interattivo dei tre contratti dimensionali](../prototypes/inventory-appearance.html)
   — confronta dimensione fissa compatta, dimensione fissa leggibile e
   proporzioni libere alle risoluzioni logiche 426×240 e 640×360.
+- [Ricerca sul dimensionamento degli asset negli altri motori](../research/asset-sizing-other-engines.md)
+  — confronta Godot, Unity, Phaser e Ren'Py e distingue tela del progetto,
+  dimensione nativa dei PNG e adattamento allo schermo.
