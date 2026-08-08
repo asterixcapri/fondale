@@ -27,6 +27,11 @@ Status: resolved
 
 `playwright.config.ts` + `test/harness.ts`. Un comando — `npm run verify` — avvia Vite, apre il gioco in Chromium, aspetta che il primo fotogramma sia disegnato e salva gli screenshot in `test/shots/`, che l'agente poi apre e guarda.
 
-Dettaglio d'ambiente che costava un fallimento a ogni esecuzione: il Chromium preinstallato è la build 1194, più vecchia di quella che questo Playwright si aspetta. Risolto puntando a `/opt/pw-browsers/chromium` con `launchOptions.executablePath`, invece di scaricarne un altro.
+Il primo ambiente richiedeva un Chromium preinstallato sotto
+`/opt/pw-browsers/chromium`. Quel percorso assoluto si è rivelato fragile al
+primo cambio dell'immagine del container: il banco ora usa il canale Playwright
+`chrome`, che scopre l'installazione Google Chrome di sistema senza cablare il
+percorso dell'eseguibile. In un ambiente che non la contiene, il bootstrap
+documentato in `AGENTS.md` indica `npx playwright install chrome`.
 
 Il banco raccoglie errori di console, eccezioni di pagina e risorse mancanti, e li fa fallire come test. Ha già dimostrato di servire: alla prima esecuzione ha intercettato un 404 sulla favicon, sistemato alla radice invece di allentare il controllo. In una lavorazione autonoma un errore che compare solo nella console del browser è un errore che non viene trovato mai.

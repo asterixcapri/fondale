@@ -31,9 +31,12 @@ npm run build   # type-check e build single-file in dist/
 npm run verify  # test browser con Playwright
 ```
 
-`playwright.config.ts` indica il percorso dell'eseguibile Chromium usato dai
-test. Se il browser dell'ambiente si trova altrove, adeguare
-`use.launchOptions.executablePath` prima di eseguire `npm run verify`.
+I test usano il canale `chrome` di Playwright e richiedono Google Chrome. Se
+non è già disponibile nell'ambiente, installarlo con:
+
+```sh
+npx playwright install chrome
+```
 
 ## Agent skills
 

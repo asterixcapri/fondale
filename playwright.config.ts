@@ -3,8 +3,8 @@ import { defineConfig } from "@playwright/test";
 /**
  * The harness that makes the agent's work verifiable without a human.
  *
- * Chromium is pre-installed in this environment (PLAYWRIGHT_BROWSERS_PATH is
- * already set), so nothing is downloaded on install.
+ * The harness uses the system Google Chrome through Playwright's `chrome`
+ * channel, so it is not tied to a container-specific executable path.
  */
 export default defineConfig({
   testDir: "./test",
@@ -15,10 +15,10 @@ export default defineConfig({
   reporter: [["list"]],
   use: {
     baseURL: "http://localhost:5173",
-    // Point at the Chromium already on the image. Its build predates the one
-    // this Playwright expects, and downloading another is both slow and
-    // pointless for a 2D canvas game.
-    launchOptions: { executablePath: "/opt/pw-browsers/chromium" },
+    // Let Playwright discover the system Chrome installation. An absolute
+    // executable path tied the harness to one container image and broke as
+    // soon as that image changed.
+    channel: "chrome",
     // 1280x720 gives a 3x integer scale with a 1px bar each side, which also
     // exercises the centring maths rather than hiding it behind an exact fit.
     viewport: { width: 1280, height: 720 },
