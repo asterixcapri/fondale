@@ -47,7 +47,8 @@ _Avoid_: Engine class, generic configuration
 
 **Game Behavior**:
 A rule specific to an adventure that complements its Game Definitions without
-changing the engine's internals.
+changing the engine's internals. It is deterministic for the context supplied
+by the Engine and cannot depend on external mutable state.
 _Avoid_: Engine patch, plugin
 
 **Example**:
@@ -66,6 +67,11 @@ _Avoid_: Game Project, renderer, global game
 The canonical facts that describe the current progress of a Game Session and
 determine how its world may evolve.
 _Avoid_: Game Project, renderer state, transient activity
+
+**Game Variable**:
+A named boolean, string, or finite-number fact declared by a Game Project for
+adventure-specific progress not already represented by an Engine Capability.
+_Avoid_: Global variable, arbitrary state object, duplicate engine state
 
 **Game Operation**:
 A validated request that moves a Game Session atomically from one valid Game
@@ -102,7 +108,8 @@ _Avoid_: Scenery, occlusion mask, collision object
 
 **Approach Point**:
 An authored Ground Point and facing at which a Character can perform an
-Interaction with a target.
+Interaction with a target. It is absolute for a fixed target and relative to
+the Ground Point of a mobile target.
 _Avoid_: Click position, sprite position, implicit nearest point
 
 **Scene Entrance**:
@@ -152,9 +159,10 @@ from its background when they need their own position, depth, or behavior.
 _Avoid_: Object, Hotspot, details embedded in the background
 
 **Hotspot**:
-The surface that makes part of the Scenery, an Object present in the Scene, or
-a background region interactive. It has no identity apart from what it makes
-interactive.
+The Scene-local surface that makes Scenery, a Character, an Object present in
+the Scene, or a background region interactive. It has no identity apart from
+what it makes interactive; while inactive it neither receives nor advertises
+Player Intent, and when attached to a mobile target it follows that target.
 _Avoid_: Interactive object, world entity, clickable point
 
 **Object**:
@@ -167,16 +175,35 @@ A meaningful response of the world to a Player Intent; a Scene freely defines
 its label, such as Look, Talk, Knock, or Pay.
 _Avoid_: Verb, command
 
+**Interaction Case**:
+An authored conditional alternative for resolving either a Primary Action or
+an Inventory Use; eligible cases are considered in their declared order.
+_Avoid_: Handler, event listener, priority rule
+
+**Interaction Condition**:
+An authored proposition over the current Game State that determines whether an
+Interaction Case is eligible; common conditions remain declarative.
+_Avoid_: Validation rule, mutable state check
+
+**Interaction Response**:
+The player-perceivable result of an Interaction Case, possibly accompanied by
+immediate world changes or a controlled Game Activity.
+_Avoid_: Event handler, silent no-op, renderer effect
+
 **Primary Action**:
-The default Interaction of a Hotspot when no inventory Object is selected.
+The Interaction offered by a Hotspot when no inventory Object is selected; its
+label may change with the eligible Interaction Case.
 _Avoid_: Contextual click, default action
 
 **Player Intent**:
 The complete request to reach a target, face it, and perform an Interaction. A
-new Player Intent replaces one still in progress.
+new Player Intent replaces one still in progress, and its Interaction is
+resolved against the latest committed Game State only after arrival. It tracks
+a mobile target rather than freezing the target's original position.
 _Avoid_: Click, queued movement
 
 **Inventory Use**:
-The attempt to apply a selected Object to a target. Failure preserves the
-selection; success ends it.
+The attempt to apply a selected Object to a target. Its authored outcome is
+independent of state changes: failure preserves the selection and success ends
+it.
 _Avoid_: Drag-and-drop, Use verb

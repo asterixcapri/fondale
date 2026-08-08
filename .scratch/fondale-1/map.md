@@ -54,12 +54,13 @@ avventura completa senza modificare gli interni del motore.
 - [Definire Scene, navigazione e attraversamento](issues/06-stanze-e-navigazione.md)
   — combina regioni percorribili e ostacoli con approcci espliciti e passaggi
   nominati, nascondendo pathfinding e transizioni atomiche dietro il runtime.
+- [Definire interazioni, condizioni ed effetti](issues/07-interazioni-condizioni-effetti.md)
+  — unifica azioni primarie e uso dell'inventario in casi ordinati e validabili,
+  con fallback percepibili, operazioni atomiche e comportamenti TypeScript
+  deterministici dietro un contesto ristretto.
 
 ## Not yet specified
 
-- Se un verificatore generale della risolvibilità degli enigmi appartenga a
-  Fondale oppure resti uno strumento specifico dei giochi; dipende dal modello
-  di stato, condizioni ed effetti.
 - Il livello di supporto alla localizzazione oltre alla separazione basilare
   dei testi; dipende dal contratto di dialoghi e contenuti.
 
