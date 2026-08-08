@@ -36,6 +36,10 @@ avventura completa senza modificare gli interni del motore.
   WebGPU non è ancora interoperabile, audio e asset impongono cicli asincroni e
   il pacchetto deve chiudere tipi ed entry point senza esporre PixiJS
   ([ricerca](research/fatti-piattaforma-web-pixijs-8.md)).
+- [Definire il contratto pubblico di un progetto di gioco](issues/02-contratto-progetto.md)
+  — helper tipizzati compongono registri di dominio in un `GameProject`
+  immutabile; callback locali usano operazioni controllate e l'avvio esplicito
+  supporta nuova partita o ripristino senza esporre gli interni del motore.
 
 ## Not yet specified
 
@@ -46,8 +50,6 @@ avventura completa senza modificare gli interni del motore.
   dei testi; dipende dal contratto di dialoghi e contenuti.
 - Se il runtime 1.0 debba supportare più risoluzioni logiche o una camera oltre
   la singola scena classica; dipende dal contratto di rendering.
-- La divisione precisa fra CLI, validazione in build e strumenti diagnostici in
-  scena; dipende dal contratto pubblico di authoring.
 
 ## Out of scope
 
@@ -57,4 +59,4 @@ avventura completa senza modificare gli interni del motore.
 - API generale per plugin.
 - Touch, gamepad, wrapper desktop, store e integrazioni Steam.
 - Multiplayer, 3D, fisica generale, combattimento e sistemi RPG.
-- Trama, stanze e produzione artistica del gioco Capri 1535 completo.
+- Trama, Scene e produzione artistica del gioco Capri 1535 completo.
