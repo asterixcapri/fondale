@@ -20,6 +20,11 @@ A choice or value through which a Game Project adapts an Engine Capability to
 its artistic direction and behavior.
 _Avoid_: Engine constant, internal interface
 
+**Logical Resolution**:
+The width and height of the shared visual space in which every Scene of a Game
+Project is authored.
+_Avoid_: Window size, renderer resolution, per-Scene resolution
+
 **Author**:
 The web developer who builds a Game Project through Fondale's public interface
 without depending on the engine's internals.
