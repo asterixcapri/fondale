@@ -1,4 +1,4 @@
-# Definire salvataggi, caricamento e migrazioni
+# Definire salvataggi e caricamento versionati
 
 Type: grilling
 Status: open

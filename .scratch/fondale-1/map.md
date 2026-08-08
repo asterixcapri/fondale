@@ -31,6 +31,9 @@ stabilizza soltanto capacità esercitate dal suo Example di accettazione.
 - Fondale 1.0 non dichiara, carica o riproduce audio.
 - I salvataggi versionati e validati appartengono al motore; slot, UI e storage
   appartengono al `Game Project`.
+- Ogni export dell'interface pubblica deve avere documentazione completa di
+  scopo, uso, invarianti, default, errori ed esempio; un Author deve poter
+  costruire l'Example esterno usando la documentazione pubblicata col pacchetto.
 - Editor visuale e authoring no-code non appartengono alla direzione del
   prodotto, neppure come candidati della Versione 2.
 - I candidati della Versione 2 richiedono un nuovo effort e un Example che li
@@ -69,6 +72,9 @@ stabilizza soltanto capacità esercitate dal suo Example di accettazione.
   — limita la Versione 1 a un Example esterno di due Scene che esercita
   navigazione, interazione, dialogo, inventario, salvataggio e finale senza
   audio; tutto il resto richiede una nuova rotta.
+- [Definire dialoghi e sequenze controllate](issues/08-dialoghi-e-sequenze.md)
+  — una `Sequence` nominata compone soltanto Line manuali, Choice finite,
+  diramazioni e operazioni atomiche in un'attività modale e ripristinabile.
 
 ## Not yet specified
 

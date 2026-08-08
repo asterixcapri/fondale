@@ -41,9 +41,10 @@ partita e permette al Player di:
    dominante;
 8. attraversare il passaggio e raggiungere uno stato finale osservabile.
 
-La fixture esterna deve avviarsi in sviluppo e produrre una build statica. Un
-test Playwright percorre nuova partita, navigazione, conversazione, inventario,
-salvataggio, ripristino e finale usando la sola interface pubblica.
+La fixture esterna deve essere costruibile dalla documentazione pubblicata col
+pacchetto, avviarsi in sviluppo e produrre una build statica. Un test Playwright
+percorre nuova partita, navigazione, conversazione, inventario, salvataggio,
+ripristino e finale usando la sola interface pubblica.
 
 ### Contratto della Versione 1
 
@@ -70,6 +71,10 @@ salvataggio, ripristino e finale usando la sola interface pubblica.
   Game Project.
 - Chrome desktop corrente come browser garantito, mouse per il mondo, tastiera
   per HUD e dialoghi, build e test Playwright del percorso completo.
+- Documentazione versionata col pacchetto: guida iniziale e concettuale,
+  riferimento completo di ogni export pubblico con invarianti, default, errori
+  ed esempi, collegamenti all'Example eseguibile e una verifica automatica che
+  impedisca di pubblicare simboli pubblici non documentati.
 
 Fondale 1.0 non dichiara, carica o riproduce audio.
 
