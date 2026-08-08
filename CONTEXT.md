@@ -115,6 +115,11 @@ The logical coordinate space shared by a Scene's background, placed elements,
 and authored geometry.
 _Avoid_: Screen coordinates, CSS pixels, window space
 
+**Scene Mark**:
+A named Ground Point and facing local to a Scene, used as a Character destination
+by a Sequence.
+_Avoid_: Waypoint, raw destination coordinates, Approach Point
+
 **Walkable Region**:
 A polygon in Scene Space within which a Character's Ground Point may stand and
 move; a Scene may combine several regions into one navigable surface.
