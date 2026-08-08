@@ -53,3 +53,11 @@ Le forme precise delle definizioni, delle operazioni disponibili alle
 callback, dello stato iniziale e del salvataggio restano ai ticket di dominio
 che dipendono da questa decisione; non possono però allargare le seam stabilite
 qui.
+
+## Scope amendment for Fondale 1.0
+
+Gli helper e i `Game Setting` pubblici sono soltanto quelli richiesti da
+[Definire lo scenario di accettazione di Fondale
+1.0](15-scenario-accettazione.md). Restano l'avvio da nuova partita o
+salvataggio validato e il consumo dal pacchetto esterno; non si anticipano
+definizioni o opzioni per capacità della Versione 2.

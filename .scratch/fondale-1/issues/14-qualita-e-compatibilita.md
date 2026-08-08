@@ -2,11 +2,12 @@
 
 Type: grilling
 Status: open
-Blocked by: 03, 04, 05, 06, 07, 08, 09, 10, 11, 12
+Blocked by: 03, 04, 05, 06, 07, 08, 09, 10, 11, 12, 13, 15
 
 ## Question
 
-Quali browser desktop, modalità di input, requisiti di accessibilità e proprietà
-di comportamento costituiscono il contratto verificabile di Fondale 1.0; quali
-test unitari, di integrazione e browser devono proteggere quel contratto; e
-quali verifiche restano periodiche anziché automatiche?
+Qual è la più piccola baseline verificabile per Chrome desktop corrente,
+mouse, controlli da tastiera di HUD e dialoghi, determinismo, build e percorso
+Playwright dell'Example? La decisione deve evitare una promessa multi-browser,
+touch, gamepad o conformità di accessibilità generale non dimostrata dalla
+Versione 1.

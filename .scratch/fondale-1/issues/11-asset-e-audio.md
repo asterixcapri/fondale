@@ -1,12 +1,13 @@
-# Definire il contratto di asset e audio
+# Definire il contratto degli asset visivi
 
 Type: grilling
 Status: open
-Blocked by: 02, 03, 05
+Blocked by: 02, 03, 05, 15
 
 ## Question
 
-Come dichiara, carica, valida e identifica Fondale fondali, sprite, animazioni,
-font, musica, effetti e voci; quali trasformazioni appartengono agli strumenti
-di sviluppo e quali al runtime; e quale comportamento è garantito durante
-precaricamento, errori e riproduzione audio nei browser?
+Come dichiara, identifica, carica e valida Fondale i soli asset visivi esercitati
+dall'Example: Background, aspetti statici e animazione basilare del Character?
+La decisione deve coprire riferimenti, metadati minimi, caricamento asincrono
+all'avvio ed errori URL, CORS o dimensione; audio, font personalizzati, pipeline
+artistiche, streaming e trasformazioni runtime sono fuori dalla Versione 1.

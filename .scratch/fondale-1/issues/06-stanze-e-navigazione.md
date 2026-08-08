@@ -72,7 +72,7 @@ senza percorso parziale o teletrasporto.
 Resta valida la semantica già scelta per il `Player Intent`: un nuovo intento
 sostituisce immediatamente il movimento in corso, non viene accodato. Arrivato
 all'approccio, il motore applica l'orientamento dichiarato e soltanto allora può
-iniziare l'interazione. Il significato e il feedback audiovisivo degli esiti
+iniziare l'interazione. Il significato e il feedback percepibile degli esiti
 spettano al contratto delle interazioni, non al pathfinder.
 
 ### Attraversamento fra Scene
@@ -105,3 +105,11 @@ intento, destinazione ed evoluzione siano deterministiche; che ogni posa
 committed sia percorribile; che nessun segmento tagli bordi od ostacoli; che un
 nuovo intento sostituisca il precedente; e che una transizione aggiorni
 `Scene`, entrata e orientamento atomicamente.
+
+## Scope amendment for Fondale 1.0
+
+La Versione 1 esercita una sola `Walkable Region` per `Scene`, un solo
+`Approach Point` per bersaglio e geometria statica. Regioni multiple,
+`Navigation Obstacle`, approcci multipli e tracking di bersagli mobili restano
+candidati della Versione 2 secondo [Definire lo scenario di accettazione di
+Fondale 1.0](15-scenario-accettazione.md).

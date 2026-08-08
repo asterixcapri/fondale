@@ -2,13 +2,12 @@
 
 Type: grilling
 Status: open
-Blocked by: 02, 06, 07, 08, 09, 10, 11
+Blocked by: 02, 06, 07, 08, 09, 10, 11, 12, 15
 
 ## Question
 
-Quali errori Fondale può rilevare prima dell'esecuzione, quali diagnostiche
-devono essere visibili nella scena e quali comandi servono per ispezionare un
-progetto? La decisione deve coprire riferimenti mancanti, geometrie, stato,
-asset e debugging senza introdurre un editor visuale. Deve assegnare ogni
-controllo alla validazione locale degli helper, a `defineGame`, alla build/CLI
-oppure agli strumenti diagnostici nella Scena.
+Quali errori richiesti dall'Example rilevano gli helper, `defineGame` e
+`startGame`, e quale contesto minimo rende comprensibile ogni diagnostica? La
+decisione deve coprire riferimenti, geometria, operazioni, asset visivi e
+salvataggi senza introdurre CLI, inspector, dashboard, editor visuale o altri
+strumenti pubblici non esercitati dall'Example.

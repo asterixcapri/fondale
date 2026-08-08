@@ -15,7 +15,7 @@ comportamenti del motore.
 ## Answer
 
 Ogni `Game Session` è l'unica autorità sul proprio `Game State`; renderer,
-audio, input e pathfinding non possiedono copie concorrenti dello stato
+input e pathfinding non possiedono copie concorrenti dello stato
 canonico.
 
 - Il `GameProject` è immutabile e contiene definizioni e stato iniziale.
@@ -30,7 +30,7 @@ canonico.
   evoluzione: `Scene` corrente, posizioni e stato logico di `Character` e
   `Object`, inventario, selezione, variabili del gioco e progresso della
   `Game Activity` dominante. Definizioni, asset caricati, geometrie derivate,
-  input non ancora elaborati, oggetti PixiJS, stato audio e interpolazione
+  input non ancora elaborati, oggetti PixiJS e interpolazione
   visiva restano fuori.
 - Input, callback e clock logico producono `Game Operation`. Il core della
   sessione le valida, serializza e applica come transizioni atomiche dallo stato
@@ -56,13 +56,13 @@ Ogni passo segue quest'ordine:
 3. avanza una volta la `Game Activity` corrente;
 4. applica in ordine causale le operazioni prodotte;
 5. pubblica uno snapshot committed;
-6. lascia a rendering, animazioni ambientali e audio la realizzazione degli
+6. lascia a rendering e animazioni ambientali la realizzazione degli
    effetti, senza permettere loro di modificare il `Game State`.
 
 Gli input arrivati durante un passo attendono quello successivo. Esiste al
 massimo una `Game Activity` dominante: un nuovo `Player Intent` sostituisce
 quello in corso, mentre una sequenza controllata governa temporaneamente input
-e avanzamento. Attività puramente audiovisive possono procedere in parallelo
+e avanzamento. Attività puramente visive possono procedere in parallelo
 perché non sono fonti di verità.
 
 Il lifecycle interno della `Game Session` comprende `starting`, `running`,
@@ -75,7 +75,7 @@ Il lifecycle interno della `Game Session` comprende `starting`, `running`,
 - un errore prima del commit conserva lo stato precedente per la diagnostica e
   porta la sessione in `failed`;
 - `stop()` è idempotente e terminale: interrompe clock e attività, scollega
-  input, renderer e audio e rilascia le risorse. Una nuova partita richiede una
+  input e renderer e rilascia le risorse. Una nuova partita richiede una
   nuova chiamata a `startGame`.
 
 Precondizioni non soddisfatte e usi errati di un `Object` sono esiti normali del
@@ -86,6 +86,14 @@ già avviata in `failed`, con diagnostica contestuale.
 
 La seam di test resta interna. Un modulo core riceve input ordinati e passi
 espliciti e restituisce snapshot ed effetti; un browser adapter collega DOM,
-clock reale, renderer e audio, mentre un test adapter controlla input e tempo e
+clock reale, input e renderer, mentre un test adapter controlla input e tempo e
 osserva gli stessi risultati. L'interface pubblica dell'autore non espone
 questi interni né aggiunge accesso mutabile allo stato.
+
+## Scope amendment for Fondale 1.0
+
+Il core deterministico, lo stato serializzabile e la ripresa esatta restano
+necessari ai salvataggi. [Definire lo scenario di accettazione di Fondale
+1.0](15-scenario-accettazione.md) rinvia invece sessioni concorrenti e mantiene
+interni gli stati dettagliati del lifecycle; nessun adapter audio appartiene
+alla Versione 1.

@@ -1,5 +1,9 @@
 # Fatti di piattaforma per Fondale 1.0
 
+> Nota di scope: i fatti sull'audio sono conservati come ricerca per un effort
+> futuro, ma non condizionano Fondale 1.0, che non dichiara, carica o riproduce
+> audio.
+
 Ricerca svolta l'8 agosto 2026. Le osservazioni su PixiJS si riferiscono alla
 linea 8.x e, dove conta il comportamento esatto, al sorgente versionato
 `v8.19.0`. Le fonti sono esclusivamente documentazione, specifiche e sorgenti
@@ -224,4 +228,3 @@ esplicite.
   PixiJS e pubblicazione sotto scope npm reale.
 - **Qualità (14):** tradurre la baseline Chrome/Firefox/Safari/Edge in una
   matrice verificabile che includa renderer, autoplay e fallimenti di asset.
-

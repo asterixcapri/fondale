@@ -99,8 +99,8 @@ gioco. Un'animazione che una sequenza deve attendere è invece una
 progresso dell'attività. Le operazioni che selezionano presenza e aspetto
 saranno definite da [Definire interazioni, condizioni ed
 effetti](07-interazioni-condizioni-effetti.md), mentre formati, frame e
-validazione dei file spettano a [Definire il contratto di asset e
-audio](11-asset-e-audio.md).
+validazione dei file spettano a [Definire il contratto degli asset
+visivi](11-asset-e-audio.md).
 
 Fondale 1.0 richiede WebGL. L'assenza della capacità fa fallire
 comprensibilmente `startGame`; Canvas 2D e WebGPU non sono renderer garantiti.
@@ -113,3 +113,11 @@ L'interface pubblica non offre callback di rendering, nodi generici, shader,
 filtri, blend mode o trasformazioni PixiJS. Nuovi effetti riutilizzabili
 diventano capacità nominate e controllate del motore, non escape hatch verso
 l'implementazione del renderer.
+
+## Scope amendment for Fondale 1.0
+
+[Definire lo scenario di accettazione di Fondale
+1.0](15-scenario-accettazione.md) mantiene il profilo `pixel` e le primitive
+visive esercitate dall'Example. Profilo `smooth`, animazioni generiche e
+ripristino trasparente dopo context loss sono candidati della Versione 2;
+l'audio non fa parte di questo contratto.

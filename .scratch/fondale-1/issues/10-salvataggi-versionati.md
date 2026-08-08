@@ -2,11 +2,13 @@
 
 Type: grilling
 Status: open
-Blocked by: 04, 07
+Blocked by: 04, 08, 09, 15
 
 ## Question
 
-Quale stato deve essere persistito, quali parti devono essere ricostruite, come
-sono identificati gioco e versione del formato, e quale punto di migrazione è
-offerto a un progetto? La decisione deve prevenire la serializzazione casuale
-degli interni del renderer e permettere errori comprensibili su dati non validi.
+Qual è il più piccolo snapshot JSON-safe, versionato e validato con cui Fondale
+salva soltanto uno stato committed e lo ripristina deterministicamente, inclusa
+la `Game Activity` dominante? La decisione deve identificare progetto e formato,
+escludere definizioni e interni derivati e rifiutare dati corrotti o versioni
+incompatibili; slot, UI, storage, cloud e migrazioni fra versioni non ancora
+esistenti non appartengono al motore 1.0.

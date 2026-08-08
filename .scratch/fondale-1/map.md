@@ -7,15 +7,16 @@ Type: wayfinder:map
 Un insieme completo e coerente di decisioni di prodotto e architettura dal
 quale `/to-spec` possa produrre la specifica costruibile di Fondale 1.0: un
 motore web-native con cui un autore realizza e distribuisce una piccola
-avventura completa senza modificare gli interni del motore.
+avventura completa senza modificare gli interni del motore. La Versione 1
+stabilizza soltanto capacità esercitate dal suo Example di accettazione.
 
 ## Notes
 
 - Consultare `/domain-modeling` per il linguaggio e `/codebase-design` per i
   confini dei moduli; usare `/prototype` quando un comportamento non può essere
   deciso affidabilmente sulla carta.
-- Fondale è open source MIT, TypeScript-first e destinato inizialmente ai
-  browser desktop moderni con mouse e tastiera.
+- Fondale è open source MIT, TypeScript-first e garantisce inizialmente Chrome
+  desktop corrente, mouse e controlli da tastiera per HUD e dialoghi.
 - L'authoring è dichiarativo, con comportamenti TypeScript mirati; non richiede
   PixiJS né ereditarietà dagli interni del motore.
 - PixiJS può restare il renderer interno, ma non appartiene al contratto
@@ -27,17 +28,24 @@ avventura completa senza modificare gli interni del motore.
   italiano.
 - `examples/capri-1535` è la vertical slice di riferimento, non il gioco
   completo.
+- Fondale 1.0 non dichiara, carica o riproduce audio.
+- I salvataggi versionati e validati appartengono al motore; slot, UI e storage
+  appartengono al `Game Project`.
+- Editor visuale e authoring no-code non appartengono alla direzione del
+  prodotto, neppure come candidati della Versione 2.
+- I candidati della Versione 2 richiedono un nuovo effort e un Example che li
+  eserciti; questa mappa non ne progetta anticipatamente l'interface.
 - Il lavoro della mappa produce decisioni, non implementazione.
 
 ## Decisions so far
 
 - [Classificare l'eredità della vertical slice](issues/01-classificare-vertical-slice.md)
-  — conserva i concetti già validati come capacità configurabili, ma riapre le
-  API e separa valori, pipeline artistiche e contenuti specifici di Capri.
+  — conserva come evidenza i concetti validati, ma stabilizza soltanto il loro
+  sottoinsieme esercitato dall'Example e riapre le API.
 - [Verificare i vincoli della piattaforma web e di PixiJS](issues/03-fatti-piattaforma-web.md)
   — WebGL è la baseline produttiva più prudente; Canvas 2D è sperimentale,
-  WebGPU non è ancora interoperabile, audio e asset impongono cicli asincroni e
-  il pacchetto deve chiudere tipi ed entry point senza esporre PixiJS
+  WebGPU non è ancora interoperabile, gli asset impongono cicli asincroni e il
+  pacchetto deve chiudere tipi ed entry point senza esporre PixiJS
   ([ricerca](research/fatti-piattaforma-web-pixijs-8.md)).
 - [Definire il contratto pubblico di un progetto di gioco](issues/02-contratto-progetto.md)
   — helper tipizzati compongono registri di dominio in un `GameProject`
@@ -48,27 +56,42 @@ avventura completa senza modificare gli interni del motore.
   atomiche e clock fisso, separando il core deterministico dagli adapter di
   browser e test e rendendo transazionali lifecycle e cambi di `Scene`.
 - [Definire il contratto di rendering e dello spazio di scena](issues/05-contratto-rendering.md)
-  — fissa uno spazio logico per progetto e un quadro senza camera, componendo
-  primitive dichiarative per profondità e prospettiva dietro un renderer WebGL
-  interno.
+  — fissa un quadro logico `pixel` senza camera e le primitive visive esercitate
+  dall'Example dietro un renderer WebGL interno.
 - [Definire Scene, navigazione e attraversamento](issues/06-stanze-e-navigazione.md)
-  — combina regioni percorribili e ostacoli con approcci espliciti e passaggi
+  — usa geometria statica, una regione e un approccio per bersaglio con passaggi
   nominati, nascondendo pathfinding e transizioni atomiche dietro il runtime.
 - [Definire interazioni, condizioni ed effetti](issues/07-interazioni-condizioni-effetti.md)
-  — unifica azioni primarie e uso dell'inventario in casi ordinati e validabili,
-  con fallback percepibili, operazioni atomiche e comportamenti TypeScript
-  deterministici dietro un contesto ristretto.
+  — unifica le forme minime di azione primaria e uso dell'inventario in casi
+  validabili, con fallback, operazioni atomiche e comportamenti TypeScript
+  controllati.
+- [Definire lo scenario di accettazione di Fondale 1.0](issues/15-scenario-accettazione.md)
+  — limita la Versione 1 a un Example esterno di due Scene che esercita
+  navigazione, interazione, dialogo, inventario, salvataggio e finale senza
+  audio; tutto il resto richiede una nuova rotta.
 
 ## Not yet specified
 
-- Il livello di supporto alla localizzazione oltre alla separazione basilare
-  dei testi; dipende dal contratto di dialoghi e contenuti.
+- Nessuno.
 
 ## Out of scope
 
 - Implementare il motore: dopo la mappa il lavoro passa a `/to-spec`,
   `/to-tickets` e `/implement`.
-- Editor visuale e authoring no-code.
+- Editor visuale e authoring no-code, permanentemente estranei alla direzione
+  del prodotto.
+- Audio e localizzazione nella Versione 1; restano candidati non impegnativi
+  per un nuovo effort della Versione 2.
+- Rendering, asset, navigazione, inventario e Sequence avanzati elencati in
+  [Definire lo scenario di accettazione di Fondale
+  1.0](issues/15-scenario-accettazione.md); non entrano nel contratto per
+  completezza futura.
+- UI, slot, storage e cloud dei salvataggi; migrazioni concrete finché non
+  esistono due versioni reali del formato.
+- [Definire il confine della verifica di
+  risolvibilità](issues/16-verifica-risolvibilita.md) — un solver generale non
+  è necessario all'Example e non può offrire garanzie complete sui
+  `Game Behavior` opachi.
 - API generale per plugin.
 - Touch, gamepad, wrapper desktop, store e integrazioni Steam.
 - Multiplayer, 3D, fisica generale, combattimento e sistemi RPG.

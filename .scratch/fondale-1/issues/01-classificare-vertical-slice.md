@@ -40,3 +40,11 @@ di Fondale.
   condizioni ed effetti nel ticket omonimo; il verificatore degli enigmi resta
   nella nebbia finché quel modello non è deciso; l'enigma di Capri confluisce
   nello scenario di accettazione finale.
+
+## Scope amendment for Fondale 1.0
+
+[Definire lo scenario di accettazione di Fondale
+1.0](15-scenario-accettazione.md) limita il contratto stabile alle capacità
+esercitate dall'Example. Varianti, cardinalità e impostazioni osservate soltanto
+nel prototipo restano evidenza o candidati della Versione 2, non promesse della
+Versione 1.

@@ -69,8 +69,8 @@ determine how its world may evolve.
 _Avoid_: Game Project, renderer state, transient activity
 
 **Game Variable**:
-A named boolean, string, or finite-number fact declared by a Game Project for
-adventure-specific progress not already represented by an Engine Capability.
+A named boolean fact declared by a Game Project for adventure-specific progress
+not already represented by an Engine Capability.
 _Avoid_: Global variable, arbitrary state object, duplicate engine state
 
 **Game Operation**:
@@ -84,16 +84,15 @@ a Sequence; at most one Game Activity controls play at a time.
 _Avoid_: Animation frame, ambient rendering, unmanaged task
 
 **Sequence**:
-A named, authored progression of narrative and world actions that temporarily
-controls play as the dominant Game Activity. It may combine Lines, Choices,
-Character movement, waits, and Game Operations, branch, or invoke another
-Sequence; its exact logical progress can be resumed.
-_Avoid_: Cutscene, Dialogue as a separate activity model, scripted async function
+A named, finite progression of Lines, Choices, conditions, and Game Operations
+that temporarily controls play as the dominant Game Activity. It is strictly
+sequential and its exact logical progress belongs to the Game State.
+_Avoid_: Cutscene, Dialogue as a separate activity model, nested sequence, scripted async function
 
 **Line**:
-A single authored unit of speech, thought, or narration within a Sequence.
-Speech and thought identify their Character; a Line awaits Player advancement
-unless the Author gives it a logical duration.
+A single authored unit of speech or narration within a Sequence. Speech
+identifies its Character; narration omits it, and every Line awaits Player
+advancement.
 _Avoid_: Subtitle, dialogue node, renderer text
 
 **Choice**:
@@ -115,25 +114,14 @@ The logical coordinate space shared by a Scene's background, placed elements,
 and authored geometry.
 _Avoid_: Screen coordinates, CSS pixels, window space
 
-**Scene Mark**:
-A named Ground Point and facing local to a Scene, used as a Character destination
-by a Sequence.
-_Avoid_: Waypoint, raw destination coordinates, Approach Point
-
 **Walkable Region**:
 A polygon in Scene Space within which a Character's Ground Point may stand and
-move; a Scene may combine several regions into one navigable surface.
+move.
 _Avoid_: Room mask, screen-space hit area
 
-**Navigation Obstacle**:
-A Scene-local polygon that is subtracted from its Walkable Regions while the
-obstacle is active in the Game State.
-_Avoid_: Scenery, occlusion mask, collision object
-
 **Approach Point**:
-An authored Ground Point and facing at which a Character can perform an
-Interaction with a target. It is absolute for a fixed target and relative to
-the Ground Point of a mobile target.
+An authored Ground Point and facing in a Scene at which a Character can perform
+an Interaction with a target.
 _Avoid_: Click position, sprite position, implicit nearest point
 
 **Scene Entrance**:
@@ -173,8 +161,7 @@ _Avoid_: Camera zoom, sprite scale
 
 **Character**:
 A persistent entity capable of acting in the world, controlled by either the
-Player or the game. Its definition does not belong to a Scene; a Scene may only
-specify its initial position.
+Player or the game. Its identity and lifecycle do not belong to a Scene.
 _Avoid_: Actor, sprite
 
 **Scenery**:
@@ -186,12 +173,12 @@ _Avoid_: Object, Hotspot, details embedded in the background
 The Scene-local surface that makes Scenery, a Character, an Object present in
 the Scene, or a background region interactive. It has no identity apart from
 what it makes interactive; while inactive it neither receives nor advertises
-Player Intent, and when attached to a mobile target it follows that target.
+Player Intent.
 _Avoid_: Interactive object, world entity, clickable point
 
 **Object**:
-A persistent entity the Player can collect. Its definition belongs to the Game
-Project; a Scene may specify its initial position but does not own it.
+A persistent entity the Player can collect. Its identity and lifecycle belong
+to the Game Project rather than a Scene.
 _Avoid_: Scenery, synonym for Hotspot
 
 **Interaction**:
@@ -222,8 +209,7 @@ _Avoid_: Contextual click, default action
 **Player Intent**:
 The complete request to reach a target, face it, and perform an Interaction. A
 new Player Intent replaces one still in progress, and its Interaction is
-resolved against the latest committed Game State only after arrival. It tracks
-a mobile target rather than freezing the target's original position.
+resolved against the latest committed Game State only after arrival.
 _Avoid_: Click, queued movement
 
 **Inventory Use**:

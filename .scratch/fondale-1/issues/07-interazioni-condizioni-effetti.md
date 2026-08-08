@@ -84,7 +84,7 @@ entrambi gli esiti possono produrre risposta e modifiche al mondo.
 
 Le operazioni vengono validate e applicate in ordine a uno stato transazionale
 provvisorio, nel quale ciascuna vede il risultato delle precedenti. Un solo
-commit le rende visibili; soltanto dopo parte l'eventuale risposta audiovisiva
+commit le rende visibili; soltanto dopo parte l'eventuale risposta percepibile
 o `Game Activity`. Un'operazione invalida o una callback che lancia scarta
 l'intero gruppo e segue la politica d'errore della `Game Session`, senza
 provare un altro caso o il fallback. I cambiamenti distribuiti nel tempo
@@ -102,3 +102,11 @@ L'autore riusa condizioni, risposte e comportamenti con normale composizione
 TypeScript — costanti, funzioni e factory tipizzate — mentre le definizioni
 finali restano sul `Hotspot` pertinente. Il motore non introduce registri di
 regole, ereditarietà o una nuova seam per plugin.
+
+## Scope amendment for Fondale 1.0
+
+Condizioni, operazioni, `Game Variable` e fallback pubblici si limitano alle
+forme esercitate da [Definire lo scenario di accettazione di Fondale
+1.0](15-scenario-accettazione.md). Etichette dinamiche, ostacoli di navigazione,
+predicati generali e fallback locali aggiuntivi restano candidati della
+Versione 2; ogni risposta della Versione 1 è testuale o visiva, non audio.
