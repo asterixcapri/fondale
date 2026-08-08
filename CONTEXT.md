@@ -203,6 +203,11 @@ carried in the Inventory, or terminally consumed; its identity and lifecycle
 belong to the Game Project rather than a Scene.
 _Avoid_: Scenery, synonym for Hotspot
 
+**HUD**:
+The Engine-owned interface overlaid on a Scene for the Inventory and other play
+controls. It is neither part of Scene Space nor content of the Game Project.
+_Avoid_: Scene, game menu, world element
+
 **Inventory**:
 The acquisition-ordered collection of Objects currently carried by the Player,
 with at most one of them selected for an Inventory Use.
