@@ -20,13 +20,14 @@ Il contratto pubblico è un piccolo insieme di helper di authoring composto da
 
 - Gli helper `defineScene`, `defineCharacter`, `defineObject` e gli equivalenti
   che emergeranno per altre definizioni radice forniscono inferenza dei tipi,
-  default e validazione locale. Elementi scenici e hotspot restano oggetti
-  inline nella Scena che li possiede.
-- `defineGame` compone registri nominati di Scene, Personaggi, Oggetti e altre
-  definizioni radice. La chiave del registro è l'identità, quindi non si ripete
-  un campo `id` e l'ordine non ha semantica. Una Scena possiede soltanto i suoi
-  elementi locali; Personaggi e Oggetti hanno identità autonoma e dichiarano
-  una posizione iniziale. Un Oggetto è per definizione raccoglibile.
+  default e validazione locale. `Scenery` e `Hotspot` restano oggetti inline
+  nella `Scene` che li possiede.
+- `defineGame` compone registri nominati di `Scene`, `Character`, `Object` e
+  altre definizioni radice. La chiave del registro è l'identità, quindi non si
+  ripete un campo `id` e l'ordine non ha semantica. Una `Scene` possiede soltanto
+  i suoi elementi locali; `Character` e `Object` hanno identità autonoma e
+  dichiarano una posizione iniziale. Un `Object` è per definizione
+  raccoglibile.
 - I comportamenti TypeScript sono dichiarati direttamente sull'elemento a cui
   appartengono, per mantenere locality. I campi dati restano distinguibili e
   serializzabili; le callback stanno in campi dedicati e ricevono soltanto un

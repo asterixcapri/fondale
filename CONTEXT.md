@@ -86,21 +86,21 @@ Player or the game. Its definition does not belong to a Scene; a Scene may only
 specify its initial position.
 _Avoid_: Actor, sprite
 
-**Scene Element**:
-A non-collectible visual part of a Scene, defined separately from the
-background when it needs its own position, depth, or behavior.
-_Avoid_: Item, Hotspot, detail embedded in the background
+**Scenery**:
+The non-collectible visual elements local to a Scene and defined separately
+from its background when they need their own position, depth, or behavior.
+_Avoid_: Object, Hotspot, details embedded in the background
 
 **Hotspot**:
-The surface that makes a Scene Element, an Item present in the Scene, or a
-background region interactive. It has no identity apart from what it makes
+The surface that makes part of the Scenery, an Object present in the Scene, or
+a background region interactive. It has no identity apart from what it makes
 interactive.
 _Avoid_: Interactive object, world entity, clickable point
 
-**Item**:
+**Object**:
 A persistent entity the Player can collect. Its definition belongs to the Game
 Project; a Scene may specify its initial position but does not own it.
-_Avoid_: Scene Element, synonym for Hotspot
+_Avoid_: Scenery, synonym for Hotspot
 
 **Interaction**:
 A meaningful response of the world to a Player Intent; a Scene freely defines
@@ -108,7 +108,7 @@ its label, such as Look, Talk, Knock, or Pay.
 _Avoid_: Verb, command
 
 **Primary Action**:
-The default Interaction of a Hotspot when no inventory Item is selected.
+The default Interaction of a Hotspot when no inventory Object is selected.
 _Avoid_: Contextual click, default action
 
 **Player Intent**:
@@ -117,6 +117,6 @@ new Player Intent replaces one still in progress.
 _Avoid_: Click, queued movement
 
 **Inventory Use**:
-The attempt to apply a selected Item to a target. Failure preserves the
+The attempt to apply a selected Object to a target. Failure preserves the
 selection; success ends it.
 _Avoid_: Drag-and-drop, Use verb
