@@ -51,6 +51,9 @@ avventura completa senza modificare gli interni del motore.
   — fissa uno spazio logico per progetto e un quadro senza camera, componendo
   primitive dichiarative per profondità e prospettiva dietro un renderer WebGL
   interno.
+- [Definire Scene, navigazione e attraversamento](issues/06-stanze-e-navigazione.md)
+  — combina regioni percorribili e ostacoli con approcci espliciti e passaggi
+  nominati, nascondendo pathfinding e transizioni atomiche dietro il runtime.
 
 ## Not yet specified
 

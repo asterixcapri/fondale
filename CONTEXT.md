@@ -90,6 +90,31 @@ The logical coordinate space shared by a Scene's background, placed elements,
 and authored geometry.
 _Avoid_: Screen coordinates, CSS pixels, window space
 
+**Walkable Region**:
+A polygon in Scene Space within which a Character's Ground Point may stand and
+move; a Scene may combine several regions into one navigable surface.
+_Avoid_: Room mask, screen-space hit area
+
+**Navigation Obstacle**:
+A Scene-local polygon that is subtracted from its Walkable Regions while the
+obstacle is active in the Game State.
+_Avoid_: Scenery, occlusion mask, collision object
+
+**Approach Point**:
+An authored Ground Point and facing at which a Character can perform an
+Interaction with a target.
+_Avoid_: Click position, sprite position, implicit nearest point
+
+**Scene Entrance**:
+A named arrival Ground Point and facing through which a Character enters a
+Scene after a transition.
+_Avoid_: Spawn point, Exit
+
+**Scene Passage**:
+A navigable connection that leads from an approach in one Scene to a named
+Scene Entrance in another Scene.
+_Avoid_: Exit, teleporter, implicit two-way link
+
 **Background**:
 The visual base that spans the whole Scene Space. A local element that needs
 its own position, depth, or behavior is Scenery instead.
