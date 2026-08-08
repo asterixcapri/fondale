@@ -154,6 +154,12 @@ The visual base that spans the whole Scene Space. A local element that needs
 its own position, depth, or behavior is Scenery instead.
 _Avoid_: Scenery, visual layer
 
+**Appearance**:
+The semantic visual presentation of a Character, Object, or Scenery. Its named
+selection may belong to the Game State, while the file that depicts it has no
+game identity.
+_Avoid_: Asset, sprite, texture
+
 **Ground Point**:
 The point where a Character or Object meets the walkable surface and from
 which its position, depth, and perspective are interpreted.
