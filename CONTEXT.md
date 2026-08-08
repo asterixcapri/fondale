@@ -1,7 +1,39 @@
-# Capri 1535
+# Fondale
 
-Glossario condiviso del gioco d'avventura: nomina i concetti con cui il
-giocatore esprime intenzioni e interagisce con il mondo.
+Glossario condiviso del motore per avventure grafiche: nomina i concetti con
+cui un progetto di gioco definisce il mondo e il giocatore vi interagisce.
+
+## Linguaggio del prodotto
+
+**Motore**:
+Il sistema riutilizzabile che interpreta un progetto di gioco e ne rende
+giocabile l'avventura senza richiedere modifiche ai propri interni.
+_Avoid_: Gioco, framework generico
+
+**Autore**:
+Lo sviluppatore web che costruisce un progetto di gioco attraverso il
+contratto pubblico di Fondale, senza dipendere dagli interni del motore.
+_Avoid_: Giocatore, utente finale
+
+**Progetto di gioco**:
+L'insieme autonomo di contenuti, configurazioni e comportamenti che definisce
+una specifica avventura costruita con Fondale.
+_Avoid_: Motore, demo
+
+**Definizione di gioco**:
+La descrizione dichiarativa di un elemento dell'avventura, separata dai
+comportamenti eccezionali scritti appositamente per un progetto di gioco.
+_Avoid_: Classe del motore, configurazione generica
+
+**Comportamento di gioco**:
+Una regola specifica dell'avventura che completa le definizioni di gioco senza
+modificare gli interni del motore.
+_Avoid_: Patch del motore, plugin
+
+**Esempio**:
+Un progetto di gioco distribuito con Fondale per dimostrare e verificare le
+capacità supportate; Capri 1535 è il primo esempio.
+_Avoid_: Codice del motore, demo usa e getta
 
 ## Linguaggio delle interazioni
 
