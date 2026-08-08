@@ -100,6 +100,11 @@ The point where a Character or Object meets the walkable surface and from
 which its position, depth, and perspective are interpreted.
 _Avoid_: Sprite origin, center point
 
+**Visual Anchor**:
+The point within a visual asset that aligns it to a Ground Point or Baseline
+and remains consistent across its animation frames.
+_Avoid_: Pivot, sprite origin
+
 **Baseline**:
 The Scene Space depth at which Scenery meets the ground and joins the world's
 visual ordering.
