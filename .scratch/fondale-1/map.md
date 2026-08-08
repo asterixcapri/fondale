@@ -34,6 +34,10 @@ stabilizza soltanto capacità esercitate dal suo Example di accettazione.
 - Ogni export dell'interface pubblica deve avere documentazione completa di
   scopo, uso, invarianti, default, errori ed esempio; un Author deve poter
   costruire l'Example esterno usando la documentazione pubblicata col pacchetto.
+- La documentazione deve affiancare all'Example completo esempi di codice
+  focalizzati sulle singole Engine Capability e sui loro casi principali;
+  entrambi devono usare soltanto l'interface pubblica ed essere verificati
+  automaticamente contro il pacchetto distribuito.
 - Editor visuale e authoring no-code non appartengono alla direzione del
   prodotto, neppure come candidati della Versione 2.
 - I candidati della Versione 2 richiedono un nuovo effort e un Example che li
