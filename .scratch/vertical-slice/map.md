@@ -49,6 +49,9 @@ Ticket chiusi:
 - [03 — Modello dati di scena](issues/03-modello-dati-di-scena.md) — stanze
   TypeScript tipizzate, poligoni di foreground con baseline, scala a fermate e
   coordinate in spazio-stanza.
+- [04 — Interfaccia](issues/04-interfaccia-verbi-o-contestuale.md) — interazione
+  contestuale sulla scena intera: un'azione primaria per hotspot, inventario e
+  rivelazione degli hotspot come controlli HUD sovrapposti.
 - [05 — Allestimento automatico](issues/05-allestimento-automatico-scene.md) —
   coordinate ricavate dal fondale e validate ridisegnando dal dato reale
   walkable area, maschere, hotspot e uscite con `?debug`.
