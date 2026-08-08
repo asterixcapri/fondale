@@ -80,8 +80,14 @@ _Avoid_: Direct mutation, renderer event, callback side effect
 
 **Game Activity**:
 Runtime behavior that progresses over logical time, such as a Player Intent or
-a controlled sequence; at most one Game Activity controls play at a time.
+a Sequence; at most one Game Activity controls play at a time.
 _Avoid_: Animation frame, ambient rendering, unmanaged task
+
+**Sequence**:
+The authored progression of narrative and world actions that temporarily
+controls play as the dominant Game Activity. It may combine lines, choices,
+Character movement, waits, and Game Operations.
+_Avoid_: Cutscene, Dialogue as a separate activity model, scripted async function
 
 ## Interaction language
 
