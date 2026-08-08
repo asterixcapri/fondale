@@ -1,110 +1,122 @@
 # Fondale
 
-Glossario condiviso del motore per avventure grafiche: nomina i concetti con
-cui un progetto di gioco definisce il mondo e il giocatore vi interagisce.
+Shared glossary for the adventure game engine. It names the concepts through
+which a game project defines its world and the player interacts with it.
 
-## Linguaggio del prodotto
+## Product language
 
-**Motore**:
-Il sistema riutilizzabile che interpreta un progetto di gioco e ne rende
-giocabile l'avventura senza richiedere modifiche ai propri interni.
-_Avoid_: Gioco, framework generico
+**Engine**:
+The reusable system that interprets a Game Project and makes its adventure
+playable without requiring changes to the engine's internals.
+_Avoid_: Game, generic framework
 
-**Capacità del motore**:
-Un comportamento riutilizzabile che Fondale garantisce ai progetti di gioco
-attraverso il proprio contratto pubblico.
-_Avoid_: Caratteristica di Capri, dettaglio del renderer
+**Engine Capability**:
+Reusable behavior that Fondale guarantees to Game Projects through its public
+interface.
+_Avoid_: Capri feature, renderer detail
 
-**Impostazione di gioco**:
-Una scelta o un valore con cui un progetto adatta una capacità del motore alla
-propria direzione artistica e al proprio comportamento.
-_Avoid_: Costante del motore, API interna
+**Game Setting**:
+A choice or value through which a Game Project adapts an Engine Capability to
+its artistic direction and behavior.
+_Avoid_: Engine constant, internal interface
 
-**Autore**:
-Lo sviluppatore web che costruisce un progetto di gioco attraverso il
-contratto pubblico di Fondale, senza dipendere dagli interni del motore.
-_Avoid_: Giocatore, utente finale
+**Author**:
+The web developer who builds a Game Project through Fondale's public interface
+without depending on the engine's internals.
+_Avoid_: Player, end user
 
-**Progetto di gioco**:
-L'insieme autonomo di contenuti, configurazioni e comportamenti che definisce
-una specifica avventura costruita con Fondale.
-_Avoid_: Motore, demo
+**Player**:
+The person who controls a Game Session and expresses intentions through the
+game's supported input.
+_Avoid_: Author, Game Project
 
-**Definizione di gioco**:
-La descrizione dichiarativa di un elemento dell'avventura, separata dai
-comportamenti eccezionali scritti appositamente per un progetto di gioco.
-_Avoid_: Classe del motore, configurazione generica
+**Game Project**:
+The self-contained collection of content, settings, and behaviors that defines
+a particular adventure built with Fondale.
+_Avoid_: Engine, demo
 
-**Comportamento di gioco**:
-Una regola specifica dell'avventura che completa le definizioni di gioco senza
-modificare gli interni del motore.
-_Avoid_: Patch del motore, plugin
+**Game Definition**:
+The declarative description of an adventure element, kept separate from
+exceptional behavior written specifically for a Game Project.
+_Avoid_: Engine class, generic configuration
 
-**Esempio**:
-Un progetto di gioco distribuito con Fondale per dimostrare e verificare le
-capacità supportate; Capri 1535 è il primo esempio.
-_Avoid_: Codice del motore, demo usa e getta
+**Game Behavior**:
+A rule specific to an adventure that complements its Game Definitions without
+changing the engine's internals.
+_Avoid_: Engine patch, plugin
 
-## Linguaggio della partita
+**Example**:
+A Game Project distributed with Fondale to demonstrate and verify supported
+Engine Capabilities; Capri 1535 is the first Example.
+_Avoid_: Engine code, throwaway demo
 
-**Sessione di gioco**:
-L'esecuzione isolata di un Progetto di gioco, dalla creazione di una nuova
-partita o dal ripristino fino al suo arresto.
-_Avoid_: Progetto di gioco, renderer, partita globale
+## Playthrough language
 
-**Stato della partita**:
-L'insieme canonico dei fatti correnti che descrivono il progresso di una
-Sessione di gioco e determinano come il mondo può evolvere.
-_Avoid_: GameProject, stato del renderer, attività transitoria
+**Game Session**:
+An isolated execution of a Game Project, from starting a new game or restoring
+one until it is stopped.
+_Avoid_: Game Project, renderer, global game
 
-## Linguaggio delle interazioni
+**Game State**:
+The canonical facts that describe the current progress of a Game Session and
+determine how its world may evolve.
+_Avoid_: Game Project, renderer state, transient activity
 
-**Scena**:
-L'unità esplorabile del mondo che il motore presenta come un unico spazio. Può
-rappresentare sia un interno sia un luogo all'aperto; non indica una
-successione controllata di azioni, che è una sequenza.
-_Avoid_: Stanza, sequenza
+**Game Operation**:
+A validated request that moves a Game Session atomically from one valid Game
+State to the next.
+_Avoid_: Direct mutation, renderer event, callback side effect
 
-**Personaggio**:
-Un'entità persistente capace di agire nel mondo, controllata dal giocatore o
-dal gioco. La sua definizione non appartiene a una scena; una scena può
-indicarne soltanto la posizione iniziale.
-_Avoid_: Attore, sprite
+**Game Activity**:
+Runtime behavior that progresses over logical time, such as a Player Intent or
+a controlled sequence; at most one Game Activity controls play at a time.
+_Avoid_: Animation frame, ambient rendering, unmanaged task
 
-**Elemento scenico**:
-Una parte visiva non raccoglibile che appartiene a una scena e viene definita
-separatamente dallo sfondo quando richiede posizione, profondità o
-comportamento propri.
-_Avoid_: Oggetto, hotspot, dettaglio incorporato nello sfondo
+## Interaction language
+
+**Scene**:
+The explorable unit of the world that the Engine presents as one space. It may
+represent an interior or an outdoor location; it is not a controlled sequence
+of actions.
+_Avoid_: Room, sequence
+
+**Character**:
+A persistent entity capable of acting in the world, controlled by either the
+Player or the game. Its definition does not belong to a Scene; a Scene may only
+specify its initial position.
+_Avoid_: Actor, sprite
+
+**Scene Element**:
+A non-collectible visual part of a Scene, defined separately from the
+background when it needs its own position, depth, or behavior.
+_Avoid_: Item, Hotspot, detail embedded in the background
 
 **Hotspot**:
-La superficie che rende interattivo un elemento scenico, un oggetto presente
-nella scena o una regione dello sfondo. Non possiede un'identità autonoma
-rispetto a ciò che rende interattivo.
-_Avoid_: Oggetto interattivo, entità del mondo, punto cliccabile
+The surface that makes a Scene Element, an Item present in the Scene, or a
+background region interactive. It has no identity apart from what it makes
+interactive.
+_Avoid_: Interactive object, world entity, clickable point
 
-**Oggetto**:
-Un'entità persistente che il giocatore può prendere. La sua definizione
-appartiene al progetto di gioco; una stanza può indicarne la posizione
-iniziale, ma non la possiede.
-_Avoid_: Elemento scenografico, sinonimo di hotspot
+**Item**:
+A persistent entity the Player can collect. Its definition belongs to the Game
+Project; a Scene may specify its initial position but does not own it.
+_Avoid_: Scene Element, synonym for Hotspot
 
-**Interazione**:
-Una risposta significativa del mondo a un intento del giocatore; la scena ne
-definisce liberamente l'etichetta, come Guarda, Parla, Bussa o Paga.
-_Avoid_: Verbo, comando
+**Interaction**:
+A meaningful response of the world to a Player Intent; a Scene freely defines
+its label, such as Look, Talk, Knock, or Pay.
+_Avoid_: Verb, command
 
-**Azione primaria**:
-L'interazione predefinita di un hotspot quando nessun oggetto dell'inventario è
-selezionato.
-_Avoid_: Click contestuale, azione di default
+**Primary Action**:
+The default Interaction of a Hotspot when no inventory Item is selected.
+_Avoid_: Contextual click, default action
 
-**Intento del giocatore**:
-La richiesta completa di raggiungere un bersaglio, orientarsi ed eseguire
-un'interazione. Un nuovo intento sostituisce quello ancora in corso.
-_Avoid_: Click, movimento accodato
+**Player Intent**:
+The complete request to reach a target, face it, and perform an Interaction. A
+new Player Intent replaces one still in progress.
+_Avoid_: Click, queued movement
 
-**Uso di inventario**:
-Il tentativo di applicare un oggetto selezionato a un bersaglio. Un fallimento
-mantiene la selezione; un successo la conclude.
-_Avoid_: Drag-and-drop, verbo Usa
+**Inventory Use**:
+The attempt to apply a selected Item to a target. Failure preserves the
+selection; success ends it.
+_Avoid_: Drag-and-drop, Use verb
