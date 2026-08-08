@@ -47,9 +47,28 @@ _Avoid_: Codice del motore, demo usa e getta
 
 ## Linguaggio delle interazioni
 
+**Stanza**:
+L'unità esplorabile del mondo che il motore presenta come un unico spazio. Può
+rappresentare sia un interno sia un luogo all'aperto.
+_Avoid_: Scena, locale necessariamente chiuso
+
+**Personaggio**:
+Un'entità persistente capace di agire nel mondo, controllata dal giocatore o
+dal gioco. La sua definizione non appartiene a una stanza; una stanza può
+indicarne soltanto la posizione iniziale.
+_Avoid_: Attore, sprite
+
+**Elemento scenico**:
+Una parte visiva non raccoglibile che appartiene a una stanza e viene definita
+separatamente dallo sfondo quando richiede posizione, profondità o
+comportamento propri.
+_Avoid_: Oggetto, hotspot, dettaglio incorporato nello sfondo
+
 **Hotspot**:
-Una parte riconoscibile della scena con cui il giocatore può interagire.
-_Avoid_: Oggetto interattivo, punto cliccabile
+La superficie che rende interattivo un elemento scenico, un oggetto presente
+nella stanza o una regione dello sfondo. Non possiede un'identità autonoma
+rispetto a ciò che rende interattivo.
+_Avoid_: Oggetto interattivo, entità del mondo, punto cliccabile
 
 **Oggetto**:
 Un'entità persistente che il giocatore può prendere. La sua definizione
