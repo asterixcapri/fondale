@@ -90,6 +90,21 @@ The logical coordinate space shared by a Scene's background, placed elements,
 and authored geometry.
 _Avoid_: Screen coordinates, CSS pixels, window space
 
+**Background**:
+The visual base that spans the whole Scene Space. A local element that needs
+its own position, depth, or behavior is Scenery instead.
+_Avoid_: Scenery, visual layer
+
+**Ground Point**:
+The point where a Character or Object meets the walkable surface and from
+which its position, depth, and perspective are interpreted.
+_Avoid_: Sprite origin, center point
+
+**Baseline**:
+The Scene Space depth at which Scenery meets the ground and joins the world's
+visual ordering.
+_Avoid_: z-index, rendering layer
+
 **Character**:
 A persistent entity capable of acting in the world, controlled by either the
 Player or the game. Its definition does not belong to a Scene; a Scene may only
