@@ -85,6 +85,11 @@ represent an interior or an outdoor location; it is not a controlled sequence
 of actions.
 _Avoid_: Room, sequence
 
+**Scene Space**:
+The logical coordinate space shared by a Scene's background, placed elements,
+and authored geometry.
+_Avoid_: Screen coordinates, CSS pixels, window space
+
 **Character**:
 A persistent entity capable of acting in the world, controlled by either the
 Player or the game. Its definition does not belong to a Scene; a Scene may only
