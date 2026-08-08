@@ -10,6 +10,16 @@ Il sistema riutilizzabile che interpreta un progetto di gioco e ne rende
 giocabile l'avventura senza richiedere modifiche ai propri interni.
 _Avoid_: Gioco, framework generico
 
+**Capacità del motore**:
+Un comportamento riutilizzabile che Fondale garantisce ai progetti di gioco
+attraverso il proprio contratto pubblico.
+_Avoid_: Caratteristica di Capri, dettaglio del renderer
+
+**Impostazione di gioco**:
+Una scelta o un valore con cui un progetto adatta una capacità del motore alla
+propria direzione artistica e al proprio comportamento.
+_Avoid_: Costante del motore, API interna
+
 **Autore**:
 Lo sviluppatore web che costruisce un progetto di gioco attraverso il
 contratto pubblico di Fondale, senza dipendere dagli interni del motore.

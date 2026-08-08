@@ -28,7 +28,14 @@ avventura completa senza modificare gli interni del motore.
 
 ## Decisions so far
 
-<!-- Vuoto durante il charting; ogni decisione sarà indicizzata quando il suo ticket viene risolto. -->
+- [Classificare l'eredità della vertical slice](issues/01-classificare-vertical-slice.md)
+  — conserva i concetti già validati come capacità configurabili, ma riapre le
+  API e separa valori, pipeline artistiche e contenuti specifici di Capri.
+- [Verificare i vincoli della piattaforma web e di PixiJS](issues/03-fatti-piattaforma-web.md)
+  — WebGL è la baseline produttiva più prudente; Canvas 2D è sperimentale,
+  WebGPU non è ancora interoperabile, audio e asset impongono cicli asincroni e
+  il pacchetto deve chiudere tipi ed entry point senza esporre PixiJS
+  ([ricerca](research/fatti-piattaforma-web-pixijs-8.md)).
 
 ## Not yet specified
 
