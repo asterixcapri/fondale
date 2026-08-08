@@ -51,6 +51,12 @@ _Avoid_: Codice del motore, demo usa e getta
 Una parte riconoscibile della scena con cui il giocatore può interagire.
 _Avoid_: Oggetto interattivo, punto cliccabile
 
+**Oggetto**:
+Un'entità persistente che il giocatore può prendere. La sua definizione
+appartiene al progetto di gioco; una stanza può indicarne la posizione
+iniziale, ma non la possiede.
+_Avoid_: Elemento scenografico, sinonimo di hotspot
+
 **Interazione**:
 Una risposta significativa del mondo a un intento del giocatore; la scena ne
 definisce liberamente l'etichetta, come Guarda, Parla, Bussa o Paga.
