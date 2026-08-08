@@ -1,7 +1,7 @@
 # Verificare i vincoli della piattaforma web e di PixiJS
 
 Type: research
-Status: open
+Status: claimed
 
 ## Question
 
