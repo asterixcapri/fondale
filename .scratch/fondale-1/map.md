@@ -47,6 +47,10 @@ avventura completa senza modificare gli interni del motore.
   — una `Game Session` isolata evolve il proprio `Game State` con operazioni
   atomiche e clock fisso, separando il core deterministico dagli adapter di
   browser e test e rendendo transazionali lifecycle e cambi di `Scene`.
+- [Definire il contratto di rendering e dello spazio di scena](issues/05-contratto-rendering.md)
+  — fissa uno spazio logico per progetto e un quadro senza camera, componendo
+  primitive dichiarative per profondità e prospettiva dietro un renderer WebGL
+  interno.
 
 ## Not yet specified
 
@@ -55,8 +59,6 @@ avventura completa senza modificare gli interni del motore.
   di stato, condizioni ed effetti.
 - Il livello di supporto alla localizzazione oltre alla separazione basilare
   dei testi; dipende dal contratto di dialoghi e contenuti.
-- Se il runtime 1.0 debba supportare più risoluzioni logiche o una camera oltre
-  la singola scena classica; dipende dal contratto di rendering.
 
 ## Out of scope
 
