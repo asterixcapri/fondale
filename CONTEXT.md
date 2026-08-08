@@ -45,6 +45,18 @@ Un progetto di gioco distribuito con Fondale per dimostrare e verificare le
 capacità supportate; Capri 1535 è il primo esempio.
 _Avoid_: Codice del motore, demo usa e getta
 
+## Linguaggio della partita
+
+**Sessione di gioco**:
+L'esecuzione isolata di un Progetto di gioco, dalla creazione di una nuova
+partita o dal ripristino fino al suo arresto.
+_Avoid_: Progetto di gioco, renderer, partita globale
+
+**Stato della partita**:
+L'insieme canonico dei fatti correnti che descrivono il progresso di una
+Sessione di gioco e determinano come il mondo può evolvere.
+_Avoid_: GameProject, stato del renderer, attività transitoria
+
 ## Linguaggio delle interazioni
 
 **Scena**:
