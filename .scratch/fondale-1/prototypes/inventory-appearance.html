@@ -27,7 +27,7 @@
 
       .heading {
         display: flex;
-        align-items: end;
+        align-items: start;
         justify-content: space-between;
         gap: 18px;
       }
@@ -44,7 +44,14 @@
       h1 { margin: 0; font: 700 clamp(24px, 4vw, 42px)/1.05 Georgia, serif; }
       .lede { max-width: 720px; margin: 8px 0 0; color: #c8c1b2; }
 
-      .resolution {
+      .display-controls {
+        display: flex;
+        align-items: end;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .control {
         display: grid;
         gap: 5px;
         color: #d8d0bf;
@@ -77,15 +84,21 @@
         overflow: auto;
       }
 
+      .stage-viewport {
+        position: relative;
+        margin: 0 auto;
+      }
+
       .stage {
         position: relative;
         width: var(--logical-width);
         height: var(--logical-height);
-        margin: 0 auto;
         overflow: hidden;
         border: 1px solid #746b59;
         background: #252d2e;
         isolation: isolate;
+        transform: scale(var(--screen-scale));
+        transform-origin: top left;
       }
 
       .scene-art {
@@ -183,7 +196,6 @@
         left: 7px;
         right: 7px;
         bottom: 7px;
-        height: 34px;
         gap: 3px;
         padding: 3px;
         border: 1px solid #8f8063;
@@ -191,7 +203,7 @@
         background: #0d0c09dd;
       }
 
-      .variant-a .item { width: 28px; height: 28px; border-radius: 3px; }
+      .variant-a .item { border-radius: 3px; }
 
       .variant-b .inventory {
         top: 8px;
@@ -204,20 +216,19 @@
         box-shadow: 0 3px 12px #0009;
       }
 
-      .variant-b .item { width: 40px; height: 40px; border-radius: 50%; }
+      .variant-b .item { border-radius: 50%; }
 
       .variant-c .inventory {
         left: 50%;
         bottom: 8px;
         translate: -50% 0;
         gap: 5px;
-        min-height: 52px;
         padding: 6px 8px;
         border-block: 1px solid #b89962;
         background: linear-gradient(90deg, transparent, #15120de8 12%, #15120de8 88%, transparent);
       }
 
-      .variant-c .item { min-width: 46px; height: 44px; border: 0; border-radius: 4px; background: #0c0a06c9; }
+      .variant-c .item { border: 0; border-radius: 4px; background: #0c0a06c9; }
 
       .panel {
         display: grid;
@@ -279,6 +290,7 @@
       @media (max-width: 860px) {
         body { padding-inline: 12px; }
         .heading { align-items: start; flex-direction: column; }
+        .display-controls { width: 100%; }
         .workbench { grid-template-columns: 1fr; }
         .panel { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         .panel h2, .panel > p { grid-column: 1 / -1; }
@@ -292,25 +304,38 @@
         <div>
           <p class="eyebrow">Prototipo usa e getta</p>
           <h1>Quanto spazio può occupare un oggetto?</h1>
-          <p class="lede">Tre contratti, tutti senza ridimensionamento automatico. Seleziona un oggetto e usalo sulla porta; prova anche Tab, Invio ed Esc.</p>
+          <p class="lede">La tela decide le dimensioni originali dei PNG; lo schermo ingrandisce o riduce insieme mondo, inventario e cursore.</p>
         </div>
-        <label class="resolution">
-          Risoluzione logica
-          <select id="resolution">
-            <option value="426x240">426 × 240 — Example</option>
-            <option value="640x360">640 × 360 — seconda prova</option>
-          </select>
-        </label>
+        <div class="display-controls">
+          <label class="control">
+            Tela del progetto
+            <select id="projectResolution">
+              <option value="426x240">426 × 240 — Capri</option>
+              <option value="640x360">640 × 360 — altro progetto</option>
+            </select>
+          </label>
+          <label class="control">
+            Dimensione dello schermo
+            <select id="screenScale">
+              <option value="0.75">Piccolo — 0,75×</option>
+              <option value="1" selected>Base — 1×</option>
+              <option value="1.5">Grande — 1,5×</option>
+              <option value="2">Molto grande — 2×</option>
+            </select>
+          </label>
+        </div>
       </header>
 
       <section class="workbench">
         <div class="stage-shell">
-          <div class="stage" id="stage">
-            <img class="scene-art" src="../../../art/rooms/vicolo-capri.png" alt="" />
-            <div class="inventory" id="inventory" aria-label="Inventory"></div>
-            <button class="target" id="target" type="button">Porta</button>
-            <div class="toast" id="toast" role="status"></div>
-            <div class="floating-cursor" id="floatingCursor" aria-hidden="true"></div>
+          <div class="stage-viewport" id="stageViewport">
+            <div class="stage" id="stage">
+              <img class="scene-art" src="../../../art/rooms/vicolo-capri.png" alt="" />
+              <div class="inventory" id="inventory" aria-label="Inventory"></div>
+              <button class="target" id="target" type="button">Porta</button>
+              <div class="toast" id="toast" role="status"></div>
+              <div class="floating-cursor" id="floatingCursor" aria-hidden="true"></div>
+            </div>
           </div>
         </div>
 
@@ -319,7 +344,8 @@
           <p id="variantSummary"></p>
           <div class="contract"><strong>Regola pubblica</strong><span id="contract"></span></div>
           <dl class="state">
-            <div><dt>Risoluzione</dt><dd id="stateResolution"></dd></div>
+            <div><dt>Tela</dt><dd id="stateResolution"></dd></div>
+            <div><dt>Schermo</dt><dd id="stateScreen"></dd></div>
             <div><dt>Selezione</dt><dd id="stateSelection">nessuna</dd></div>
             <div><dt>PNG</dt><dd id="statePng">—</dd></div>
             <div><dt>Ultimo uso</dt><dd id="stateUse">nessuno</dd></div>
@@ -340,24 +366,29 @@
         A: {
           name: "Compatto fisso",
           summary: "Una striscia bassa lascia quasi tutta la scena libera, ma chiede all’Author di rendere leggibile ogni sagoma in poco spazio.",
-          contract: "Ogni PNG è esattamente 24 × 24 pixel logici, trasparenza compresa.",
-          sizes: [[24, 24], [24, 24], [24, 24]],
+          contract: (scale) => `Ogni PNG è esattamente ${24 * scale} × ${24 * scale} pixel della tela, trasparenza compresa.`,
+          baseSizes: [[24, 24], [24, 24], [24, 24]],
           className: "variant-a",
         },
         B: {
-          name: "Quadrato leggibile",
-          summary: "Una colonna separa nettamente inventario e mondo. Le icone sono più facili da riconoscere, ma pesano di più sulla scena piccola.",
-          contract: "Ogni PNG è esattamente 32 × 32 pixel logici, trasparenza compresa.",
-          sizes: [[32, 32], [32, 32], [32, 32]],
+          name: "Scelta — quadrato coerente",
+          summary: "Tutti gli oggetti condividono un riquadro prevedibile. È la soluzione scelta: 32 × 32 sulla tela di Capri e 48 × 48 su una tela realmente disegnata a 640 × 360.",
+          contract: (scale) => `Ogni PNG è esattamente ${32 * scale} × ${32 * scale} pixel della tela, trasparenza compresa. Lo schermo scala poi il quadro completo.`,
+          baseSizes: [[32, 32], [32, 32], [32, 32]],
           className: "variant-b",
         },
         C: {
           name: "Proporzioni libere",
           summary: "La sagoma detta l’ingombro. È più espressiva, ma l’inventario e il cursore cambiano ritmo da oggetto a oggetto.",
-          contract: "Larghezza e altezza sono indipendenti: minimo 16, massimo 40 pixel logici; almeno un lato deve raggiungere 24.",
-          sizes: [[18, 36], [40, 22], [28, 28]],
+          contract: (scale) => `Larghezza e altezza sono indipendenti: da ${16 * scale} a ${40 * scale} pixel della tela; almeno un lato deve raggiungere ${24 * scale}.`,
+          baseSizes: [[18, 36], [40, 22], [28, 28]],
           className: "variant-c",
         },
+      };
+
+      const projectResolutions = {
+        "426x240": { width: 426, height: 240, assetScale: 1 },
+        "640x360": { width: 640, height: 360, assetScale: 1.5 },
       };
 
       const itemSpecs = [
@@ -367,10 +398,12 @@
       ];
 
       const stage = document.querySelector("#stage");
+      const stageViewport = document.querySelector("#stageViewport");
       const inventory = document.querySelector("#inventory");
       const floatingCursor = document.querySelector("#floatingCursor");
       const toast = document.querySelector("#toast");
-      const resolution = document.querySelector("#resolution");
+      const projectResolution = document.querySelector("#projectResolution");
+      const screenScale = document.querySelector("#screenScale");
       let selected = null;
       let lastUse = "nessuno";
       let toastTimer;
@@ -418,7 +451,42 @@
 
       function currentKey() {
         const key = new URLSearchParams(location.search).get("variant")?.toUpperCase();
-        return variants[key] ? key : "A";
+        return variants[key] ? key : "B";
+      }
+
+      function currentProject() {
+        return projectResolutions[projectResolution.value];
+      }
+
+      function currentScreenScale() {
+        return Number(screenScale.value);
+      }
+
+      function sizesFor(variant) {
+        const { assetScale } = currentProject();
+        return variant.baseSizes.map(([width, height]) => [
+          Math.round(width * assetScale),
+          Math.round(height * assetScale),
+        ]);
+      }
+
+      function slotSize(key, width, height) {
+        if (key === "A") return [width + 4, height + 4];
+        if (key === "B") {
+          const side = Math.max(width, height) + 8;
+          return [side, side];
+        }
+        return [width + 12, height + 8];
+      }
+
+      function applyDisplay() {
+        const { width, height } = currentProject();
+        const scale = currentScreenScale();
+        stage.style.setProperty("--logical-width", `${width}px`);
+        stage.style.setProperty("--logical-height", `${height}px`);
+        stage.style.setProperty("--screen-scale", String(scale));
+        stageViewport.style.width = `${width * scale}px`;
+        stageViewport.style.height = `${height * scale}px`;
       }
 
       function setVariant(key) {
@@ -437,16 +505,21 @@
       }
 
       function renderInventory() {
+        const key = currentKey();
         const variant = variants[currentKey()];
+        const sizes = sizesFor(variant);
         inventory.replaceChildren();
         itemSpecs.forEach((spec, index) => {
-          const [width, height] = variant.sizes[index];
+          const [width, height] = sizes[index];
+          const [slotWidth, slotHeight] = slotSize(key, width, height);
           const src = makePng(width, height, spec);
           const button = document.createElement("button");
           button.className = "item";
           button.type = "button";
           button.title = spec.label;
           button.dataset.itemId = spec.id;
+          button.style.width = `${slotWidth}px`;
+          button.style.height = `${slotHeight}px`;
           button.setAttribute("aria-label", spec.label);
           button.setAttribute("aria-pressed", String(selected === spec.id));
           button.innerHTML = `<img src="${src}" width="${width}" height="${height}" alt="" />`;
@@ -459,14 +532,18 @@
         if (selected) {
           const index = itemSpecs.findIndex((item) => item.id === selected);
           const spec = itemSpecs[index];
-          const [width, height] = variant.sizes[index];
+          const [width, height] = sizes[index];
           floatingCursor.innerHTML = `<img src="${makePng(width, height, spec)}" width="${width}" height="${height}" alt="" />`;
         }
       }
 
       function renderState() {
         const variant = variants[currentKey()];
-        document.querySelector("#stateResolution").textContent = resolution.value;
+        const project = currentProject();
+        const scale = currentScreenScale();
+        const sizes = sizesFor(variant);
+        document.querySelector("#stateResolution").textContent = `${project.width} × ${project.height}`;
+        document.querySelector("#stateScreen").textContent = `${Math.round(project.width * scale)} × ${Math.round(project.height * scale)} (${scale}×)`;
         document.querySelector("#stateSelection").textContent = selected ?? "nessuna";
         document.querySelector("#stateUse").textContent = lastUse;
         if (!selected) {
@@ -474,7 +551,8 @@
           return;
         }
         const index = itemSpecs.findIndex((item) => item.id === selected);
-        document.querySelector("#statePng").textContent = `${variant.sizes[index][0]} × ${variant.sizes[index][1]}, dimensione originale`;
+        const [width, height] = sizes[index];
+        document.querySelector("#statePng").textContent = `${width} × ${height} nella tela → ${Math.round(width * scale)} × ${Math.round(height * scale)} sullo schermo`;
       }
 
       function render() {
@@ -483,8 +561,9 @@
         stage.className = `stage ${variant.className}`;
         document.querySelector("#variantTitle").textContent = `${key} — ${variant.name}`;
         document.querySelector("#variantSummary").textContent = variant.summary;
-        document.querySelector("#contract").textContent = variant.contract;
+        document.querySelector("#contract").textContent = variant.contract(currentProject().assetScale);
         document.querySelector("#switcherLabel").textContent = `${key} — ${variant.name}`;
+        applyDisplay();
         renderInventory();
         renderState();
       }
@@ -495,17 +574,14 @@
         setVariant(keys[(index + direction + keys.length) % keys.length]);
       }
 
-      resolution.addEventListener("change", () => {
-        const [width, height] = resolution.value.split("x");
-        stage.style.setProperty("--logical-width", `${width}px`);
-        stage.style.setProperty("--logical-height", `${height}px`);
-        renderState();
-      });
+      projectResolution.addEventListener("change", render);
+      screenScale.addEventListener("change", render);
 
       stage.addEventListener("pointermove", (event) => {
         const bounds = stage.getBoundingClientRect();
-        floatingCursor.style.left = `${event.clientX - bounds.left}px`;
-        floatingCursor.style.top = `${event.clientY - bounds.top}px`;
+        const scale = currentScreenScale();
+        floatingCursor.style.left = `${(event.clientX - bounds.left) / scale}px`;
+        floatingCursor.style.top = `${(event.clientY - bounds.top) / scale}px`;
       });
 
       document.querySelector("#target").addEventListener("click", () => {
@@ -532,8 +608,6 @@
         }
       });
 
-      stage.style.setProperty("--logical-width", "426px");
-      stage.style.setProperty("--logical-height", "240px");
       render();
     </script>
   </body>

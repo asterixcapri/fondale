@@ -21,8 +21,9 @@ its artistic direction and behavior.
 _Avoid_: Engine constant, internal interface
 
 **Logical Resolution**:
-The width and height of the shared visual space in which every Scene of a Game
-Project is authored.
+The fixed width and height of the base visual canvas in which a Game Project
+composes every Scene and Engine-owned overlay before the whole frame is fitted
+to its display target.
 _Avoid_: Window size, renderer resolution, per-Scene resolution
 
 **Author**:
@@ -217,6 +218,11 @@ _Avoid_: Container, equipment, item stack
 The visual presentation of an Object within the Inventory and while selected
 for an Inventory Use, distinct from its Appearance in a Scene.
 _Avoid_: World Appearance, generic HUD icon
+
+**Inventory Appearance Size**:
+The project-wide square dimensions shared by every Inventory Appearance within
+a Game Project's Logical Resolution.
+_Avoid_: Screen icon size, per-Object icon size, HUD scale
 
 **Interaction**:
 A meaningful response of the world to a Player Intent; a Scene freely defines

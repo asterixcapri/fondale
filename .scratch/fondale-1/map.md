@@ -90,6 +90,9 @@ stabilizza soltanto capacità esercitate dal suo Example di accettazione.
   — usa PNG riferiti direttamente e mai corretti nelle dimensioni, con
   Appearance uniformi, camminata direzionale minima e caricamento atomico
   completo all'avvio.
+- [Determinare le dimensioni dell'Inventory Appearance](issues/17-dimensioni-inventory-appearance.md)
+  — usa una misura quadrata condivisa dal progetto, `32×32` nell'Example, e
+  scala Inventory, cursore e mondo insieme verso lo schermo.
 
 ## Not yet specified
 
