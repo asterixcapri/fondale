@@ -40,6 +40,16 @@ The self-contained collection of content, settings, and behaviors that defines
 a particular adventure built with Fondale.
 _Avoid_: Engine, demo
 
+**Project Identity**:
+The stable, author-declared identity that distinguishes a Game Project when
+creating or restoring a Save Snapshot.
+_Avoid_: Display title, package name
+
+**Project Version**:
+The author-declared compatibility version shared by Game Project definitions
+and the Save Snapshots they can restore.
+_Avoid_: Package version, release version
+
 **Game Definition**:
 The declarative description of an adventure element, kept separate from
 exceptional behavior written specifically for a Game Project.
@@ -67,6 +77,11 @@ _Avoid_: Game Project, renderer, global game
 The canonical facts that describe the current progress of a Game Session and
 determine how its world may evolve.
 _Avoid_: Game Project, renderer state, transient activity
+
+**Save Snapshot**:
+A JSON-safe representation of one committed Game State, identified by its Game
+Project and compatibility versions and suitable for exact restoration.
+_Avoid_: Save slot, storage record, event log
 
 **Game Variable**:
 A named boolean fact declared by a Game Project for adventure-specific progress

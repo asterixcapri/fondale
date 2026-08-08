@@ -79,6 +79,9 @@ stabilizza soltanto capacità esercitate dal suo Example di accettazione.
   — riduce l'Inventory a Object collocati, posseduti o consumati, con raccolta,
   ordine di acquisizione, selezione singola e uso contestuale governati dal
   motore.
+- [Definire salvataggi e caricamento versionati](issues/10-salvataggi-versionati.md)
+  — uno snapshot JSON-safe dell'ultimo stato committed viene validato contro
+  formato, progetto e invarianti prima di riprendere esattamente l'attività.
 
 ## Not yet specified
 
