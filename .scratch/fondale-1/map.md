@@ -22,6 +22,9 @@ avventura completa senza modificare gli interni del motore.
   pubblico.
 - Il pacchetto previsto è `@asterixcapri/fondale`; giochi in repository esterni
   devono poterlo consumare.
+- Ubiquitous language, codice, commenti nel codice e interface pubbliche sono
+  in inglese; ticket e discussioni di pianificazione possono restare in
+  italiano.
 - `examples/capri-1535` è la vertical slice di riferimento, non il gioco
   completo.
 - Il lavoro della mappa produce decisioni, non implementazione.
