@@ -1,7 +1,7 @@
 # Definire il contratto di rendering e dello spazio di scena
 
 Type: grilling
-Status: open
+Status: claimed
 Blocked by: 01, 02, 03
 
 ## Question
