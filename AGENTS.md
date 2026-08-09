@@ -75,6 +75,22 @@ To list the skills currently available in the project:
 npx skills list
 ```
 
+### Project-owned skills
+
+Skills written for this project live under `skills/<category>/<name>/SKILL.md` and
+are committed. They are installed from this repository like any other source:
+
+```sh
+npx skills add asterixcapri/fondale --list
+npx skills add asterixcapri/fondale --skill <skill-name> --agent codex -y
+```
+
+Current project-owned skills:
+
+- `skills/art/character-animation-frames` — writing the image-generation prompt
+  set for a Character's animation frames, and the checks that decide whether the
+  generated frames are usable.
+
 ### Issue tracker
 
 Issues live as Markdown files under `.scratch/`, which is tracked by Git. See
