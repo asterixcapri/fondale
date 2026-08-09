@@ -1,3 +1,7 @@
+---
+status: superseded by ADR-0006
+---
+
 # Interazione contestuale sulla scena intera
 
 Il gioco mantiene il fondale interamente giocabile a 426×240 e usa

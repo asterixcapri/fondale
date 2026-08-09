@@ -236,9 +236,24 @@ a Game Project's Logical Resolution.
 _Avoid_: Screen icon size, per-Object icon size, HUD scale
 
 **Interaction**:
-A meaningful response of the world to a Player Intent; a Scene freely defines
-its label, such as Look, Talk, Knock, or Pay.
-_Avoid_: Verb, command
+A meaningful resolution of a Command against its Noun or Nouns, perceived by
+the Player as a response or a change in the world.
+_Avoid_: Click handler, silent no-op
+
+**Verb**:
+An action word available to the Player for constructing a Command and
+exploring the possibilities offered by the world.
+_Avoid_: Primary Action, contextual action
+
+**Noun**:
+The player-facing name by which a Character, Object, Scenery, background
+region, or Scene Passage participates in a Command.
+_Avoid_: Identifier, hotspot label, target kind
+
+**Command**:
+A Player-authored sentence combining one Verb with one or two Nouns before it
+is executed as a Player Intent.
+_Avoid_: Click, callback, Interaction
 
 **Interaction Case**:
 An authored conditional alternative for resolving either a Primary Action or
@@ -254,11 +269,6 @@ _Avoid_: Validation rule, mutable state check
 The player-perceivable result of an Interaction Case, possibly accompanied by
 immediate world changes or a controlled Game Activity.
 _Avoid_: Event handler, silent no-op, renderer effect
-
-**Primary Action**:
-The Interaction offered by a Hotspot when no inventory Object is selected; its
-label may change with the eligible Interaction Case.
-_Avoid_: Contextual click, default action
 
 **Player Intent**:
 The complete request to reach a target, face it, and perform an Interaction. A
