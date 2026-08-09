@@ -54,7 +54,10 @@ export function validateSaveSnapshot(
       diagnostics.push(saveDiagnostic("save.project.version", "Save Snapshot uses another Project Version."));
     }
     if (!validStateShape(value.state, data)) {
-      diagnostics.push(saveDiagnostic("save.state.invalid", "Save Snapshot contains an invalid Game State."));
+      diagnostics.push(
+        invalidCommandStateDiagnostic(value.state, data) ??
+        saveDiagnostic("save.state.invalid", "Save Snapshot contains an invalid Game State."),
+      );
     }
   }
   if (diagnostics.length > 0) {
@@ -230,6 +233,45 @@ function validOptionalFacing(value: unknown): boolean {
   return value === undefined || ["front", "back", "left", "right"].includes(String(value));
 }
 
+function invalidCommandStateDiagnostic(
+  value: unknown,
+  data: GameProjectData,
+): AuthoringDiagnostic | undefined {
+  if (!isRecord(value)) return undefined;
+  const command = value.command;
+  if (!isRecord(command) || !hasExactKeys(command, ["verb", "firstNoun"]) || !isVerb(command.verb)) {
+    return saveDiagnostic(
+      "save.state.command",
+      "Save Snapshot contains a malformed Command State.",
+      "Save Snapshot.state.command",
+    );
+  }
+  if (command.firstNoun === null) return undefined;
+  if (
+    !isRecord(command.firstNoun) ||
+    !hasExactKeys(command.firstNoun, ["kind", "object"]) ||
+    command.firstNoun.kind !== "object" ||
+    typeof command.firstNoun.object !== "string"
+  ) {
+    return saveDiagnostic(
+      "save.state.command",
+      "Save Snapshot contains a malformed first Noun.",
+      "Save Snapshot.state.command.firstNoun",
+    );
+  }
+  const inventory = isRecord(value.inventory) && Array.isArray(value.inventory.objects)
+    ? value.inventory.objects
+    : [];
+  if (!(command.firstNoun.object in data.objects) || !inventory.includes(command.firstNoun.object)) {
+    return saveDiagnostic(
+      "save.state.command-noun",
+      "Save Snapshot refers to a first Noun that is not available in the Inventory.",
+      "Save Snapshot.state.command.firstNoun.object",
+    );
+  }
+  return undefined;
+}
+
 function isCommandVerb(value: unknown): value is CommandVerb {
   return typeof value === "string" && commandVerbs.some((verb) => verb === value);
 }
@@ -268,8 +310,8 @@ function expectedPendingPaths(sequence: SequenceDefinition, activePath: string):
   );
 }
 
-function saveDiagnostic(code: string, message: string): AuthoringDiagnostic {
-  return { code, family: "save", path: "Save Snapshot", message };
+function saveDiagnostic(code: string, message: string, path = "Save Snapshot"): AuthoringDiagnostic {
+  return { code, family: "save", path, message };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

@@ -229,6 +229,7 @@ export class BrowserRenderer {
       return;
     }
     if (event.button !== 0) return;
+    this.overlay.showNextIntroHint();
     this.frame.focus({ preventScroll: true });
     const point = this.scenePoint(event);
     if (this.core.snapshot().activity?.type === "sequence") return;
@@ -242,7 +243,7 @@ export class BrowserRenderer {
 
   private readonly onContextMenu = (event: MouseEvent): void => {
     event.preventDefault();
-    this.overlay.showHint("right-click", "Right click executes the Preferred Verb.");
+    this.overlay.showNextIntroHint();
     this.frame.focus({ preventScroll: true });
     if (this.overlay.blocksWorldInput() || this.core.snapshot().activity?.type === "sequence") return;
     const point = this.scenePoint(event);
@@ -402,7 +403,6 @@ class EngineOverlay {
     this.inventory.addEventListener("wheel", (event) => {
       event.preventDefault();
       this.changeInventoryPage(event.deltaY > 0 ? 1 : -1);
-      this.showHint("inventory", "Use the wheel or arrows to scroll the Inventory.");
     });
     this.inventoryNav.style.cssText = "position:absolute;right:143px;bottom:28px;display:flex;flex-direction:column;pointer-events:auto";
     const previous = this.modalButton("‹", () => this.changeInventoryPage(-1));
@@ -484,21 +484,28 @@ class EngineOverlay {
     this.frame.addEventListener("keydown", this.onKeyDown);
     this.frame.addEventListener("keyup", this.onKeyUp);
     this.updatePreference({});
-    this.showHint("left-click", "Click sinistro: cammina o completa un Command.");
+    this.showNextIntroHint();
   }
 
   blocksWorldInput(): boolean {
     return this.modalKind !== null;
   }
 
-  showHint(kind: string, text: string): void {
-    if (this.preferences.shownHints.includes(kind)) return;
+  showNextIntroHint(): void {
+    const next = [
+      ["left-click", "Left click walks or completes a Command."],
+      ["right-click", "Right click executes the Preferred Verb."],
+      ["tab", "Hold Tab to reveal active Nouns."],
+      ["inventory", "Use the wheel or arrows to scroll the Inventory."],
+    ].find(([kind]) => !this.preferences.shownHints.includes(kind!));
+    if (!next) return;
+    const [kind, text] = next;
     this.preferences = {
       ...this.preferences,
-      shownHints: [...this.preferences.shownHints, kind],
+      shownHints: [...this.preferences.shownHints, kind!],
     };
     localStorage.setItem(preferencesKey(this.data.identity), JSON.stringify(this.preferences));
-    this.hint.textContent = text;
+    this.hint.textContent = text!;
   }
 
   render(state: GameState, effects: readonly CoreEffect[]): void {
@@ -535,6 +542,7 @@ class EngineOverlay {
     const choosing = state.activity?.type === "sequence" && state.activity.active?.kind === "choice";
     this.verbs.style.visibility = choosing ? "hidden" : "visible";
     this.inventory.style.visibility = choosing ? "hidden" : "visible";
+    this.inventoryNav.style.visibility = choosing ? "hidden" : "visible";
     if (this.hotspotsRevealed) this.renderRevealedHotspots();
   }
 
@@ -760,7 +768,7 @@ class EngineOverlay {
       const title = document.createElementNS("http://www.w3.org/2000/svg", "title");
       title.textContent = hotspot.label;
       polygon.append(title);
-      this.revealedHotspots.append(polygon);
+      this.revealedHotspots.append(polygon, revealLabel(hotspot.area, hotspot.label, "hotspot"));
     }
     for (const passage of this.core.availablePassages()) {
       const polygon = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
@@ -772,7 +780,7 @@ class EngineOverlay {
       const title = document.createElementNS("http://www.w3.org/2000/svg", "title");
       title.textContent = passage.label;
       polygon.append(title);
-      this.revealedHotspots.append(polygon);
+      this.revealedHotspots.append(polygon, revealLabel(passage.area, passage.label, "passage"));
     }
   }
 
@@ -835,7 +843,7 @@ class EngineOverlay {
     if (event.key === "Tab" && this.data.commandLexicon) {
       event.preventDefault();
       this.hotspotsRevealed = true;
-      this.showHint("tab", "Hold Tab to reveal active Nouns.");
+      this.showNextIntroHint();
       this.renderRevealedHotspots();
       return;
     }
@@ -982,6 +990,30 @@ interface PlayerPreferences {
   readonly hudOpacity: number;
   readonly commandPreview: "pointer" | "sentence-line";
   readonly shownHints: readonly string[];
+}
+
+function revealLabel(
+  area: readonly Point[],
+  label: string,
+  kind: "hotspot" | "passage",
+): SVGTextElement {
+  const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+  const center = area.reduce(
+    (point, vertex) => ({ x: point.x + vertex.x / area.length, y: point.y + vertex.y / area.length }),
+    { x: 0, y: 0 },
+  );
+  text.dataset.fondaleRevealedLabel = kind;
+  text.setAttribute("x", String(center.x));
+  text.setAttribute("y", String(center.y));
+  text.setAttribute("text-anchor", "middle");
+  text.setAttribute("dominant-baseline", "middle");
+  text.setAttribute("font-size", "7");
+  text.setAttribute("fill", "#ffffff");
+  text.setAttribute("stroke", "#000000");
+  text.setAttribute("stroke-width", "2");
+  text.setAttribute("paint-order", "stroke");
+  text.textContent = label;
+  return text;
 }
 
 const defaultPreferences: PlayerPreferences = {

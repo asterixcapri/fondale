@@ -40,7 +40,14 @@ const extraNouns = Array.from({ length: 8 }, (_, index) => defineNoun({
     verb: "pick-up",
     response: { text: `Raccolgo Oggetto ${index + 1}.` },
     operations: [{ type: "collect-target-object" }],
-  }],
+  }, ...(index === 0 ? [{
+    verb: "use" as const,
+    response: { text: "Uso Oggetto 1 da solo." },
+  }] : []), ...(index === 2 ? [{
+    verb: "use" as const,
+    firstNoun: "item2",
+    response: { text: "Uso Oggetto 2 con Oggetto 3." },
+  }] : [])],
 }));
 const extraObjects = Object.fromEntries(extraNouns.map((noun, index) => [
   `item${index + 1}`,
@@ -66,7 +73,10 @@ const returnNoun = defineNoun({
 const hostNoun = defineNoun({
   labels: [{ text: "Oste" }],
   preferredVerbs: [{ verb: "talk-to" }],
-  cases: [{ verb: "talk-to", sequence: "hostGreeting" }],
+  cases: [
+    { verb: "talk-to", sequence: "hostGreeting" },
+    { verb: "give", firstNoun: "key", response: { text: "L'oste rifiuta la chiave." } },
+  ],
 });
 const globalResponse = { text: "Non succede nulla." };
 const project = defineGame({

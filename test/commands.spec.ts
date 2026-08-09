@@ -51,6 +51,41 @@ test("the command HUD keeps its grid, keyboard mapping, preview, cancel, and Pre
   await expect(frame.locator('[data-fondale-verb="give"]')).toHaveAttribute("aria-pressed", "true");
 });
 
+test("one-time hints introduce mouse, reveal, and Inventory controls before reuse", async ({ page }) => {
+  await page.goto("/test/fixtures/commands.html");
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+  const frame = page.locator("[data-fondale-frame]");
+  await expect(frame).toBeVisible();
+  const hint = frame.locator("[data-fondale-hint]");
+  await expect(hint).toContainText("Left click");
+  const canvas = frame.locator("canvas");
+  const bounds = await canvas.boundingBox();
+  if (!bounds) throw new Error("missing canvas bounds");
+  const point = (x: number, y: number) => ({
+    x: bounds.x + (x / 426) * bounds.width,
+    y: bounds.y + (y / 240) * bounds.height,
+  });
+
+  const ground = point(360, 160);
+  await page.mouse.click(ground.x, ground.y);
+  await expect(hint).toContainText("Right click");
+  const door = point(230, 110);
+  await page.mouse.click(door.x, door.y, { button: "right" });
+  await expect(hint).toContainText("Tab");
+  await frame.focus();
+  await page.keyboard.down("Tab");
+  await expect(hint).toContainText("wheel or arrows");
+  await page.keyboard.up("Tab");
+  await expect.poll(() => page.evaluate(() => {
+    const preferences = JSON.parse(localStorage.getItem("fondale.preferences.test.commands") ?? "{}") as { shownHints?: string[] };
+    return preferences.shownHints;
+  })).toEqual(["left-click", "right-click", "tab", "inventory"]);
+
+  await page.reload();
+  await expect(frame.locator("[data-fondale-hint]")).toBeEmpty();
+});
+
 test("an Inventory Object becomes the first Noun of a binary Use Command", async ({ page }) => {
   await page.goto("/test/fixtures/commands.html");
   const frame = page.locator("[data-fondale-frame]");
@@ -86,6 +121,49 @@ test("an Inventory Object becomes the first Noun of a binary Use Command", async
   await expect(key).toHaveAttribute("aria-pressed", "false");
 });
 
+test("Give requires two Nouns while Inventory Use supports unary and ordered binary Commands", async ({ page }) => {
+  await page.goto("/test/fixtures/commands.html");
+  const frame = page.locator("[data-fondale-frame]");
+  await expect(frame).toBeVisible();
+  const canvas = frame.locator("canvas");
+  const bounds = await canvas.boundingBox();
+  if (!bounds) throw new Error("missing canvas bounds");
+  const clickLogical = (x: number, y: number) => page.mouse.click(
+    bounds.x + (x / 426) * bounds.width,
+    bounds.y + (y / 240) * bounds.height,
+  );
+  const collect = async (x: number, y: number, object: string) => {
+    await frame.locator('[data-fondale-verb="pick-up"]').click();
+    await clickLogical(x, y);
+    await expect(frame.locator(`[data-fondale-inventory-object="${object}"]`)).toBeVisible();
+  };
+
+  await frame.locator('[data-fondale-verb="give"]').click();
+  await clickLogical(230, 110);
+  await expect(frame.locator('[data-fondale-verb="give"]')).toHaveAttribute("aria-pressed", "true");
+  await expect(frame).not.toHaveAttribute("data-fondale-movement", /.+/);
+
+  await collect(120, 145, "key");
+  await frame.locator('[data-fondale-verb="give"]').click();
+  await frame.locator('[data-fondale-inventory-object="key"]').click();
+  await clickLogical(315, 135);
+  await expect(frame.locator("[aria-live=polite]")).toHaveText("L'oste rifiuta la chiave.");
+
+  await collect(20, 110, "item1");
+  await frame.locator('[data-fondale-verb="use"]').click();
+  await frame.locator('[data-fondale-inventory-object="item1"]').click();
+  await expect(frame.locator("[aria-live=polite]")).toHaveText("Uso Oggetto 1 da solo.");
+  await expect(frame.locator('[data-fondale-verb="use"]')).toHaveAttribute("aria-pressed", "false");
+
+  await collect(42, 110, "item2");
+  await collect(64, 110, "item3");
+  await frame.locator('[data-fondale-verb="use"]').click();
+  await frame.locator('[data-fondale-inventory-object="item2"]').click();
+  await expect(frame.locator('[data-fondale-inventory-object="item2"]')).toHaveAttribute("aria-pressed", "true");
+  await frame.locator('[data-fondale-inventory-object="item3"]').click();
+  await expect(frame.locator("[aria-live=polite]")).toHaveText("Uso Oggetto 2 con Oggetto 3.");
+});
+
 test("Tab reveals active Nouns and a directional Passage supports Fast Walk", async ({ page }) => {
   await page.goto("/test/fixtures/commands.html");
   const frame = page.locator("[data-fondale-frame]");
@@ -95,6 +173,14 @@ test("Tab reveals active Nouns and a directional Passage supports Fast Walk", as
   await page.keyboard.down("Tab");
   await expect(frame.locator("[data-fondale-revealed-hotspot]")).toHaveCount(11);
   await expect(frame.locator("[data-fondale-revealed-passage]")).toHaveCount(4);
+  const hotspotLabels = frame.locator('[data-fondale-revealed-label="hotspot"]');
+  await expect(hotspotLabels).toHaveCount(11);
+  await expect(hotspotLabels.filter({ hasText: "Portone" })).toHaveCount(1);
+  await expect(hotspotLabels.filter({ hasText: "Chiave" })).toHaveCount(1);
+  await expect(hotspotLabels.filter({ hasText: "Oste" })).toHaveCount(1);
+  await expect(frame.locator('[data-fondale-revealed-label="passage"]')).toHaveText([
+    "Verso l'uscita", "Verso l'uscita", "Verso l'uscita", "Verso l'uscita",
+  ]);
   await page.keyboard.up("Tab");
   await expect(frame.locator("[data-fondale-revealed-hotspots]")).toBeHidden();
 
@@ -196,6 +282,8 @@ test("Speech follows its Character and Choice uses the HUD with spoken alternati
   const choice = frame.locator("[data-fondale-choice]");
   await expect(choice).toBeVisible();
   await expect(frame.locator('[aria-label="Verbs"]')).toBeHidden();
+  await expect(frame.locator("[data-fondale-inventory-previous]")).toBeHidden();
+  await expect(frame.locator("[data-fondale-inventory-next]")).toBeHidden();
   await page.keyboard.press("1");
   await expect(line).toHaveText("Grazie!");
   await expect(line).toHaveAttribute("data-fondale-speaker", "player");

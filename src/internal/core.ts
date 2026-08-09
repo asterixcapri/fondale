@@ -279,6 +279,11 @@ export function createCoreSession(
       const scene = data.scenes[state.currentScene]!;
       const hotspot = scene.hotspots?.[input.hotspot];
       if (hotspot && hotspotAvailable(hotspot)) {
+        if (
+          input.type === "activate-hotspot" &&
+          state.command.verb === "give" &&
+          !state.command.firstNoun
+        ) return;
         if (input.type === "activate-hotspot" && state.command.verb === "walk-to") {
           beginIntent({ kind: "move" }, hotspot.approach.groundPoint, hotspot.approach.facing);
           return;
@@ -309,6 +314,11 @@ export function createCoreSession(
       const scene = data.scenes[state.currentScene]!;
       const passage = scene.passages?.[input.passage];
       if (passage && conditionMatches(passage.when)) {
+        if (
+          input.type === "activate-passage" &&
+          state.command.verb === "give" &&
+          !state.command.firstNoun
+        ) return;
         const preferredVerb = input.type === "quick-passage"
           ? conditionalValue(passage.noun.preferredVerbs).verb
           : undefined;
@@ -337,10 +347,22 @@ export function createCoreSession(
       if (!state.inventory.objects.includes(input.object)) return;
       const noun = data.objects[input.object]?.noun;
       if (!noun || state.command.verb === "walk-to") return;
-      if ((state.command.verb === "give" || state.command.verb === "use") && !state.command.firstNoun) {
+      if (state.command.verb === "give" && !state.command.firstNoun) {
         state.activity = null;
         state.command = { verb: state.command.verb, firstNoun: { kind: "object", object: input.object } };
         return;
+      }
+      if (state.command.verb === "use" && !state.command.firstNoun) {
+        const unaryUse = noun.cases.some((candidate) =>
+          candidate.verb === "use" &&
+          candidate.firstNoun === undefined &&
+          conditionMatches(candidate.when)
+        );
+        if (!unaryUse) {
+          state.activity = null;
+          state.command = { verb: "use", firstNoun: { kind: "object", object: input.object } };
+          return;
+        }
       }
       const firstNoun = state.command.firstNoun?.object;
       resolveCommand(noun, state.command.verb, { kind: "object", object: input.object }, false, firstNoun);

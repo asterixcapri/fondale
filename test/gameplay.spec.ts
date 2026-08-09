@@ -306,7 +306,12 @@ test("Save Snapshot validation rejects malformed or unavailable Command Nouns", 
     },
   });
   expect(result.ok).toBe(false);
-  if (!result.ok) expect(result.diagnostics.map(({ code }) => code)).toContain("save.state.invalid");
+  if (!result.ok) {
+    expect(result.diagnostics).toContainEqual(expect.objectContaining({
+      code: "save.state.command-noun",
+      path: "Save Snapshot.state.command.firstNoun.object",
+    }));
+  }
 });
 
 test("a binary Use preserves its first Noun on failure and relocates it atomically on success", () => {
