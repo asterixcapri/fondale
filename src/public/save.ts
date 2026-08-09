@@ -282,7 +282,12 @@ function invalidIntentCommandDiagnostic(
   if (intent.kind !== "interaction" && intent.kind !== "passage-command") return undefined;
   const command = intent.command;
   if (command === undefined && intent.kind === "interaction") return undefined;
-  if (!isRecord(command) || !hasExactKeys(command, ["verb"], ["firstNoun", "preserveState"]) || !isCommandVerb(command.verb)) {
+  if (
+    !isRecord(command) ||
+    !hasExactKeys(command, ["verb"], ["firstNoun", "preserveState"]) ||
+    !isCommandVerb(command.verb) ||
+    (command.preserveState !== undefined && typeof command.preserveState !== "boolean")
+  ) {
     return saveDiagnostic(
       "save.state.intent-command",
       "Save Snapshot contains a malformed pending Command.",

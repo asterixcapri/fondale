@@ -291,6 +291,9 @@ export function createCoreSession(
         const quickVerb = input.type === "quick-hotspot"
           ? conditionalValue(hotspot.noun.preferredVerbs).verb
           : undefined;
+        const commandFirstNoun = quickVerb
+          ? preferredFirstNoun(hotspot.noun, quickVerb)
+          : state.command.firstNoun?.object;
         if (quickVerb === "walk-to") {
           beginIntent({ kind: "move" }, hotspot.approach.groundPoint, hotspot.approach.facing);
           return;
@@ -302,8 +305,8 @@ export function createCoreSession(
             hotspot: input.hotspot,
             command: {
               verb: (quickVerb ?? state.command.verb) as CommandVerb,
-              ...(state.command.firstNoun && (!quickVerb || quickVerb === "give" || quickVerb === "use")
-                ? { firstNoun: state.command.firstNoun.object }
+              ...(commandFirstNoun
+                ? { firstNoun: commandFirstNoun }
                 : {}),
               ...(quickVerb ? { preserveState: true } : {}),
             },
@@ -324,6 +327,9 @@ export function createCoreSession(
         const preferredVerb = input.type === "quick-passage"
           ? conditionalValue(passage.noun.preferredVerbs).verb
           : undefined;
+        const commandFirstNoun = preferredVerb
+          ? preferredFirstNoun(passage.noun, preferredVerb)
+          : state.command.firstNoun?.object;
         const shouldWalk = input.type === "activate-passage" &&
           (input.forceWalk || state.command.verb === "walk-to") || preferredVerb === "walk-to";
         const intent: PlayerIntentState["intent"] = shouldWalk
@@ -334,8 +340,8 @@ export function createCoreSession(
               passage: input.passage,
               command: {
                 verb: (preferredVerb ?? state.command.verb) as CommandVerb,
-                ...(state.command.firstNoun && (!preferredVerb || preferredVerb === "give" || preferredVerb === "use")
-                  ? { firstNoun: state.command.firstNoun.object }
+                ...(commandFirstNoun
+                  ? { firstNoun: commandFirstNoun }
                   : {}),
                 ...(preferredVerb ? { preserveState: true } : {}),
               },
@@ -395,6 +401,18 @@ export function createCoreSession(
       destination: { ...destination },
       ...(fast ? { fast: true as const } : {}),
     });
+  }
+
+  function preferredFirstNoun(noun: NounDefinition, verb: Verb): string | undefined {
+    const firstNoun = state.command.firstNoun?.object;
+    if (!firstNoun || verb === "walk-to") return undefined;
+    if (verb === "give") return firstNoun;
+    if (verb !== "use") return undefined;
+    return noun.cases.some((candidate) =>
+      candidate.verb === "use" &&
+      candidate.firstNoun === firstNoun &&
+      conditionMatches(candidate.when)
+    ) ? firstNoun : undefined;
   }
 
   function advancePlayerIntent(): void {

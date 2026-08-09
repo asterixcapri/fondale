@@ -121,6 +121,13 @@ test("an Inventory Object becomes the first Noun of a binary Use Command", async
   );
   await expect(frame.locator("[data-fondale-command-preview]")).toHaveText("Usa Chiave con Portone");
   await page.mouse.click(
+    bounds.x + (20 / 426) * bounds.width,
+    bounds.y + (110 / 240) * bounds.height,
+    { button: "right" },
+  );
+  await expect(frame.locator("[aria-live=polite]")).toHaveText("Uso Oggetto 1 da solo.");
+  await expect(key).toHaveAttribute("aria-pressed", "true");
+  await page.mouse.click(
     bounds.x + (230 / 426) * bounds.width,
     bounds.y + (110 / 240) * bounds.height,
     { button: "right" },

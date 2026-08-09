@@ -44,7 +44,7 @@ const keyNoun = defineNoun({
 });
 const extraNouns = Array.from({ length: 8 }, (_, index) => defineNoun({
   labels: [{ text: `Oggetto ${index + 1}` }],
-  preferredVerbs: [{ verb: "pick-up" }],
+  preferredVerbs: [{ verb: index === 0 ? "use" : "pick-up" }],
   cases: [{
     verb: "pick-up",
     response: { text: `Raccolgo Oggetto ${index + 1}.` },

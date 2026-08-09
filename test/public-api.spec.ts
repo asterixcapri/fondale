@@ -174,6 +174,21 @@ test("a Choice may declare more than six mutually exclusive alternatives", () =>
   expect(sequence.steps).toHaveLength(1);
 });
 
+test("a Sequence preserves a URL Line audio reference immutably", () => {
+  const audio = new URL("https://example.test/line.ogg");
+  const sequence = defineSequence({
+    steps: [{ type: "line", text: "Listen.", audio }],
+  });
+  const line = sequence.steps[0];
+
+  expect(line?.type).toBe("line");
+  if (line?.type !== "line") return;
+  expect(line.audio).toBeInstanceOf(URL);
+  expect((line.audio as URL).href).toBe(audio.href);
+  expect(line.audio).not.toBe(audio);
+  expect(Object.isFrozen(line)).toBe(true);
+});
+
 test("an Object-moving Command Case must provide player feedback", () => {
   expect(() => defineNoun({
     labels: [{ text: "Key" }],

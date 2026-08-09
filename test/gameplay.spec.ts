@@ -340,6 +340,28 @@ test("Save Snapshot validation identifies an unavailable pending Command Noun", 
   }
 });
 
+test("Save Snapshot validation identifies malformed pending Command metadata", () => {
+  const project = projectFixture();
+  const session = createTestSession(project);
+  session.input({ type: "select-verb", verb: "look-at" });
+  session.input({ type: "activate-hotspot", hotspot: 0 });
+  session.steps();
+  const snapshot = session.createSaveSnapshot();
+  const activity = structuredClone(snapshot.state.activity) as unknown as Record<string, unknown>;
+  const intent = activity.intent as Record<string, unknown>;
+  intent.command = { ...(intent.command as object), preserveState: "yes" };
+  const result = validateSaveSnapshot(project, {
+    ...snapshot,
+    state: { ...snapshot.state, activity },
+  });
+
+  expect(result.ok).toBe(false);
+  if (!result.ok) expect(result.diagnostics).toContainEqual(expect.objectContaining({
+    code: "save.state.intent-command",
+    path: "Save Snapshot.state.activity.intent.command",
+  }));
+});
+
 test("a binary Use preserves its first Noun on failure and relocates it atomically on success", () => {
   const session = createTestSession(projectFixture());
   interact(session, 1);

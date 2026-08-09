@@ -431,7 +431,34 @@ export function defineSequence(input: SequenceDefinition): SequenceDefinition {
   };
   visit(input.steps, "steps");
   if (diagnostics.length > 0) throw new AuthoringError(diagnostics);
-  return deepFreeze(structuredClone(input));
+  return deepFreeze({ ...input, steps: cloneSequenceSteps(input.steps) });
+}
+
+function cloneSequenceSteps(steps: readonly SequenceStep[]): SequenceStep[] {
+  return steps.map((step) => {
+    if (step.type === "line") {
+      return {
+        ...step,
+        ...(step.audio instanceof URL ? { audio: new URL(step.audio.href) } : {}),
+      };
+    }
+    if (step.type === "operations") return structuredClone(step);
+    if (step.type === "choice") {
+      return {
+        ...step,
+        alternatives: step.alternatives.map((alternative) => ({
+          ...alternative,
+          steps: cloneSequenceSteps(alternative.steps),
+        })),
+        fallback: { ...step.fallback, steps: cloneSequenceSteps(step.fallback.steps) },
+      };
+    }
+    return {
+      ...step,
+      cases: step.cases.map((branch) => ({ ...branch, steps: cloneSequenceSteps(branch.steps) })),
+      fallback: cloneSequenceSteps(step.fallback),
+    };
+  });
 }
 
 function maximumEligibleAlternatives(alternatives: readonly ChoiceAlternative[]): number {

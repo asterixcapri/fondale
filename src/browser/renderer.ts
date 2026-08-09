@@ -741,6 +741,7 @@ class EngineOverlay {
   ): void {
     const character = speaker ? state.characters[speaker] : undefined;
     const visible = character?.scene === state.currentScene;
+    const safeBottom = this.data.logicalResolution.height - 64;
     element.dataset.fondalePresentation = presentation;
     if (speaker) element.dataset.fondaleSpeaker = speaker;
     else delete element.dataset.fondaleSpeaker;
@@ -750,7 +751,7 @@ class EngineOverlay {
       `max-width:${this.data.hudTheme?.maxSpeechWidth ?? 150}px`,
       "white-space:normal",
       "overflow-wrap:anywhere",
-      `max-height:${this.data.logicalResolution.height - 76}px`,
+      `max-height:${safeBottom - 4}px`,
       "overflow-y:auto",
       "text-align:center",
       `color:${speaker && this.data.hudTheme?.speechColors[speaker] || this.data.hudTheme?.colors.text || "#f4dfb4"}`,
@@ -762,11 +763,11 @@ class EngineOverlay {
       const width = this.data.hudTheme?.maxSpeechWidth ?? 150;
       element.style.left = `${Math.max(2, Math.min(this.data.logicalResolution.width - width - 2, character.groundPoint.x - width / 2))}px`;
       const height = element.offsetHeight;
-      element.style.top = `${Math.max(4, Math.min(176 - height, character.groundPoint.y - 45))}px`;
+      element.style.top = `${Math.max(4, Math.min(safeBottom - height, character.groundPoint.y - 45))}px`;
     } else {
       element.style.left = `${(this.data.logicalResolution.width - (this.data.hudTheme?.maxSpeechWidth ?? 150)) / 2}px`;
       const height = element.offsetHeight;
-      element.style.top = `${Math.max(4, Math.min(176 - height, 72))}px`;
+      element.style.top = `${Math.max(4, Math.min(safeBottom - height, 72))}px`;
     }
   }
 
