@@ -5,12 +5,12 @@ ogni acquisizione, consumo o ricollocazione attraverso HUD e feedback del mondo.
 
 **Blocked by:** 05 — Command binari Give e Use.
 
-**Status:** ready-for-agent
+**Status:** ready-for-human
 
-- [ ] Il HUD mostra permanentemente otto Inventory Slot in una griglia 4×2, inclusi gli slot vuoti.
-- [ ] Frecce e rotellina permettono di raggiungere Object oltre gli otto visibili senza cambiare l'ordine dell'Inventory.
-- [ ] Un Object appena acquisito viene portato automaticamente nella pagina visibile.
-- [ ] Hover, selezione e primo Noun sono distinguibili senza affidarsi soltanto al colore.
-- [ ] Raccolta, consumo e collocazione producono feedback percepibile e aggiornano atomicamente mondo, Inventory e Command State.
-- [ ] Nessun Object scompare senza Command Response o feedback breve.
-- [ ] I test browser verificano Inventory vuoto, paginazione, raccolta, uso fallito, consumo e collocazione.
+- [x] Il HUD mostra permanentemente otto Inventory Slot in una griglia 4×2, inclusi gli slot vuoti.
+- [x] Frecce e rotellina permettono di raggiungere Object oltre gli otto visibili senza cambiare l'ordine dell'Inventory.
+- [x] Un Object appena acquisito viene portato automaticamente nella pagina visibile.
+- [x] Hover, selezione e primo Noun sono distinguibili senza affidarsi soltanto al colore.
+- [x] Raccolta, consumo e collocazione producono feedback percepibile e aggiornano atomicamente mondo, Inventory e Command State.
+- [x] Nessun Object scompare senza Command Response o feedback breve.
+- [x] I test browser verificano Inventory vuoto, paginazione, raccolta, uso fallito, consumo e collocazione.

@@ -6,12 +6,12 @@ esiste un caso specifico.
 
 **Blocked by:** 02 — HUD con nove Verb e Walk To.
 
-**Status:** ready-for-agent
+**Status:** ready-for-human
 
-- [ ] Noun Label e Preferred Verb possono avere casi condizionali con un fallback incondizionato.
-- [ ] Hover presenta Noun Label e Preferred Verb prima dell'azione.
-- [ ] Il click destro esegue il Preferred Verb senza distruggere un Command binario incompleto.
-- [ ] La risoluzione segue l'ordine caso specifico, fallback locale del Noun e fallback globale response-only del Game Project.
-- [ ] Un fallback globale non può mutare Game State o avviare una Sequence.
-- [ ] Un progetto che può produrre un silent no-op viene rifiutato con Authoring Diagnostic contestuali e aggregati.
-- [ ] I test pubblici coprono condizioni, precedenza e diagnostiche; il browser copre hover e click destro.
+- [x] Noun Label e Preferred Verb possono avere casi condizionali con un fallback incondizionato.
+- [x] Hover presenta Noun Label e Preferred Verb prima dell'azione.
+- [x] Il click destro esegue il Preferred Verb senza distruggere un Command binario incompleto.
+- [x] La risoluzione segue l'ordine caso specifico, fallback locale del Noun e fallback globale response-only del Game Project.
+- [x] Un fallback globale non può mutare Game State o avviare una Sequence.
+- [x] Un progetto che può produrre un silent no-op viene rifiutato con Authoring Diagnostic contestuali e aggregati.
+- [x] I test pubblici coprono condizioni, precedenza e diagnostiche; il browser copre hover e click destro.

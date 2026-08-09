@@ -1,6 +1,6 @@
 # Fondale 1.1 — Interfaccia classica a comandi modernizzata
 
-Status: ready-for-agent
+Status: ready-for-human
 
 ## Problem Statement
 

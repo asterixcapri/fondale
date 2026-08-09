@@ -6,11 +6,11 @@ invalide durante il movimento.
 
 **Blocked by:** 03 — Preferred Verb e fallback percepibili.
 
-**Status:** ready-for-agent
+**Status:** ready-for-human
 
-- [ ] Un Command sul mondo crea un Player Intent verso l'Approach Point e conserva il Command richiesto.
-- [ ] Il Command viene rivalutato sul Game State più recente dopo l'arrivo prima di produrre effetti.
-- [ ] Un nuovo ordine di movimento o Command sostituisce il Player Intent ancora in corso.
-- [ ] Il doppio click sinistro su terreno o Passage richiede Fast Walk senza saltare pathfinding, condizioni o Interaction.
-- [ ] Fast Walk cambia soltanto la velocità di presentazione e produce lo stesso risultato di Walk To.
-- [ ] Test deterministici dimostrano sostituzione e revalidation; test browser esercitano movimento e doppio click reali.
+- [x] Un Command sul mondo crea un Player Intent verso l'Approach Point e conserva il Command richiesto.
+- [x] Il Command viene rivalutato sul Game State più recente dopo l'arrivo prima di produrre effetti.
+- [x] Un nuovo ordine di movimento o Command sostituisce il Player Intent ancora in corso.
+- [x] Il doppio click sinistro su terreno o Passage richiede Fast Walk senza saltare pathfinding, condizioni o Interaction.
+- [x] Fast Walk cambia soltanto la velocità di presentazione e produce lo stesso risultato di Walk To.
+- [x] Test deterministici dimostrano sostituzione e revalidation; test browser esercitano movimento e doppio click reali.

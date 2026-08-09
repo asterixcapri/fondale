@@ -6,12 +6,12 @@ che sta componendo.
 
 **Blocked by:** 01 — Primo Command end-to-end.
 
-**Status:** ready-for-agent
+**Status:** ready-for-human
 
-- [ ] Il HUD Engine-owned mostra sempre la griglia 3×3 con Open/Pick Up/Push, Close/Look At/Pull e Give/Talk To/Use nelle posizioni stabilite.
-- [ ] Il Command Lexicon italiano presenta Apri, Raccogli, Spingi, Chiudi, Guarda, Tira, Dai, Parla con e Usa senza cambiare l'ordine spaziale.
-- [ ] QWE, ASD e ZXC selezionano i Verb corrispondenti e lo stato selezionato è percepibile senza dipendere soltanto dal colore.
-- [ ] Un click sinistro sul terreno esegue Walk To; un click sinistro su un Noun completa il Command selezionato.
-- [ ] Il Command Preview mostra Verb e Noun vicino al puntatore e rimane entro la Logical Resolution.
-- [ ] Escape annulla un Command incompleto e un Command concluso o fallito torna allo stato neutro Walk To.
-- [ ] La griglia e gli input sono verificati con mouse e tastiera reali nel browser pubblico.
+- [x] Il HUD Engine-owned mostra sempre la griglia 3×3 con Open/Pick Up/Push, Close/Look At/Pull e Give/Talk To/Use nelle posizioni stabilite.
+- [x] Il Command Lexicon italiano presenta Apri, Raccogli, Spingi, Chiudi, Guarda, Tira, Dai, Parla con e Usa senza cambiare l'ordine spaziale.
+- [x] QWE, ASD e ZXC selezionano i Verb corrispondenti e lo stato selezionato è percepibile senza dipendere soltanto dal colore.
+- [x] Un click sinistro sul terreno esegue Walk To; un click sinistro su un Noun completa il Command selezionato.
+- [x] Il Command Preview mostra Verb e Noun vicino al puntatore e rimane entro la Logical Resolution.
+- [x] Escape annulla un Command incompleto e un Command concluso o fallito torna allo stato neutro Walk To.
+- [x] La griglia e gli input sono verificati con mouse e tastiera reali nel browser pubblico.

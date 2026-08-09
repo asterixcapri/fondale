@@ -6,11 +6,11 @@ Noun → Command Response` attraverso la public authoring interface e il browser
 
 **Blocked by:** None — can start immediately.
 
-**Status:** ready-for-agent
+**Status:** ready-for-human
 
-- [ ] Un Author può definire Noun Label, Command Case e un Command Lexicon usando soltanto gli export della package root.
-- [ ] Un Game Project minimo può eseguire `Look At` su un Noun del mondo e mostrare una Command Response percepibile.
-- [ ] I Command Case eleggibili vengono valutati nell'ordine dichiarato sul Game State più recente.
-- [ ] Le nuove definizioni sono immutabili e producono Authoring Diagnostic aggregati per input locali o riferimenti non validi.
-- [ ] Il modello Primary Action continua temporaneamente a funzionare, così che i consumer non ancora migrati rimangano verdi.
-- [ ] Test pubblici e browser coprono il tracer bullet senza importare moduli interni.
+- [x] Un Author può definire Noun Label, Command Case e un Command Lexicon usando soltanto gli export della package root.
+- [x] Un Game Project minimo può eseguire `Look At` su un Noun del mondo e mostrare una Command Response percepibile.
+- [x] I Command Case eleggibili vengono valutati nell'ordine dichiarato sul Game State più recente.
+- [x] Le nuove definizioni sono immutabili e producono Authoring Diagnostic aggregati per input locali o riferimenti non validi.
+- [x] Il modello Primary Action continua temporaneamente a funzionare, così che i consumer non ancora migrati rimangano verdi.
+- [x] Test pubblici e browser coprono il tracer bullet senza importare moduli interni.
