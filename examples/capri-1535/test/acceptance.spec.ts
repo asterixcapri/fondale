@@ -237,6 +237,27 @@ test("pixel scaling and the Engine overlay remain usable in a smaller letterboxe
   expect(errors).toEqual([]);
 });
 
+test("the command HUD is compact, translucent, and contained in its reserved band", async ({ page }) => {
+  await page.setViewportSize({ width: 900, height: 700 });
+  await openGame(page);
+  const frame = page.locator("[data-fondale-frame]");
+  const canvas = frame.locator("canvas");
+  const canvasBounds = await canvas.boundingBox();
+  const verbBounds = await frame.locator('[aria-label="Verbs"]').boundingBox();
+  const inventoryBounds = await frame.locator("[data-fondale-inventory]").boundingBox();
+  if (!canvasBounds || !verbBounds || !inventoryBounds) throw new Error("HUD geometry is unavailable");
+  const scale = canvasBounds.width / 426;
+  const hudTop = canvasBounds.y + 180 * scale;
+  const overlayBackground = await frame.locator("[data-fondale-overlay]").evaluate(
+    (element) => (element as HTMLElement).style.background,
+  );
+
+  expect.soft(overlayBackground).toMatch(/rgba\([^)]*,\s*0\.[0-9]+\)/);
+  expect.soft(verbBounds.width).toBeLessThanOrEqual(128 * scale);
+  expect.soft(inventoryBounds.y).toBeGreaterThanOrEqual(hudTop);
+  expect.soft(inventoryBounds.y + inventoryBounds.height).toBeLessThanOrEqual(canvasBounds.y + canvasBounds.height);
+});
+
 test("a Capri Project Version 3 Save remains visible and incompatible", async ({ page }) => {
   await openGame(page);
   const frame = page.locator("[data-fondale-frame]");

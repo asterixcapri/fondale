@@ -371,10 +371,10 @@ class EngineOverlay {
       this.verbs.style.cssText = [
         "position:absolute",
         "display:grid",
-        "grid-template-columns:repeat(3,46px)",
+        "grid-template-columns:repeat(3,40px)",
         "gap:1px",
         "left:4px",
-        "bottom:4px",
+        "bottom:6px",
         "pointer-events:auto",
       ].join(";");
       for (const verb of commandVerbs) {
@@ -387,7 +387,10 @@ class EngineOverlay {
         if (data.hudTheme) {
           button.style.color = data.hudTheme.colors.text;
           button.style.borderColor = data.hudTheme.colors.border;
-          button.style.background = data.hudTheme.colors.backing;
+          button.style.background = colorWithAlpha(
+            data.hudTheme.colors.backing,
+            data.hudTheme.opacity * 0.6,
+          );
         }
         button.addEventListener("click", () => this.core.input({ type: "select-verb", verb }));
         this.verbs.append(button);
@@ -406,7 +409,7 @@ class EngineOverlay {
       event.preventDefault();
       this.changeInventoryPage(event.deltaY > 0 ? 1 : -1);
     });
-    this.inventoryNav.style.cssText = "position:absolute;right:143px;bottom:28px;display:flex;flex-direction:column;pointer-events:auto";
+    this.inventoryNav.style.cssText = "position:absolute;right:109px;bottom:14px;display:flex;flex-direction:column;pointer-events:auto";
     const previous = this.modalButton("‹", () => this.changeInventoryPage(-1));
     previous.dataset.fondaleInventoryPrevious = "";
     previous.setAttribute("aria-label", "Previous Inventory page");
@@ -416,7 +419,7 @@ class EngineOverlay {
     this.inventoryNav.append(previous, next);
     this.hint.dataset.fondaleHint = "";
     this.hint.setAttribute("role", "status");
-    this.hint.style.cssText = "position:absolute;left:145px;bottom:66px;width:136px;text-align:center;color:#f2ad62;pointer-events:none";
+    this.hint.style.cssText = "position:absolute;left:132px;bottom:40px;width:160px;text-align:center;color:#f2ad62;pointer-events:none";
     Object.assign(this.activity.style, {
       position: "absolute",
       inset: "0",
@@ -620,13 +623,15 @@ class EngineOverlay {
         "padding:0",
         "border:1px solid white",
         `outline:${selected ? "2px double white" : "none"}`,
-        `background:${this.data.hudTheme?.colors.inventoryWell ?? "#211b2d"}`,
+        `background:${this.data.hudTheme
+          ? colorWithAlpha(this.data.hudTheme.colors.inventoryWell, this.data.hudTheme.opacity * 0.68)
+          : "rgba(33,27,45,.68)"}`,
         "image-rendering:pixelated",
       ].join(";");
       const image = document.createElement("img");
-      const size = this.data.inventoryAppearanceSize ?? 32;
-      image.width = size;
-      image.height = size;
+      const displaySize = Math.min(this.data.inventoryAppearanceSize ?? 24, 24);
+      image.width = displaySize;
+      image.height = displaySize;
       image.alt = "";
       image.src = assetUrl(this.data.objects[objectId]!.inventoryAppearance);
       button.append(image);
@@ -645,11 +650,15 @@ class EngineOverlay {
         const empty = document.createElement("span");
         empty.dataset.fondaleInventorySlot = "empty";
         empty.setAttribute("aria-hidden", "true");
-        empty.style.cssText = `display:block;width:32px;height:32px;border:1px solid ${this.data.hudTheme?.colors.border ?? "rgba(255,255,255,.45)"};background:${this.data.hudTheme?.colors.inventoryWell ?? "rgba(20,15,28,.55)"}`;
+        const displaySize = Math.min(this.data.inventoryAppearanceSize ?? 24, 24);
+        const well = this.data.hudTheme
+          ? colorWithAlpha(this.data.hudTheme.colors.inventoryWell, this.data.hudTheme.opacity * 0.68)
+          : "rgba(20,15,28,.55)";
+        empty.style.cssText = `display:block;width:${displaySize}px;height:${displaySize}px;border:1px solid ${this.data.hudTheme?.colors.border ?? "rgba(255,255,255,.45)"};background:${well}`;
         this.inventory.append(empty);
       }
       this.inventory.style.display = "grid";
-      this.inventory.style.gridTemplateColumns = "repeat(4,34px)";
+      this.inventory.style.gridTemplateColumns = "repeat(4,26px)";
       this.inventoryNav.querySelector<HTMLButtonElement>("[data-fondale-inventory-previous]")!.disabled = this.inventoryPage === 0;
       this.inventoryNav.querySelector<HTMLButtonElement>("[data-fondale-inventory-next]")!.disabled = this.inventoryPage >= maximumPage;
     }
@@ -996,7 +1005,9 @@ class EngineOverlay {
     this.verbs.style.opacity = String(this.preferences.hudOpacity);
     this.inventory.style.opacity = String(this.preferences.hudOpacity);
     this.root.style.background = this.preferences.hudBacking
-      ? `linear-gradient(to bottom, transparent 75%, ${this.data.hudTheme?.colors.backing ?? "rgba(12,22,38,.78)"} 75%)`
+      ? `linear-gradient(to bottom, transparent 75%, ${this.data.hudTheme
+        ? colorWithAlpha(this.data.hudTheme.colors.backing, this.data.hudTheme.opacity * 0.38)
+        : "rgba(12,22,38,.34)"} 75%)`
       : "none";
     if (this.preferences.commandPreview === "sentence-line") {
       this.action.style.left = "153px";
@@ -1126,13 +1137,22 @@ function checkboxPreference(
 }
 
 const overlayButtonStyle = [
-  "font:7px/1.25 monospace",
+  "font:inherit",
   "color:white",
   "background:rgba(20,15,28,.9)",
   "border:1px solid white",
-  "padding:3px",
+  "padding:2px",
   "text-shadow:1px 1px #000",
 ].join(";");
+
+function colorWithAlpha(color: string, alpha: number): string {
+  const digits = color.slice(1);
+  const expanded = digits.length === 3
+    ? [...digits].map((digit) => digit + digit).join("")
+    : digits;
+  const channels = [0, 2, 4].map((offset) => Number.parseInt(expanded.slice(offset, offset + 2), 16));
+  return `rgba(${channels.join(",")},${Math.max(0, Math.min(1, alpha))})`;
+}
 
 function sceneSignature(state: GameState): string {
   return JSON.stringify({
