@@ -15,6 +15,9 @@ degli Object.
 La somiglianza riguarda il modello d'interazione, non la copia di contenuti,
 grafica o interfacce proprietarie. Fondale conserva il proprio dominio e lascia
 ai Game Project identità artistica, scrittura e regole degli enigmi originali.
+Quando ergonomia moderna e comportamento osservabile di Thimbleweed Park sono
+in tensione, la fedeltà a Thimbleweed Park è il criterio prioritario; ogni
+deviazione richiede una decisione esplicita, non un miglioramento implicito.
 
 I nove Verb visibili sono Give, Talk To, Pick Up, Look At, Open, Close, Push,
 Pull e Use; Walk To resta implicito per terreno e Scene Passage. Il passaggio
