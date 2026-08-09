@@ -31,12 +31,12 @@ Then start the development server:
 npm run dev
 ```
 
-The game is available at `http://localhost:5173`.
+The server exposes the browser-test fixtures used by the Engine verification.
 
 Verification commands:
 
 ```sh
-npm run build   # type-check and build the single-file bundle in dist/
+npm run build   # type-check and build the library package in dist/
 npm run verify  # run browser tests with Playwright
 ```
 

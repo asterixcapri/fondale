@@ -1,7 +1,5 @@
-.agents
-.claude
 node_modules
 dist
 test/.artifacts
+test/shots
 .playwright-cli
-.release

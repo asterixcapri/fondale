@@ -17,15 +17,11 @@
     "README.md"
   ],
   "scripts": {
-    "dev": "npm run build:package && npm run package:example && vite --force",
+    "dev": "npm run build:package && vite --force",
     "typecheck": "tsc --noEmit",
     "build:package": "vite build --config vite.lib.config.ts && tsc -p tsconfig.declarations.json",
-    "package:example": "mkdir -p examples/capri-1535/vendor && npm pack --pack-destination examples/capri-1535/vendor && node tools/sync-example-package-lock.mjs && npm ci --prefix examples/capri-1535 --no-audit --no-fund",
-    "build:example": "npm run build --prefix examples/capri-1535",
-    "build": "npm run build:package && npm run package:example && npm run typecheck && npm run verify:example-separation && npm run build:example && npm run verify:docs",
-    "preview": "npm run preview --prefix examples/capri-1535",
+    "build": "npm run build:package && npm run typecheck && npm run verify:docs",
     "verify:docs": "node tools/verify-docs.mjs",
-    "verify:example-separation": "node tools/verify-example-separation.mjs",
     "verify": "playwright test"
   },
   "dependencies": {
@@ -34,7 +30,6 @@
   "devDependencies": {
     "@playwright/test": "^1.62.1",
     "typescript": "^5.9.3",
-    "vite": "^6.4.3",
-    "vite-plugin-singlefile": "^2.3.3"
+    "vite": "^6.4.3"
   }
 }

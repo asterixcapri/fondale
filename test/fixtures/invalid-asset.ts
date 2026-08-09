@@ -1,4 +1,4 @@
-import wrongSizeUrl from "../../art/example/key.png";
+import wrongSizeUrl from "./invalid-inventory.png";
 import { AuthoringError, defineGame, defineScene, startGame } from "../../src/index";
 
 declare global {

@@ -2,11 +2,10 @@ import { createHash } from "node:crypto";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { dirname, join, resolve, sep } from "node:path";
 
-const repository = resolve(import.meta.dirname, "..");
-const example = join(repository, "examples/capri-1535");
-const packageJson = JSON.parse(readFileSync(join(example, "package.json"), "utf8"));
-const lock = readFileSync(join(example, "package-lock.json"), "utf8");
-const viteConfig = readFileSync(join(example, "vite.config.ts"), "utf8");
+const project = resolve(import.meta.dirname, "..");
+const packageJson = JSON.parse(readFileSync(join(project, "package.json"), "utf8"));
+const lock = readFileSync(join(project, "package-lock.json"), "utf8");
+const viteConfig = readFileSync(join(project, "vite.config.ts"), "utf8");
 const tarball = "vendor/asterixcapri-fondale-1.0.0.tgz";
 
 function findTypeScriptFiles(directory) {
@@ -20,28 +19,28 @@ function findTypeScriptFiles(directory) {
 if (packageJson.dependencies?.["@asterixcapri/fondale"] !== `file:${tarball}`) {
   throw new Error("The Example must install Fondale from its vendored distributable tarball.");
 }
-for (const script of ["dev", "typecheck", "build", "preview"]) {
+for (const script of ["dev", "typecheck", "build", "preview", "verify"]) {
   if (!packageJson.scripts?.[script]) throw new Error(`The Example is missing its '${script}' script.`);
 }
-if (!existsSync(join(example, tarball))) {
+if (!existsSync(join(project, tarball))) {
   throw new Error("The Example's vendored Fondale tarball is missing.");
 }
 if (!lock.includes(`file:${tarball}`)) {
   throw new Error("The Example lockfile does not pin its vendored Fondale tarball.");
 }
 const expectedIntegrity = `sha512-${createHash("sha512")
-  .update(readFileSync(join(example, tarball)))
+  .update(readFileSync(join(project, tarball)))
   .digest("base64")}`;
 if (!lock.includes(expectedIntegrity)) {
   throw new Error("The Example lockfile integrity does not match its vendored Fondale tarball.");
 }
-const examplePrefix = `${example}${sep}`;
-for (const sourceFile of findTypeScriptFiles(join(example, "src"))) {
+const projectPrefix = `${project}${sep}`;
+for (const sourceFile of findTypeScriptFiles(join(project, "src"))) {
   const source = readFileSync(sourceFile, "utf8");
   const imports = source.matchAll(/(?:from\s+|import\s*\(\s*)["']([^"']+)["']/g);
 
   for (const [, specifier] of imports) {
-    if (specifier.startsWith(".") && !resolve(dirname(sourceFile), specifier).startsWith(examplePrefix)) {
+    if (specifier.startsWith(".") && !resolve(dirname(sourceFile), specifier).startsWith(projectPrefix)) {
       throw new Error(`The Example source reaches outside its project from ${sourceFile}.`);
     }
     if (specifier.startsWith("@asterixcapri/fondale/")) {

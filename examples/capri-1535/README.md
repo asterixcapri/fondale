@@ -12,39 +12,14 @@ Then open <http://localhost:5173>.
 
 The committed tarball under `vendor/` stands in for the npm registry while the
 library is developed in the same repository. It contains the same installable
-artifact an external project consumes. Fondale maintainers refresh it from the
-repository root with `npm run package:example`.
+artifact an external project consumes. To refresh it from the Fondale project:
 
-Source files follow Fondale's authored concepts, while `main.ts` owns only the
-browser lifecycle:
-
-```text
-src/
-├── main.ts
-├── game.ts
-├── geometry.ts
-├── scenes/
-│   ├── alley/
-│   │   ├── index.ts
-│   │   ├── background.png
-│   │   └── gate-unlocked.png
-│   └── harbour/
-│       ├── index.ts
-│       └── background.png
-├── characters/
-│   └── michele/
-│       ├── index.ts
-│       └── walk-*.png
-├── objects/
-│   └── key/
-│       ├── index.ts
-│       ├── scene.png
-│       └── inventory.png
-└── sequences/
-    └── conversation.ts
+```sh
+npm pack --pack-destination examples/capri-1535/vendor
+node examples/capri-1535/tools/sync-package-lock.mjs
 ```
 
-Runtime media live beside the module that owns them. A top-level `src/assets/`
-directory is reserved for media genuinely shared by multiple modules. Object
-directories distinguish their Scene and Inventory Appearances. Generated output
-remains under `dist/`, while the Fondale package belongs under `vendor/`.
+This project owns its source, runtime media, production art, tools, tests,
+dependencies, and generated output. Runtime media live beside the source module
+that owns them; `src/assets/` is reserved for media genuinely shared by multiple
+modules.

@@ -11,5 +11,5 @@
     "skipLibCheck": true,
     "types": ["vite/client"]
   },
-  "include": ["src", "test", "examples", "docs/public/recipes", "*.config.ts"]
+  "include": ["src", "test", "docs/public/recipes", "*.config.ts"]
 }

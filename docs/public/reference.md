@@ -191,9 +191,9 @@ means the helper named in the row aggregates the listed failure into its
 | `StaticAppearance` | one PNG visual | static `kind`, `image`, optional `visualAnchor` | anchor defaults to bottom-centre | asset and anchor diagnostics at startup | [Inventory](recipes/inventory.ts) |
 | `WalkStrip` | directional strip | PNG `image`, positive integer `frames` | frame zero is idle | `definition.walking.frames`, asset strip codes | [Character](recipes/character-walking.ts) |
 | `WalkingAppearance` | three-direction animation | walking `kind`, `side`, `front`, `back`, positive `framesPerSecond` | side is mirrored left; shared optional anchor | walking and strip diagnostics | [Character](recipes/character-walking.ts) |
-| `BackgroundRegionAppearance` | Background cut-out | background-region `kind`, polygon `area` | area is finite, simple, in-frame | polygon and Scene Space codes | [Example Scene](../../examples/capri-1535/src/main.ts) |
+| `BackgroundRegionAppearance` | Background cut-out | background-region `kind`, polygon `area` | area is finite, simple, in-frame | polygon and Scene Space codes | [first Scene](recipes/first-scene.ts) |
 | `EntityAppearance` | Character visual union | static or walking Appearance | registry key is identity | selected variant is validated | [Character](recipes/character-walking.ts) |
-| `SceneryAppearance` | Scenery visual union | static or Background Region | registry key is identity | selected variant is validated | [Example Scene](../../examples/capri-1535/src/main.ts) |
+| `SceneryAppearance` | Scenery visual union | static or Background Region | registry key is identity | selected variant is validated | [first Scene](recipes/first-scene.ts) |
 | `CharacterDefinition` | persistent Character | initial Scene/Ground Point/Facing/Appearance, appearances, speed | speed positive; initial point walkable | Character and reference diagnostics | [Character](recipes/character-walking.ts) |
 | `CharacterInput` | `defineCharacter` input | same fields as Character definition | no defaults | `defineCharacter` aggregates local failures | [Character](recipes/character-walking.ts) |
 | `ObjectDefinition` | persistent collectible | initial Scene/Ground Point/Appearance, appearances, Inventory PNG | begins in exactly one Scene | Object, Appearance and asset diagnostics | [Inventory](recipes/inventory.ts) |
@@ -213,9 +213,9 @@ means the helper named in the row aggregates the listed failure into its
 | `InventoryUseFallback` | unmatched selected-Object outcome | failure, response, operations | mandatory when Inventory Use exists | failure-location diagnostic | [Inventory](recipes/inventory.ts) |
 | `InventoryUse` | Hotspot item interaction | ordered cases and fallback | first match wins; failure keeps selection | Inventory operation diagnostics | [Inventory](recipes/inventory.ts) |
 | `HotspotDefinition` | Scene-local interaction surface | target, polygon area, approach, optional condition, actions | array order controls overlap hit-testing | geometry/reference diagnostics | [Interaction](recipes/interaction.ts) |
-| `SceneryDefinition` | depth-sorted Scene visual | finite `baseline`, appearances, optional position | initial Appearance required | Scenery/Appearance diagnostics | [Example Scene](../../examples/capri-1535/src/main.ts) |
-| `SceneEntrance` | named passage arrival | Ground Point and Facing | point is walkable | entrance bounds/walkable codes | [Example Scene](../../examples/capri-1535/src/main.ts) |
-| `ScenePassage` | conditional Scene transition | polygon, approach, optional condition, destination Scene/Entrance | transition commits atomically | passage reference and geometry codes | [Example Scene](../../examples/capri-1535/src/main.ts) |
+| `SceneryDefinition` | depth-sorted Scene visual | finite `baseline`, appearances, optional position | initial Appearance required | Scenery/Appearance diagnostics | [first Scene](recipes/first-scene.ts) |
+| `SceneEntrance` | named passage arrival | Ground Point and Facing | point is walkable | entrance bounds/walkable codes | [first Scene](recipes/first-scene.ts) |
+| `ScenePassage` | conditional Scene transition | polygon, approach, optional condition, destination Scene/Entrance | transition commits atomically | passage reference and geometry codes | [first Scene](recipes/first-scene.ts) |
 | `PerspectiveScaleStop` | depth scale sample | finite in-frame `y`, positive `scale` | omitted scale curve means one | `definition.perspective-scale.stop` | [first Scene](recipes/first-scene.ts) |
 | `SceneInput` | `defineScene` input | Background, Walkable Region and optional Scene structures | optional registries default empty | `defineScene` local diagnostics | [first Scene](recipes/first-scene.ts) |
 | `SceneDefinition` | frozen local Scene | same values as Scene input | registry key supplies identity | global failures at `defineGame` | [first Scene](recipes/first-scene.ts) |
@@ -275,5 +275,5 @@ Runtime and persistence codes: `state.operation.invalid`, `behavior.threw`,
 `environment.start.failed`, `environment.target.occupied`, and
 `environment.webgl.unavailable`.
 
-Return to the [quick start](quick-start.md) or inspect the complete
-[Capri 1535 Example](../../examples/capri-1535/src/main.ts).
+Return to the [quick start](quick-start.md) or inspect the focused
+[recipes](recipes/README.md).

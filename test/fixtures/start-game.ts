@@ -1,4 +1,4 @@
-import backgroundUrl from "../../art/rooms/vicolo-capri.png";
+import backgroundUrl from "./background.png";
 import {
   AuthoringError,
   defineGame,
