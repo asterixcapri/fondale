@@ -95,6 +95,11 @@ A JSON-safe representation of one committed Game State, identified by its Game
 Project and compatibility versions and suitable for exact restoration.
 _Avoid_: Save slot, storage record, event log
 
+**Save Slot**:
+A Player-named browser record that owns one Save Snapshot together with the
+minimal presentation metadata needed to find and restore it.
+_Avoid_: Save Snapshot, checkpoint, autosave
+
 **Command State**:
 The selected Verb and optional first Noun of a Command being constructed. It is
 committed Game State, unlike the transient Noun beneath the pointer.
@@ -112,7 +117,8 @@ _Avoid_: Direct mutation, renderer event, callback side effect
 
 **Game Activity**:
 Runtime behavior that progresses over logical time, such as a Player Intent or
-a Sequence; at most one Game Activity controls play at a time.
+a Sequence, or temporarily presents a Command Response; at most one Game
+Activity controls play at a time.
 _Avoid_: Animation frame, ambient rendering, unmanaged task
 
 **Sequence**:
@@ -123,14 +129,15 @@ _Avoid_: Cutscene, Dialogue as a separate activity model, nested sequence, scrip
 
 **Line**:
 A single authored unit of speech or narration within a Sequence. Speech
-identifies its Character; narration omits it, and every Line awaits Player
-advancement.
+identifies its Character and is presented above that Character; narration omits
+the Character and is presented centrally. Every Line awaits Player advancement.
 _Avoid_: Subtitle, dialogue node, renderer text
 
 **Choice**:
 A point in a Sequence where the Player selects one of the authored alternatives
-eligible in the current Game State and the Sequence continues along its branch.
-Ineligible alternatives are not presented.
+eligible in the current Game State from the HUD. The selected phrase is
+pronounced by the Player Character before the Sequence continues along its
+branch; ineligible alternatives are not presented.
 _Avoid_: Menu, disabled answer, arbitrary input prompt
 
 ## Interaction language
@@ -232,8 +239,8 @@ and presented in a permanent region of the HUD, even when empty.
 _Avoid_: Container, equipment, item stack
 
 **Inventory Appearance**:
-The visual presentation of an Object within the Inventory and while selected
-for an Inventory Use, distinct from its Appearance in a Scene.
+The visual presentation of an Object within the Inventory and while it
+participates in a Command, distinct from its Appearance in a Scene.
 _Avoid_: World Appearance, generic HUD icon
 
 **Inventory Appearance Size**:
@@ -286,13 +293,13 @@ An authored proposition over the current Game State that determines whether an
 Interaction Case is eligible; common conditions remain declarative.
 _Avoid_: Validation rule, mutable state check
 
-**Interaction Response**:
-The player-perceivable result of an Interaction Case, possibly accompanied by
-immediate world changes or a controlled Game Activity.
-_Avoid_: Event handler, silent no-op, renderer effect
+**Command Response**:
+The player-perceivable speech or narration produced when a Command resolves,
+possibly accompanied by immediate world changes.
+_Avoid_: Line, event handler, silent no-op, renderer effect
 
 **Player Intent**:
-The complete request to reach a target, face it, and perform an Interaction. A
-new Player Intent replaces one still in progress, and its Interaction is
-resolved against the latest committed Game State only after arrival.
-_Avoid_: Click, queued movement
+The execution of a complete Command, including any required movement and
+facing. A new Player Intent replaces one still in progress, and its Interaction
+is resolved against the latest committed Game State only after arrival.
+_Avoid_: Click, queued movement, Command State

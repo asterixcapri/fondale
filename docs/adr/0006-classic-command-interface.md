@@ -51,3 +51,27 @@ La Support Baseline 2.0 include mouse, esecuzione rapida con click destro,
 rotellina per l'Inventory, F5 per i salvataggi e scorciatoie posizionali
 QWE/ASD/ZXC per i nove Verb. Touch, gamepad e navigazione completa del mondo da
 tastiera restano esclusi da questa modifica.
+
+Dopo ogni Command risolto, riuscito o fallito, il Command State torna a Walk
+To; Escape annulla una costruzione incompleta e il click destro non sostituisce
+quella corrente. Un Command rivolto alla Scene raggiunge l'Approach Point e
+viene rivalutato sul Game State più recente, mentre i Command fra soli Object
+nell'Inventory si risolvono immediatamente.
+
+L'Inventory presenta sempre otto caselle in una griglia 4×2, scorre con frecce
+e rotellina e porta in vista ogni Object appena acquisito. Raccolta, rimozione e
+ricollocazione ricevono feedback standard brevi rispettivamente nell'Inventory
+e sul bersaglio, senza animazioni personalizzabili fra HUD e Scene.
+
+Una Command Response può essere pronunciata da un Character, usando il Player
+Character come speaker predefinito, oppure presentata come narrazione. Ogni
+Scene Passage mostra il proprio Noun, preferisce Walk To e usa un cursore a
+freccia; Tab rivela temporaneamente Noun e Passage, mentre il controllo
+diagnostico permanente viene rimosso dal normale HUD.
+
+F5 apre una schermata Engine-owned di Save Slot nominati, identificati per Game
+Project e versione, senza miniature. Le Line pronunciate sono ancorate sopra il
+Character che parla e la narrazione è centrata nella Scene. Le Choice
+sostituiscono temporaneamente Verb e Inventory con l'elenco delle frasi nel HUD;
+la frase selezionata viene pronunciata dal Player Character nella Scene prima
+di proseguire, poi il Command State sospeso viene ripristinato.
