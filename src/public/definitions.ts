@@ -1,4 +1,10 @@
 import { AuthoringError, type AuthoringDiagnostic } from "./diagnostics";
+import {
+  commandVerbs,
+  type CommandLexicon,
+  type CommandResponse,
+  type NounDefinition,
+} from "./commands";
 
 /** A point measured in logical Scene Space pixels. */
 export interface Point {
@@ -55,6 +61,7 @@ export interface CharacterDefinition {
   readonly initialAppearance: string;
   readonly appearances: Readonly<Record<string, EntityAppearance>>;
   readonly movementSpeed: number;
+  readonly noun?: NounDefinition;
 }
 
 /** Input accepted by {@link defineCharacter}. */
@@ -126,6 +133,7 @@ export interface ObjectDefinition {
   readonly initialAppearance: string;
   readonly appearances: Readonly<Record<string, StaticAppearance>>;
   readonly inventoryAppearance: URL | string;
+  readonly noun?: NounDefinition;
 }
 
 /** Creates and freezes one Object that initially belongs to a Scene. */
@@ -267,6 +275,7 @@ export interface HotspotDefinition {
   readonly area: readonly Point[];
   readonly approach: ApproachPoint;
   readonly when?: InteractionCondition;
+  readonly noun?: NounDefinition;
   readonly primaryAction: PrimaryAction;
   readonly inventoryUse?: InventoryUse;
 }
@@ -276,6 +285,7 @@ export interface SceneryDefinition {
   readonly initialAppearance: string;
   readonly appearances: Readonly<Record<string, SceneryAppearance>>;
   readonly position?: Point;
+  readonly noun?: NounDefinition;
 }
 
 export interface SceneEntrance {
@@ -287,6 +297,8 @@ export interface ScenePassage {
   readonly area: readonly Point[];
   readonly approach: ApproachPoint;
   readonly when?: InteractionCondition;
+  readonly noun?: NounDefinition;
+  readonly direction?: "left" | "right" | "up" | "down" | "enter";
   readonly destination: { readonly scene: string; readonly entrance: string };
 }
 
@@ -486,6 +498,8 @@ export interface GameInput {
   readonly inventoryAppearanceSize?: number;
   readonly initialScene: string;
   readonly letterboxColor?: string;
+  readonly commandLexicon?: CommandLexicon;
+  readonly commandFallbacks?: Readonly<Partial<Record<(typeof commandVerbs)[number], CommandResponse>>>;
 }
 
 declare const gameProjectBrand: unique symbol;
@@ -701,6 +715,78 @@ function validateProjectDefinitions(
       }
     });
   };
+  const response = (value: CommandResponse | undefined, path: string) => {
+    if (!value) return;
+    if (!value.text.trim()) {
+      diagnostics.push({
+        code: "definition.command-response.text",
+        family: "definition",
+        path: `${path}.text`,
+        message: "A Command Response cannot be empty.",
+      });
+    }
+    if (value.speaker !== undefined && !(value.speaker in characters)) {
+      diagnostics.push(referenceDiagnostic(
+        "reference.character",
+        `${path}.speaker`,
+        `Character '${value.speaker}' does not exist.`,
+      ));
+    }
+  };
+  const noun = (value: NounDefinition | undefined, path: string) => {
+    if (!value) return;
+    value.labels.forEach((label, index) => condition(label.when, `${path}.labels[${index}].when`));
+    value.preferredVerbs.forEach((preferred, index) =>
+      condition(preferred.when, `${path}.preferredVerbs[${index}].when`),
+    );
+    value.cases.forEach((candidate, index) => {
+      const candidatePath = `${path}.cases[${index}]`;
+      condition(candidate.when, `${candidatePath}.when`);
+      if (candidate.firstNoun !== undefined && !(candidate.firstNoun in objects)) {
+        diagnostics.push(referenceDiagnostic(
+          "reference.object",
+          `${candidatePath}.firstNoun`,
+          `Object '${candidate.firstNoun}' does not exist.`,
+        ));
+      }
+      if (candidate.sequence !== undefined && !(candidate.sequence in sequences)) {
+        diagnostics.push(referenceDiagnostic(
+          "reference.sequence",
+          `${candidatePath}.sequence`,
+          `Sequence '${candidate.sequence}' does not exist.`,
+        ));
+      }
+      response(candidate.response, `${candidatePath}.response`);
+      operations(candidate.operations ?? [], `${candidatePath}.operations`);
+    });
+    for (const verb of commandVerbs) {
+      const fallback = value.fallbacks?.[verb];
+      const globalFallback = input.commandFallbacks?.[verb];
+      if (!fallback && !globalFallback) {
+        diagnostics.push({
+          code: "definition.command.silent",
+          family: "definition",
+          path: `${path}.fallbacks.${verb}`,
+          message: `Noun '${path}' needs a local or global '${verb}' Command Fallback.`,
+        });
+      }
+      if (fallback) {
+        response(fallback.response, `${path}.fallbacks.${verb}.response`);
+        operations(fallback.operations ?? [], `${path}.fallbacks.${verb}.operations`);
+        if (fallback.sequence !== undefined && !(fallback.sequence in sequences)) {
+          diagnostics.push(referenceDiagnostic(
+            "reference.sequence",
+            `${path}.fallbacks.${verb}.sequence`,
+            `Sequence '${fallback.sequence}' does not exist.`,
+          ));
+        }
+      }
+    }
+  };
+
+  for (const [verb, fallback] of Object.entries(input.commandFallbacks ?? {})) {
+    response(fallback, `commandFallbacks.${verb}`);
+  }
 
   for (const [sceneId, scene] of Object.entries(input.scenes)) {
     scene.walkableRegion.forEach((point, index) => {
@@ -724,6 +810,7 @@ function validateProjectDefinitions(
       }
     });
     for (const [sceneryId, scenery] of Object.entries(scene.scenery ?? {})) {
+      noun(scenery.noun, `scenes.${sceneId}.scenery.${sceneryId}.noun`);
       if (!(scenery.initialAppearance in scenery.appearances)) {
         diagnostics.push(referenceDiagnostic("reference.appearance.initial", `scenes.${sceneId}.scenery.${sceneryId}.initialAppearance`, "Initial Scenery Appearance does not exist."));
       }
@@ -745,6 +832,7 @@ function validateProjectDefinitions(
     }
     scene.hotspots?.forEach((hotspot, hotspotIndex) => {
       const base = `scenes.${sceneId}.hotspots[${hotspotIndex}]`;
+      noun(hotspot.noun, `${base}.noun`);
       validatePolygonBounds(hotspot.area, `${base}.area`, pointInFrame, diagnostics);
       if (!pointInFrame(hotspot.approach.groundPoint)) {
         diagnostics.push({ code: "definition.approach.bounds", family: "definition", path: `${base}.approach`, message: "Approach Point must be inside Scene Space." });
@@ -773,6 +861,7 @@ function validateProjectDefinitions(
     });
     scene.passages?.forEach((passage, passageIndex) => {
       const base = `scenes.${sceneId}.passages[${passageIndex}]`;
+      noun(passage.noun, `${base}.noun`);
       validatePolygonBounds(passage.area, `${base}.area`, pointInFrame, diagnostics);
       if (!pointInFrame(passage.approach.groundPoint)) {
         diagnostics.push({ code: "definition.approach.bounds", family: "definition", path: `${base}.approach`, message: "Approach Point must be inside Scene Space." });
@@ -790,6 +879,7 @@ function validateProjectDefinitions(
   }
 
   for (const [characterId, character] of Object.entries(characters)) {
+    noun(character.noun, `characters.${characterId}.noun`);
     const scene = input.scenes[character.initialScene];
     if (!scene) continue;
     const path = `characters.${characterId}.initialGroundPoint`;
@@ -800,6 +890,7 @@ function validateProjectDefinitions(
     }
   }
   for (const [objectId, object] of Object.entries(objects)) {
+    noun(object.noun, `objects.${objectId}.noun`);
     if (input.scenes[object.initialScene] && !pointInFrame(object.initialGroundPoint)) {
       diagnostics.push({ code: "definition.scene-space.bounds", family: "definition", path: `objects.${objectId}.initialGroundPoint`, message: "Object Ground Points must remain inside the Logical Resolution." });
     }
@@ -829,6 +920,22 @@ function validateProjectDefinitions(
   };
   for (const [sequenceId, sequence] of Object.entries(sequences)) {
     visitSteps(sequence.steps, `sequences.${sequenceId}.steps`);
+  }
+
+  const hasNouns = Object.values(characters).some((value) => value.noun !== undefined) ||
+    Object.values(objects).some((value) => value.noun !== undefined) ||
+    Object.values(input.scenes).some((scene) =>
+      Object.values(scene.scenery ?? {}).some((value) => value.noun !== undefined) ||
+      scene.hotspots?.some((value) => value.noun !== undefined) ||
+      scene.passages?.some((value) => value.noun !== undefined),
+    );
+  if (hasNouns && !input.commandLexicon) {
+    diagnostics.push({
+      code: "definition.command-lexicon.required",
+      family: "definition",
+      path: "commandLexicon",
+      message: "A Game Project with Nouns must define a Command Lexicon.",
+    });
   }
 }
 

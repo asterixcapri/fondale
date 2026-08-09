@@ -4,6 +4,20 @@ export {
   type AuthoringDiagnosticFamily,
 } from "./public/diagnostics";
 export {
+  commandVerbs,
+  defineCommandLexicon,
+  defineNoun,
+  type CommandCase,
+  type CommandFallback,
+  type CommandLexicon,
+  type CommandResponse,
+  type CommandVerb,
+  type NounDefinition,
+  type NounLabel,
+  type PreferredVerbCase,
+  type Verb,
+} from "./public/commands";
+export {
   defineGame,
   defineCharacter,
   defineScene,

@@ -16,6 +16,7 @@ import type {
   SceneryAppearance,
   SequenceStep,
 } from "../public/definitions";
+import { commandVerbs } from "../public/commands";
 import { assetUrl, type LoadedAssets } from "./assets";
 
 interface CharacterView {
@@ -222,6 +223,7 @@ class EngineOverlay {
   private readonly root = document.createElement("div");
   private readonly action = document.createElement("div");
   private readonly response = document.createElement("div");
+  private readonly verbs = document.createElement("div");
   private readonly inventory = document.createElement("div");
   private readonly activity = document.createElement("div");
   private readonly inventoryCursor = document.createElement("img");
@@ -262,11 +264,33 @@ class EngineOverlay {
       textAlign: "center",
     });
     this.response.setAttribute("aria-live", "polite");
+    if (data.commandLexicon) {
+      this.verbs.setAttribute("aria-label", "Verbs");
+      this.verbs.style.cssText = [
+        "position:absolute",
+        "display:grid",
+        "grid-template-columns:repeat(3,46px)",
+        "gap:1px",
+        "left:4px",
+        "bottom:4px",
+        "pointer-events:auto",
+      ].join(";");
+      for (const verb of commandVerbs) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.dataset.fondaleVerb = verb;
+        button.textContent = data.commandLexicon.verbs[verb];
+        button.setAttribute("aria-pressed", "false");
+        button.style.cssText = overlayButtonStyle;
+        button.addEventListener("click", () => this.core.input({ type: "select-verb", verb }));
+        this.verbs.append(button);
+      }
+    }
     Object.assign(this.inventory.style, {
       position: "absolute",
       display: "flex",
       gap: "2px",
-      left: "4px",
+      right: "4px",
       bottom: "4px",
       pointerEvents: "auto",
     });
@@ -324,6 +348,7 @@ class EngineOverlay {
       this.inventoryCursor,
       this.action,
       this.response,
+      this.verbs,
       this.inventory,
       this.reveal,
       this.activity,
@@ -335,6 +360,11 @@ class EngineOverlay {
   render(state: GameState, effects: readonly CoreEffect[]): void {
     const latestResponse = [...effects].reverse().find(({ type }) => type === "interaction-response");
     if (latestResponse?.type === "interaction-response") this.response.textContent = latestResponse.text;
+    for (const button of this.verbs.querySelectorAll<HTMLButtonElement>("button")) {
+      const selected = button.dataset.fondaleVerb === state.command.verb;
+      button.setAttribute("aria-pressed", String(selected));
+      button.style.outline = selected ? "2px double white" : "none";
+    }
     this.renderInventory(state);
     this.renderActivity(state);
     if (this.hotspotsRevealed) this.renderRevealedHotspots();

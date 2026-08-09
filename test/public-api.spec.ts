@@ -2,8 +2,10 @@ import { expect, test } from "@playwright/test";
 
 import {
   AuthoringError,
+  defineCommandLexicon,
   defineCharacter,
   defineGame,
+  defineNoun,
   defineScene,
 } from "../src/index";
 
@@ -28,6 +30,143 @@ test("an Author defines an immutable one-Scene Game Project through the root API
 
   expect(Object.isFrozen(project)).toBe(true);
   expect(Object.isFrozen(opening)).toBe(true);
+});
+
+test("an Author defines immutable Noun and Command Lexicon definitions through the root API", () => {
+  const noun = defineNoun({
+    labels: [
+      { when: { variable: "doorOpen", equals: true }, text: "Porta aperta" },
+      { text: "Porta" },
+    ],
+    preferredVerbs: [{ verb: "open" }],
+    cases: [{
+      verb: "look-at",
+      response: { text: "Una porta molto antica.", presentation: "narration" },
+    }],
+    fallbacks: {
+      open: { response: { text: "Non si apre." } },
+    },
+  });
+  const lexicon = defineCommandLexicon({
+    verbs: {
+      open: "Apri",
+      "pick-up": "Raccogli",
+      push: "Spingi",
+      close: "Chiudi",
+      "look-at": "Guarda",
+      pull: "Tira",
+      give: "Dai",
+      "talk-to": "Parla con",
+      use: "Usa",
+    },
+    patterns: {
+      unary: "{verb} {noun}",
+      give: "{verb} {first} a {second}",
+      use: "{verb} {first} con {second}",
+    },
+  });
+
+  expect(Object.isFrozen(noun)).toBe(true);
+  expect(Object.isFrozen(noun.labels)).toBe(true);
+  expect(Object.isFrozen(lexicon.verbs)).toBe(true);
+  expect(lexicon.verbs["look-at"]).toBe("Guarda");
+});
+
+test("Noun and Command Lexicon helpers aggregate independent local diagnostics", () => {
+  expect(() => defineNoun({
+    labels: [{ when: { variable: "known", equals: true }, text: "Porta" }],
+    preferredVerbs: [{ when: { variable: "open", equals: true }, verb: "open" }],
+    cases: [],
+  })).toThrow(AuthoringError);
+
+  try {
+    defineCommandLexicon({
+      verbs: {
+        open: "",
+        "pick-up": "Raccogli",
+        push: "Spingi",
+        close: "Chiudi",
+        "look-at": "Guarda",
+        pull: "Tira",
+        give: "Dai",
+        "talk-to": "Parla con",
+        use: "Usa",
+      },
+      patterns: {
+        unary: "{noun}",
+        give: "{verb} {first}",
+        use: "{verb} {second}",
+      },
+    });
+    throw new Error("expected invalid Command Lexicon to be rejected");
+  } catch (error) {
+    expect(error).toBeInstanceOf(AuthoringError);
+    expect((error as AuthoringError).diagnostics.map(({ code }) => code)).toEqual([
+      "definition.command-lexicon.pattern",
+      "definition.command-lexicon.pattern",
+      "definition.command-lexicon.pattern",
+      "definition.command-lexicon.label",
+    ]);
+  }
+});
+
+test("defineGame composes Command authoring and aggregates Noun reference failures", () => {
+  const noun = defineNoun({
+    labels: [{ when: { variable: "missingVariable", equals: true }, text: "Antica porta" }, { text: "Porta" }],
+    preferredVerbs: [{ verb: "look-at" }],
+    cases: [{
+      verb: "use",
+      firstNoun: "missingObject",
+      sequence: "missingSequence",
+      response: { text: "Non succede nulla.", speaker: "missingCharacter" },
+    }],
+  });
+  const scene = defineScene({
+    background: "scene.png",
+    walkableRegion: [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 0, y: 100 }],
+    hotspots: [{
+      target: { kind: "background" },
+      area: [{ x: 1, y: 1 }, { x: 10, y: 1 }, { x: 1, y: 10 }],
+      approach: { groundPoint: { x: 2, y: 2 }, facing: "front" },
+      noun,
+      primaryAction: {
+        cases: [],
+        fallback: { label: "Look", response: "Legacy.", operations: [] },
+      },
+    }],
+  });
+
+  try {
+    defineGame({
+      identity: "commands.invalid",
+      version: "1",
+      logicalResolution: { width: 100, height: 100 },
+      scenes: { opening: scene },
+      initialScene: "opening",
+      commandLexicon: defineCommandLexicon({
+        verbs: {
+          open: "Apri", "pick-up": "Raccogli", push: "Spingi",
+          close: "Chiudi", "look-at": "Guarda", pull: "Tira",
+          give: "Dai", "talk-to": "Parla con", use: "Usa",
+        },
+        patterns: {
+          unary: "{verb} {noun}",
+          give: "{verb} {first} a {second}",
+          use: "{verb} {first} con {second}",
+        },
+      }),
+    });
+    throw new Error("expected invalid Command references to be rejected");
+  } catch (error) {
+    expect(error).toBeInstanceOf(AuthoringError);
+    expect((error as AuthoringError).diagnostics.map(({ code }) => code)).toEqual(expect.arrayContaining([
+      "definition.command.silent",
+      "reference.character",
+      "reference.object",
+      "reference.sequence",
+      "reference.variable",
+    ]));
+  }
 });
 
 test("a definition reports all independent local problems as Authoring Diagnostics", () => {

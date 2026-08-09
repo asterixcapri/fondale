@@ -88,7 +88,7 @@ export function getValidatedSaveState(snapshot: ValidatedSaveSnapshot): GameStat
 }
 
 function validStateShape(value: unknown, data: GameProjectData): value is GameState {
-  if (!isRecord(value) || !hasExactKeys(value, ["currentScene", "characters", "scenery", "objects", "inventory", "variables", "activity", "tick"])) return false;
+  if (!isRecord(value) || !hasExactKeys(value, ["currentScene", "characters", "scenery", "objects", "inventory", "command", "variables", "activity", "tick"])) return false;
   if (typeof value.currentScene !== "string" || !(value.currentScene in data.scenes)) return false;
   if (!Number.isInteger(value.tick) || (value.tick as number) < 0) return false;
   if (!isRecord(value.characters) || !sameKeys(value.characters, data.characters)) return false;
@@ -128,6 +128,13 @@ function validStateShape(value: unknown, data: GameProjectData): value is GameSt
   if (new Set(value.inventory.objects).size !== value.inventory.objects.length) return false;
   if (!sameValues(value.inventory.objects, inventoryLocations)) return false;
   if (value.inventory.selected !== null && (typeof value.inventory.selected !== "string" || !value.inventory.objects.includes(value.inventory.selected))) return false;
+  if (!isRecord(value.command) || !hasExactKeys(value.command, ["verb", "firstNoun"])) return false;
+  if (!["walk-to", "open", "pick-up", "push", "close", "look-at", "pull", "give", "talk-to", "use"].includes(String(value.command.verb))) return false;
+  if (value.command.firstNoun !== null) {
+    if (!isRecord(value.command.firstNoun) || !hasExactKeys(value.command.firstNoun, ["kind", "object"])) return false;
+    if (value.command.firstNoun.kind !== "object" || typeof value.command.firstNoun.object !== "string") return false;
+    if (!value.inventory.objects.includes(value.command.firstNoun.object)) return false;
+  }
   if (!isRecord(value.variables) || !sameKeys(value.variables, data.variables)) return false;
   if (!Object.values(value.variables).every((variable) => typeof variable === "boolean")) return false;
   if (!validActivity(value.activity, data, value as unknown as GameState)) return false;
@@ -143,12 +150,16 @@ function validActivity(value: unknown, data: GameProjectData, state: GameState):
     if (!isRecord(value.intent) || typeof value.intent.kind !== "string") return false;
     if (value.intent.kind === "move") return hasExactKeys(value.intent, ["kind"]);
     if (value.intent.kind === "interaction") {
-      if (!hasExactKeys(value.intent, ["kind", "scene", "hotspot", "selectedObject"])) return false;
+      if (!hasExactKeys(value.intent, ["kind", "scene", "hotspot", "selectedObject"], ["command"])) return false;
       if (value.intent.scene !== state.currentScene || !Number.isInteger(value.intent.hotspot)) return false;
       const hotspot = data.scenes[state.currentScene]!.hotspots?.[value.intent.hotspot as number];
       if (!hotspot || !hotspotAvailableInState(hotspot, state)) return false;
       if (value.intent.selectedObject !== state.inventory.selected) return false;
       if (value.intent.selectedObject !== null && typeof value.intent.selectedObject !== "string") return false;
+      if (value.intent.command !== undefined) {
+        if (!isRecord(value.intent.command) || !hasExactKeys(value.intent.command, ["verb"])) return false;
+        if (!["open", "pick-up", "push", "close", "look-at", "pull", "give", "talk-to", "use"].includes(String(value.intent.command.verb))) return false;
+      }
       return true;
     }
     if (value.intent.kind === "passage") {
