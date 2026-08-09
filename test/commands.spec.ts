@@ -266,6 +266,16 @@ test("Options, Help, named Save Slots, and Command State restore through shortcu
   await expect(modal).toBeVisible();
   await modal.locator("[data-fondale-save-name]").fill("Davanti al portone");
   await modal.locator("[data-fondale-save-confirm]").click();
+
+  await frame.focus();
+  await page.keyboard.press("Control+s");
+  await modal.locator("[data-fondale-save-name]").fill("Davanti al portone");
+  await modal.locator("[data-fondale-save-confirm]").click();
+  await expect.poll(() => page.evaluate(() => {
+    const slots = JSON.parse(localStorage.getItem("fondale.save-slots") ?? "[]") as unknown[];
+    return slots.length;
+  })).toBe(1);
+
   await frame.focus();
   await page.keyboard.press("Escape");
   await expect(key).toHaveAttribute("aria-pressed", "false");
