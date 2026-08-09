@@ -1,8 +1,8 @@
 import { defineScene } from "@asterixcapri/fondale";
 
-import alleyBackgroundUrl from "../assets/backgrounds/alley.png";
-import unlockedMarkerUrl from "../assets/scenery/gate/unlocked.png";
-import { rectangle } from "../geometry";
+import alleyBackgroundUrl from "./background.png";
+import unlockedMarkerUrl from "./gate-unlocked.png";
+import { rectangle } from "../../geometry";
 
 const walkableRegion = [
   { x: 55, y: 239 },

@@ -24,20 +24,27 @@ src/
 ├── game.ts
 ├── geometry.ts
 ├── scenes/
+│   ├── alley/
+│   │   ├── index.ts
+│   │   ├── background.png
+│   │   └── gate-unlocked.png
+│   └── harbour/
+│       ├── index.ts
+│       └── background.png
 ├── characters/
+│   └── michele/
+│       ├── index.ts
+│       └── walk-*.png
 ├── objects/
+│   └── key/
+│       ├── index.ts
+│       ├── scene.png
+│       └── inventory.png
 └── sequences/
+    └── conversation.ts
 ```
 
-Runtime media follow the same domain structure:
-
-```text
-src/assets/
-├── backgrounds/
-├── characters/<character>/
-├── objects/<object>/
-└── scenery/<scenery>/
-```
-
-Object directories distinguish their Scene and Inventory Appearances. Generated
-output remains under `dist/`, while the Fondale package belongs under `vendor/`.
+Runtime media live beside the module that owns them. A top-level `src/assets/`
+directory is reserved for media genuinely shared by multiple modules. Object
+directories distinguish their Scene and Inventory Appearances. Generated output
+remains under `dist/`, while the Fondale package belongs under `vendor/`.

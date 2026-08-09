@@ -1,8 +1,8 @@
 import { defineCharacter } from "@asterixcapri/fondale";
 
-import walkBackUrl from "../assets/characters/michele/walk-back.png";
-import walkFrontUrl from "../assets/characters/michele/walk-front.png";
-import walkSideUrl from "../assets/characters/michele/walk-side.png";
+import walkBackUrl from "./walk-back.png";
+import walkFrontUrl from "./walk-front.png";
+import walkSideUrl from "./walk-side.png";
 
 export const michele = defineCharacter({
   initialScene: "alley",

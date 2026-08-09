@@ -1,14 +1,21 @@
 import { createHash } from "node:crypto";
-import { existsSync, readFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { dirname, join, resolve, sep } from "node:path";
 
 const repository = resolve(import.meta.dirname, "..");
 const example = join(repository, "examples/capri-1535");
 const packageJson = JSON.parse(readFileSync(join(example, "package.json"), "utf8"));
 const lock = readFileSync(join(example, "package-lock.json"), "utf8");
-const source = readFileSync(join(example, "src/main.ts"), "utf8");
 const viteConfig = readFileSync(join(example, "vite.config.ts"), "utf8");
 const tarball = "vendor/asterixcapri-fondale-1.0.0.tgz";
+
+function findTypeScriptFiles(directory) {
+  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const path = join(directory, entry.name);
+    if (entry.isDirectory()) return findTypeScriptFiles(path);
+    return entry.isFile() && path.endsWith(".ts") ? [path] : [];
+  });
+}
 
 if (packageJson.dependencies?.["@asterixcapri/fondale"] !== `file:${tarball}`) {
   throw new Error("The Example must install Fondale from its vendored distributable tarball.");
@@ -28,8 +35,23 @@ const expectedIntegrity = `sha512-${createHash("sha512")
 if (!lock.includes(expectedIntegrity)) {
   throw new Error("The Example lockfile integrity does not match its vendored Fondale tarball.");
 }
-if (/from\s+["']\.\.\//.test(source) || source.includes("/src/") || source.includes("/art/")) {
-  throw new Error("The Example source reaches outside its own project or into Fondale internals.");
+const examplePrefix = `${example}${sep}`;
+for (const sourceFile of findTypeScriptFiles(join(example, "src"))) {
+  const source = readFileSync(sourceFile, "utf8");
+  const imports = source.matchAll(/(?:from\s+|import\s*\(\s*)["']([^"']+)["']/g);
+
+  for (const [, specifier] of imports) {
+    if (specifier.startsWith(".") && !resolve(dirname(sourceFile), specifier).startsWith(examplePrefix)) {
+      throw new Error(`The Example source reaches outside its project from ${sourceFile}.`);
+    }
+    if (specifier.startsWith("@asterixcapri/fondale/")) {
+      throw new Error(`The Example imports Fondale internals from ${sourceFile}.`);
+    }
+  }
+
+  if (source.includes("/art/")) {
+    throw new Error(`The Example source reaches into repository art from ${sourceFile}.`);
+  }
 }
 if (viteConfig.includes("../") || !viteConfig.includes('outDir: "dist"')) {
   throw new Error("The Example build output must remain inside the Example project.");

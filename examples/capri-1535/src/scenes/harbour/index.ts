@@ -1,7 +1,7 @@
 import { defineScene } from "@asterixcapri/fondale";
 
-import harbourBackgroundUrl from "../assets/backgrounds/harbour.png";
-import { rectangle } from "../geometry";
+import harbourBackgroundUrl from "./background.png";
+import { rectangle } from "../../geometry";
 
 export const harbour = defineScene({
   background: harbourBackgroundUrl,

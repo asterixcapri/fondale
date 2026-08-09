@@ -1,7 +1,7 @@
 import { defineObject } from "@asterixcapri/fondale";
 
-import keyInventoryUrl from "../assets/objects/key/inventory.png";
-import keyUrl from "../assets/objects/key/scene.png";
+import keyInventoryUrl from "./inventory.png";
+import keyUrl from "./scene.png";
 
 export const key = defineObject({
   initialScene: "alley",
