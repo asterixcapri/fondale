@@ -95,6 +95,11 @@ A JSON-safe representation of one committed Game State, identified by its Game
 Project and compatibility versions and suitable for exact restoration.
 _Avoid_: Save slot, storage record, event log
 
+**Command State**:
+The selected Verb and optional first Noun of a Command being constructed. It is
+committed Game State, unlike the transient Noun beneath the pointer.
+_Avoid_: Hover state, cursor state, Player Intent
+
 **Game Variable**:
 A named boolean fact declared by a Game Project for adventure-specific progress
 not already represented by an Engine Capability.
@@ -157,8 +162,8 @@ Scene after a transition.
 _Avoid_: Spawn point, Exit
 
 **Scene Passage**:
-A navigable connection that leads from an approach in one Scene to a named
-Scene Entrance in another Scene.
+A named navigable connection that participates in a Walk To Command and leads
+from an approach in one Scene to a named Scene Entrance in another Scene.
 _Avoid_: Exit, teleporter, implicit two-way link
 
 **Background**:
@@ -261,14 +266,19 @@ A Player-authored sentence combining one Verb with one or two Nouns before it
 is executed as a Player Intent.
 _Avoid_: Click, callback, Interaction
 
+**Command Lexicon**:
+The Game Project's localized labels and sentence patterns for presenting
+semantic Verb and Noun combinations without linguistic inference by the Engine.
+_Avoid_: Locale detection, translated identifiers, automatic grammar
+
 **Sentence Line**:
 The HUD presentation of the Command being constructed, including the Noun
 currently considered under the Player's pointer.
 _Avoid_: Interaction Response, dialogue text, tooltip
 
-**Interaction Case**:
-An authored conditional alternative for resolving either a Primary Action or
-an Inventory Use; eligible cases are considered in their declared order.
+**Command Case**:
+An authored conditional alternative for resolving a Verb against one or two
+Nouns; eligible cases are considered in their declared order.
 _Avoid_: Handler, event listener, priority rule
 
 **Interaction Condition**:
@@ -286,9 +296,3 @@ The complete request to reach a target, face it, and perform an Interaction. A
 new Player Intent replaces one still in progress, and its Interaction is
 resolved against the latest committed Game State only after arrival.
 _Avoid_: Click, queued movement
-
-**Inventory Use**:
-The attempt to apply a selected Object to a target. Its authored outcome is
-independent of state changes: failure preserves the selection and success ends
-it.
-_Avoid_: Drag-and-drop, Use verb

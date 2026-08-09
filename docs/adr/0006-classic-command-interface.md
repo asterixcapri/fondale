@@ -28,3 +28,26 @@ incompatibile, introduce Fondale 2.0 e richiede la migrazione dei Game Project.
 Character Switching e Inventory separati per Character non appartengono a
 questa decisione e richiederanno una futura Engine Capability motivata da un
 Game Project concreto.
+
+Give costruisce sempre un Command binario, Use può essere unario o binario e
+gli altri Verb sono unari. Ogni combinazione riceve una risposta, usando
+fallback localizzati del Game Project quando il Noun non definisce un caso più
+specifico. Il Preferred Verb è dichiarativo, condizionale e può partire da un
+valore ovvio per tipo di bersaglio senza essere l'unica azione disponibile.
+
+Il Verb selezionato e l'eventuale primo Noun costituiscono Command State e
+appartengono al Save Snapshot; il Noun sotto il puntatore è soltanto
+presentazione transitoria. Un Object raccolto, consumato o ricollocato non
+scompare silenziosamente: il cambiamento produce una risposta percepibile e un
+aggiornamento visivo coerente fra Scene e Inventory.
+
+Ogni Scene Passage possiede un Noun e preferisce Walk To. Durante una Choice,
+le alternative occupano temporaneamente il HUD al posto di Verb e Inventory.
+I termini semantici restano inglesi, mentre un Command Lexicon del Game Project
+fornisce etichette e modelli grammaticali localizzati senza inferenze
+linguistiche dell'Engine.
+
+La Support Baseline 2.0 include mouse, esecuzione rapida con click destro,
+rotellina per l'Inventory, F5 per i salvataggi e scorciatoie posizionali
+QWE/ASD/ZXC per i nove Verb. Touch, gamepad e navigazione completa del mondo da
+tastiera restano esclusi da questa modifica.
