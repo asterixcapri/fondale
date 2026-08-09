@@ -3,10 +3,18 @@ import { Application, TexturePool } from "pixi.js";
 import { createCoreSession, type CoreSession } from "../internal/core";
 import { AuthoringError, type AuthoringDiagnostic } from "../public/diagnostics";
 import { getGameProjectData, type GameProject } from "../public/definitions";
-import type { SaveSnapshot, ValidatedSaveSnapshot } from "../public/save";
+import {
+  validateSaveSnapshot,
+  type SaveSnapshot,
+  type ValidatedSaveSnapshot,
+} from "../public/save";
 import { loadProjectAssets } from "./assets";
 import { FixedStepClock } from "./fixed-step-clock";
-import { BrowserRenderer } from "./renderer";
+import {
+  BrowserRenderer,
+  type BrowserSaveSlot,
+  type BrowserSessionControls,
+} from "./renderer";
 
 /** Options for mounting a new, independent Game Session. */
 export interface StartGameOptions {
@@ -146,7 +154,14 @@ export async function startGame(
     resizeObserver.observe(target);
 
     core = createCoreSession(project, options.snapshot);
-    renderer = new BrowserRenderer(application, frame, data, assets, core);
+    renderer = new BrowserRenderer(
+      application,
+      frame,
+      data,
+      assets,
+      core,
+      createBrowserSessionControls(project, core),
+    );
     renderer.render(core.snapshot(), []);
     const fixedStepClock = new FixedStepClock();
     let previousFrameTime = performance.now();
@@ -191,4 +206,67 @@ export async function startGame(
       },
     ]);
   }
+}
+
+interface StoredSaveSlot {
+  readonly name: string;
+  readonly savedAt: string;
+  readonly snapshot: unknown;
+}
+
+const saveSlotsKey = "fondale.save-slots";
+
+function createBrowserSessionControls(
+  project: GameProject,
+  core: CoreSession,
+): BrowserSessionControls {
+  const read = (): StoredSaveSlot[] => {
+    try {
+      const value: unknown = JSON.parse(localStorage.getItem(saveSlotsKey) ?? "[]");
+      if (!Array.isArray(value)) return [];
+      return value.flatMap((slot) => {
+        if (!slot || typeof slot !== "object") return [];
+        const candidate = slot as Record<string, unknown>;
+        return typeof candidate.name === "string" && typeof candidate.savedAt === "string"
+          ? [{ name: candidate.name, savedAt: candidate.savedAt, snapshot: candidate.snapshot }]
+          : [];
+      });
+    } catch {
+      return [];
+    }
+  };
+  const write = (slots: readonly StoredSaveSlot[]) => {
+    localStorage.setItem(saveSlotsKey, JSON.stringify(slots));
+  };
+  const describe = (slot: StoredSaveSlot): BrowserSaveSlot => {
+    const validation = validateSaveSnapshot(project, slot.snapshot);
+    return {
+      ...slot,
+      compatible: validation.ok,
+      diagnostics: validation.ok ? [] : validation.diagnostics,
+    };
+  };
+  return {
+    slots: () => read().map(describe),
+    save(name) {
+      const normalized = name.trim() || "Save";
+      const slots = read();
+      const next = {
+        name: normalized,
+        savedAt: new Date().toISOString(),
+        snapshot: core.createSaveSnapshot(),
+      };
+      const existing = slots.findIndex((slot) => slot.name === normalized);
+      if (existing >= 0) slots[existing] = next;
+      else slots.push(next);
+      write(slots);
+    },
+    load(index) {
+      const slot = read()[index];
+      const validation = validateSaveSnapshot(project, slot?.snapshot);
+      if (!validation.ok) return { ok: false, diagnostics: validation.diagnostics };
+      core.restore(validation.snapshot);
+      return { ok: true };
+    },
+  };
 }

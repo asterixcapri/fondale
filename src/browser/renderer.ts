@@ -23,6 +23,8 @@ import type {
   SequenceStep,
 } from "../public/definitions";
 import { commandVerbs } from "../public/commands";
+import type { AuthoringDiagnostic } from "../public/diagnostics";
+import type { SaveSnapshot } from "../public/save";
 import { assetUrl, type LoadedAssets } from "./assets";
 
 interface CharacterView {
@@ -30,6 +32,23 @@ interface CharacterView {
   readonly sprite: Sprite | AnimatedSprite;
   readonly appearance: EntityAppearance;
   direction?: "side" | "front" | "back";
+}
+
+export interface BrowserSaveSlot {
+  readonly name: string;
+  readonly savedAt: string;
+  readonly snapshot: SaveSnapshot | unknown;
+  readonly compatible: boolean;
+  readonly diagnostics: readonly AuthoringDiagnostic[];
+}
+
+export interface BrowserSessionControls {
+  slots(): readonly BrowserSaveSlot[];
+  save(name: string): void;
+  load(index: number): { readonly ok: true } | {
+    readonly ok: false;
+    readonly diagnostics: readonly AuthoringDiagnostic[];
+  };
 }
 
 /** Realizes committed snapshots without becoming an owner of Game State. */
@@ -45,9 +64,10 @@ export class BrowserRenderer {
     private readonly data: GameProjectData,
     private readonly assets: LoadedAssets,
     private readonly core: CoreSession,
+    private readonly controls: BrowserSessionControls,
   ) {
     this.world.sortableChildren = true;
-    this.overlay = new EngineOverlay(frame, data, core);
+    this.overlay = new EngineOverlay(frame, data, core, controls);
     application.stage.addChild(this.world);
     application.canvas.setAttribute("aria-label", "Fondale game world");
     application.canvas.addEventListener("pointerup", this.onPointerUp);
@@ -201,6 +221,7 @@ export class BrowserRenderer {
   }
 
   private readonly onPointerUp = (event: PointerEvent): void => {
+    if (this.overlay.blocksWorldInput()) return;
     const activity = this.core.snapshot().activity;
     if (event.button === 1 && activity?.type === "sequence" && activity.active?.kind === "line") {
       event.preventDefault();
@@ -221,8 +242,9 @@ export class BrowserRenderer {
 
   private readonly onContextMenu = (event: MouseEvent): void => {
     event.preventDefault();
+    this.overlay.showHint("right-click", "Click destro: esegue il Preferred Verb.");
     this.frame.focus({ preventScroll: true });
-    if (this.core.snapshot().activity?.type === "sequence") return;
+    if (this.overlay.blocksWorldInput() || this.core.snapshot().activity?.type === "sequence") return;
     const point = this.scenePoint(event);
     const target = this.core.hitTest(point);
     if (target?.kind === "hotspot") {
@@ -233,7 +255,7 @@ export class BrowserRenderer {
   };
 
   private readonly onDoubleClick = (event: MouseEvent): void => {
-    if (this.core.snapshot().activity?.type === "sequence") return;
+    if (this.overlay.blocksWorldInput() || this.core.snapshot().activity?.type === "sequence") return;
     const point = this.scenePoint(event);
     const target = this.core.hitTest(point);
     if (target?.kind === "passage") {
@@ -280,7 +302,10 @@ class EngineOverlay {
   private readonly response = document.createElement("div");
   private readonly verbs = document.createElement("div");
   private readonly inventory = document.createElement("div");
+  private readonly inventoryNav = document.createElement("div");
+  private readonly hint = document.createElement("div");
   private readonly activity = document.createElement("div");
+  private readonly modal = document.createElement("section");
   private readonly inventoryCursor = document.createElement("img");
   private readonly reveal = document.createElement("button");
   private readonly revealedHotspots = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -292,12 +317,18 @@ class EngineOverlay {
   private hotspotsRevealed = false;
   private hoveredPreferredVerb: string | null = null;
   private hoveredHotspot: AvailableHotspot | AvailablePassage | null = null;
+  private modalKind: "options" | "help" | "save" | "load" | null = null;
+  private preferences: PlayerPreferences;
+  private inventoryPage = 0;
+  private previousInventoryCount = 0;
 
   constructor(
     private readonly frame: HTMLElement,
     private readonly data: GameProjectData,
     private readonly core: CoreSession,
+    private readonly controls: BrowserSessionControls,
   ) {
+    this.preferences = readPreferences(data.identity);
     this.root.dataset.fondaleOverlay = "";
     Object.assign(this.root.style, {
       position: "absolute",
@@ -358,6 +389,22 @@ class EngineOverlay {
       bottom: "4px",
       pointerEvents: "auto",
     });
+    this.inventory.addEventListener("wheel", (event) => {
+      event.preventDefault();
+      this.changeInventoryPage(event.deltaY > 0 ? 1 : -1);
+      this.showHint("inventory", "Usa la rotellina o le frecce per scorrere l'Inventory.");
+    });
+    this.inventoryNav.style.cssText = "position:absolute;right:143px;bottom:28px;display:flex;flex-direction:column;pointer-events:auto";
+    const previous = this.modalButton("‹", () => this.changeInventoryPage(-1));
+    previous.dataset.fondaleInventoryPrevious = "";
+    previous.setAttribute("aria-label", "Previous Inventory page");
+    const next = this.modalButton("›", () => this.changeInventoryPage(1));
+    next.dataset.fondaleInventoryNext = "";
+    next.setAttribute("aria-label", "Next Inventory page");
+    this.inventoryNav.append(previous, next);
+    this.hint.dataset.fondaleHint = "";
+    this.hint.setAttribute("role", "status");
+    this.hint.style.cssText = "position:absolute;left:145px;bottom:66px;width:136px;text-align:center;color:#f2ad62;pointer-events:none";
     Object.assign(this.activity.style, {
       position: "absolute",
       inset: "0",
@@ -367,6 +414,23 @@ class EngineOverlay {
       boxSizing: "border-box",
       pointerEvents: "none",
     });
+    this.modal.dataset.fondaleModal = "";
+    this.modal.style.cssText = [
+      "position:absolute",
+      "display:none",
+      "left:73px",
+      "top:30px",
+      "width:280px",
+      "max-height:160px",
+      "overflow:auto",
+      "box-sizing:border-box",
+      "padding:10px",
+      "z-index:10",
+      "pointer-events:auto",
+      "color:#f4dfb4",
+      "background:rgba(12,22,38,.96)",
+      "border:1px solid #d99a58",
+    ].join(";");
     this.reveal.type = "button";
     this.reveal.textContent = "Reveal hotspots";
     this.reveal.setAttribute("aria-pressed", "false");
@@ -415,12 +479,31 @@ class EngineOverlay {
       this.response,
       this.verbs,
       this.inventory,
+      this.inventoryNav,
       this.reveal,
       this.activity,
+      this.hint,
+      this.modal,
     );
     this.frame.append(this.root);
     this.frame.addEventListener("keydown", this.onKeyDown);
     this.frame.addEventListener("keyup", this.onKeyUp);
+    this.updatePreference({});
+    this.showHint("left-click", "Click sinistro: cammina o completa un Command.");
+  }
+
+  blocksWorldInput(): boolean {
+    return this.modalKind !== null;
+  }
+
+  showHint(kind: string, text: string): void {
+    if (this.preferences.shownHints.includes(kind)) return;
+    this.preferences = {
+      ...this.preferences,
+      shownHints: [...this.preferences.shownHints, kind],
+    };
+    localStorage.setItem(preferencesKey(this.data.identity), JSON.stringify(this.preferences));
+    this.hint.textContent = text;
   }
 
   render(state: GameState, effects: readonly CoreEffect[]): void {
@@ -482,8 +565,10 @@ class EngineOverlay {
 
   showCursor(point: Point): void {
     this.cursorPoint = point;
-    this.action.style.left = `${Math.max(2, Math.min(this.data.logicalResolution.width - 122, point.x + 6))}px`;
-    this.action.style.top = `${Math.max(2, Math.min(this.data.logicalResolution.height - 12, point.y + 6))}px`;
+    if (this.preferences.commandPreview === "pointer") {
+      this.action.style.left = `${Math.max(2, Math.min(this.data.logicalResolution.width - 122, point.x + 6))}px`;
+      this.action.style.top = `${Math.max(2, Math.min(this.data.logicalResolution.height - 12, point.y + 6))}px`;
+    }
     this.positionInventoryCursor();
   }
 
@@ -499,7 +584,13 @@ class EngineOverlay {
   }
 
   private renderInventory(state: GameState): void {
-    const signature = JSON.stringify([state.inventory, state.command]);
+    if (state.inventory.objects.length > this.previousInventoryCount) {
+      this.inventoryPage = Math.floor((state.inventory.objects.length - 1) / 8);
+    }
+    this.previousInventoryCount = state.inventory.objects.length;
+    const maximumPage = Math.max(0, Math.ceil(state.inventory.objects.length / 8) - 1);
+    this.inventoryPage = Math.min(this.inventoryPage, maximumPage);
+    const signature = JSON.stringify([state.inventory, state.command, this.inventoryPage]);
     if (signature === this.inventorySignature) return;
     this.inventorySignature = signature;
     this.inventory.replaceChildren();
@@ -512,7 +603,8 @@ class EngineOverlay {
       this.inventoryCursor.style.display = "none";
     }
     const available = new Map(this.core.availableInventory().map((noun) => [noun.object, noun]));
-    for (const objectId of state.inventory.objects.slice(0, 8)) {
+    const visibleObjects = state.inventory.objects.slice(this.inventoryPage * 8, this.inventoryPage * 8 + 8);
+    for (const objectId of visibleObjects) {
       const selected = this.data.commandLexicon
         ? state.command.firstNoun?.object === objectId
         : state.inventory.selected === objectId;
@@ -551,7 +643,7 @@ class EngineOverlay {
       this.inventory.append(button);
     }
     if (this.data.commandLexicon) {
-      for (let index = state.inventory.objects.length; index < 8; index += 1) {
+      for (let index = visibleObjects.length; index < 8; index += 1) {
         const empty = document.createElement("span");
         empty.dataset.fondaleInventorySlot = "empty";
         empty.setAttribute("aria-hidden", "true");
@@ -560,7 +652,15 @@ class EngineOverlay {
       }
       this.inventory.style.display = "grid";
       this.inventory.style.gridTemplateColumns = "repeat(4,34px)";
+      this.inventoryNav.querySelector<HTMLButtonElement>("[data-fondale-inventory-previous]")!.disabled = this.inventoryPage === 0;
+      this.inventoryNav.querySelector<HTMLButtonElement>("[data-fondale-inventory-next]")!.disabled = this.inventoryPage >= maximumPage;
     }
+  }
+
+  private changeInventoryPage(amount: number): void {
+    const maximumPage = Math.max(0, Math.ceil(this.core.snapshot().inventory.objects.length / 8) - 1);
+    this.inventoryPage = Math.max(0, Math.min(maximumPage, this.inventoryPage + amount));
+    this.inventorySignature = "";
   }
 
   private renderActivity(state: GameState): void {
@@ -638,6 +738,7 @@ class EngineOverlay {
       "color:#f4dfb4",
       "text-shadow:1px 1px #000",
       "pointer-events:none",
+      `display:${this.preferences.speechText ? "block" : "none"}`,
     ].join(";");
     if (presentation === "speech" && visible && character) {
       element.style.left = `${Math.max(2, Math.min(this.data.logicalResolution.width - 152, character.groundPoint.x - 75))}px`;
@@ -689,6 +790,28 @@ class EngineOverlay {
   }
 
   private readonly onKeyDown = (event: KeyboardEvent): void => {
+    if (event.key === "F5") {
+      event.preventDefault();
+      this.openModal(this.modalKind === "options" ? null : "options");
+      return;
+    }
+    if (event.ctrlKey && event.key.toLowerCase() === "s") {
+      event.preventDefault();
+      this.openModal("save");
+      return;
+    }
+    if (event.ctrlKey && event.key.toLowerCase() === "l") {
+      event.preventDefault();
+      this.openModal("load");
+      return;
+    }
+    if (this.modalKind) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        this.openModal(null);
+      }
+      return;
+    }
     const state = this.core.snapshot();
     if (state.activity?.type === "sequence") {
       if (event.key === "." && state.activity.active?.kind === "line") {
@@ -725,6 +848,7 @@ class EngineOverlay {
     if (event.key === "Tab" && this.data.commandLexicon) {
       event.preventDefault();
       this.hotspotsRevealed = true;
+      this.showHint("tab", "Tieni premuto Tab per rivelare i Noun attivi.");
       this.renderRevealedHotspots();
       return;
     }
@@ -741,6 +865,184 @@ class EngineOverlay {
     this.hotspotsRevealed = false;
     this.renderRevealedHotspots();
   };
+
+  private openModal(kind: EngineOverlay["modalKind"]): void {
+    this.modalKind = kind;
+    this.modal.replaceChildren();
+    this.modal.style.display = kind ? "block" : "none";
+    if (!kind) {
+      this.frame.focus({ preventScroll: true });
+      return;
+    }
+    this.modal.dataset.fondaleModal = kind;
+    const heading = document.createElement("h2");
+    heading.textContent = kind[0]!.toUpperCase() + kind.slice(1);
+    heading.style.cssText = "font:inherit;margin:0 0 6px;color:#58d6d2";
+    this.modal.append(heading);
+    if (kind === "options") this.renderOptions();
+    else if (kind === "help") this.renderHelp();
+    else if (kind === "save") this.renderSave();
+    else this.renderLoad();
+  }
+
+  private renderOptions(): void {
+    const controls = document.createElement("div");
+    controls.style.cssText = "display:grid;grid-template-columns:1fr 1fr;gap:5px";
+    const textSpeed = selectPreference("Text speed", ["slow", "normal", "fast"], this.preferences.textSpeed);
+    const preview = selectPreference("Command preview", ["pointer", "sentence-line"], this.preferences.commandPreview);
+    const speech = checkboxPreference("Speech text", this.preferences.speechText);
+    const backing = checkboxPreference("HUD backing", this.preferences.hudBacking);
+    const opacity = document.createElement("input");
+    opacity.type = "range";
+    opacity.min = "0.35";
+    opacity.max = "1";
+    opacity.step = "0.05";
+    opacity.value = String(this.preferences.hudOpacity);
+    opacity.setAttribute("aria-label", "HUD opacity");
+    controls.append(textSpeed.label, preview.label, speech.label, backing.label, opacity);
+    textSpeed.select.addEventListener("change", () => this.updatePreference({ textSpeed: textSpeed.select.value as PlayerPreferences["textSpeed"] }));
+    preview.select.addEventListener("change", () => this.updatePreference({ commandPreview: preview.select.value as PlayerPreferences["commandPreview"] }));
+    speech.input.addEventListener("change", () => this.updatePreference({ speechText: speech.input.checked }));
+    backing.input.addEventListener("change", () => this.updatePreference({ hudBacking: backing.input.checked }));
+    opacity.addEventListener("input", () => this.updatePreference({ hudOpacity: Number(opacity.value) }));
+    this.modal.append(controls, this.modalButton("Help", () => this.openModal("help")), this.modalButton("Save", () => this.openModal("save")), this.modalButton("Load", () => this.openModal("load")));
+  }
+
+  private renderHelp(): void {
+    const text = document.createElement("p");
+    text.dataset.fondaleHelp = "";
+    text.textContent = "Mouse: left walk/Command, right Preferred Verb, middle skip Line. Tab reveal. Wheel Inventory. QWE/ASD/ZXC Verbs. 1–6 Choice. F5 Options. Ctrl+S Save. Ctrl+L Load. Period skips a Line. Escape cancels a Command or a skippable Sequence.";
+    this.modal.append(text, this.modalButton("Back", () => this.openModal("options")));
+  }
+
+  private renderSave(): void {
+    const name = document.createElement("input");
+    name.dataset.fondaleSaveName = "";
+    name.placeholder = "Save name";
+    const save = this.modalButton("Save", () => {
+      this.controls.save(name.value);
+      this.openModal(null);
+    });
+    save.dataset.fondaleSaveConfirm = "";
+    this.modal.append(name, save);
+    name.focus();
+  }
+
+  private renderLoad(): void {
+    const list = document.createElement("div");
+    list.dataset.fondaleSaveSlots = "";
+    this.controls.slots().forEach((slot, index) => {
+      const button = this.modalButton(slot.name, () => {
+        if (this.controls.load(index).ok) this.openModal(null);
+      });
+      button.dataset.fondaleLoadSlot = String(index);
+      button.disabled = !slot.compatible;
+      if (!slot.compatible) {
+        button.textContent = `${slot.name} — incompatible`;
+        button.title = slot.diagnostics.map(({ message }) => message).join(" ");
+      }
+      list.append(button);
+    });
+    if (!list.hasChildNodes()) list.textContent = "No Save Slots.";
+    this.modal.append(list);
+  }
+
+  private modalButton(text: string, action: () => void): HTMLButtonElement {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = text;
+    button.style.cssText = `${overlayButtonStyle};pointer-events:auto;margin:3px`;
+    button.addEventListener("click", action);
+    return button;
+  }
+
+  private updatePreference(change: Partial<PlayerPreferences>): void {
+    this.preferences = { ...this.preferences, ...change };
+    localStorage.setItem(preferencesKey(this.data.identity), JSON.stringify(this.preferences));
+    this.root.style.setProperty("--fondale-hud-opacity", String(this.preferences.hudOpacity));
+    this.verbs.style.opacity = String(this.preferences.hudOpacity);
+    this.inventory.style.opacity = String(this.preferences.hudOpacity);
+    this.root.style.background = this.preferences.hudBacking
+      ? "linear-gradient(to bottom, transparent 75%, rgba(12,22,38,.78) 75%)"
+      : "none";
+    if (this.preferences.commandPreview === "sentence-line") {
+      this.action.style.left = "153px";
+      this.action.style.top = "174px";
+      this.action.style.textAlign = "center";
+    } else {
+      this.action.style.textAlign = "left";
+    }
+  }
+}
+
+interface PlayerPreferences {
+  readonly textSpeed: "slow" | "normal" | "fast";
+  readonly speechText: boolean;
+  readonly hudBacking: boolean;
+  readonly hudOpacity: number;
+  readonly commandPreview: "pointer" | "sentence-line";
+  readonly shownHints: readonly string[];
+}
+
+const defaultPreferences: PlayerPreferences = {
+  textSpeed: "normal",
+  speechText: true,
+  hudBacking: true,
+  hudOpacity: 0.9,
+  commandPreview: "pointer",
+  shownHints: [],
+};
+
+function preferencesKey(identity: string): string {
+  return `fondale.preferences.${identity}`;
+}
+
+function readPreferences(identity: string): PlayerPreferences {
+  try {
+    const value = JSON.parse(localStorage.getItem(preferencesKey(identity)) ?? "null") as Partial<PlayerPreferences> | null;
+    if (!value) return defaultPreferences;
+    return {
+      ...defaultPreferences,
+      ...value,
+      hudOpacity: typeof value.hudOpacity === "number" && value.hudOpacity >= 0.35 && value.hudOpacity <= 1
+        ? value.hudOpacity
+        : defaultPreferences.hudOpacity,
+      shownHints: Array.isArray(value.shownHints) ? value.shownHints.filter((hint): hint is string => typeof hint === "string") : [],
+    };
+  } catch {
+    return defaultPreferences;
+  }
+}
+
+function selectPreference(
+  text: string,
+  values: readonly string[],
+  selected: string,
+): { label: HTMLLabelElement; select: HTMLSelectElement } {
+  const label = document.createElement("label");
+  label.textContent = text;
+  const select = document.createElement("select");
+  for (const value of values) {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = value;
+    option.selected = value === selected;
+    select.append(option);
+  }
+  label.append(select);
+  return { label, select };
+}
+
+function checkboxPreference(
+  text: string,
+  checked: boolean,
+): { label: HTMLLabelElement; input: HTMLInputElement } {
+  const label = document.createElement("label");
+  const input = document.createElement("input");
+  input.type = "checkbox";
+  input.checked = checked;
+  label.append(input, text);
+  return { label, input };
 }
 
 const overlayButtonStyle = [

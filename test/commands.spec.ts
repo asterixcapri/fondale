@@ -163,3 +163,66 @@ test("Speech follows its Character and Choice uses the HUD with spoken alternati
   await expect(line).toHaveText("Come vuoi.");
   await expect(line).toHaveAttribute("data-fondale-speaker", "host");
 });
+
+test("Options, Help, named Save Slots, and Command State restore through shortcuts", async ({ page }) => {
+  await page.goto("/test/fixtures/commands.html");
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+  const frame = page.locator("[data-fondale-frame]");
+  await expect(frame).toBeVisible();
+  const canvas = frame.locator("canvas");
+  const bounds = await canvas.boundingBox();
+  if (!bounds) throw new Error("missing canvas bounds");
+  const clickLogical = (x: number, y: number) => page.mouse.click(
+    bounds.x + (x / 426) * bounds.width,
+    bounds.y + (y / 240) * bounds.height,
+  );
+
+  await frame.locator('[data-fondale-verb="pick-up"]').click();
+  await clickLogical(120, 145);
+  const key = frame.locator('[data-fondale-inventory-object="key"]');
+  await expect(key).toBeVisible();
+  await frame.locator('[data-fondale-verb="use"]').click();
+  await key.click();
+  await expect(key).toHaveAttribute("aria-pressed", "true");
+
+  await frame.focus();
+  await page.keyboard.press("Control+s");
+  const modal = frame.locator('[data-fondale-modal="save"]');
+  await expect(modal).toBeVisible();
+  await modal.locator("[data-fondale-save-name]").fill("Davanti al portone");
+  await modal.locator("[data-fondale-save-confirm]").click();
+  await frame.focus();
+  await page.keyboard.press("Escape");
+  await expect(key).toHaveAttribute("aria-pressed", "false");
+
+  await page.keyboard.press("Control+l");
+  await frame.locator('[data-fondale-load-slot="0"]').click();
+  await expect(key).toHaveAttribute("aria-pressed", "true");
+
+  await frame.focus();
+  await page.keyboard.press("F5");
+  const options = frame.locator('[data-fondale-modal="options"]');
+  await expect(options).toBeVisible();
+  await options.getByLabel("Command preview").selectOption("sentence-line");
+  expect(await page.evaluate(() => localStorage.getItem("fondale.preferences.test.commands"))).toContain("sentence-line");
+  expect(await page.evaluate(() => localStorage.getItem("fondale.save-slots"))).not.toContain("sentence-line");
+  await frame.getByRole("button", { name: "Help" }).click();
+  await expect(frame.locator("[data-fondale-help]")).toContainText("QWE/ASD/ZXC");
+  await expect(frame.locator("[data-fondale-help]")).toContainText("Ctrl+S Save");
+
+  await page.evaluate(() => {
+    const slots = JSON.parse(localStorage.getItem("fondale.save-slots") ?? "[]") as Array<Record<string, unknown>>;
+    const incompatible = structuredClone(slots[0]) as Record<string, unknown>;
+    incompatible.name = "Vecchio salvataggio";
+    const snapshot = incompatible.snapshot as Record<string, unknown>;
+    snapshot.projectVersion = "0";
+    slots.push(incompatible);
+    localStorage.setItem("fondale.save-slots", JSON.stringify(slots));
+  });
+  await frame.focus();
+  await page.keyboard.press("Control+l");
+  const incompatible = frame.locator('[data-fondale-load-slot="1"]');
+  await expect(incompatible).toBeDisabled();
+  await expect(incompatible).toContainText("incompatible");
+});

@@ -136,6 +136,7 @@ export interface CoreSession {
   effects(): readonly CoreEffect[];
   takeEffects(): readonly CoreEffect[];
   createSaveSnapshot(): SaveSnapshot;
+  restore(snapshot: ValidatedSaveSnapshot): void;
   lifecycle(): "running" | "failed" | "stopped";
   diagnostics(): readonly AuthoringDiagnostic[];
   hitTest(point: Point): CoreWorldTarget | null;
@@ -184,6 +185,13 @@ export function createCoreSession(
     createSaveSnapshot() {
       assertRunning();
       return createSaveSnapshot(data, state);
+    },
+    restore(snapshot) {
+      assertRunning();
+      state = getValidatedSaveState(snapshot);
+      inputs.length = 0;
+      emitted.length = 0;
+      emitted.push({ type: "sequence-changed" });
     },
     lifecycle: () => status,
     diagnostics: () => failureDiagnostics,
