@@ -45,6 +45,7 @@ export interface PlayerIntentState {
   type: "player-intent";
   destination: Point;
   finalFacing?: Facing;
+  fast?: true;
   intent:
     | { kind: "move" }
     | {
@@ -83,11 +84,11 @@ export interface GameState {
 }
 
 export type CoreInput =
-  | { readonly type: "move"; readonly point: Point }
+  | { readonly type: "move"; readonly point: Point; readonly fast?: boolean }
   | { readonly type: "select-verb"; readonly verb: CommandVerb }
   | { readonly type: "activate-hotspot"; readonly hotspot: number }
   | { readonly type: "quick-hotspot"; readonly hotspot: number }
-  | { readonly type: "activate-passage"; readonly passage: number }
+  | { readonly type: "activate-passage"; readonly passage: number; readonly fast?: boolean }
   | { readonly type: "activate-object"; readonly object: string }
   | { readonly type: "select-object"; readonly object: string }
   | { readonly type: "escape" }
@@ -95,7 +96,7 @@ export type CoreInput =
   | { readonly type: "choose"; readonly alternative: number };
 
 export type CoreEffect =
-  | { readonly type: "movement-started"; readonly destination: Point }
+  | { readonly type: "movement-started"; readonly destination: Point; readonly fast?: true }
   | { readonly type: "movement-finished"; readonly destination: Point }
   | { readonly type: "interaction-response"; readonly text: string }
   | { readonly type: "scene-changed"; readonly scene: string }
@@ -118,6 +119,14 @@ export interface AvailableInventoryNoun {
   readonly preferredVerb: Verb;
 }
 
+export interface AvailablePassage {
+  readonly index: number;
+  readonly area: readonly Point[];
+  readonly label: string;
+  readonly preferredVerb: Verb;
+  readonly direction: "left" | "right" | "up" | "down" | "enter";
+}
+
 /** Internal deterministic seam shared by browser and tests. */
 export interface CoreSession {
   input(input: CoreInput): void;
@@ -131,6 +140,7 @@ export interface CoreSession {
   hitTest(point: Point): CoreWorldTarget | null;
   availableHotspots(): readonly AvailableHotspot[];
   availableInventory(): readonly AvailableInventoryNoun[];
+  availablePassages(): readonly AvailablePassage[];
   stop(): void;
 }
 
@@ -217,6 +227,19 @@ export function createCoreSession(
         }];
       });
     },
+    availablePassages() {
+      const scene = data.scenes[state.currentScene]!;
+      return (scene.passages ?? []).flatMap((passage, index) => {
+        if (!conditionMatches(passage.when) || !passage.noun || !passage.direction) return [];
+        return [{
+          index,
+          area: passage.area.map((point) => ({ ...point })),
+          label: conditionalValue(passage.noun.labels).text,
+          preferredVerb: conditionalValue(passage.noun.preferredVerbs).verb,
+          direction: passage.direction,
+        }];
+      });
+    },
     stop() {
       if (status === "stopped") return;
       status = "stopped";
@@ -249,7 +272,7 @@ export function createCoreSession(
       state.activity = null;
       state.command = { verb: input.verb, firstNoun: null };
     } else if (input.type === "move") {
-      beginIntent({ kind: "move" }, input.point);
+      beginIntent({ kind: "move" }, input.point, undefined, input.fast);
     } else if (input.type === "activate-hotspot" || input.type === "quick-hotspot") {
       const scene = data.scenes[state.currentScene]!;
       const hotspot = scene.hotspots?.[input.hotspot];
@@ -293,6 +316,7 @@ export function createCoreSession(
           { kind: "passage", scene: state.currentScene, passage: input.passage },
           passage.approach.groundPoint,
           passage.approach.facing,
+          input.fast,
         );
       }
     } else if (input.type === "activate-object") {
@@ -320,13 +344,22 @@ export function createCoreSession(
     intent: PlayerIntentState["intent"],
     requested: Point,
     finalFacing?: Facing,
+    fast = false,
   ): void {
     const scene = data.scenes[state.currentScene]!;
     const destination = nearestPoint(scene.walkableRegion, requested);
-    state.activity = finalFacing === undefined
-      ? { type: "player-intent", destination, intent }
-      : { type: "player-intent", destination, finalFacing, intent };
-    emitted.push({ type: "movement-started", destination: { ...destination } });
+    state.activity = {
+      type: "player-intent",
+      destination,
+      intent,
+      ...(finalFacing === undefined ? {} : { finalFacing }),
+      ...(fast ? { fast: true as const } : {}),
+    };
+    emitted.push({
+      type: "movement-started",
+      destination: { ...destination },
+      ...(fast ? { fast: true as const } : {}),
+    });
   }
 
   function advancePlayerIntent(): void {
@@ -345,7 +378,7 @@ export function createCoreSession(
     const dx = waypoint.x - player.groundPoint.x;
     const dy = waypoint.y - player.groundPoint.y;
     const distance = Math.hypot(dx, dy);
-    const travel = definition.movementSpeed / 60;
+    const travel = (definition.movementSpeed / 60) * (activity.fast ? 3 : 1);
     if (distance > travel) {
       player.facing = facingAlong(dx, dy);
       player.groundPoint = {

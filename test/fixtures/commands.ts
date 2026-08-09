@@ -32,6 +32,16 @@ const keyNoun = defineNoun({
     operations: [{ type: "collect-target-object" }],
   }],
 });
+const exitNoun = defineNoun({
+  labels: [{ text: "Verso l'uscita" }],
+  preferredVerbs: [{ verb: "walk-to" }],
+  cases: [],
+});
+const returnNoun = defineNoun({
+  labels: [{ text: "Verso il portone" }],
+  preferredVerbs: [{ verb: "walk-to" }],
+  cases: [],
+});
 const globalResponse = { text: "Non succede nulla." };
 const project = defineGame({
   identity: "test.commands",
@@ -53,7 +63,7 @@ const project = defineGame({
   characters: {
     player: defineCharacter({
       initialScene: "opening",
-      initialGroundPoint: { x: 180, y: 180 },
+      initialGroundPoint: { x: 180, y: 175 },
       initialFacing: "front",
       initialAppearance: "idle",
       appearances: { idle: { kind: "static", image: backgroundUrl } },
@@ -81,8 +91,16 @@ const project = defineGame({
     opening: defineScene({
       background: backgroundUrl,
       walkableRegion: [
-        { x: 0, y: 100 }, { x: 426, y: 100 }, { x: 426, y: 190 }, { x: 0, y: 190 },
+        { x: 0, y: 100 }, { x: 426, y: 100 }, { x: 426, y: 180 }, { x: 0, y: 180 },
       ],
+      entrances: { fromHall: { groundPoint: { x: 380, y: 150 }, facing: "left" } },
+      passages: [{
+        area: [{ x: 380, y: 100 }, { x: 426, y: 100 }, { x: 426, y: 170 }, { x: 380, y: 170 }],
+        approach: { groundPoint: { x: 390, y: 150 }, facing: "right" },
+        noun: exitNoun,
+        direction: "right",
+        destination: { scene: "hall", entrance: "fromOpening" },
+      }],
       hotspots: [{
         target: { kind: "background" },
         area: [{ x: 200, y: 80 }, { x: 260, y: 80 }, { x: 260, y: 150 }, { x: 200, y: 150 }],
@@ -101,6 +119,20 @@ const project = defineGame({
           cases: [],
           fallback: { label: "Chiave", response: "Legacy.", operations: [] },
         },
+      }],
+    }),
+    hall: defineScene({
+      background: backgroundUrl,
+      walkableRegion: [
+        { x: 0, y: 100 }, { x: 426, y: 100 }, { x: 426, y: 180 }, { x: 0, y: 180 },
+      ],
+      entrances: { fromOpening: { groundPoint: { x: 40, y: 150 }, facing: "right" } },
+      passages: [{
+        area: [{ x: 0, y: 100 }, { x: 46, y: 100 }, { x: 46, y: 170 }, { x: 0, y: 170 }],
+        approach: { groundPoint: { x: 36, y: 150 }, facing: "left" },
+        noun: returnNoun,
+        direction: "left",
+        destination: { scene: "opening", entrance: "fromHall" },
       }],
     }),
   },

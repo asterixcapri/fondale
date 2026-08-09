@@ -85,3 +85,31 @@ test("an Inventory Object becomes the first Noun of a binary Use Command", async
   await expect(frame.locator("[aria-live=polite]")).toHaveText("La chiave gira nella serratura.");
   await expect(key).toHaveAttribute("aria-pressed", "false");
 });
+
+test("Tab reveals active Nouns and a directional Passage supports Fast Walk", async ({ page }) => {
+  await page.goto("/test/fixtures/commands.html");
+  const frame = page.locator("[data-fondale-frame]");
+  await expect(frame).toBeVisible();
+  await frame.focus();
+
+  await page.keyboard.down("Tab");
+  await expect(frame.locator("[data-fondale-revealed-hotspot]")).toHaveCount(2);
+  await expect(frame.locator("[data-fondale-revealed-passage]")).toHaveCount(1);
+  await page.keyboard.up("Tab");
+  await expect(frame.locator("[data-fondale-revealed-hotspots]")).toBeHidden();
+
+  const canvas = frame.locator("canvas");
+  const bounds = await canvas.boundingBox();
+  if (!bounds) throw new Error("missing canvas bounds");
+  const passage = {
+    x: bounds.x + (405 / 426) * bounds.width,
+    y: bounds.y + (135 / 240) * bounds.height,
+  };
+  await page.mouse.move(passage.x, passage.y);
+  await expect(frame.locator("[data-fondale-command-preview]")).toHaveText("Verso l'uscita");
+  await expect(canvas).toHaveCSS("cursor", "e-resize");
+  await page.mouse.dblclick(passage.x, passage.y);
+
+  await expect(frame).toHaveAttribute("data-fondale-movement", "fast");
+  await expect(frame).toHaveAttribute("data-fondale-scene", "hall");
+});

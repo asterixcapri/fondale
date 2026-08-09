@@ -145,8 +145,9 @@ function validActivity(value: unknown, data: GameProjectData, state: GameState):
   if (value === null) return true;
   if (!isRecord(value) || typeof value.type !== "string") return false;
   if (value.type === "player-intent") {
-    if (!hasExactKeys(value, ["type", "destination", "intent"], ["finalFacing"])) return false;
+    if (!hasExactKeys(value, ["type", "destination", "intent"], ["finalFacing", "fast"])) return false;
     if (!validPoint(value.destination) || !validOptionalFacing(value.finalFacing)) return false;
+    if (value.fast !== undefined && value.fast !== true) return false;
     if (!isRecord(value.intent) || typeof value.intent.kind !== "string") return false;
     if (value.intent.kind === "move") return hasExactKeys(value.intent, ["kind"]);
     if (value.intent.kind === "interaction") {

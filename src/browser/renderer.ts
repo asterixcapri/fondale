@@ -8,7 +8,13 @@ import {
   Texture,
 } from "pixi.js";
 
-import type { AvailableHotspot, CoreEffect, CoreSession, GameState } from "../internal/core";
+import type {
+  AvailableHotspot,
+  AvailablePassage,
+  CoreEffect,
+  CoreSession,
+  GameState,
+} from "../internal/core";
 import type {
   EntityAppearance,
   GameProjectData,
@@ -45,12 +51,18 @@ export class BrowserRenderer {
     application.stage.addChild(this.world);
     application.canvas.setAttribute("aria-label", "Fondale game world");
     application.canvas.addEventListener("pointerup", this.onPointerUp);
+    application.canvas.addEventListener("dblclick", this.onDoubleClick);
     application.canvas.addEventListener("contextmenu", this.onContextMenu);
     application.canvas.addEventListener("pointermove", this.onPointerMove);
     application.canvas.addEventListener("pointerleave", this.onPointerLeave);
   }
 
   render(state: GameState, effects: readonly CoreEffect[]): void {
+    this.frame.dataset.fondaleScene = state.currentScene;
+    const movement = [...effects].reverse().find(({ type }) => type === "movement-started");
+    if (movement?.type === "movement-started") {
+      this.frame.dataset.fondaleMovement = movement.fast ? "fast" : "normal";
+    }
     const signature = sceneSignature(state);
     if (signature !== this.sceneSignature) {
       this.sceneSignature = signature;
@@ -58,13 +70,16 @@ export class BrowserRenderer {
     }
     this.updateCharacters(state);
     this.world.sortChildren();
-    this.application.canvas.style.cursor = state.inventory.selected ? "none" : "pointer";
+    if (!this.data.commandLexicon) {
+      this.application.canvas.style.cursor = state.inventory.selected ? "none" : "pointer";
+    }
     this.overlay.render(state, effects);
     this.application.renderer.render(this.application.stage);
   }
 
   destroy(): void {
     this.application.canvas.removeEventListener("pointerup", this.onPointerUp);
+    this.application.canvas.removeEventListener("dblclick", this.onDoubleClick);
     this.application.canvas.removeEventListener("contextmenu", this.onContextMenu);
     this.application.canvas.removeEventListener("pointermove", this.onPointerMove);
     this.application.canvas.removeEventListener("pointerleave", this.onPointerLeave);
@@ -194,8 +209,8 @@ export class BrowserRenderer {
     if (target?.kind === "hotspot") {
       this.core.input({ type: "activate-hotspot", hotspot: target.index });
     } else if (target?.kind === "passage") {
-      this.core.input({ type: "activate-passage", passage: target.index });
-    } else this.core.input({ type: "move", point });
+      this.core.input({ type: "activate-passage", passage: target.index, fast: event.detail >= 2 });
+    } else this.core.input({ type: "move", point, fast: event.detail >= 2 });
   };
 
   private readonly onContextMenu = (event: MouseEvent): void => {
@@ -211,13 +226,31 @@ export class BrowserRenderer {
     }
   };
 
+  private readonly onDoubleClick = (event: MouseEvent): void => {
+    if (this.core.snapshot().activity?.type === "sequence") return;
+    const point = this.scenePoint(event);
+    const target = this.core.hitTest(point);
+    if (target?.kind === "passage") {
+      this.core.input({ type: "activate-passage", passage: target.index, fast: true });
+    } else if (!target) {
+      this.core.input({ type: "move", point, fast: true });
+    }
+  };
+
   private readonly onPointerMove = (event: PointerEvent): void => {
     const point = this.scenePoint(event);
     const target = this.core.hitTest(point);
     const hotspot = target?.kind === "hotspot"
       ? this.core.availableHotspots().find(({ index }) => index === target.index)
       : undefined;
-    this.overlay.showAction(hotspot);
+    const passage = target?.kind === "passage"
+      ? this.core.availablePassages().find(({ index }) => index === target.index)
+      : undefined;
+    this.overlay.showAction(hotspot ?? passage);
+    const cursors = {
+      left: "w-resize", right: "e-resize", up: "n-resize", down: "s-resize", enter: "pointer",
+    } as const;
+    this.application.canvas.style.cursor = passage ? cursors[passage.direction] : "pointer";
     this.overlay.showCursor(point);
   };
 
@@ -252,7 +285,7 @@ class EngineOverlay {
   private cursorPoint: Point | null = null;
   private hotspotsRevealed = false;
   private hoveredPreferredVerb: string | null = null;
-  private hoveredHotspot: AvailableHotspot | null = null;
+  private hoveredHotspot: AvailableHotspot | AvailablePassage | null = null;
 
   constructor(
     private readonly frame: HTMLElement,
@@ -347,6 +380,7 @@ class EngineOverlay {
       this.reveal.setAttribute("aria-pressed", String(this.hotspotsRevealed));
       this.renderRevealedHotspots();
     });
+    if (data.commandLexicon) this.reveal.style.display = "none";
     this.revealedHotspots.dataset.fondaleRevealedHotspots = "";
     this.revealedHotspots.setAttribute(
       "viewBox",
@@ -380,6 +414,7 @@ class EngineOverlay {
     );
     this.frame.append(this.root);
     this.frame.addEventListener("keydown", this.onKeyDown);
+    this.frame.addEventListener("keyup", this.onKeyUp);
   }
 
   render(state: GameState, effects: readonly CoreEffect[]): void {
@@ -407,7 +442,7 @@ class EngineOverlay {
     if (this.hotspotsRevealed) this.renderRevealedHotspots();
   }
 
-  showAction(hotspot: AvailableHotspot | undefined): void {
+  showAction(hotspot: AvailableHotspot | AvailablePassage | undefined): void {
     const state = this.core.snapshot();
     this.hoveredHotspot = hotspot ?? null;
     this.hoveredPreferredVerb = hotspot?.preferredVerb ?? null;
@@ -445,6 +480,7 @@ class EngineOverlay {
 
   destroy(): void {
     this.root.parentElement?.removeEventListener("keydown", this.onKeyDown);
+    this.root.parentElement?.removeEventListener("keyup", this.onKeyUp);
     this.root.remove();
   }
 
@@ -592,6 +628,18 @@ class EngineOverlay {
       polygon.append(title);
       this.revealedHotspots.append(polygon);
     }
+    for (const passage of this.core.availablePassages()) {
+      const polygon = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+      polygon.dataset.fondaleRevealedPassage = String(passage.index);
+      polygon.setAttribute("points", passage.area.map(({ x, y }) => `${x},${y}`).join(" "));
+      polygon.setAttribute("fill", "rgba(242,173,98,.18)");
+      polygon.setAttribute("stroke", "#f2ad62");
+      polygon.setAttribute("stroke-width", "1");
+      const title = document.createElementNS("http://www.w3.org/2000/svg", "title");
+      title.textContent = passage.label;
+      polygon.append(title);
+      this.revealedHotspots.append(polygon);
+    }
   }
 
   private readonly onKeyDown = (event: KeyboardEvent): void => {
@@ -618,11 +666,24 @@ class EngineOverlay {
       a: "close", s: "look-at", d: "pull",
       z: "give", x: "talk-to", c: "use",
     } as const;
+    if (event.key === "Tab" && this.data.commandLexicon) {
+      event.preventDefault();
+      this.hotspotsRevealed = true;
+      this.renderRevealedHotspots();
+      return;
+    }
     const verb = keyboardVerbs[event.key.toLowerCase() as keyof typeof keyboardVerbs];
     if (verb) {
       event.preventDefault();
       this.core.input({ type: "select-verb", verb });
     } else if (event.key === "Escape") this.core.input({ type: "escape" });
+  };
+
+  private readonly onKeyUp = (event: KeyboardEvent): void => {
+    if (event.key !== "Tab" || !this.data.commandLexicon) return;
+    event.preventDefault();
+    this.hotspotsRevealed = false;
+    this.renderRevealedHotspots();
   };
 }
 
