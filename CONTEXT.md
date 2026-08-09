@@ -238,7 +238,9 @@ _Avoid_: Cropped Scene, game menu, world element
 
 **HUD Theme**:
 The Game Project's declarative visual language for the Engine-owned HUD,
-including its palette, font, borders, selection, and Character speech colours.
+including its original palette, font, icons, borders, selection, background,
+opacity, and Character speech colours. It adapts a stable interaction structure
+without copying the visual assets of another Game Project or product.
 _Avoid_: Custom DOM, custom CSS, Scene art
 
 **Inventory**:

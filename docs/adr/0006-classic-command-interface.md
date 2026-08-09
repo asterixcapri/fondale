@@ -113,3 +113,35 @@ La schermata Save/Load offre Save Slot liberi e nominati. Un Save Snapshot
 incompatibile rimane visibile con la relativa spiegazione ma non può essere
 caricato. Numero esatto dei Save Slot, miniature, autosave e cloud non vengono
 dedotti da Thimbleweed Park e restano fuori da questa decisione.
+
+La fedeltà a Thimbleweed Park riguarda struttura, proporzioni, controlli e
+feedback dell'interazione. Font, palette, icone, decorazioni, testi e altri
+asset restano originali del Game Project e sono forniti tramite HUD Theme; non
+si copiano risorse proprietarie del gioco di riferimento.
+
+Le Options pertinenti a questa modifica comprendono velocità del testo,
+visibilità del testo parlato, opacità o sfondo del HUD, scelta fra Command
+Preview moderno e Sentence Line classica e riepilogo delle scorciatoie. I
+controlli audio si presentano quando il Game Project usa la relativa Engine
+Capability. Altre preferenze non collegate a interazione e dialoghi restano
+fuori dallo scope.
+
+La migrazione di Capri 1535 conserva storia ed enigmi. Ogni Noun e Scene
+Passage riceve nome e Preferred Verb espliciti; i Command rilevanti hanno
+risposte italiane specifiche e le altre combinazioni usano fallback italiani
+coerenti con il personaggio. Non è necessario scrivere un caso distinto per
+ogni prodotto cartesiano fra Verb e Noun.
+
+La fascia della Scene coperta dal HUD resta visibile ma non contiene Hotspot,
+Scene Passage, Approach Point, Walkable Region o informazioni visive essenziali.
+Una sovrapposizione di authoring produce un Authoring Diagnostic.
+
+Questa modifica comprende Command, Inventory, Scene Passage, dialoghi, HUD e le
+Options direttamente collegate. Character Switching, suggerimenti e modalità
+di difficoltà richiedono decisioni e modifiche future separate.
+
+Prima della specifica definitiva, un prototipo giocabile su una Scene di Capri
+1535 deve validare il HUD trasparente, la griglia Verb 3×3, l'Inventory 4×2, un
+Scene Passage riconoscibile, il Command Preview vicino al puntatore, le Line
+sopra i Character, le Choice nella fascia inferiore, un Command binario fra
+Object e il comportamento a diverse dimensioni del viewport.
