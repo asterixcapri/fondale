@@ -32,7 +32,7 @@ leggibilità e hit area vengono validate con un prototipo senza ritagliare o
 rielaborare i master delle Scene.
 
 Il modello contestuale non rimane come Game Setting alternativo: la modifica è
-incompatibile, introduce Fondale 2.0 e richiede la migrazione dei Game Project.
+incompatibile, introduce Fondale 1.1 e richiede la migrazione dei Game Project.
 Character Switching e Inventory separati per Character non appartengono a
 questa decisione e richiederanno una futura Engine Capability motivata da un
 Game Project concreto.
@@ -55,7 +55,7 @@ I termini semantici restano inglesi, mentre un Command Lexicon del Game Project
 fornisce etichette e modelli grammaticali localizzati senza inferenze
 linguistiche dell'Engine.
 
-La Support Baseline 2.0 include mouse, esecuzione rapida con click destro,
+La Support Baseline 1.1 include mouse, esecuzione rapida con click destro,
 rotellina per l'Inventory, Tab per rivelare i Noun, F5 per aprire Options,
 Ctrl+S per Save, Ctrl+L per Load e scorciatoie posizionali QWE/ASD/ZXC per i
 nove Verb. Durante una Choice, i tasti da 1 a 6 selezionano le alternative
