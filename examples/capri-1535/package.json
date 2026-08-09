@@ -5,7 +5,6 @@
   "type": "module",
   "scripts": {
     "dev": "vite --force",
-    "prototype:hud": "vite --force --mode prototype",
     "typecheck": "tsc --noEmit",
     "verify:project": "node tools/verify-project.mjs",
     "build": "npm run typecheck && npm run verify:project && vite build",
@@ -13,7 +12,7 @@
     "verify": "playwright test"
   },
   "dependencies": {
-    "@asterixcapri/fondale": "file:vendor/asterixcapri-fondale-1.0.0.tgz"
+    "@asterixcapri/fondale": "file:vendor/asterixcapri-fondale-1.1.0.tgz"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",

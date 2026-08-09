@@ -6,7 +6,7 @@ import walkSideUrl from "./walk-side.png";
 
 export const michele = defineCharacter({
   initialScene: "alley",
-  initialGroundPoint: { x: 190, y: 232 },
+  initialGroundPoint: { x: 190, y: 175 },
   initialFacing: "back",
   initialAppearance: "travelling",
   appearances: {
