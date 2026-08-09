@@ -1,7 +1,7 @@
 # Fondale
 
 Fondale is a web-native, TypeScript-first engine for small point-and-click
-adventures. Version 1.0 exposes one package root, owns its WebGL renderer and
+adventures. Version 1.1 exposes one package root, owns its WebGL renderer and
 runtime, and keeps game content in an independent Game Project.
 
 Install it with `npm install @asterixcapri/fondale`, then follow the

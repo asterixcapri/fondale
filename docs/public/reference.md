@@ -1,257 +1,184 @@
 # Public reference
 
-Every public symbol is imported from `@asterixcapri/fondale`. Deep imports are
-not part of the contract. Defaults, invariants, failures, and minimal examples
-below are normative for version 1.0.
+Every public symbol is imported from `@asterixcapri/fondale`; deep imports are
+not supported. This is the normative Fondale 1.1 contract.
 
-## Definition helpers
+## Commands and HUD
 
-### `defineScene`
+`commandVerbs` fixes the visible grid order: `open`, `pick-up`, `push`, `close`,
+`look-at`, `pull`, `give`, `talk-to`, `use`. `CommandVerb` is that union and
+`Verb` also includes implicit `walk-to`.
 
-Validates and freezes a Scene. Input fields:
+`defineNoun` validates and freezes a `NounDefinition`. Its `labels` and
+`preferredVerbs` are ordered conditional variants with exactly one
+unconditional final fallback. `cases` are ordered `CommandCase` values. Give is
+binary, Use may be unary or binary, and all other visible verbs are unary. A
+case may provide a `CommandResponse`, `GameOperation` values, a `sequence`, or
+a combination. `fallbacks` map a Verb to a local `CommandFallback`.
 
-- `background`: browser-resolvable PNG URL. Its decoded dimensions must equal
-  the project Logical Resolution.
-- `walkableRegion`: one finite, non-degenerate, non-self-intersecting polygon
-  inside Scene Space.
-- `perspectiveScale?`: positive `{ y, scale }` stops. Omission means scale `1`.
-- `scenery?`: named inline definitions with `baseline`, optional `position`,
-  `initialAppearance`, and named `appearances`. A Scenery Appearance is either
-  `{ kind: "static", image, visualAnchor? }` or
-  `{ kind: "background-region", area }`.
-- `hotspots?`: ordered, Scene-local surfaces. Each has `target`, polygon
-  `area`, `approach: { groundPoint, facing }`, optional `when`, a
-  `primaryAction`, and optional `inventoryUse`.
-- `entrances?`: named `{ groundPoint, facing }` arrivals.
-- `passages?`: directional `{ area, approach, when?, destination }` links;
-  `destination` names both Scene and Scene Entrance.
+`defineCommandLexicon` validates and freezes a `CommandLexicon`: all nine Verb
+labels plus explicit `unary`, `give`, and `use` sentence patterns. The required
+placeholders are `{verb}`, `{noun}`, `{first}`, and `{second}` as appropriate.
+`defineGame` rejects Nouns without a lexicon and rejects any complete Command
+that lacks a specific case, local fallback, or response-only global fallback.
 
-Local invalidity throws one `AuthoringError` containing all independent
-definition diagnostics. See [first Scene recipe](recipes/first-scene.ts).
+`defineHUDTheme` validates and freezes a `HUDTheme`. It supplies one local font,
+six CSS-hex colours, HUD `opacity`, `maxSpeechWidth`, five directional cursor
+assets, and Character-keyed `speechColors`. `PassageDirection` is `left`,
+`right`, `up`, `down`, or `enter`. Theme data styles the stable Engine-owned
+HUD; it cannot change its controls or structure.
 
-### `defineCharacter`
+## Definitions
 
-Validates a persistent Character. Fields are `initialScene`,
-`initialGroundPoint`, `initialFacing`, `initialAppearance`, named `appearances`,
-and positive finite `movementSpeed` in Scene pixels per second. `Facing` is
-`"front" | "back" | "left" | "right"`.
+`defineScene` validates and freezes a `SceneDefinition`. A Scene has a full-size
+PNG `background`, finite simple `walkableRegion`, optional `perspectiveScale`,
+named Scenery, ordered Hotspots, named Entrances, and ordered Passages.
+Omission means scale `1`. A Hotspot requires `target`, polygon `area`, `approach`, one
+Noun and optional `when`. A Passage additionally requires one Noun,
+`PassageDirection`, and a destination Scene/Entrance. With a Command Lexicon,
+interactive geometry must remain above the bottom 60 logical pixels reserved
+for the HUD.
 
-An `EntityAppearance` is static or walking. `StaticAppearance` contains
-`kind: "static"`, PNG `image`, and optional in-frame `visualAnchor`. A walking
-Appearance contains `kind: "walking"`, matching `side`, `front`, and `back`
-horizontal strips (`image`, positive integer `frames`), positive
-`framesPerSecond`, and optional shared `visualAnchor`. The Engine mirrors the
-side strip for left-facing movement; frame zero is idle.
+`defineCharacter` validates a persistent Character with initial Scene, Ground
+Point, Facing, Appearance, positive `movementSpeed`, optional Noun, and static
+or walking Appearances. A walking Appearance has side/front/back strips,
+positive frame counts and rate; the side strip is mirrored for left movement.
 
-### `defineObject`
+`defineObject` validates an Object with initial Scene, Ground Point, Appearance,
+named static Appearances, square `inventoryAppearance`, and optional Noun. An
+Object is in one Scene, in Inventory, or consumed.
 
-Validates a collectible Object. Fields are `initialScene`,
-`initialGroundPoint`, `initialAppearance`, named static `appearances`, and a
-square PNG `inventoryAppearance`. Every Object begins in a Scene. Its Inventory
-PNG must match `inventoryAppearanceSize` exactly.
+`defineSequence` validates a finite `SequenceDefinition`. `SequenceStep` is a
+Line, Choice, Branch, or atomic Operations group. A `ChoiceAlternative` has
+text, optional condition, optional `spoken` (default true), and steps. At most
+six alternatives are allowed. A Sequence may be `skippable`.
 
-### `defineSequence`
+`defineGame` composes a `GameInput` into an opaque immutable `GameProject`.
+Required values are identity, version, Logical Resolution, Scene registry and
+initial Scene. Optional registries default empty; letterbox has default
+`#000000` (that is, default `#000000`). Registry keys are identities. Cross-references, geometry,
+conditions, operation targets, Nouns, fallbacks and assets are validated before
+play.
 
-Validates and freezes a finite `SequenceDefinition` with `steps`:
+`InteractionCondition` reads a boolean Variable or held Object. `GameOperation`
+can set a Variable or Appearance, start a Sequence, collect the target Object,
+place the selected first Object, or consume it. Operations in one group see
+earlier writes and either commit together or fail without a partial commit.
+Conditions always read the latest committed Game State.
 
-- Line: `{ type: "line", text, character? }`.
-- Choice: `{ type: "choice", alternatives, fallback }`; alternatives have
-  `text`, optional `when`, and finite `steps`. The fallback is mandatory.
-- Branch: `{ type: "branch", cases, fallback }`; the first matching case wins.
-- Operations: `{ type: "operations", operations }`; each group commits
-  atomically before the Sequence continues.
+## Runtime and persistence
 
-Cycles and nested Sequence starts are invalid. Lines wait for manual advance;
-Choices expose only eligible alternatives and use fallback only when none is
-eligible. See the [Sequence recipe](recipes/sequence.ts).
+`startGame` resolves to `GameSession` after assets validate,
+WebGL starts, and the first frame is drawn. `StartGameOptions` contains an
+unowned `target` and optional validated snapshot. `GameSession` exposes
+`createSaveSnapshot`, `getStatus`, `getDiagnostics`, and idempotent terminal
+`stop`.
 
-### `defineGame`
+`validateSaveSnapshot` returns
+`SaveSnapshotValidation`; expected bad external data does not throw. A
+`SaveSnapshot` records format/project identity/project version and canonical
+state, including an incomplete Command. Only the branded
+`ValidatedSaveSnapshot` from successful validation may restore a session.
+Hover, pointer position and Player Preferences are not saved.
 
-Composes registries into opaque `GameProject`. Required fields are Project
-`identity`, Project `version`, `logicalResolution`, named `scenes`, and
-`initialScene`. Optional fields are `letterboxColor` (default `#000000`), named
-`characters`, `playerCharacter`, named `objects`, named `sequences`, boolean
-`variables`, and positive integer `inventoryAppearanceSize`.
+`AuthoringError` contains stably ordered `AuthoringDiagnostic` values. Each has
+stable `code`, `family`, `path`, `message`, optional `suggestion`, and optional
+`cause`. `AuthoringDiagnosticFamily` is definition, reference, state, save,
+asset, or environment.
 
-Registry keys are identities and registry order has no game meaning. The
-helper validates all cross-references, initial state, geometry bounds,
-conditions, operations, Sequence finiteness, passage destinations, and
-Appearance selections, then returns an immutable, opaque `GameProject`.
-
-## Interactions and operations
-
-`InteractionCondition` is `{ variable, equals }` or `{ hasObject }`. A
-Primary Action has ordered `cases` plus mandatory `fallback`; every case has
-`label`, perceivable `response`, optional `when`, and exactly one of
-`operations` or `behavior`. Inventory Use cases add `object` and explicit
-`outcome: "success" | "failure"`; their mandatory fallback is failure.
-
-`GameOperation` supports:
-
-- `set-variable` with `variable` and boolean `value`;
-- `set-appearance` with a Character, Object, or Scene Scenery `target` and
-  named `appearance`;
-- `start-sequence` with a root Sequence identity;
-- `collect-target-object` on an Object Hotspot;
-- `place-selected-object` with a current-Scene `groundPoint` and optional
-  Appearance;
-- `consume-selected-object`.
-
-Operations in one group see earlier operations and either commit together or
-fail the Game Session without a partial commit. A failed Inventory Use cannot
-place or consume the selected Object. See the [Interaction](recipes/interaction.ts)
-and [Inventory](recipes/inventory.ts) recipes.
-
-`GameBehavior` is a synchronous callback receiving `GameBehaviorContext`:
-read-only `reads.variable(name)` and `reads.hasObject(id)`, the authored
-`target`, and controlled `operations.setVariable`, `setAppearance`, and
-`startSequence`. It receives no raw state, DOM, renderer, input, clock, or
-session lifecycle. A throw or invalid requested operation preserves the prior
-committed state and terminally fails the session with the original cause.
-Promises, timers, global randomness, network access, and mutable external state
-are outside the contract. See the [Game Behavior recipe](recipes/game-behavior.ts).
-
-## Runtime
-
-### `startGame`
-
-`StartGameOptions` is `{ target, snapshot? }`.
-`startGame(project, { target, snapshot? })` returns `Promise<GameSession>` only
-after every PNG has loaded and validated and the first WebGL frame is drawn.
-The target must be an unowned `HTMLElement`; `snapshot`, when present, must be
-the successful `ValidatedSaveSnapshot` returned for this project.
-
-Startup rejects with `AuthoringError` for occupied target, unavailable WebGL,
-unreachable or undecodable PNG, invalid Background/Inventory dimensions, or
-inconsistent walking strips. It removes every partial mount before rejecting.
-
-### `GameSession`
-
-`createSaveSnapshot()` returns a `SaveSnapshot` of the latest committed Game State,
-including activity progress. It throws after terminal stop or failure. `stop()` is
-idempotent and terminal: it detaches renderer, input, clock, and target content.
-`getStatus()` returns `"running"`, `"failed"`, or `"stopped"` without exposing
-Game State. `getDiagnostics()` returns the contextual failure diagnostics,
-including an original Game Behavior cause when available.
-
-### `validateSaveSnapshot`
-
-`validateSaveSnapshot(project, value: unknown)` never throws for expected bad
-external data. `SaveSnapshotValidation` uses the `ok` discriminant and is
-either `{ ok: true, snapshot }` or `{ ok: false, diagnostics }`. Compatibility requires exact format version `1`,
-Project Identity, and Project Version. Missing/unexpected fields, non-JSON
-values, unknown references, invalid Appearance selections, contradictory Object
-locations/Inventory, and invalid activity progress are rejected without repair
-or silent new game. See the [save recipe](recipes/save-snapshot.ts).
-
-`SaveSnapshot` contains `formatVersion`, `projectIdentity`, `projectVersion`,
-and canonical `state`. `ValidatedSaveSnapshot` is the only snapshot accepted by
-`startGame`; its validation brand cannot be authored directly.
-
-## Diagnostics
-
-`AuthoringDiagnosticFamily` is `"definition" | "reference" | "state" |
-"save" | "asset" | "environment" | "behavior"`.
-
-`AuthoringDiagnostic` fields are stable `code`, stable `family`, author-facing
-`path`, explanatory `message`, optional safe `suggestion`, and optional original
-`cause`. `AuthoringError` extends `Error` and exposes its stably ordered,
-read-only `diagnostics`. Fondale 1.0 emits errors only, not warnings.
-
-Common stable codes include `definition.point.finite`,
-`definition.polygon.vertices`, `definition.polygon.degenerate`,
-`definition.polygon.self-intersection`, `definition.scene-space.bounds`,
-`reference.scene.initial`, `reference.hotspot.target`, `reference.sequence`,
-`state.operation.invalid`, `save.format.version`, `save.project.identity`,
-`save.project.version`, `save.fields.unexpected`, `save.state.invalid`,
-`asset.load.failed`, `asset.background.dimensions`,
-`asset.inventory-appearance.dimensions`, `asset.walk-strip.frames`,
-`asset.walk-strip.consistency`, `asset.visual-anchor.bounds`,
-`environment.target.occupied`, `environment.webgl.unavailable`, and
-`behavior.threw`.
-
-## Value types
-
-`Point` is finite `{ x, y }` in logical Scene Space pixels.
-`LogicalResolution` is positive integer `{ width, height }`. `SceneDefinition`,
-`CharacterDefinition`, `ObjectDefinition`, and `SequenceDefinition` are the
-frozen values returned by their helper. `GameProject` is opaque.
-
-### Structural contract index
-
-This matrix makes every reachable structure independently checkable. “Owner”
-means the helper named in the row aggregates the listed failure into its
-`AuthoringError`; external snapshots instead return `SaveSnapshotValidation`.
+## Structural contract index
 
 | Structure | Purpose | Allowed values | Defaults and invariants | Errors | Executed example |
 | --- | --- | --- | --- | --- | --- |
-| `Point` | Scene/image coordinate | finite numeric `x`, `y` | no default; coordinate space is field-specific | owner: `definition.point.finite` or bounds code | [first Scene](recipes/first-scene.ts) |
-| `LogicalResolution` | fixed frame size | positive integer `width`, `height` | required and shared by every Scene | `definition.logical-resolution.positive-integer` | [first Scene](recipes/first-scene.ts) |
-| `Facing` | authored orientation | front, back, left, right | required where present | owner rejects invalid values | [Character](recipes/character-walking.ts) |
-| `StaticAppearance` | one PNG visual | static `kind`, `image`, optional `visualAnchor` | anchor defaults to bottom-centre | asset and anchor diagnostics at startup | [Inventory](recipes/inventory.ts) |
-| `WalkStrip` | directional strip | PNG `image`, positive integer `frames` | frame zero is idle | `definition.walking.frames`, asset strip codes | [Character](recipes/character-walking.ts) |
-| `WalkingAppearance` | three-direction animation | walking `kind`, `side`, `front`, `back`, positive `framesPerSecond` | side is mirrored left; shared optional anchor | walking and strip diagnostics | [Character](recipes/character-walking.ts) |
-| `BackgroundRegionAppearance` | Background cut-out | background-region `kind`, polygon `area` | area is finite, simple, in-frame | polygon and Scene Space codes | [first Scene](recipes/first-scene.ts) |
-| `EntityAppearance` | Character visual union | static or walking Appearance | registry key is identity | selected variant is validated | [Character](recipes/character-walking.ts) |
-| `SceneryAppearance` | Scenery visual union | static or Background Region | registry key is identity | selected variant is validated | [first Scene](recipes/first-scene.ts) |
-| `CharacterDefinition` | persistent Character | initial Scene/Ground Point/Facing/Appearance, appearances, speed | speed positive; initial point walkable | Character and reference diagnostics | [Character](recipes/character-walking.ts) |
-| `CharacterInput` | `defineCharacter` input | same fields as Character definition | no defaults | `defineCharacter` aggregates local failures | [Character](recipes/character-walking.ts) |
-| `ObjectDefinition` | persistent collectible | initial Scene/Ground Point/Appearance, appearances, Inventory PNG | begins in exactly one Scene | Object, Appearance and asset diagnostics | [Inventory](recipes/inventory.ts) |
-| `InteractionCondition` | state predicate | variable/equality or held Object | omission means unconditional | missing-reference diagnostics | [Interaction](recipes/interaction.ts) |
-| `GameOperation` | atomic state transition | six operations listed above | order is significant; group is atomic | definition or `state.operation.invalid` | [Inventory](recipes/inventory.ts) |
-| `GameBehaviorReads` | restricted synchronous reads | `variable`, `hasObject` methods | latest committed state only | unknown reference fails behavior operation | [Behavior](recipes/game-behavior.ts) |
-| `GameBehaviorOperations` | restricted requested writes | set Variable/Appearance or start Sequence | requests commit after callback returns | invalid request fails session atomically | [Behavior](recipes/game-behavior.ts) |
-| `GameBehaviorContext` | callback capability object | `reads`, operations, Hotspot `target` | ephemeral, immutable, synchronous | throw becomes `behavior.threw` | [Behavior](recipes/game-behavior.ts) |
-| `GameBehavior` | exceptional authored callback | synchronous function only | no Promise/timer/randomness contract | throw preserves prior commit | [Behavior](recipes/game-behavior.ts) |
-| `HotspotTarget` | interaction subject | Background, Character, Object, or Scenery | required | `reference.hotspot.target` | [Interaction](recipes/interaction.ts) |
-| `ApproachPoint` | interaction destination | `groundPoint` plus `facing` | point must be in Walkable Region | approach bounds/walkable codes | [Interaction](recipes/interaction.ts) |
-| `DeclarativeInteractionCase` | data-only outcome | optional condition, label, response, operations | behavior forbidden | operation/reference diagnostics | [Interaction](recipes/interaction.ts) |
-| `BehavioralInteractionCase` | callback outcome | optional condition, label, response, behavior | operations forbidden | behavior diagnostics | [Behavior](recipes/game-behavior.ts) |
-| `PrimaryInteractionCase` | Primary Action case union | declarative or behavioral | exactly one execution model | owner rejects inconsistent case | [Interaction](recipes/interaction.ts) |
-| `PrimaryAction` | default Hotspot action | ordered `cases`, mandatory fallback | first match wins | condition/reference diagnostics | [Interaction](recipes/interaction.ts) |
-| `InventoryUseCase` | selected-Object outcome | Object, optional condition, success/failure `outcome`, response, operations | successful use clears selection | failed use cannot place/consume | [Inventory](recipes/inventory.ts) |
-| `InventoryUseFallback` | unmatched selected-Object outcome | failure, response, operations | mandatory when Inventory Use exists | failure-location diagnostic | [Inventory](recipes/inventory.ts) |
-| `InventoryUse` | Hotspot item interaction | ordered cases and fallback | first match wins; failure keeps selection | Inventory operation diagnostics | [Inventory](recipes/inventory.ts) |
-| `HotspotDefinition` | Scene-local interaction surface | target, polygon area, approach, optional condition, actions | array order controls overlap hit-testing | geometry/reference diagnostics | [Interaction](recipes/interaction.ts) |
-| `SceneryDefinition` | depth-sorted Scene visual | finite `baseline`, appearances, optional position | initial Appearance required | Scenery/Appearance diagnostics | [first Scene](recipes/first-scene.ts) |
-| `SceneEntrance` | named passage arrival | Ground Point and Facing | point is walkable | entrance bounds/walkable codes | [first Scene](recipes/first-scene.ts) |
-| `ScenePassage` | conditional Scene transition | polygon, approach, optional condition, destination Scene/Entrance | transition commits atomically | passage reference and geometry codes | [first Scene](recipes/first-scene.ts) |
-| `PerspectiveScaleStop` | depth scale sample | finite in-frame `y`, positive `scale` | omitted scale curve means one | `definition.perspective-scale.stop` | [first Scene](recipes/first-scene.ts) |
-| `SceneInput` | `defineScene` input | Background, Walkable Region and optional Scene structures | optional registries default empty | `defineScene` local diagnostics | [first Scene](recipes/first-scene.ts) |
-| `SceneDefinition` | frozen local Scene | same values as Scene input | registry key supplies identity | global failures at `defineGame` | [first Scene](recipes/first-scene.ts) |
-| `LineStep` | modal prose step | line `type`, text, optional Character | waits for manual advance | missing Character reference | [Sequence](recipes/sequence.ts) |
-| `OperationsStep` | Sequence commit step | operations `type`, operation group | commits before continuation | nested Sequence/operation diagnostics | [Sequence](recipes/sequence.ts) |
-| `ChoiceAlternative` | eligible branch | text, optional condition, finite steps | only matching alternatives display | condition/reference diagnostics | [Sequence](recipes/sequence.ts) |
-| `ChoiceStep` | modal branch selection | choice `type`, alternatives, fallback | fallback only when none eligible | finite/cycle diagnostics | [Sequence](recipes/sequence.ts) |
-| `BranchStep` | automatic conditional branch | branch `type`, ordered cases, fallback steps | first match wins | condition/cycle diagnostics | [Sequence](recipes/sequence.ts) |
-| `SequenceStep` | finite step union | Line, Choice, Branch, or Operations | nested Sequence starts forbidden | Sequence diagnostics | [Sequence](recipes/sequence.ts) |
-| `SequenceDefinition` | root modal flow | finite `steps` | registry key is identity | cycle/nested/reference diagnostics | [Sequence](recipes/sequence.ts) |
-| `GameInput` | `defineGame` composition | identity/version/resolution/scenes/initial Scene plus optional registries | letterbox `#000000`; registries empty | aggregated definition/reference diagnostics | [first Scene](recipes/first-scene.ts) |
-| `GameProject` | opaque validated project | only value returned by `defineGame` | immutable; no public fields | forged values rejected | [first Scene](recipes/first-scene.ts) |
-| `AuthoringDiagnosticFamily` | diagnostic category | seven families listed below | stable strings | no independent failure | [first Scene](recipes/first-scene.ts) |
-| `AuthoringDiagnostic` | one author-facing problem | code, family, path, message, optional suggestion/cause | stable ordering and read-only output | describes rather than throws | [first Scene](recipes/first-scene.ts) |
-| `AuthoringError` | aggregated thrown failures | read-only diagnostics and message | one error per validation layer | used by helpers/startup/runtime | [first Scene](recipes/first-scene.ts) |
-| `SaveSnapshot` | JSON-safe committed state | format/project identity/version and state | exact fields; format version one | external data must be validated | [Save](recipes/save-snapshot.ts) |
-| `ValidatedSaveSnapshot` | restoration capability | successful validated snapshot only | runtime brand is unforgeable | `save.validation.required` | [Save](recipes/save-snapshot.ts) |
-| `SaveSnapshotValidation` | explicit result union | true `ok` with snapshot or false with diagnostics | never repairs expected bad data | save diagnostic codes | [Save](recipes/save-snapshot.ts) |
-| `StartGameOptions` | mounting options | unowned `target`, optional validated snapshot | snapshot omission starts new state | target/save/environment diagnostics | [Save](recipes/save-snapshot.ts) |
-| `GameSession` | running lifecycle handle | save, status, diagnostics and stop methods | stop idempotent and terminal | save after stop/failure throws | [Save](recipes/save-snapshot.ts) |
+| `Point` | Scene/image coordinate | finite numeric x and y | field-specific coordinate space | finite and bounds diagnostics | [Scene](recipes/first-scene.ts) |
+| `LogicalResolution` | fixed frame dimensions | positive integer width and height | shared by every Scene | positive-integer diagnostic | [Scene](recipes/first-scene.ts) |
+| `Facing` | authored orientation | front, back, left, right | required where present | type and reference validation | [Character](recipes/character-walking.ts) |
+| `StaticAppearance` | single PNG visual | static kind, image, optional anchor | anchor defaults bottom-centre | asset and anchor diagnostics | [Inventory](recipes/inventory.ts) |
+| `WalkStrip` | directional strip | image and positive frame count | frame zero is idle | walking frame diagnostics | [Character](recipes/character-walking.ts) |
+| `WalkingAppearance` | moving Character visual | three strips, rate, optional anchor | side mirrors for left | rate and strip diagnostics | [Character](recipes/character-walking.ts) |
+| `BackgroundRegionAppearance` | Background cut-out | background-region and polygon | belongs to owning Background | polygon and bounds diagnostics | [Scene](recipes/first-scene.ts) |
+| `EntityAppearance` | Character visual union | static or walking | registry key identifies variant | selected variant validation | [Character](recipes/character-walking.ts) |
+| `SceneryAppearance` | Scenery visual union | static or Background Region | registry key identifies variant | selected variant validation | [Scene](recipes/first-scene.ts) |
+| `CharacterDefinition` | persistent Character | initial values, appearances, speed, noun | initial point is walkable | Character/reference diagnostics | [Character](recipes/character-walking.ts) |
+| `CharacterInput` | Character helper input | Character definition fields | no additional defaults | helper aggregates failures | [Character](recipes/character-walking.ts) |
+| `ObjectDefinition` | persistent Object | initial values, appearances, Inventory PNG, noun | begins in one Scene | Object/asset diagnostics | [Inventory](recipes/inventory.ts) |
+| `InteractionCondition` | state predicate | variable equality or held Object | omission is unconditional | missing-reference diagnostics | [Command](recipes/command-case.ts) |
+| `GameOperation` | atomic state change | six declared operation variants | order matters; group atomic | operation/reference diagnostics | [Inventory](recipes/inventory.ts) |
+| `HotspotTarget` | interaction subject | Background, Character, Object, Scenery | target is required | target reference diagnostic | [Interaction](recipes/interaction.ts) |
+| `ApproachPoint` | interaction destination | groundPoint and facing | must be walkable and HUD-safe | approach diagnostics | [Interaction](recipes/interaction.ts) |
+| `HotspotDefinition` | Scene interaction surface | target, area, approach, noun, condition | later overlap wins hit-test | geometry/reference diagnostics | [Interaction](recipes/interaction.ts) |
+| `SceneryDefinition` | depth-sorted visual | baseline, appearances, position, noun | initial Appearance required | Scenery diagnostics | [Scene](recipes/first-scene.ts) |
+| `SceneEntrance` | named arrival | Ground Point and Facing | point must be walkable | entrance diagnostics | [Scene](recipes/first-scene.ts) |
+| `ScenePassage` | directional transition | area, approach, noun, direction, destination | transition is atomic | passage diagnostics | [Scene](recipes/first-scene.ts) |
+| `PerspectiveScaleStop` | depth-scale sample | in-frame y and positive scale | stops interpolate linearly | perspective diagnostic | [Scene](recipes/first-scene.ts) |
+| `SceneInput` | Scene helper input | Background, region and optional structures | optional collections are empty | helper diagnostics | [Scene](recipes/first-scene.ts) |
+| `SceneDefinition` | frozen local Scene | same values as SceneInput | registry key supplies identity | project adds references | [Scene](recipes/first-scene.ts) |
+| `LineStep` | modal spoken/narrated text | line type, text, optional Character | waits for advance | Character reference diagnostic | [Sequence](recipes/sequence.ts) |
+| `OperationsStep` | Sequence state commit | operations type and operation group | commits before continuation | nested/operation diagnostics | [Sequence](recipes/sequence.ts) |
+| `ChoiceAlternative` | eligible answer | text, condition, spoken, steps | spoken defaults true | condition/cycle diagnostics | [Sequence](recipes/sequence.ts) |
+| `ChoiceStep` | modal answer set | alternatives and fallback | maximum six alternatives | choice-limit diagnostic | [Sequence](recipes/sequence.ts) |
+| `BranchStep` | automatic branch | ordered cases and fallback | first eligible case wins | condition/cycle diagnostics | [Sequence](recipes/sequence.ts) |
+| `SequenceStep` | finite step union | Line, Choice, Branch, Operations | nested starts forbidden | Sequence diagnostics | [Sequence](recipes/sequence.ts) |
+| `SequenceDefinition` | root modal flow | finite steps and skippable flag | registry key is identity | cycle/reference diagnostics | [Sequence](recipes/sequence.ts) |
+| `GameInput` | project composition | identity, version, resolution, registries, commands, theme | empty registries; black letterbox | aggregated diagnostics | [Scene](recipes/first-scene.ts) |
+| `GameProject` | validated opaque project | only returned by defineGame | immutable and fieldless | forged project rejected | [Scene](recipes/first-scene.ts) |
+| `NounLabel` | conditional visible name | text and optional condition | one final unconditional label | conditional/text diagnostics | [Interaction](recipes/interaction.ts) |
+| `PreferredVerbCase` | conditional quick action | Verb and optional condition | one final unconditional Verb | conditional diagnostic | [Interaction](recipes/interaction.ts) |
+| `CommandResponse` | perceivable outcome | text, speech/narration, speaker | speech uses Player by default | text/speaker diagnostics | [Interaction](recipes/interaction.ts) |
+| `CommandCase` | specific resolution | Verb, firstNoun, condition, response, operations, sequence | ordered; arity is fixed | arity/reference diagnostics | [Command](recipes/command-case.ts) |
+| `CommandFallback` | local final resolution | response, operations, sequence | used after specific cases | response/reference diagnostics | [Interaction](recipes/interaction.ts) |
+| `NounDefinition` | common interaction model | labels, Preferred Verbs, cases, fallbacks | immutable; response guaranteed globally | Noun/Command diagnostics | [Interaction](recipes/interaction.ts) |
+| `CommandLexicon` | localized Command grammar | nine labels and three patterns | Engine never infers grammar | lexicon diagnostics | [Scene](recipes/first-scene.ts) |
+| `CommandVerb` | visible Verb union | nine commandVerbs values | stable grid order | compile-time restriction | [Interaction](recipes/interaction.ts) |
+| `Verb` | complete Verb union | CommandVerb or walk-to | walk-to is implicit | compile-time restriction | [Scene](recipes/first-scene.ts) |
+| `PassageDirection` | Passage cursor direction | left, right, up, down, enter | every Passage declares one | cursor/reference diagnostics | [Scene](recipes/first-scene.ts) |
+| `HUDTheme` | project visual language | font, colours, opacity, width, cursors, speech colours | complete local asset set | theme/asset diagnostics | [migration](migration-1.1.md) |
+| `AuthoringDiagnosticFamily` | rejecting layer | six stable category strings | category is always present | no independent failure | [Scene](recipes/first-scene.ts) |
+| `AuthoringDiagnostic` | one author-facing issue | code, family, path, message, suggestion, cause | stable code/path ordering | describes owning failure | [Scene](recipes/first-scene.ts) |
+| `AuthoringError` | aggregate failure | read-only diagnostics | one error per validation layer | thrown by helpers/startup | [Scene](recipes/first-scene.ts) |
+| `SaveSnapshot` | JSON-safe committed state | format, project identities and state | exact fields only | save validation diagnostics | [Save](recipes/save-snapshot.ts) |
+| `ValidatedSaveSnapshot` | restoration capability | successfully validated snapshot | runtime brand cannot be authored | validation-required diagnostic | [Save](recipes/save-snapshot.ts) |
+| `SaveSnapshotValidation` | validation result union | ok snapshot or diagnostics | never repairs bad input | save diagnostics | [Save](recipes/save-snapshot.ts) |
+| `StartGameOptions` | browser mount options | target and optional snapshot | omitted snapshot starts fresh | environment/save diagnostics | [Save](recipes/save-snapshot.ts) |
+| `GameSession` | running lifecycle handle | save, status, diagnostics, stop | stop idempotent and terminal | lifecycle diagnostics | [Save](recipes/save-snapshot.ts) |
 
-Exact nested field spellings additionally include `equals`, `character`,
-`scene`, `scenery`, `sequence`, `approach`, `entrance`, `perspectiveScale`,
-`hotspots`, `entrances`, `passages`, and `alternatives`; their owning matrix
-rows above define the permitted values and invariants.
+Exact reachable fields also include `x`, `y`, `width`, `height`, `kind`,
+`image`, `visualAnchor`, `frames`, `side`, `front`, `back`, `framesPerSecond`,
+`area`, `facing`, `font`, `initialScene`, `initialGroundPoint`, `initialFacing`,
+`initialAppearance`, `appearances`, `movementSpeed`, `noun`, `source`, `family`,
+`colors`, `text`, `preferred`, `selected`, `backing`, `border`, `inventoryWell`,
+`opacity`, `maxSpeechWidth`, `cursors`, `speechColors`, `equals`, `hasObject`,
+`type`, `variable`, `value`, `target`, `character`, `object`, `scenery`, `scene`,
+`appearance`, `sequence`, `groundPoint`, `baseline`, `position`, `approach`,
+`when`, `direction`, `destination`, `entrance`, `scale`, `background`,
+`walkableRegion`, `perspectiveScale`, `hotspots`, `entrances`, `passages`,
+`alternatives`, `fallback`, `steps`, `cases`, `skippable`, `identity`, `version`,
+`logicalResolution`, `scenes`, `characters`, `playerCharacter`, `objects`,
+`sequences`, `variables`, `inventoryAppearanceSize`, `initialScene`,
+`letterboxColor`, `commandLexicon`, `commandFallbacks`, `hudTheme`, `verb`,
+`presentation`, `speaker`, `firstNoun`, `response`, `operations`, `fallbacks`,
+`labels`, `preferredVerbs`, `verbs`, `patterns`, `unary`, `give`, `use`, `code`,
+`path`, `message`, `suggestion`, `cause`, `formatVersion`, `projectIdentity`,
+`projectVersion`, `state`, `ok`, `snapshot`, `diagnostics`, and `target`.
 
-### Stable diagnostic code index
+## Stable diagnostics
 
 Definition codes: `definition.approach.bounds`,
 `definition.approach.walkable`, `definition.character.movement-speed`,
-`definition.character.walkable`, `definition.entrance.walkable`,
-`definition.inventory-appearance-size`,
-`definition.inventory-use.failure-location`,
+`definition.character.walkable`, `definition.choice.limit`,
+`definition.command-case.arity`, `definition.command-case.empty`,
+`definition.command-lexicon.label`, `definition.command-lexicon.pattern`,
+`definition.command-lexicon.required`, `definition.command-response.text`,
+`definition.command.silent`, `definition.conditional-fallback`,
+`definition.entrance.walkable`, `definition.hud-reserved.approach`,
+`definition.hud-reserved.hotspot`, `definition.hud-reserved.passage`,
+`definition.hud-reserved.walkable-region`, `definition.hud-theme.color`,
+`definition.hud-theme.cursor`, `definition.hud-theme.font`,
+`definition.hud-theme.opacity`, `definition.hud-theme.speech-color`,
+`definition.hud-theme.speech-width`, `definition.inventory-appearance-size`,
 `definition.logical-resolution.positive-integer`,
-`definition.operation.collect-target`, `definition.perspective-scale.stop`,
-`definition.operation.ground-point`,
+`definition.noun-label.text`, `definition.operation.collect-target`,
+`definition.operation.ground-point`, `definition.perspective-scale.stop`,
 `definition.point.finite`, `definition.polygon.degenerate`,
 `definition.polygon.self-intersection`, `definition.polygon.vertices`,
 `definition.project.identity`, `definition.project.version`,
@@ -263,17 +190,18 @@ Reference codes: `reference.appearance`, `reference.appearance.initial`,
 `reference.appearance.target`, `reference.character`,
 `reference.character.initial-scene`, `reference.character.player`,
 `reference.hotspot.target`, `reference.object`, `reference.object.initial-scene`,
-`reference.passage.entrance`, `reference.passage.scene`, `reference.scene.initial`,
-`reference.sequence`, and `reference.variable`.
+`reference.passage.entrance`, `reference.passage.scene`,
+`reference.scene.initial`, `reference.sequence`, and `reference.variable`.
 
-Runtime and persistence codes: `state.operation.invalid`, `behavior.threw`,
+Runtime, save, asset and environment codes: `state.operation.invalid`,
 `save.shape`, `save.fields.unexpected`, `save.format.version`,
 `save.project.identity`, `save.project.version`, `save.state.invalid`,
 `save.validation.required`, `asset.load.failed`, `asset.background.dimensions`,
+`asset.cursor.dimensions`, `asset.font.load.failed`,
 `asset.inventory-appearance.dimensions`, `asset.walk-strip.frames`,
 `asset.walk-strip.consistency`, `asset.visual-anchor.bounds`,
 `environment.start.failed`, `environment.target.occupied`, and
 `environment.webgl.unavailable`.
 
-Return to the [quick start](quick-start.md) or inspect the focused
-[recipes](recipes/README.md).
+See the [quick start](quick-start.md), [migration guide](migration-1.1.md),
+[Support Baseline](support-baseline.md), and compiled [recipes](recipes/README.md).

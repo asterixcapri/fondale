@@ -3,7 +3,9 @@ import { expect, test } from "@playwright/test";
 import { createTestSession } from "../src/internal/core";
 import {
   defineCharacter,
+  defineCommandLexicon,
   defineGame,
+  defineNoun,
   defineObject,
   defineScene,
   defineSequence,
@@ -11,7 +13,7 @@ import {
   type ValidatedSaveSnapshot,
 } from "../src/index";
 
-function projectFixture(throwFromBehavior = false, consumeSelectedObject = false) {
+function projectFixture(consumeSelectedObject = false) {
   const square = [
     { x: 0, y: 0 },
     { x: 100, y: 0 },
@@ -36,56 +38,49 @@ function projectFixture(throwFromBehavior = false, consumeSelectedObject = false
         target: { kind: "character", character: "player" },
         area: square,
         approach: { groundPoint: { x: 20, y: 20 }, facing: "front" },
-        primaryAction: {
-          cases: [
-            {
-              when: { variable: "gateOpen", equals: true },
-              label: "Thank",
-              response: "The way is open.",
-              behavior(context) {
-                if (throwFromBehavior) throw new Error("behavior exploded");
-                context.operations.setVariable("behaviorRan", true);
-              },
-            },
-          ],
-          fallback: {
-            label: "Talk",
-            response: "A conversation begins.",
-            operations: [{ type: "start-sequence", sequence: "conversation" }],
-          },
-        },
-        inventoryUse: {
-          cases: [],
-          fallback: { outcome: "failure", response: "That does not help.", operations: [] },
-        },
+        noun: defineNoun({
+          labels: [{ text: "Player" }],
+          preferredVerbs: [{ verb: "talk-to" }],
+          cases: [{
+            verb: "talk-to",
+            when: { variable: "gateOpen", equals: true },
+            response: { text: "The way is open." },
+            operations: [{ type: "set-variable", variable: "behaviorRan", value: true }],
+          }, {
+            verb: "talk-to",
+            response: { text: "A conversation begins." },
+            sequence: "conversation",
+          }],
+        }),
       },
       {
         target: { kind: "object", object: "key" },
         area: square,
         approach: { groundPoint: { x: 40, y: 40 }, facing: "right" },
-        primaryAction: {
-          cases: [],
-          fallback: {
-            label: "Take",
-            response: "You take the key.",
+        noun: defineNoun({
+          labels: [{ text: "Key" }],
+          preferredVerbs: [{ verb: "pick-up" }],
+          cases: [{
+            verb: "pick-up",
+            response: { text: "You take the key." },
             operations: [{ type: "collect-target-object" }],
-          },
-        },
+          }],
+        }),
       },
       {
         target: { kind: "scenery", scenery: "gate" },
         area: square,
         approach: { groundPoint: { x: 70, y: 70 }, facing: "back" },
-        primaryAction: {
-          cases: [],
-          fallback: { label: "Look", response: "A locked gate.", operations: [] },
-        },
-        inventoryUse: {
-          cases: [
-            {
-              object: "key",
-              outcome: "success",
-              response: "The lock opens.",
+        noun: defineNoun({
+          labels: [{ text: "Gate" }],
+          preferredVerbs: [{ verb: "look-at" }],
+          cases: [{
+              verb: "look-at",
+              response: { text: "A locked gate." },
+            }, {
+              verb: "use",
+              firstNoun: "key",
+              response: { text: "The lock opens." },
               operations: [
                 { type: "set-variable", variable: "gateOpen", value: true },
                 {
@@ -101,10 +96,8 @@ function projectFixture(throwFromBehavior = false, consumeSelectedObject = false
                       appearance: "used",
                     } as const]),
               ],
-            },
-          ],
-          fallback: { outcome: "failure", response: "It does not fit.", operations: [] },
-        },
+            }],
+        }),
       },
     ],
     entrances: { start: { groundPoint: { x: 10, y: 10 }, facing: "front" } },
@@ -113,6 +106,12 @@ function projectFixture(throwFromBehavior = false, consumeSelectedObject = false
         area: square,
         approach: { groundPoint: { x: 90, y: 90 }, facing: "back" },
         when: { variable: "gateOpen", equals: true },
+        noun: defineNoun({
+          labels: [{ text: "Ending" }],
+          preferredVerbs: [{ verb: "walk-to" }],
+          cases: [],
+        }),
+        direction: "right",
         destination: { scene: "ending", entrance: "fromOpening" },
       },
     ],
@@ -142,6 +141,11 @@ function projectFixture(throwFromBehavior = false, consumeSelectedObject = false
       used: { kind: "static", image: "used-key.png" },
     },
     inventoryAppearance: "key-inventory.png",
+    noun: defineNoun({
+      labels: [{ text: "Key" }],
+      preferredVerbs: [{ verb: "use" }],
+      cases: [],
+    }),
   });
   const conversation = defineSequence({
     steps: [
@@ -178,7 +182,7 @@ function projectFixture(throwFromBehavior = false, consumeSelectedObject = false
   return defineGame({
     identity: "test.gameplay",
     version: "1",
-    logicalResolution: { width: 100, height: 100 },
+    logicalResolution: { width: 100, height: 200 },
     inventoryAppearanceSize: 32,
     scenes: { opening, ending },
     characters: { player },
@@ -186,11 +190,32 @@ function projectFixture(throwFromBehavior = false, consumeSelectedObject = false
     objects: { key },
     sequences: { conversation },
     variables: { met: false, gateOpen: false, behaviorRan: false },
+    commandLexicon: defineCommandLexicon({
+      verbs: {
+        open: "Open", "pick-up": "Pick up", push: "Push", close: "Close",
+        "look-at": "Look at", pull: "Pull", give: "Give", "talk-to": "Talk to", use: "Use",
+      },
+      patterns: {
+        unary: "{verb} {noun}", give: "{verb} {first} to {second}", use: "{verb} {first} with {second}",
+      },
+    }),
+    commandFallbacks: Object.fromEntries([
+      "open", "pick-up", "push", "close", "look-at", "pull", "give", "talk-to", "use",
+    ].map((verb) => [verb, { text: "That does not help." }])) as never,
     initialScene: "opening",
   });
 }
 
 function interact(session: ReturnType<typeof createTestSession>, hotspot: number) {
+  const verbs = ["talk-to", "pick-up", "look-at"] as const;
+  session.input({ type: "select-verb", verb: verbs[hotspot]! });
+  session.input({ type: "activate-hotspot", hotspot });
+  session.steps(20);
+}
+
+function useKeyOn(session: ReturnType<typeof createTestSession>, hotspot: number) {
+  session.input({ type: "select-verb", verb: "use" });
+  session.input({ type: "activate-object", object: "key" });
   session.input({ type: "activate-hotspot", hotspot });
   session.steps(20);
 }
@@ -252,19 +277,53 @@ test("Save Snapshot validation restores the exact active Choice", () => {
   expect(restored.snapshot()).toEqual(uninterrupted.snapshot());
 });
 
-test("Inventory Use preserves selection on failure and relocates it atomically on success", () => {
+test("Save Snapshot validation restores a Command while it approaches its Noun", () => {
+  const project = projectFixture();
+  const uninterrupted = createTestSession(project);
+  uninterrupted.input({ type: "select-verb", verb: "talk-to" });
+  uninterrupted.input({ type: "activate-hotspot", hotspot: 0 });
+  uninterrupted.steps();
+
+  const validation = validateSaveSnapshot(
+    project,
+    JSON.parse(JSON.stringify(uninterrupted.createSaveSnapshot())) as unknown,
+  );
+  expect(validation.ok).toBe(true);
+  if (!validation.ok) return;
+  const restored = createTestSession(project, validation.snapshot);
+  for (const session of [uninterrupted, restored]) session.steps(20);
+  expect(restored.snapshot()).toEqual(uninterrupted.snapshot());
+});
+
+test("Save Snapshot validation rejects malformed or unavailable Command Nouns", () => {
+  const project = projectFixture();
+  const snapshot = createTestSession(project).createSaveSnapshot();
+  const result = validateSaveSnapshot(project, {
+    ...snapshot,
+    state: {
+      ...snapshot.state,
+      command: { verb: "use", firstNoun: { kind: "object", object: "key" } },
+    },
+  });
+  expect(result.ok).toBe(false);
+  if (!result.ok) expect(result.diagnostics.map(({ code }) => code)).toContain("save.state.invalid");
+});
+
+test("a binary Use preserves its first Noun on failure and relocates it atomically on success", () => {
   const session = createTestSession(projectFixture());
   interact(session, 1);
   expect(session.snapshot().inventory.objects).toEqual(["key"]);
-  expect(session.snapshot().inventory.selected).toBeNull();
+  expect(session.snapshot().inventory).toEqual({ objects: ["key"] });
 
-  session.input({ type: "select-object", object: "key" });
-  session.steps();
-  interact(session, 0);
-  expect(session.snapshot().inventory.selected).toBe("key");
+  session.input({ type: "select-verb", verb: "use" });
+  session.input({ type: "activate-object", object: "key" });
+  session.input({ type: "activate-hotspot", hotspot: 0 });
+  session.steps(20);
+  expect(session.snapshot().command).toEqual({ verb: "walk-to", firstNoun: null });
+  expect(session.snapshot().inventory.objects).toEqual(["key"]);
 
-  interact(session, 2);
-  expect(session.snapshot().inventory).toEqual({ objects: [], selected: null });
+  useKeyOn(session, 2);
+  expect(session.snapshot().inventory).toEqual({ objects: [] });
   expect(session.snapshot().objects.key).toMatchObject({
     location: { kind: "scene", scene: "opening", groundPoint: { x: 75, y: 75 } },
     appearance: "used",
@@ -273,25 +332,21 @@ test("Inventory Use preserves selection on failure and relocates it atomically o
   expect(session.snapshot().scenery.opening!.gate).toBe("open");
 });
 
-test("a successful Inventory Use can consume the selected Object terminally", () => {
-  const session = createTestSession(projectFixture(false, true));
+test("a successful binary Use can consume its first Object terminally", () => {
+  const session = createTestSession(projectFixture(true));
   interact(session, 1);
-  session.input({ type: "select-object", object: "key" });
-  session.steps();
-  interact(session, 2);
+  useKeyOn(session, 2);
 
-  expect(session.snapshot().inventory).toEqual({ objects: [], selected: null });
+  expect(session.snapshot().inventory).toEqual({ objects: [] });
   expect(session.snapshot().objects.key!.location).toEqual({ kind: "consumed" });
   session.steps(10);
   expect(session.snapshot().objects.key!.location).toEqual({ kind: "consumed" });
 });
 
-test("a controlled Game Behavior commits operations and an enabled passage transitions atomically", () => {
+test("a declarative Command commits operations and an enabled passage transitions atomically", () => {
   const session = createTestSession(projectFixture());
   interact(session, 1);
-  session.input({ type: "select-object", object: "key" });
-  session.steps();
-  interact(session, 2);
+  useKeyOn(session, 2);
   interact(session, 0);
   expect(session.snapshot().variables.behaviorRan).toBe(true);
 
@@ -386,29 +441,4 @@ test("a structurally valid but unvalidated snapshot cannot restore a session", (
   const project = projectFixture();
   const raw = createTestSession(project).createSaveSnapshot() as ValidatedSaveSnapshot;
   expect(() => createTestSession(project, raw)).toThrow(/validateSaveSnapshot/);
-});
-
-test("a throwing Game Behavior keeps the preceding commit and fails with its cause", () => {
-  const session = createTestSession(projectFixture(true));
-  interact(session, 1);
-  session.input({ type: "select-object", object: "key" });
-  session.steps();
-  interact(session, 2);
-  const beforeBehavior = session.snapshot();
-
-  interact(session, 0);
-  expect(session.lifecycle()).toBe("failed");
-  const afterBehavior = session.snapshot();
-  expect(afterBehavior.variables).toEqual(beforeBehavior.variables);
-  expect(afterBehavior.inventory).toEqual(beforeBehavior.inventory);
-  expect(afterBehavior.objects).toEqual(beforeBehavior.objects);
-  expect(afterBehavior.scenery).toEqual(beforeBehavior.scenery);
-  expect(afterBehavior.characters.player!.appearance).toBe(
-    beforeBehavior.characters.player!.appearance,
-  );
-  expect(session.diagnostics()[0]).toMatchObject({
-    code: "behavior.threw",
-    family: "behavior",
-    cause: new Error("behavior exploded"),
-  });
 });

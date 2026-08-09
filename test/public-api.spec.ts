@@ -5,8 +5,10 @@ import {
   defineCommandLexicon,
   defineCharacter,
   defineGame,
+  defineHUDTheme,
   defineNoun,
   defineScene,
+  defineSequence,
 } from "../src/index";
 
 test("an Author defines an immutable one-Scene Game Project through the root API", () => {
@@ -110,6 +112,45 @@ test("Noun and Command Lexicon helpers aggregate independent local diagnostics",
   }
 });
 
+test("HUD Theme is immutable and aggregates incomplete visual assets", () => {
+  const cursor = new URL("https://example.test/cursor.png");
+  const theme = defineHUDTheme({
+    font: { family: "Fondale Test", source: new URL("https://example.test/font.ttf") },
+    colors: {
+      text: "#fff", preferred: "#f90", selected: "#0cc", backing: "#123456",
+      border: "#abc", inventoryWell: "#012",
+    },
+    opacity: 0.7,
+    maxSpeechWidth: 180,
+    cursors: { left: cursor, right: cursor, up: cursor, down: cursor, enter: cursor },
+    speechColors: { player: "#fff" },
+  });
+  expect(Object.isFrozen(theme)).toBe(true);
+  expect(Object.isFrozen(theme.colors)).toBe(true);
+
+  expect(() => defineHUDTheme({
+    ...theme,
+    font: { family: "", source: "" },
+    colors: { ...theme.colors, selected: "turquoise" },
+    opacity: 2,
+    maxSpeechWidth: 0,
+    cursors: { ...theme.cursors, enter: "" },
+  })).toThrow(AuthoringError);
+});
+
+test("a Choice cannot expose more than six alternatives", () => {
+  expect(() => defineSequence({
+    steps: [{
+      type: "choice",
+      alternatives: Array.from({ length: 7 }, (_, index) => ({
+        text: `Alternative ${index + 1}`,
+        steps: [],
+      })),
+      fallback: { text: "Leave", steps: [] },
+    }],
+  })).toThrow(/at most six/i);
+});
+
 test("defineGame composes Command authoring and aggregates Noun reference failures", () => {
   const noun = defineNoun({
     labels: [{ when: { variable: "missingVariable", equals: true }, text: "Antica porta" }, { text: "Porta" }],
@@ -129,10 +170,6 @@ test("defineGame composes Command authoring and aggregates Noun reference failur
       area: [{ x: 1, y: 1 }, { x: 10, y: 1 }, { x: 1, y: 10 }],
       approach: { groundPoint: { x: 2, y: 2 }, facing: "front" },
       noun,
-      primaryAction: {
-        cases: [],
-        fallback: { label: "Look", response: "Legacy.", operations: [] },
-      },
     }],
   });
 
@@ -236,10 +273,11 @@ test("local helpers reject invalid walking rates and interaction polygons", () =
       target: { kind: "background" },
       area: [{ x: 0, y: 0 }, { x: 1, y: 1 }],
       approach: { groundPoint: { x: 1, y: 1 }, facing: "front" },
-      primaryAction: {
+      noun: defineNoun({
+        labels: [{ text: "Nothing" }],
+        preferredVerbs: [{ verb: "look-at" }],
         cases: [],
-        fallback: { label: "Look", response: "Nothing.", operations: [] },
-      },
+      }),
     }],
   })).toThrow(/at least three vertices/i);
 });
@@ -263,14 +301,11 @@ test("defineGame aggregates independent cross-definition reference failures", ()
         ],
         approach: { groundPoint: { x: 120, y: 120 }, facing: "front" },
         when: { variable: "missing", equals: true },
-        primaryAction: {
-          cases: [],
-          fallback: {
-            label: "Act",
-            response: "Response",
-            operations: [{ type: "start-sequence", sequence: "missing" }],
-          },
-        },
+        noun: defineNoun({
+          labels: [{ text: "Missing" }],
+          preferredVerbs: [{ verb: "talk-to" }],
+          cases: [{ verb: "talk-to", sequence: "missing", response: { text: "Response" } }],
+        }),
       },
     ],
     passages: [
@@ -281,6 +316,12 @@ test("defineGame aggregates independent cross-definition reference failures", ()
           { x: 10, y: 10 },
         ],
         approach: { groundPoint: { x: 5, y: 5 }, facing: "front" },
+        noun: defineNoun({
+          labels: [{ text: "Missing destination" }],
+          preferredVerbs: [{ verb: "walk-to" }],
+          cases: [],
+        }),
+        direction: "right",
         destination: { scene: "missing", entrance: "missing" },
       },
     ],
@@ -317,17 +358,18 @@ test("defineGame rejects a non-finite Object placement operation", () => {
       target: { kind: "background" },
       area: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 0, y: 10 }],
       approach: { groundPoint: { x: 5, y: 5 }, facing: "front" },
-      primaryAction: {
-        cases: [],
-        fallback: {
-          label: "Place",
-          response: "Placed.",
+      noun: defineNoun({
+        labels: [{ text: "Receptacle" }],
+        preferredVerbs: [{ verb: "use" }],
+        cases: [{
+          verb: "use",
+          response: { text: "Placed." },
           operations: [{
             type: "place-selected-object",
             groundPoint: { x: Number.NaN, y: 5 },
           }],
-        },
-      },
+        }],
+      }),
     }],
   });
   expect(() => defineGame({

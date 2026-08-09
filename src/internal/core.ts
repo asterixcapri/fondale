@@ -3,7 +3,6 @@ import type { CommandResponse, CommandVerb, NounDefinition, Verb } from "../publ
 import {
   getGameProjectData,
   type Facing,
-  type GameBehaviorContext,
   type GameOperation,
   type GameProject,
   type GameProjectData,
@@ -11,7 +10,6 @@ import {
   type HotspotTarget,
   type InteractionCondition,
   type Point,
-  type PrimaryInteractionCase,
   type SequenceDefinition,
   type SequenceStep,
 } from "../public/definitions";
@@ -52,7 +50,6 @@ export interface PlayerIntentState {
         kind: "interaction";
         scene: string;
         hotspot: number;
-        selectedObject: string | null;
         command?: { verb: CommandVerb; firstNoun?: string; preserveState?: boolean };
       }
     | { kind: "passage"; scene: string; passage: number };
@@ -76,7 +73,7 @@ export interface GameState {
   characters: Record<string, CharacterState>;
   scenery: Record<string, Record<string, string>>;
   objects: Record<string, ObjectState>;
-  inventory: { objects: string[]; selected: string | null };
+  inventory: { objects: string[] };
   command: { verb: Verb; firstNoun: null | { kind: "object"; object: string } };
   variables: Record<string, boolean>;
   activity: GameActivityState | null;
@@ -90,7 +87,6 @@ export type CoreInput =
   | { readonly type: "quick-hotspot"; readonly hotspot: number }
   | { readonly type: "activate-passage"; readonly passage: number; readonly fast?: boolean }
   | { readonly type: "activate-object"; readonly object: string }
-  | { readonly type: "select-object"; readonly object: string }
   | { readonly type: "escape" }
   | { readonly type: "advance-sequence" }
   | { readonly type: "skip-sequence" }
@@ -210,13 +206,8 @@ export function createCoreSession(
       const scene = data.scenes[state.currentScene]!;
       return (scene.hotspots ?? []).flatMap((hotspot, index) => {
         if (!hotspotAvailable(hotspot)) return [];
-        const label = hotspot.noun
-          ? conditionalValue(hotspot.noun.labels).text
-          : (hotspot.primaryAction.cases.find(({ when }) => conditionMatches(when)) ??
-            hotspot.primaryAction.fallback).label;
-        const preferredVerb = hotspot.noun
-          ? conditionalValue(hotspot.noun.preferredVerbs).verb
-          : undefined;
+        const label = conditionalValue(hotspot.noun.labels).text;
+        const preferredVerb = conditionalValue(hotspot.noun.preferredVerbs).verb;
         return [{
           index,
           area: hotspot.area.map((point) => ({ ...point })),
@@ -289,11 +280,11 @@ export function createCoreSession(
       const scene = data.scenes[state.currentScene]!;
       const hotspot = scene.hotspots?.[input.hotspot];
       if (hotspot && hotspotAvailable(hotspot)) {
-        if (data.commandLexicon && hotspot.noun && state.command.verb === "walk-to") {
+        if (input.type === "activate-hotspot" && state.command.verb === "walk-to") {
           beginIntent({ kind: "move" }, hotspot.approach.groundPoint, hotspot.approach.facing);
           return;
         }
-        const quickVerb = input.type === "quick-hotspot" && hotspot.noun
+        const quickVerb = input.type === "quick-hotspot"
           ? conditionalValue(hotspot.noun.preferredVerbs).verb
           : undefined;
         if (quickVerb === "walk-to") {
@@ -305,16 +296,11 @@ export function createCoreSession(
             kind: "interaction",
             scene: state.currentScene,
             hotspot: input.hotspot,
-            selectedObject: state.inventory.selected,
-            ...(data.commandLexicon && hotspot.noun && (quickVerb || state.command.verb !== "walk-to")
-              ? {
-                  command: {
-                    verb: (quickVerb ?? state.command.verb) as CommandVerb,
-                    ...(state.command.firstNoun ? { firstNoun: state.command.firstNoun.object } : {}),
-                    ...(quickVerb ? { preserveState: true } : {}),
-                  },
-                }
-              : {}),
+            command: {
+              verb: (quickVerb ?? state.command.verb) as CommandVerb,
+              ...(state.command.firstNoun ? { firstNoun: state.command.firstNoun.object } : {}),
+              ...(quickVerb ? { preserveState: true } : {}),
+            },
           },
           hotspot.approach.groundPoint,
           hotspot.approach.facing,
@@ -342,12 +328,7 @@ export function createCoreSession(
       }
       const firstNoun = state.command.firstNoun?.object;
       resolveCommand(noun, state.command.verb, { kind: "object", object: input.object }, false, firstNoun);
-    } else if (input.type === "select-object") {
-      if (!state.inventory.objects.includes(input.object)) return;
-      state.activity = null;
-      state.inventory.selected = state.inventory.selected === input.object ? null : input.object;
     } else if (input.type === "escape") {
-      state.inventory.selected = null;
       state.command = { verb: "walk-to", firstNoun: null };
     }
   }
@@ -416,14 +397,14 @@ export function createCoreSession(
   }
 
   function resolveInteraction(intent: Extract<PlayerIntentState["intent"], { kind: "interaction" }>): void {
-    if (intent.scene !== state.currentScene || intent.selectedObject !== state.inventory.selected) return;
+    if (intent.scene !== state.currentScene) return;
     const hotspot = data.scenes[intent.scene]?.hotspots?.[intent.hotspot];
     if (!hotspot || !hotspotAvailable(hotspot)) {
       if (intent.command) state.command = { verb: "walk-to", firstNoun: null };
       return;
     }
 
-    if (intent.command && hotspot.noun) {
+    if (intent.command) {
       resolveCommand(
         hotspot.noun,
         intent.command.verb,
@@ -434,35 +415,6 @@ export function createCoreSession(
       return;
     }
 
-    if (intent.selectedObject) {
-      const use = hotspot.inventoryUse;
-      const interaction =
-        use?.cases.find(
-          (candidate) =>
-            candidate.object === intent.selectedObject && conditionMatches(candidate.when),
-        ) ?? use?.fallback;
-      if (!interaction) {
-        emitted.push({ type: "interaction-response", text: "That does not work." });
-        return;
-      }
-      if (
-        interaction.outcome === "failure" &&
-        interaction.operations.some(
-          ({ type }) => type === "place-selected-object" || type === "consume-selected-object",
-        )
-      ) {
-        failOperation("A failed Inventory Use cannot place or consume the selected Object.");
-        return;
-      }
-      if (!applyOperations(interaction.operations, hotspot.target)) return;
-      if (interaction.outcome === "success") state.inventory.selected = null;
-      emitted.push({ type: "interaction-response", text: interaction.response });
-      return;
-    }
-
-    const action = hotspot.primaryAction;
-    const interaction = action.cases.find((candidate) => conditionMatches(candidate.when)) ?? action.fallback;
-    applyPrimaryInteraction(interaction, hotspot.target);
   }
 
   function resolveCommand(
@@ -484,11 +436,17 @@ export function createCoreSession(
     }
     const resolution = candidate ?? fallback;
     if (!resolution) return;
+    if (firstNoun) {
+      if (!state.inventory.objects.includes(firstNoun)) {
+        emitted.push({ type: "interaction-response", text: "That Object is no longer available." });
+        return;
+      }
+    }
     const requested = [
       ...(resolution.operations ?? []),
       ...(resolution.sequence ? [{ type: "start-sequence" as const, sequence: resolution.sequence }] : []),
     ];
-    if (!applyOperations(requested, target)) return;
+    if (!applyOperations(requested, target, firstNoun)) return;
     if (resolution.response) {
       emitted.push({
         type: "interaction-response",
@@ -496,41 +454,6 @@ export function createCoreSession(
         response: resolution.response,
       });
     }
-  }
-
-  function applyPrimaryInteraction(interaction: PrimaryInteractionCase, target: HotspotTarget): void {
-    let operations: readonly GameOperation[];
-    if (interaction.behavior) {
-      const requested: GameOperation[] = [];
-      const context: GameBehaviorContext = Object.freeze({
-        reads: Object.freeze({
-          variable: (name: string) => readVariable(name),
-          hasObject: (object: string) => state.inventory.objects.includes(object),
-        }),
-        operations: Object.freeze({
-          setVariable: (variable: string, value: boolean) =>
-            requested.push({ type: "set-variable", variable, value }),
-          setAppearance: (
-            operationTarget: Extract<GameOperation, { type: "set-appearance" }>["target"],
-            appearance: string,
-          ) => requested.push({ type: "set-appearance", target: operationTarget, appearance }),
-          startSequence: (sequence: string) =>
-            requested.push({ type: "start-sequence", sequence }),
-        }),
-        target,
-      });
-      try {
-        interaction.behavior(context);
-      } catch (cause) {
-        failBehavior(cause);
-        return;
-      }
-      operations = requested;
-    } else {
-      operations = interaction.operations;
-    }
-    if (!applyOperations(operations, target)) return;
-    emitted.push({ type: "interaction-response", text: interaction.response });
   }
 
   function resolvePassage(intent: Extract<PlayerIntentState["intent"], { kind: "passage" }>): void {
@@ -557,10 +480,14 @@ export function createCoreSession(
     emitted.push({ type: "scene-changed", scene: state.currentScene });
   }
 
-  function applyOperations(operations: readonly GameOperation[], target: HotspotTarget): boolean {
+  function applyOperations(
+    operations: readonly GameOperation[],
+    target: HotspotTarget,
+    firstNounObject?: string,
+  ): boolean {
     const draft = structuredClone(state);
     try {
-      for (const operation of operations) applyOperation(draft, operation, target);
+      for (const operation of operations) applyOperation(draft, operation, target, firstNounObject);
     } catch (cause) {
       failOperation(cause instanceof Error ? cause.message : String(cause), cause);
       return false;
@@ -570,7 +497,12 @@ export function createCoreSession(
     return true;
   }
 
-  function applyOperation(draft: GameState, operation: GameOperation, target: HotspotTarget): void {
+  function applyOperation(
+    draft: GameState,
+    operation: GameOperation,
+    target: HotspotTarget,
+    firstNounObject?: string,
+  ): void {
     if (operation.type === "set-variable") {
       if (!(operation.variable in data.variables)) throw new Error(`Unknown Game Variable '${operation.variable}'.`);
       draft.variables[operation.variable] = operation.value;
@@ -615,7 +547,7 @@ export function createCoreSession(
       object.location = { kind: "inventory" };
       draft.inventory.objects.push(target.object);
     } else if (operation.type === "place-selected-object") {
-      const selected = draft.inventory.selected;
+      const selected = firstNounObject;
       if (!selected || !draft.inventory.objects.includes(selected)) throw new Error("No Object is selected.");
       const object = draft.objects[selected]!;
       if (operation.appearance !== undefined && !(operation.appearance in data.objects[selected]!.appearances)) {
@@ -628,13 +560,11 @@ export function createCoreSession(
       };
       if (operation.appearance !== undefined) object.appearance = operation.appearance;
       draft.inventory.objects = draft.inventory.objects.filter((id) => id !== selected);
-      draft.inventory.selected = null;
     } else if (operation.type === "consume-selected-object") {
-      const selected = draft.inventory.selected;
+      const selected = firstNounObject;
       if (!selected || !draft.inventory.objects.includes(selected)) throw new Error("No Object is selected.");
       draft.objects[selected]!.location = { kind: "consumed" };
       draft.inventory.objects = draft.inventory.objects.filter((id) => id !== selected);
-      draft.inventory.selected = null;
     }
   }
 
@@ -706,11 +636,6 @@ export function createCoreSession(
     return values.find((value) => conditionMatches(value.when)) ?? values.at(-1)!;
   }
 
-  function readVariable(name: string): boolean {
-    if (!(name in state.variables)) throw new Error(`Unknown Game Variable '${name}'.`);
-    return state.variables[name]!;
-  }
-
   function hotspotAvailable(hotspot: HotspotDefinition): boolean {
     return hotspotAvailableInState(hotspot, state);
   }
@@ -724,20 +649,6 @@ export function createCoreSession(
         family: "state",
         path: "Game Session.operation",
         message,
-        cause,
-      },
-    ];
-  }
-
-  function failBehavior(cause: unknown): void {
-    status = "failed";
-    state.activity = null;
-    failureDiagnostics = [
-      {
-        code: "behavior.threw",
-        family: "behavior",
-        path: "Game Session.behavior",
-        message: "A Game Behavior threw before its requested operations could commit.",
         cause,
       },
     ];
@@ -784,7 +695,7 @@ function initialState(data: GameProjectData): GameState {
     characters,
     scenery,
     objects,
-    inventory: { objects: [], selected: null },
+    inventory: { objects: [] },
     command: { verb: "walk-to", firstNoun: null },
     variables: { ...data.variables },
     activity: null,

@@ -1,6 +1,7 @@
 import {
   defineCharacter,
   defineGame,
+  defineNoun,
   defineScene,
   startGame,
   validateSaveSnapshot,
@@ -8,13 +9,17 @@ import {
 } from "@asterixcapri/fondale";
 
 import { interactionScene } from "../../docs/public/recipes/interaction";
-import { key, successfulUse } from "../../docs/public/recipes/inventory";
+import {
+  englishCommandFallbacks,
+  englishCommandLexicon,
+} from "../../docs/public/recipes/first-scene";
+import { key, keyNoun, successfulUse } from "../../docs/public/recipes/inventory";
 import { greeting } from "../../docs/public/recipes/sequence";
 
 const sceneUrl = new URL("../../docs/public/recipes/scene.png", import.meta.url);
 const player = defineCharacter({
   initialScene: "opening",
-  initialGroundPoint: { x: 50, y: 50 },
+  initialGroundPoint: { x: 50, y: 35 },
   initialFacing: "front",
   initialAppearance: "idle",
   movementSpeed: 600,
@@ -29,6 +34,8 @@ const interactionProject = defineGame({
   characters: { player },
   playerCharacter: "player",
   variables: { doorOpen: false },
+  commandLexicon: englishCommandLexicon,
+  commandFallbacks: englishCommandFallbacks,
   initialScene: "opening",
 });
 
@@ -36,47 +43,34 @@ const sequenceInventoryScene = defineScene({
   background: sceneUrl,
   walkableRegion: [
     { x: 0, y: 0 }, { x: 100, y: 0 },
-    { x: 100, y: 100 }, { x: 0, y: 100 },
+    { x: 100, y: 40 }, { x: 0, y: 40 },
   ],
   hotspots: [
     {
       target: { kind: "background" },
       area: [{ x: 10, y: 10 }, { x: 30, y: 10 }, { x: 30, y: 30 }, { x: 10, y: 30 }],
       approach: { groundPoint: { x: 20, y: 35 }, facing: "back" },
-      primaryAction: {
-        cases: [],
-        fallback: {
-          label: "Talk",
-          response: "The greeting begins.",
-          operations: [{ type: "start-sequence", sequence: "greeting" }],
-        },
-      },
+      noun: defineNoun({
+        labels: [{ text: "Greeting" }],
+        preferredVerbs: [{ verb: "talk-to" }],
+        cases: [{ verb: "talk-to", response: { text: "The greeting begins." }, sequence: "greeting" }],
+      }),
     },
     {
       target: { kind: "object", object: "key" },
-      area: [{ x: 30, y: 70 }, { x: 50, y: 70 }, { x: 50, y: 90 }, { x: 30, y: 90 }],
-      approach: { groundPoint: { x: 40, y: 65 }, facing: "front" },
-      primaryAction: {
-        cases: [],
-        fallback: {
-          label: "Take",
-          response: "The recipe key is collected.",
-          operations: [{ type: "collect-target-object" }],
-        },
-      },
+      area: [{ x: 30, y: 20 }, { x: 50, y: 20 }, { x: 50, y: 38 }, { x: 30, y: 38 }],
+      approach: { groundPoint: { x: 40, y: 35 }, facing: "front" },
+      noun: keyNoun,
     },
     {
       target: { kind: "background" },
-      area: [{ x: 70, y: 70 }, { x: 90, y: 70 }, { x: 90, y: 90 }, { x: 70, y: 90 }],
-      approach: { groundPoint: { x: 70, y: 65 }, facing: "front" },
-      primaryAction: {
-        cases: [],
-        fallback: { label: "Look", response: "An empty receptacle.", operations: [] },
-      },
-      inventoryUse: {
-        cases: [successfulUse],
-        fallback: { outcome: "failure", response: "No effect.", operations: [] },
-      },
+      area: [{ x: 70, y: 20 }, { x: 90, y: 20 }, { x: 90, y: 38 }, { x: 70, y: 38 }],
+      approach: { groundPoint: { x: 70, y: 35 }, facing: "front" },
+      noun: defineNoun({
+        labels: [{ text: "Receptacle" }],
+        preferredVerbs: [{ verb: "look-at" }],
+        cases: [{ verb: "look-at", response: { text: "An empty receptacle." } }, successfulUse],
+      }),
     },
   ],
 });
@@ -91,6 +85,8 @@ const sequenceInventoryProject = defineGame({
   objects: { key },
   sequences: { greeting },
   variables: { ready: true },
+  commandLexicon: englishCommandLexicon,
+  commandFallbacks: englishCommandFallbacks,
   initialScene: "opening",
 });
 

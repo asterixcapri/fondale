@@ -1,9 +1,9 @@
 # Concepts
 
 An **Engine** is the reusable Fondale runtime. An **Author** supplies a
-**Game Project**: immutable settings, named **Game Definitions**, PNG assets,
-and exceptional synchronous **Game Behaviors**. A **Player** controls one
-isolated **Game Session**.
+**Game Project**: immutable settings, named **Game Definitions**, local assets,
+a **Command Lexicon**, Command fallbacks and a **HUD Theme**. A **Player**
+controls one isolated **Game Session**.
 
 Every committed fact belongs to the session's canonical **Game State**.
 Fondale evolves it through validated, atomic **Game Operations**. Rendering,
@@ -14,12 +14,19 @@ of progress: either a replaceable Player Intent or a modal Sequence.
 A **Scene** fills the fixed Logical Resolution. Its **Scene Space** has its
 origin at the top-left. A Character's **Ground Point**, a Scenery **Baseline**,
 and optional **Perspective Scale** determine composition. A Walkable Region
-governs movement; a Hotspot adds an Approach Point and an Interaction.
+governs movement; a Hotspot adds an Approach Point and one **Noun Definition**.
 
 An **Object** exists in exactly one place: a Scene, the acquisition-ordered
-**Inventory**, or terminal consumption. A selected Object changes a Hotspot
-from Primary Action to Inventory Use. A **Sequence** is a finite, modal path of
-Lines, Choices, branches, and operation groups.
+**Inventory**, or terminal consumption. A Command combines one of nine visible
+**Verb** values with one or two Nouns; **Walk To** remains implicit. Ordered
+**Command Case** values resolve specific outcomes, then local and global
+fallbacks guarantee visible feedback. A **Sequence** is a finite, modal path
+of Lines, Choices, branches, and operation groups.
+
+The Engine owns the semantic HUD: Verb grid, eight Inventory slots, Command
+Preview, Choices, Options, Help and Save/Load. The project-owned HUD Theme may
+choose local font and cursor assets, colours, opacity and speech styling, but
+cannot rearrange those controls.
 
 A **Save Snapshot** is an inspectable JSON-safe copy of the latest committed
 Game State, identified by Project Identity, Project Version, and Fondale's
@@ -30,5 +37,6 @@ An **Authoring Diagnostic** has stable code, family, and author-facing path.
 Definitions fail at helpers or `defineGame`; external save data returns an
 explicit result; environment and PNG checks happen asynchronously at startup.
 
+Projects written for Fondale 1.0 must follow the [1.1 migration guide](migration-1.1.md).
 See the [reference](reference.md) for precise fields and the
 [Support Baseline](support-baseline.md) for browser and input commitments.

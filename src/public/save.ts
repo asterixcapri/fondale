@@ -123,11 +123,10 @@ function validStateShape(value: unknown, data: GameProjectData): value is GameSt
       if (typeof object.location.scene !== "string" || !(object.location.scene in data.scenes) || !validPoint(object.location.groundPoint)) return false;
     } else return false;
   }
-  if (!isRecord(value.inventory) || !hasExactKeys(value.inventory, ["objects", "selected"]) || !Array.isArray(value.inventory.objects)) return false;
+  if (!isRecord(value.inventory) || !hasExactKeys(value.inventory, ["objects"]) || !Array.isArray(value.inventory.objects)) return false;
   if (!value.inventory.objects.every((id): id is string => typeof id === "string" && id in data.objects)) return false;
   if (new Set(value.inventory.objects).size !== value.inventory.objects.length) return false;
   if (!sameValues(value.inventory.objects, inventoryLocations)) return false;
-  if (value.inventory.selected !== null && (typeof value.inventory.selected !== "string" || !value.inventory.objects.includes(value.inventory.selected))) return false;
   if (!isRecord(value.command) || !hasExactKeys(value.command, ["verb", "firstNoun"])) return false;
   if (!["walk-to", "open", "pick-up", "push", "close", "look-at", "pull", "give", "talk-to", "use"].includes(String(value.command.verb))) return false;
   if (value.command.firstNoun !== null) {
@@ -151,12 +150,10 @@ function validActivity(value: unknown, data: GameProjectData, state: GameState):
     if (!isRecord(value.intent) || typeof value.intent.kind !== "string") return false;
     if (value.intent.kind === "move") return hasExactKeys(value.intent, ["kind"]);
     if (value.intent.kind === "interaction") {
-      if (!hasExactKeys(value.intent, ["kind", "scene", "hotspot", "selectedObject"], ["command"])) return false;
+      if (!hasExactKeys(value.intent, ["kind", "scene", "hotspot"], ["command"])) return false;
       if (value.intent.scene !== state.currentScene || !Number.isInteger(value.intent.hotspot)) return false;
       const hotspot = data.scenes[state.currentScene]!.hotspots?.[value.intent.hotspot as number];
       if (!hotspot || !hotspotAvailableInState(hotspot, state)) return false;
-      if (value.intent.selectedObject !== state.inventory.selected) return false;
-      if (value.intent.selectedObject !== null && typeof value.intent.selectedObject !== "string") return false;
       if (value.intent.command !== undefined) {
         if (!isRecord(value.intent.command) || !hasExactKeys(value.intent.command, ["verb"], ["firstNoun", "preserveState"])) return false;
         if (!["open", "pick-up", "push", "close", "look-at", "pull", "give", "talk-to", "use"].includes(String(value.intent.command.verb))) return false;

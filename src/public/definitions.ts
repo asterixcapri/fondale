@@ -5,6 +5,7 @@ import {
   type CommandResponse,
   type NounDefinition,
 } from "./commands";
+import type { HUDTheme, PassageDirection } from "./hud-theme";
 
 /** A point measured in logical Scene Space pixels. */
 export interface Point {
@@ -195,28 +196,6 @@ export type GameOperation =
     }
   | { readonly type: "consume-selected-object" };
 
-/** Read-only facts exposed temporarily to a synchronous Game Behavior. */
-export interface GameBehaviorReads {
-  variable(name: string): boolean;
-  hasObject(object: string): boolean;
-}
-
-/** Controlled operations a synchronous Game Behavior may request atomically. */
-export interface GameBehaviorOperations {
-  setVariable(name: string, value: boolean): void;
-  setAppearance(target: Extract<GameOperation, { type: "set-appearance" }>['target'], appearance: string): void;
-  startSequence(sequence: string): void;
-}
-
-/** Ephemeral, restricted context supplied to a synchronous Game Behavior. */
-export interface GameBehaviorContext {
-  readonly reads: GameBehaviorReads;
-  readonly operations: GameBehaviorOperations;
-  readonly target: HotspotTarget;
-}
-
-export type GameBehavior = (context: GameBehaviorContext) => void;
-
 export type HotspotTarget =
   | { readonly kind: "background" }
   | { readonly kind: "character"; readonly character: string }
@@ -228,56 +207,12 @@ export interface ApproachPoint {
   readonly facing: Facing;
 }
 
-export interface DeclarativeInteractionCase {
-  readonly when?: InteractionCondition;
-  readonly label: string;
-  readonly response: string;
-  readonly operations: readonly GameOperation[];
-  readonly behavior?: never;
-}
-
-export interface BehavioralInteractionCase {
-  readonly when?: InteractionCondition;
-  readonly label: string;
-  readonly response: string;
-  readonly operations?: never;
-  readonly behavior: GameBehavior;
-}
-
-export type PrimaryInteractionCase = DeclarativeInteractionCase | BehavioralInteractionCase;
-
-export interface PrimaryAction {
-  readonly cases: readonly PrimaryInteractionCase[];
-  readonly fallback: PrimaryInteractionCase;
-}
-
-export interface InventoryUseCase {
-  readonly object: string;
-  readonly when?: InteractionCondition;
-  readonly outcome: "success" | "failure";
-  readonly response: string;
-  readonly operations: readonly GameOperation[];
-}
-
-export interface InventoryUseFallback {
-  readonly outcome: "failure";
-  readonly response: string;
-  readonly operations: readonly GameOperation[];
-}
-
-export interface InventoryUse {
-  readonly cases: readonly InventoryUseCase[];
-  readonly fallback: InventoryUseFallback;
-}
-
 export interface HotspotDefinition {
   readonly target: HotspotTarget;
   readonly area: readonly Point[];
   readonly approach: ApproachPoint;
   readonly when?: InteractionCondition;
-  readonly noun?: NounDefinition;
-  readonly primaryAction: PrimaryAction;
-  readonly inventoryUse?: InventoryUse;
+  readonly noun: NounDefinition;
 }
 
 export interface SceneryDefinition {
@@ -297,8 +232,8 @@ export interface ScenePassage {
   readonly area: readonly Point[];
   readonly approach: ApproachPoint;
   readonly when?: InteractionCondition;
-  readonly noun?: NounDefinition;
-  readonly direction?: "left" | "right" | "up" | "down" | "enter";
+  readonly noun: NounDefinition;
+  readonly direction: PassageDirection;
   readonly destination: { readonly scene: string; readonly entrance: string };
 }
 
@@ -514,6 +449,7 @@ export interface GameInput {
   readonly letterboxColor?: string;
   readonly commandLexicon?: CommandLexicon;
   readonly commandFallbacks?: Readonly<Partial<Record<(typeof commandVerbs)[number], CommandResponse>>>;
+  readonly hudTheme?: HUDTheme;
 }
 
 declare const gameProjectBrand: unique symbol;
@@ -670,7 +606,7 @@ function validateProjectDefinitions(
   const operations = (
     values: readonly GameOperation[],
     path: string,
-    context: { target?: HotspotTarget; sequence?: boolean; failedUse?: boolean } = {},
+    context: { target?: HotspotTarget; sequence?: boolean } = {},
   ) => {
     values.forEach((operation, index) => {
       const operationPath = `${path}[${index}]`;
@@ -714,17 +650,6 @@ function validateProjectDefinitions(
           family: "definition",
           path: `${operationPath}.groundPoint`,
           message: "A placed Object Ground Point must be finite and inside the Logical Resolution.",
-        });
-      }
-      if (
-        context.failedUse &&
-        (operation.type === "place-selected-object" || operation.type === "consume-selected-object")
-      ) {
-        diagnostics.push({
-          code: "definition.inventory-use.failure-location",
-          family: "definition",
-          path: operationPath,
-          message: "A failed Inventory Use cannot place or consume the selected Object.",
         });
       }
     });
@@ -889,18 +814,6 @@ function validateProjectDefinitions(
         (hotspot.target.kind === "scenery" && hotspot.target.scenery in (scene.scenery ?? {}));
       if (!targetExists) diagnostics.push(referenceDiagnostic("reference.hotspot.target", `${base}.target`, "Hotspot target does not exist."));
       condition(hotspot.when, `${base}.when`);
-      hotspot.primaryAction.cases.forEach((candidate, caseIndex) => {
-        condition(candidate.when, `${base}.primaryAction.cases[${caseIndex}].when`);
-        if (candidate.operations) operations(candidate.operations, `${base}.primaryAction.cases[${caseIndex}].operations`, { target: hotspot.target });
-      });
-      const fallback = hotspot.primaryAction.fallback;
-      if (fallback.operations) operations(fallback.operations, `${base}.primaryAction.fallback.operations`, { target: hotspot.target });
-      hotspot.inventoryUse?.cases.forEach((candidate, caseIndex) => {
-        if (!(candidate.object in objects)) diagnostics.push(referenceDiagnostic("reference.object", `${base}.inventoryUse.cases[${caseIndex}].object`, `Object '${candidate.object}' does not exist.`));
-        condition(candidate.when, `${base}.inventoryUse.cases[${caseIndex}].when`);
-        operations(candidate.operations, `${base}.inventoryUse.cases[${caseIndex}].operations`, { target: hotspot.target, failedUse: candidate.outcome === "failure" });
-      });
-      if (hotspot.inventoryUse) operations(hotspot.inventoryUse.fallback.operations, `${base}.inventoryUse.fallback.operations`, { target: hotspot.target, failedUse: true });
     });
     scene.passages?.forEach((passage, passageIndex) => {
       const base = `scenes.${sceneId}.passages[${passageIndex}]`;
@@ -979,6 +892,15 @@ function validateProjectDefinitions(
   };
   for (const [sequenceId, sequence] of Object.entries(sequences)) {
     visitSteps(sequence.steps, `sequences.${sequenceId}.steps`);
+  }
+  for (const character of Object.keys(input.hudTheme?.speechColors ?? {})) {
+    if (!(character in characters)) {
+      diagnostics.push(referenceDiagnostic(
+        "reference.character",
+        `hudTheme.speechColors.${character}`,
+        `Character '${character}' does not exist.`,
+      ));
+    }
   }
 
   const hasNouns = Object.values(characters).some((value) => value.noun !== undefined) ||

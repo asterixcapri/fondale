@@ -46,6 +46,9 @@ export async function loadProjectAssets(data: GameProjectData): Promise<LoadedAs
       add(appearance.image, `objects.${objectId}.appearances.${appearanceId}`);
     }
   }
+  for (const [direction, cursor] of Object.entries(data.hudTheme?.cursors ?? {})) {
+    add(cursor, `hudTheme.cursors.${direction}`);
+  }
 
   const textures = new Map<string, Texture>();
   const diagnostics: AuthoringDiagnostic[] = [];
@@ -97,6 +100,34 @@ export async function loadProjectAssets(data: GameProjectData): Promise<LoadedAs
         family: "asset",
         path: `objects.${objectId}.inventoryAppearance`,
         message: `Inventory Appearance is ${icon.width}×${icon.height}; expected ${data.inventoryAppearanceSize}×${data.inventoryAppearanceSize}.`,
+      });
+    }
+  }
+  for (const [direction, cursor] of Object.entries(data.hudTheme?.cursors ?? {})) {
+    const texture = textures.get(assetUrl(cursor));
+    if (texture && (texture.width > 64 || texture.height > 64 || texture.width < 1 || texture.height < 1)) {
+      diagnostics.push({
+        code: "asset.cursor.dimensions",
+        family: "asset",
+        path: `hudTheme.cursors.${direction}`,
+        message: "A HUD cursor must fit within 64×64 pixels.",
+      });
+    }
+  }
+
+  if (data.hudTheme) {
+    try {
+      const source = assetUrl(data.hudTheme.font.source);
+      const face = new FontFace(data.hudTheme.font.family, `url(${JSON.stringify(source)})`);
+      await face.load();
+      document.fonts.add(face);
+    } catch (cause) {
+      diagnostics.push({
+        code: "asset.font.load.failed",
+        family: "asset",
+        path: "hudTheme.font.source",
+        message: "The HUD Theme font could not be loaded.",
+        cause,
       });
     }
   }
@@ -203,4 +234,3 @@ function validateAnchor(
     });
   }
 }
-

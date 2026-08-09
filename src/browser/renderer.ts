@@ -90,9 +90,6 @@ export class BrowserRenderer {
     }
     this.updateCharacters(state);
     this.world.sortChildren();
-    if (!this.data.commandLexicon) {
-      this.application.canvas.style.cursor = state.inventory.selected ? "none" : "pointer";
-    }
     this.overlay.render(state, effects);
     this.application.renderer.render(this.application.stage);
   }
@@ -278,7 +275,12 @@ export class BrowserRenderer {
     const cursors = {
       left: "w-resize", right: "e-resize", up: "n-resize", down: "s-resize", enter: "pointer",
     } as const;
-    this.application.canvas.style.cursor = passage ? cursors[passage.direction] : "pointer";
+    const themedCursor = passage ? this.data.hudTheme?.cursors[passage.direction] : undefined;
+    this.application.canvas.style.cursor = passage
+      ? themedCursor
+        ? `url(${JSON.stringify(assetUrl(themedCursor))}) 8 8, ${cursors[passage.direction]}`
+        : cursors[passage.direction]
+      : "pointer";
     this.overlay.showCursor(point);
   };
 
@@ -306,14 +308,12 @@ class EngineOverlay {
   private readonly hint = document.createElement("div");
   private readonly activity = document.createElement("div");
   private readonly modal = document.createElement("section");
-  private readonly inventoryCursor = document.createElement("img");
   private readonly reveal = document.createElement("button");
   private readonly revealedHotspots = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   private inventorySignature = "";
   private activitySignature = "";
   private focusBeforeSequence: HTMLElement | null = null;
   private sequenceWasActive = false;
-  private cursorPoint: Point | null = null;
   private hotspotsRevealed = false;
   private hoveredPreferredVerb: string | null = null;
   private hoveredHotspot: AvailableHotspot | AvailablePassage | null = null;
@@ -321,6 +321,7 @@ class EngineOverlay {
   private preferences: PlayerPreferences;
   private inventoryPage = 0;
   private previousInventoryCount = 0;
+  private lineTimer: number | undefined;
 
   constructor(
     private readonly frame: HTMLElement,
@@ -339,7 +340,7 @@ class EngineOverlay {
       transform: "scale(var(--fondale-scale, 1))",
       transformOrigin: "0 0",
       color: "white",
-      font: "7px/1.25 monospace",
+      font: `7px/1.25 ${JSON.stringify(data.hudTheme?.font.family ?? "monospace")}`,
       textShadow: "1px 1px #000",
       pointerEvents: "none",
     });
@@ -377,6 +378,11 @@ class EngineOverlay {
         button.textContent = data.commandLexicon.verbs[verb];
         button.setAttribute("aria-pressed", "false");
         button.style.cssText = overlayButtonStyle;
+        if (data.hudTheme) {
+          button.style.color = data.hudTheme.colors.text;
+          button.style.borderColor = data.hudTheme.colors.border;
+          button.style.background = data.hudTheme.colors.backing;
+        }
         button.addEventListener("click", () => this.core.input({ type: "select-verb", verb }));
         this.verbs.append(button);
       }
@@ -458,23 +464,8 @@ class EngineOverlay {
     );
     this.revealedHotspots.style.cssText = "position:absolute;inset:0;width:100%;height:100%;pointer-events:none";
     this.revealedHotspots.style.display = "none";
-    this.inventoryCursor.dataset.fondaleInventoryCursor = "";
-    this.inventoryCursor.alt = "";
-    this.inventoryCursor.setAttribute("aria-hidden", "true");
-    const cursorSize = data.inventoryAppearanceSize ?? 32;
-    this.inventoryCursor.width = cursorSize;
-    this.inventoryCursor.height = cursorSize;
-    this.inventoryCursor.style.cssText = [
-      "position:absolute",
-      "display:none",
-      "pointer-events:none",
-      "transform:translate(-50%,-50%)",
-      "image-rendering:pixelated",
-      "z-index:2",
-    ].join(";");
     this.root.append(
       this.revealedHotspots,
-      this.inventoryCursor,
       this.action,
       this.response,
       this.verbs,
@@ -519,7 +510,11 @@ class EngineOverlay {
       const preferred = button.dataset.fondaleVerb === this.hoveredPreferredVerb;
       button.setAttribute("aria-pressed", String(selected));
       button.style.outline = selected ? "2px double white" : "none";
-      button.style.color = preferred && !selected ? "#f2ad62" : "white";
+      button.style.color = selected
+        ? this.data.hudTheme?.colors.selected ?? "white"
+        : preferred
+          ? this.data.hudTheme?.colors.preferred ?? "#f2ad62"
+          : this.data.hudTheme?.colors.text ?? "white";
     }
     this.renderInventory(state);
     if (!this.hoveredHotspot) {
@@ -564,20 +559,17 @@ class EngineOverlay {
   }
 
   showCursor(point: Point): void {
-    this.cursorPoint = point;
     if (this.preferences.commandPreview === "pointer") {
       this.action.style.left = `${Math.max(2, Math.min(this.data.logicalResolution.width - 122, point.x + 6))}px`;
       this.action.style.top = `${Math.max(2, Math.min(this.data.logicalResolution.height - 12, point.y + 6))}px`;
     }
-    this.positionInventoryCursor();
   }
 
   hideCursor(): void {
-    this.cursorPoint = null;
-    this.inventoryCursor.style.display = "none";
   }
 
   destroy(): void {
+    this.clearLineTimer();
     this.root.parentElement?.removeEventListener("keydown", this.onKeyDown);
     this.root.parentElement?.removeEventListener("keyup", this.onKeyUp);
     this.root.remove();
@@ -594,20 +586,10 @@ class EngineOverlay {
     if (signature === this.inventorySignature) return;
     this.inventorySignature = signature;
     this.inventory.replaceChildren();
-    const selectedObject = state.inventory.selected;
-    if (selectedObject) {
-      this.inventoryCursor.src = assetUrl(this.data.objects[selectedObject]!.inventoryAppearance);
-      this.positionInventoryCursor();
-    } else {
-      this.inventoryCursor.removeAttribute("src");
-      this.inventoryCursor.style.display = "none";
-    }
     const available = new Map(this.core.availableInventory().map((noun) => [noun.object, noun]));
     const visibleObjects = state.inventory.objects.slice(this.inventoryPage * 8, this.inventoryPage * 8 + 8);
     for (const objectId of visibleObjects) {
-      const selected = this.data.commandLexicon
-        ? state.command.firstNoun?.object === objectId
-        : state.inventory.selected === objectId;
+      const selected = state.command.firstNoun?.object === objectId;
       const button = document.createElement("button");
       button.type = "button";
       button.dataset.fondaleInventoryObject = objectId;
@@ -618,7 +600,7 @@ class EngineOverlay {
         "padding:0",
         "border:1px solid white",
         `outline:${selected ? "2px double white" : "none"}`,
-        "background:#211b2d",
+        `background:${this.data.hudTheme?.colors.inventoryWell ?? "#211b2d"}`,
         "image-rendering:pixelated",
       ].join(";");
       const image = document.createElement("img");
@@ -635,11 +617,7 @@ class EngineOverlay {
         marker.style.cssText = "position:absolute;right:1px;bottom:0;color:white";
         button.append(marker);
       }
-      button.addEventListener("click", () => this.core.input(
-        this.data.commandLexicon
-          ? { type: "activate-object", object: objectId }
-          : { type: "select-object", object: objectId },
-      ));
+      button.addEventListener("click", () => this.core.input({ type: "activate-object", object: objectId }));
       this.inventory.append(button);
     }
     if (this.data.commandLexicon) {
@@ -647,7 +625,7 @@ class EngineOverlay {
         const empty = document.createElement("span");
         empty.dataset.fondaleInventorySlot = "empty";
         empty.setAttribute("aria-hidden", "true");
-        empty.style.cssText = "display:block;width:32px;height:32px;border:1px solid rgba(255,255,255,.45);background:rgba(20,15,28,.55)";
+        empty.style.cssText = `display:block;width:32px;height:32px;border:1px solid ${this.data.hudTheme?.colors.border ?? "rgba(255,255,255,.45)"};background:${this.data.hudTheme?.colors.inventoryWell ?? "rgba(20,15,28,.55)"}`;
         this.inventory.append(empty);
       }
       this.inventory.style.display = "grid";
@@ -667,6 +645,7 @@ class EngineOverlay {
     const sequence = state.activity?.type === "sequence" ? state.activity : null;
     const signature = JSON.stringify(sequence);
     if (signature === this.activitySignature) return;
+    this.clearLineTimer();
     if (sequence && !this.sequenceWasActive) {
       this.focusBeforeSequence =
         document.activeElement instanceof HTMLElement && document.activeElement.isConnected
@@ -699,6 +678,19 @@ class EngineOverlay {
       this.positionSpeech(line, state, speaker ? "speech" : "narration", speaker);
       this.activity.append(line);
       this.frame.focus({ preventScroll: true });
+      const millisecondsPerCharacter = {
+        slow: 130,
+        normal: 80,
+        fast: 25,
+      }[this.preferences.textSpeed];
+      const minimumDuration = { slow: 7_000, normal: 4_000, fast: 600 }[
+        this.preferences.textSpeed
+      ];
+      const duration = Math.max(minimumDuration, (line.textContent?.length ?? 0) * millisecondsPerCharacter);
+      this.lineTimer = window.setTimeout(() => {
+        this.lineTimer = undefined;
+        if (!this.modalKind) this.core.input({ type: "advance-sequence" });
+      }, duration);
     } else if (sequence.active.kind === "choice" && step.type === "choice") {
       const list = document.createElement("div");
       list.dataset.fondaleChoice = "";
@@ -731,32 +723,23 @@ class EngineOverlay {
     else delete element.dataset.fondaleSpeaker;
     element.style.cssText = [
       "position:absolute",
-      "width:150px",
-      "max-width:150px",
+      `width:${this.data.hudTheme?.maxSpeechWidth ?? 150}px`,
+      `max-width:${this.data.hudTheme?.maxSpeechWidth ?? 150}px`,
       "white-space:normal",
       "text-align:center",
-      "color:#f4dfb4",
+      `color:${speaker && this.data.hudTheme?.speechColors[speaker] || this.data.hudTheme?.colors.text || "#f4dfb4"}`,
       "text-shadow:1px 1px #000",
       "pointer-events:none",
       `display:${this.preferences.speechText ? "block" : "none"}`,
     ].join(";");
     if (presentation === "speech" && visible && character) {
-      element.style.left = `${Math.max(2, Math.min(this.data.logicalResolution.width - 152, character.groundPoint.x - 75))}px`;
+      const width = this.data.hudTheme?.maxSpeechWidth ?? 150;
+      element.style.left = `${Math.max(2, Math.min(this.data.logicalResolution.width - width - 2, character.groundPoint.x - width / 2))}px`;
       element.style.top = `${Math.max(4, Math.min(this.data.logicalResolution.height - 80, character.groundPoint.y - 45))}px`;
     } else {
-      element.style.left = `${(this.data.logicalResolution.width - 150) / 2}px`;
+      element.style.left = `${(this.data.logicalResolution.width - (this.data.hudTheme?.maxSpeechWidth ?? 150)) / 2}px`;
       element.style.top = "72px";
     }
-  }
-
-  private positionInventoryCursor(): void {
-    if (!this.cursorPoint || !this.inventoryCursor.src) {
-      this.inventoryCursor.style.display = "none";
-      return;
-    }
-    this.inventoryCursor.style.left = `${this.cursorPoint.x}px`;
-    this.inventoryCursor.style.top = `${this.cursorPoint.y}px`;
-    this.inventoryCursor.style.display = "block";
   }
 
   private renderRevealedHotspots(): void {
@@ -867,10 +850,12 @@ class EngineOverlay {
   };
 
   private openModal(kind: EngineOverlay["modalKind"]): void {
+    this.clearLineTimer();
     this.modalKind = kind;
     this.modal.replaceChildren();
     this.modal.style.display = kind ? "block" : "none";
     if (!kind) {
+      this.activitySignature = "";
       this.frame.focus({ preventScroll: true });
       return;
     }
@@ -963,7 +948,7 @@ class EngineOverlay {
     this.verbs.style.opacity = String(this.preferences.hudOpacity);
     this.inventory.style.opacity = String(this.preferences.hudOpacity);
     this.root.style.background = this.preferences.hudBacking
-      ? "linear-gradient(to bottom, transparent 75%, rgba(12,22,38,.78) 75%)"
+      ? `linear-gradient(to bottom, transparent 75%, ${this.data.hudTheme?.colors.backing ?? "rgba(12,22,38,.78)"} 75%)`
       : "none";
     if (this.preferences.commandPreview === "sentence-line") {
       this.action.style.left = "153px";
@@ -972,6 +957,12 @@ class EngineOverlay {
     } else {
       this.action.style.textAlign = "left";
     }
+    this.activitySignature = "";
+  }
+
+  private clearLineTimer(): void {
+    if (this.lineTimer !== undefined) window.clearTimeout(this.lineTimer);
+    this.lineTimer = undefined;
   }
 }
 

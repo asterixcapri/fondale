@@ -8,6 +8,6 @@ These focused TypeScript sources compile against the distributable package:
 - [Line and Choice Sequence](sequence.ts)
 - [Object and Inventory](inventory.ts)
 - [Save Snapshot validation and restoration](save-snapshot.ts)
-- [Restricted synchronous Game Behavior](game-behavior.ts)
+- [Declarative Command Case](command-case.ts)
 
 Each file demonstrates one Engine Capability through the public package.

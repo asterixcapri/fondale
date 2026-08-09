@@ -16,6 +16,8 @@ if (undocumented.length > 0) {
 
 const contractSources = [
   "src/public/definitions.ts",
+  "src/public/commands.ts",
+  "src/public/hud-theme.ts",
   "src/public/diagnostics.ts",
   "src/public/save.ts",
   "src/browser/start-game.ts",
@@ -97,7 +99,7 @@ const requiredRecipes = [
   "sequence.ts",
   "inventory.ts",
   "save-snapshot.ts",
-  "game-behavior.ts",
+  "command-case.ts",
 ];
 for (const recipe of requiredRecipes) {
   if (!existsSync(join(repository, "docs/public/recipes", recipe))) {
@@ -123,9 +125,9 @@ for (const requiredBehavior of [
   "greeting",
   "successfulUse",
   "validateSaveSnapshot",
-  "The door opens.",
+  "Open Door",
   "eligible branch",
-  "The key turns.",
+  "inventoryKey",
 ]) {
   if (!browserRecipeProof.includes(requiredBehavior)) {
     throw new Error(`Packaged browser recipe proof is missing behavior: ${requiredBehavior}`);

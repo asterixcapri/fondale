@@ -133,28 +133,16 @@ const project = defineGame({
         area: [{ x: 200, y: 80 }, { x: 260, y: 80 }, { x: 260, y: 150 }, { x: 200, y: 150 }],
         approach: { groundPoint: { x: 220, y: 150 }, facing: "back" },
         noun: door,
-        primaryAction: {
-          cases: [],
-          fallback: { label: "Portone", response: "Legacy.", operations: [] },
-        },
       }, {
         target: { kind: "object", object: "key" },
         area: [{ x: 100, y: 125 }, { x: 140, y: 125 }, { x: 140, y: 165 }, { x: 100, y: 165 }],
         approach: { groundPoint: { x: 120, y: 150 }, facing: "front" },
         noun: keyNoun,
-        primaryAction: {
-          cases: [],
-          fallback: { label: "Chiave", response: "Legacy.", operations: [] },
-        },
       }, {
         target: { kind: "character", character: "host" },
         area: [{ x: 290, y: 110 }, { x: 340, y: 110 }, { x: 340, y: 165 }, { x: 290, y: 165 }],
         approach: { groundPoint: { x: 285, y: 150 }, facing: "right" },
         noun: hostNoun,
-        primaryAction: {
-          cases: [],
-          fallback: { label: "Oste", response: "Legacy.", operations: [] },
-        },
       }],
     }),
     hall: defineScene({

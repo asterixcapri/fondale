@@ -164,6 +164,27 @@ test("Speech follows its Character and Choice uses the HUD with spoken alternati
   await expect(line).toHaveAttribute("data-fondale-speaker", "host");
 });
 
+test("text speed controls automatic Line advancement", async ({ page }) => {
+  await page.goto("/test/fixtures/commands.html");
+  const frame = page.locator("[data-fondale-frame]");
+  await expect(frame).toBeVisible();
+  await frame.focus();
+  await page.keyboard.press("F5");
+  await frame.locator('[data-fondale-modal="options"]').getByLabel("Text speed").selectOption("fast");
+  await page.keyboard.press("Escape");
+
+  await frame.locator('[data-fondale-verb="talk-to"]').click();
+  const canvas = frame.locator("canvas");
+  const bounds = await canvas.boundingBox();
+  if (!bounds) throw new Error("missing canvas bounds");
+  await page.mouse.click(
+    bounds.x + (315 / 426) * bounds.width,
+    bounds.y + (135 / 240) * bounds.height,
+  );
+  await expect(frame.locator("[data-fondale-line]")).toHaveText("Benvenuto.");
+  await expect(frame.locator("[data-fondale-choice]")).toBeVisible({ timeout: 2_500 });
+});
+
 test("Options, Help, named Save Slots, and Command State restore through shortcuts", async ({ page }) => {
   await page.goto("/test/fixtures/commands.html");
   await page.evaluate(() => localStorage.clear());

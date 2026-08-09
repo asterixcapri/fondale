@@ -1,9 +1,14 @@
 import { expect, test } from "@playwright/test";
-import { defineGame, defineScene } from "@asterixcapri/fondale";
+import { defineGame, defineNoun, defineScene } from "@asterixcapri/fondale";
 
 import { player } from "../docs/public/recipes/character-walking";
-import { firstProject, firstScene } from "../docs/public/recipes/first-scene";
-import { openWhenReady } from "../docs/public/recipes/game-behavior";
+import {
+  englishCommandFallbacks,
+  englishCommandLexicon,
+  firstProject,
+  firstScene,
+} from "../docs/public/recipes/first-scene";
+import { openWhenReady } from "../docs/public/recipes/command-case";
 import { interactionScene } from "../docs/public/recipes/interaction";
 import { key, successfulUse } from "../docs/public/recipes/inventory";
 import { restoreStoredProject } from "../docs/public/recipes/save-snapshot";
@@ -16,41 +21,27 @@ test("every public recipe executes against the built package root", () => {
   expect(Object.isFrozen(interactionScene)).toBe(true);
   expect(Object.isFrozen(key)).toBe(true);
   expect(Object.isFrozen(greeting)).toBe(true);
-  expect(successfulUse.outcome).toBe("success");
+  expect(successfulUse.verb).toBe("use");
   expect(restoreStoredProject).toBeInstanceOf(Function);
 
-  const writes: string[] = [];
-  openWhenReady({
-    reads: {
-      variable: (name) => name === "ready",
-      hasObject: (object) => object === "key",
-    },
-    operations: {
-      setVariable: (name, value) => writes.push(`${name}:${value}`),
-      setAppearance: () => writes.push("appearance"),
-      startSequence: () => writes.push("sequence"),
-    },
-    target: { kind: "background" },
-  });
-  expect(writes).toEqual(["doorOpen:true"]);
+  expect(openWhenReady.operations).toEqual([
+    { type: "set-variable", variable: "doorOpen", value: true },
+  ]);
 });
 
 test("the Interaction, Sequence, and Inventory recipes compose as validated projects", () => {
   const plainScene = defineScene({
     background: "scene.png",
-    walkableRegion: [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }, { x: 0, y: 100 }],
+    walkableRegion: [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 40 }, { x: 0, y: 40 }],
     hotspots: [{
       target: { kind: "background" },
       area: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 0, y: 10 }],
       approach: { groundPoint: { x: 5, y: 5 }, facing: "front" },
-      primaryAction: {
-        cases: [],
-        fallback: { label: "Look", response: "A plain room.", operations: [] },
-      },
-      inventoryUse: {
-        cases: [successfulUse],
-        fallback: { outcome: "failure", response: "No effect.", operations: [] },
-      },
+      noun: defineNoun({
+        labels: [{ text: "Plain room" }],
+        preferredVerbs: [{ verb: "look-at" }],
+        cases: [{ verb: "look-at", response: { text: "A plain room." } }, successfulUse],
+      }),
     }],
   });
   const projects = [
@@ -60,6 +51,8 @@ test("the Interaction, Sequence, and Inventory recipes compose as validated proj
       logicalResolution: { width: 100, height: 100 },
       scenes: { opening: interactionScene },
       variables: { doorOpen: false },
+      commandLexicon: englishCommandLexicon,
+      commandFallbacks: englishCommandFallbacks,
       initialScene: "opening",
     }),
     defineGame({
@@ -70,6 +63,8 @@ test("the Interaction, Sequence, and Inventory recipes compose as validated proj
       sequences: { greeting },
       variables: { ready: true },
       objects: { key },
+      commandLexicon: englishCommandLexicon,
+      commandFallbacks: englishCommandFallbacks,
       initialScene: "opening",
     }),
     defineGame({
@@ -78,6 +73,8 @@ test("the Interaction, Sequence, and Inventory recipes compose as validated proj
       logicalResolution: { width: 100, height: 100 },
       scenes: { opening: plainScene },
       objects: { key },
+      commandLexicon: englishCommandLexicon,
+      commandFallbacks: englishCommandFallbacks,
       initialScene: "opening",
     }),
   ];

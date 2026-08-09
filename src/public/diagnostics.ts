@@ -5,8 +5,7 @@ export type AuthoringDiagnosticFamily =
   | "state"
   | "save"
   | "asset"
-  | "environment"
-  | "behavior";
+  | "environment";
 
 /**
  * A machine-identifiable explanation of invalid authored or restored data.
@@ -36,4 +35,3 @@ export class AuthoringError extends Error {
     this.diagnostics = Object.freeze(ordered);
   }
 }
-

@@ -18,6 +18,11 @@ export {
   type Verb,
 } from "./public/commands";
 export {
+  defineHUDTheme,
+  type HUDTheme,
+  type PassageDirection,
+} from "./public/hud-theme";
+export {
   defineGame,
   defineCharacter,
   defineScene,
@@ -27,8 +32,6 @@ export {
   type Facing,
   type GameProject,
   type LogicalResolution,
-  type GameBehavior,
-  type GameBehaviorContext,
   type GameOperation,
   type InteractionCondition,
   type ObjectDefinition,
