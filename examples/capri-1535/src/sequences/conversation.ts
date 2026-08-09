@@ -2,12 +2,12 @@ import { defineSequence } from "@asterixcapri/fondale";
 
 export const conversation = defineSequence({
   steps: [
-    { type: "line", text: "The old lock guards the road to the harbour." },
+    { type: "line", text: "La vecchia serratura sbarra la strada verso il porto." },
     {
       type: "choice",
       alternatives: [
         {
-          text: "I will find a way through.",
+          text: "Troverò il modo di passare.",
           when: { variable: "promiseMade", equals: false },
           steps: [
             {
@@ -21,11 +21,15 @@ export const conversation = defineSequence({
                 },
               ],
             },
-            { type: "line", character: "michele", text: "The key must be nearby." },
+            {
+              type: "line",
+              character: "michele",
+              text: "La chiave dev'essere qui vicino.",
+            },
           ],
         },
       ],
-      fallback: { text: "I remember what I promised.", steps: [] },
+      fallback: { text: "Ricordo la promessa che ho fatto.", steps: [] },
     },
   ],
 });

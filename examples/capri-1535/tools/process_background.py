@@ -10,7 +10,7 @@ Cropping takes the excess off the top: these are all golden-hour skies over a
 horizon, and sky is the one thing a scene never misses.
 
 Usage:
-    tools/process_background.py art/concept/backgrounds/vicolo-capri.png
+    tools/process_background.py art/scenes/alley/background.png
     tools/process_background.py --height 180 <src>      # verb-UI variant
 """
 
@@ -27,7 +27,7 @@ DEFAULT_WIDTH = 426
 DEFAULT_HEIGHT = 240
 DEFAULT_COLOURS = 64
 
-ROOMS_DIR = Path("art/rooms")
+SCENES_DIR = Path("src/scenes")
 
 
 def process(src: Path, width: int, height: int, colours: int, dither: bool) -> Path:
@@ -51,8 +51,8 @@ def process(src: Path, width: int, height: int, colours: int, dither: bool) -> P
     dither_mode = Image.FLOYDSTEINBERG if dither else Image.NONE
     quantised = small.quantize(colors=colours, method=Image.MEDIANCUT, dither=dither_mode)
 
-    ROOMS_DIR.mkdir(parents=True, exist_ok=True)
-    out = ROOMS_DIR / f"{src.stem}.png"
+    out = SCENES_DIR / src.parent.name / "background.png"
+    out.parent.mkdir(parents=True, exist_ok=True)
     quantised.convert("RGB").save(out)
     return out
 

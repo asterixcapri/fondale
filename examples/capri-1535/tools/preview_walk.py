@@ -12,7 +12,7 @@ Frames are found by contrast against the sheet's own corner pixel, so sheets
 with a dark, light or transparent ground all work without being told which.
 
 Usage:
-    tools/preview_walk.py art/concept/personaggi/michele-walk-cycle-v4.png
+    tools/preview_walk.py art/characters/michele/michele-walk-cycle-v4.png
     tools/preview_walk.py --height 84 --fps 10 <sheet>
 """
 
@@ -23,7 +23,7 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
-ROOM = Path("art/rooms/vicolo-capri.png")
+ROOM = Path("src/scenes/alley/background.png")
 # Where the character walks in the alley, and how big they stand there.
 FEET_Y, FROM_X, TO_X = 224, 90, 300
 ZOOM = 3

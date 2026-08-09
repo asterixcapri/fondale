@@ -7,7 +7,8 @@ Seconda prova selezionata dall'utente l'8 agosto 2026. Generata con lo strumento
 ## Riferimenti
 
 - `marina-grande.png`: palette, atmosfera mediterranea e trattamento pittorico;
-- `vicolo-capri.png`: leggibilità a bassa risoluzione e densità del dettaglio.
+- il master `background.png` della Scene `alley`: leggibilità a bassa
+  risoluzione e densità del dettaglio.
 
 I riferimenti erano indicati come guida stilistica, non come immagini da
 modificare o composizioni da copiare.

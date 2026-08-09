@@ -11,8 +11,9 @@ gioco.
   (16:9)**. Non generare direttamente alla risoluzione logica del gioco.
 - **Destinazione:** PNG RGB a **426x240**, 64 colori per scena, senza dithering
   aggiunto in quantizzazione.
-- **Percorsi:** il sorgente va in `art/concept/backgrounds/<slug>.png`; il file
-  elaborato viene scritto in `art/rooms/<slug>.png`.
+- **Percorsi:** il master va in `art/scenes/<scene>/background.png`; il file
+  elaborato viene scritto in `src/scenes/<scene>/background.png`, accanto al
+  modulo che lo usa.
 - **Contenuto escluso:** nessun personaggio, testo, logo, cursore, interfaccia o
   cornice nell'immagine.
 
@@ -40,10 +41,10 @@ Caratteristiche comuni:
   moderazione;
 - atmosfera avventurosa e abitata, mai da cartolina turistica moderna.
 
-I cinque riferimenti canonici sono in `art/concept/backgrounds/`. Allegare a
-ogni nuova generazione il fondale esistente più simile e, quando utile,
-`vicolo-capri.png` come riferimento generale di palette e trattamento. Il
-riferimento definisce lo stile, non la composizione da copiare.
+I riferimenti canonici sono i master `background.png` sotto `art/scenes/`.
+Allegare a ogni nuova generazione il fondale esistente più simile e, quando
+utile, il master della Scene `alley` come riferimento generale di palette e
+trattamento. Il riferimento definisce lo stile, non la composizione da copiare.
 
 ## Capri nel 1535
 
@@ -136,10 +137,10 @@ cornici. Non aggiungere bordi decorativi. Non sfocare alcun piano.
 5. Processare il file:
 
    ```sh
-   python tools/process_background.py art/concept/backgrounds/<slug>.png
+   python tools/process_background.py art/scenes/<scene>/background.png
    ```
 
-6. Guardare `art/rooms/<slug>.png` sia a 1x sia ingrandito con
+6. Guardare `src/scenes/<scene>/background.png` sia a 1x sia ingrandito con
    nearest-neighbour. L'approvazione del sorgente non sostituisce quella del
    risultato a 426x240.
 7. Allestire area camminabile, maschere, hotspot e uscite; validarli con

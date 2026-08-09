@@ -50,14 +50,18 @@ export const alley = defineScene({
       primaryAction: {
         cases: [],
         fallback: {
-          label: "Talk",
-          response: "You consider the blocked road.",
+          label: "Parla",
+          response: "Rifletti sulla strada bloccata.",
           operations: [{ type: "start-sequence", sequence: "conversation" }],
         },
       },
       inventoryUse: {
         cases: [],
-        fallback: { outcome: "failure", response: "The key cannot help here.", operations: [] },
+        fallback: {
+          outcome: "failure",
+          response: "La chiave non può aiutarti qui.",
+          operations: [],
+        },
       },
     },
     {
@@ -67,8 +71,8 @@ export const alley = defineScene({
       primaryAction: {
         cases: [],
         fallback: {
-          label: "Take key",
-          response: "You take the brass key.",
+          label: "Prendi la chiave",
+          response: "Prendi la chiave d'ottone.",
           operations: [{ type: "collect-target-object" }],
         },
       },
@@ -77,25 +81,21 @@ export const alley = defineScene({
       target: { kind: "scenery", scenery: "gate" },
       area: rectangle(183, 135, 235, 165),
       approach: { groundPoint: { x: 208, y: 151 }, facing: "back" },
+      when: { variable: "gateOpen", equals: false },
       primaryAction: {
-        cases: [
-          {
-            when: { variable: "gateOpen", equals: true },
-            label: "Inspect open gate",
-            response: "The mechanism yields. The harbour road is clear.",
-            behavior(context) {
-              context.operations.setVariable("behaviorRan", true);
-            },
-          },
-        ],
-        fallback: { label: "Inspect lock", response: "The lock needs a key.", operations: [] },
+        cases: [],
+        fallback: {
+          label: "Esamina la serratura",
+          response: "La serratura ha bisogno di una chiave.",
+          operations: [],
+        },
       },
       inventoryUse: {
         cases: [
           {
             object: "key",
             outcome: "success",
-            response: "The brass key opens the gate.",
+            response: "La chiave d'ottone apre il cancello.",
             operations: [
               { type: "set-variable", variable: "gateOpen", value: true },
               {
@@ -111,14 +111,18 @@ export const alley = defineScene({
             ],
           },
         ],
-        fallback: { outcome: "failure", response: "That will not open the gate.", operations: [] },
+        fallback: {
+          outcome: "failure",
+          response: "Quell'oggetto non aprirà il cancello.",
+          operations: [],
+        },
       },
     },
   ],
   entrances: { fromHarbour: { groundPoint: { x: 208, y: 152 }, facing: "front" } },
   passages: [
     {
-      area: rectangle(186, 116, 232, 134),
+      area: rectangle(183, 116, 235, 166),
       approach: { groundPoint: { x: 208, y: 150 }, facing: "back" },
       when: { variable: "gateOpen", equals: true },
       destination: { scene: "harbour", entrance: "fromAlley" },

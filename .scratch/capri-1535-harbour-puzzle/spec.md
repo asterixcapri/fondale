@@ -1,6 +1,6 @@
-# Capri 1535 — Enigma del porto e fortificazione costiera
+# Capri 1535 — Enigma del porto e posto di vedetta costiero
 
-Status: ready-for-agent
+Status: ready-for-human
 
 ## Problem Statement
 
@@ -26,25 +26,25 @@ master, mentre ogni asset runtime appartiene al modulo di gioco che lo usa.
 ## Solution
 
 L'Example viene esteso con un micro-enigma narrativo di tre-cinque minuti nel
-porto e con una terza Scene esplorabile presso la fortificazione costiera. Il
+porto e con una terza Scene esplorabile presso un posto di vedetta costiero. Il
 cancello del vicolo diventa attraversabile cliccando l'intero arco dopo lo
 sblocco. Nel porto Michele incontra Raffaele, anziano responsabile
-dell'approdo, che deve mettere in acqua un gozzo per portare un pacco alla
-fortificazione. In cambio dell'aiuto offre a Michele il passaggio e un piccolo
+dell'approdo, che deve mettere in acqua un gozzo per portare un pacco al posto
+di vedetta. In cambio dell'aiuto offre a Michele il passaggio e un piccolo
 compenso.
 
 Il Player sceglie fra una risposta professionale e una ironica, raccoglie
 un'ampolla d'olio e la manovella dell'argano, scopre che la manovella non può
 essere montata prima di lubrificare il meccanismo, ripara l'argano e rende
-disponibile la barca. Il viaggio conduce alla fortificazione, dove Michele può
-percorrere il sentiero, ispezionare la torre, ricevere una conclusione che
+disponibile la barca. Il viaggio conduce a una terrazza di vedetta, dove Michele
+può raggiungere il parapetto, osservare l'orizzonte, ricevere una conclusione che
 riflette la scelta fatta con Raffaele e tornare al porto.
 
 Tutti i dialoghi, la narrazione, le Interaction Response e i controlli posseduti
 dall'Example sono in italiano. Il controllo diagnostico `Reveal hotspots`
 rimane in inglese perché appartiene all'Engine e la localizzazione dell'Engine
 non rientra in questo lavoro. Le Game Definition restano dichiarative; un
-singolo Game Behavior mirato gestisce l'ispezione della torre. Non viene
+singolo Game Behavior mirato gestisce l'osservazione dal parapetto. Non viene
 modificata l'interface pubblica di Fondale.
 
 La libreria artistica viene riorganizzata per dominio in master di Scene,
@@ -67,7 +67,7 @@ scrivono gli asset elaborati direttamente nel modulo runtime proprietario.
 11. Come Player, voglio che entrambe le risposte facciano avanzare l'enigma, così da non scegliere accidentalmente un percorso morto.
 12. Come Player, voglio che la risposta professionale influenzi una battuta successiva, così da percepire che la Choice è stata ricordata.
 13. Come Player, voglio che la risposta ironica produca una conclusione diversa, così da ottenere una conseguenza narrativa senza moltiplicare il puzzle.
-14. Come Player, voglio comprendere che Raffaele deve raggiungere la fortificazione, così da avere una motivazione concreta per riparare l'argano.
+14. Come Player, voglio comprendere che Raffaele deve raggiungere il posto di vedetta, così da avere una motivazione concreta per riparare l'argano.
 15. Come Player, voglio sapere che Michele riceverà passaggio e compenso, così da collegare l'incarico al suo desiderio di comprare una barca.
 16. Come Player, voglio distinguere l'argano vicino alla barca, così da riconoscerlo come il meccanismo bloccato.
 17. Come Player, voglio individuare l'ampolla d'olio vicino alla rimessa e alle botti, così da raccoglierla osservando la Scene.
@@ -85,18 +85,18 @@ scrivono gli asset elaborati direttamente nel modulo runtime proprietario.
 29. Come Player, voglio vedere la manovella montata nel mondo, così da capire dove è finito l'Object rimosso dall'Inventory.
 30. Come Player, voglio vedere l'argano nella sua Appearance riparata, così da riconoscere che la barca è pronta.
 31. Come Player, voglio ricevere una conferma da Raffaele dopo la riparazione, così da sapere che il passaggio è disponibile.
-32. Come Player, voglio cliccare l'intera barca pronta, così da raggiungere la fortificazione senza cercare una stretta area invisibile.
+32. Come Player, voglio cliccare l'intera barca pronta, così da raggiungere il posto di vedetta senza cercare una stretta area invisibile.
 33. Come Player, voglio che la barca non funzioni come Scene Passage prima della riparazione, così da rispettare la condizione narrativa dell'enigma.
-34. Come Player, voglio arrivare alla fortificazione attraverso una Scene Entrance coerente, così da comprendere la provenienza di Michele.
-35. Come Player, voglio percorrere il sentiero della fortificazione, così da provare navigazione, profondità e Perspective Scale in una composizione diversa.
-36. Come Player, voglio poter ispezionare la torre, così da ottenere una conclusione percepibile per il viaggio.
+34. Come Player, voglio arrivare alla terrazza attraverso una Scene Entrance coerente, così da comprendere la provenienza di Michele.
+35. Come Player, voglio attraversare il cortile della terrazza, così da provare navigazione e Perspective Scale in una composizione semplice e leggibile.
+36. Come Player, voglio poter osservare il mare dal parapetto, così da ottenere una conclusione percepibile per il viaggio.
 37. Come Player, voglio che la conclusione ricordi il comportamento tenuto con Raffaele, così da chiudere la piccola conseguenza della Choice.
-38. Come Player, voglio poter ispezionare nuovamente la torre e ricevere una risposta coerente con lo stato già raggiunto, così da non ripetere la conclusione come se fosse nuova.
+38. Come Player, voglio poter osservare nuovamente l'orizzonte e ricevere una risposta coerente con lo stato già raggiunto, così da non ripetere la conclusione come se fosse nuova.
 39. Come Player, voglio trovare un passaggio evidente per tornare al porto, così da non restare intrappolato nella Scene finale.
 40. Come Player, voglio che il ritorno al porto mi collochi presso un'entrata comprensibile, così da continuare l'esplorazione senza un salto spaziale ambiguo.
 41. Come Player, voglio salvare e ripristinare durante il dialogo con Raffaele, così da riprendere la stessa Line o Choice.
 42. Come Player, voglio salvare e ripristinare durante il progresso dell'enigma, così da conservare Object, Inventory, Appearance e Game Variable già committed.
-43. Come Player, voglio salvare e ripristinare presso la fortificazione, così da ritrovare Scene, posizione e conclusione narrativa coerenti.
+43. Come Player, voglio salvare e ripristinare presso il posto di vedetta, così da ritrovare Scene, posizione e conclusione narrativa coerenti.
 44. Come Player, voglio che un Save Snapshot incompatibile venga rifiutato, così da non ripristinare silenziosamente uno stato della vecchia versione dell'Example.
 45. Come Player, voglio usare mouse e tastiera secondo la Support Baseline esistente, così da completare il nuovo percorso con gli stessi controlli del resto dell'Example.
 46. Come Player, voglio che il pulsante di salvataggio dell'Example sia in italiano, così da non interrompere la coerenza linguistica dei controlli posseduti dal Game Project.
@@ -115,14 +115,14 @@ scrivono gli asset elaborati direttamente nel modulo runtime proprietario.
 59. Come Author, voglio conservare il prompt finale accanto a ogni master generato, così da poter produrre varianti coerenti in futuro.
 60. Come Author, voglio che gli script di produzione scrivano direttamente nel modulo runtime proprietario, così da non creare una seconda libreria di derivati.
 61. Come Author, voglio poter rigenerare un asset runtime dal suo master, così da evitare copie manuali prive di provenienza.
-62. Come Maintainer, voglio riutilizzare il master esistente della fortificazione, così da preservare la direzione artistica già approvata.
+62. Come Maintainer, voglio usare il master approvato della terrazza di vedetta, così da privilegiare una composizione poco profonda e semplice da allestire.
 63. Come Maintainer, voglio art di Raffaele, olio, manovella e argano leggibili alla Logical Resolution, così da verificare l'enigma nel contesto reale.
 64. Come Maintainer, voglio controllare trasparenza, ancoraggio e profondità degli asset separati, così da evitare aloni e salti visivi.
 65. Come Maintainer, voglio che l'Example non importi mai dalla libreria master, così da garantire che la build contenga soltanto asset runtime posseduti.
 66. Come Maintainer, voglio verificare il percorso attraverso input reali del Player, così da proteggere l'affordance e non soltanto la forma delle definizioni.
 67. Come Maintainer, voglio esercitare entrambe le alternative della Choice, così da verificare la conseguenza narrativa persistente.
 68. Come Maintainer, voglio esercitare l'ordine errato e quello corretto degli Inventory Use, così da proteggere fallimento, selezione, consumo e ricollocazione.
-69. Come Maintainer, voglio verificare viaggio e ritorno fra porto e fortificazione, così da proteggere entrambi i Scene Passage.
+69. Come Maintainer, voglio verificare viaggio e ritorno fra porto e posto di vedetta, così da proteggere entrambi i Scene Passage.
 70. Come Maintainer, voglio raccogliere gli errori del browser durante il percorso, così da non accettare un successo soltanto visivo con errori nascosti.
 71. Come Maintainer, voglio evitare asserzioni pixel-perfect sulle immagini generate, così da verificare il comportamento senza rendere fragile la suite.
 72. Come Maintainer, voglio una revisione visiva a scala 1x e ingrandita con nearest-neighbour, così da giudicare leggibilità e coerenza degli asset nel formato finale.
@@ -157,7 +157,7 @@ scrivono gli asset elaborati direttamente nel modulo runtime proprietario.
   l'attraversamento quando aperto. Non viene aggiunto un nuovo controllo HUD o
   un percorso basato su coordinate conosciute dal Player.
 - Il Game Behavior precedentemente usato per ispezionare il cancello aperto
-  viene sostituito dalla nuova ispezione della torre, preservando la capacità
+  viene sostituito dalla nuova osservazione dal parapetto, preservando la capacità
   dimostrata senza mantenere l'interazione ambigua.
 
 ### Porto, Raffaele e Choice
@@ -170,7 +170,7 @@ scrivono gli asset elaborati direttamente nel modulo runtime proprietario.
   ironica. Entrambe convergono sullo stesso enigma.
 - L'alternativa professionale imposta la Game Variable booleana
   `raffaeleImpressed`; l'alternativa ironica la lascia falsa. La variabile
-  modifica soltanto la conclusione narrativa presso la torre.
+  modifica soltanto la conclusione narrativa presso il parapetto.
 - Le interazioni successive con Raffaele rispondono allo stato dell'enigma:
   istruzione iniziale, attesa della riparazione e autorizzazione alla partenza.
 - Il tono combina un problema credibile con sarcasmo asciutto; non trasforma
@@ -198,25 +198,25 @@ scrivono gli asset elaborati direttamente nel modulo runtime proprietario.
 - Gli usi su bersagli non compatibili restituiscono una risposta percepibile e
   non modificano Object, selezione o Game State.
 
-### Barca e fortificazione
+### Barca e posto di vedetta
 
 - Prima della riparazione la barca offre una Primary Action che comunica il
   blocco. Dopo la riparazione quel Hotspot non intercetta più il Player Intent
   e l'intera sagoma utile della barca diventa un Scene Passage condizionale.
 - Il Scene Passage della barca conduce a una Scene Entrance nominata presso la
-  fortificazione. Un passaggio di ritorno conduce a una diversa Scene Entrance
+  terrazza di vedetta. Un passaggio di ritorno conduce a una diversa Scene Entrance
   nominata nel porto.
-- La fortificazione riusa il master artistico già approvato. La Walkable Region
-  segue il sentiero di pietra e la Perspective Scale rende percepibile la
-  profondità verso la torre.
-- La torre possiede un Hotspot con Approach Point leggibile. La prima
-  ispezione esegue un Game Behavior sincrono ristretto che registra
-  l'ispezione e avvia la Sequence conclusiva.
+- La terrazza usa il master artistico fornito e approvato dopo la spec iniziale.
+  La Walkable Region copre il cortile quasi rettangolare e la Perspective Scale
+  resta contenuta, evitando una geometria profonda non necessaria.
+- Il parapetto centrale possiede un Hotspot con Approach Point leggibile. La
+  prima osservazione esegue un Game Behavior sincrono ristretto che registra
+  l'osservazione e avvia la Sequence conclusiva.
 - La Sequence conclusiva usa un Branch dichiarativo sulla variabile
   `raffaeleImpressed` e presenta una diversa battuta finale per ciascun esito.
-- Le ispezioni successive non ripetono il primo avanzamento narrativo e
-  restituiscono una risposta coerente con la torre già osservata.
-- La scena non contiene un secondo enigma. Il sentiero, la torre e il ritorno
+- Le osservazioni successive non ripetono il primo avanzamento narrativo e
+  restituiscono una risposta coerente con l'orizzonte già osservato.
+- La scena non contiene un secondo enigma. Il cortile, il parapetto e il ritorno
   al porto costituiscono la ricompensa esplorabile.
 
 ### Art e pipeline
@@ -237,13 +237,13 @@ scrivono gli asset elaborati direttamente nel modulo runtime proprietario.
 - Gli strumenti di produzione ricevono un master e scrivono direttamente nella
   destinazione runtime proprietaria. Documentazione, esempi d'uso e preview
   vengono aggiornati alla stessa convenzione.
-- Il Background runtime della fortificazione è RGB, misura esattamente la
+- Il Background runtime della terrazza è RGB, misura esattamente la
   Logical Resolution e conserva il trattamento a palette limitata. Gli asset
   separati usano alpha pulito, Visual Anchor coerenti e dimensioni native che
   non richiedono ingrandimenti nel mondo.
 - Vengono prodotti master e runtime per Raffaele statico, ampolla d'olio,
   manovella e tre stati dell'argano. Non viene prodotta una camminata completa
-  per Raffaele e non viene generato un nuovo Background.
+  per Raffaele; il Background della terrazza usa il nuovo master fornito.
 - Le art devono restare credibili per Capri nel 1535, coerenti con pietra,
   legno, terracotta, luce dorata e ombre viola già adottate, senza elementi
   moderni, fantasy o da pirati caraibici.
@@ -277,7 +277,7 @@ scrivono gli asset elaborati direttamente nel modulo runtime proprietario.
 - Ogni percorso raccoglie errori console e page exception e richiede una lista
   vuota al termine.
 - Le screenshot sono artefatti per revisione umana, non golden image
-  pixel-perfect. La revisione controlla il porto e la fortificazione a scala
+  pixel-perfect. La revisione controlla il porto e la terrazza a scala
   1x e ingrandita nearest-neighbour, la leggibilità degli Object, gli alpha,
   gli anchor, la profondità e l'assenza di anacronismi evidenti.
 - Il gate di separazione dell'Example continua a verificare che il codice
@@ -299,11 +299,11 @@ scrivono gli asset elaborati direttamente nel modulo runtime proprietario.
   `Reveal hotspots`.
 - Migrazione o riparazione dei Save Snapshot appartenenti al Project Version
   precedente.
-- Una quarta Scene, un secondo enigma presso la fortificazione o un capitolo
+- Una quarta Scene, un secondo enigma presso il posto di vedetta o un capitolo
   narrativo completo.
 - Animazioni idle o parlate complete per Raffaele, ritratti di dialogo, doppiaggio,
   musica, effetti sonori o loop ambientali.
-- Generazione di un nuovo Background per porto o fortificazione.
+- Generazione di un ulteriore Background oltre al master della terrazza fornito dal Player.
 - Valuta numerica, economia, quest log o modellazione del compenso oltre alla
   risposta narrativa.
 - Nuove promesse per touch, gamepad, keyboard-only world navigation, browser
@@ -321,7 +321,7 @@ scrivono gli asset elaborati direttamente nel modulo runtime proprietario.
 - La spec applica ADR-0002: Capri 1535 esercita le Engine Capability come
   Example separato e non porta contenuto specifico di Capri negli interni.
 - La spec applica ADR-0003: condizioni, Sequence e Game Operation rimangono
-  dichiarative; soltanto l'ispezione specifica della torre usa un Game
+  dichiarative; soltanto l'osservazione specifica dal parapetto usa un Game
   Behavior.
 - La spec applica ADR-0004: né il Game Project né i test accedono al renderer.
 - La spec applica ADR-0005: il lavoro valida capacità già pubbliche senza

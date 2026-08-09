@@ -22,4 +22,6 @@ node examples/capri-1535/tools/sync-package-lock.mjs
 This project owns its source, runtime media, production art, tools, tests,
 dependencies, and generated output. Runtime media live beside the source module
 that owns them; `src/assets/` is reserved for media genuinely shared by multiple
-modules.
+modules. The `art/` directory contains only source masters and their prompt or
+provenance notes; tools write processed game assets directly beside their owning
+modules under `src/`.
