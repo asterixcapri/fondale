@@ -267,14 +267,24 @@
   color: #f4c85e;
 }
 
-/* A — one continuous, balanced lower plane. */
+/* Pixelify Sans by Stefie Justprince, distributed under the SIL Open Font License 1.1. */
+@font-face {
+  font-family: "Prototype Pixelify";
+  src: url("./fonts/PixelifySans-wght.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+}
+
+/* A — selected structure with the Modern Transparent art direction. */
 .hud-a {
   display: grid;
   grid-template-columns: 42% 1fr;
   gap: 7%;
   padding: 2.6% 4%;
-  background: linear-gradient(180deg, rgb(20 18 23 / 32%), rgb(12 10 13 / 83%));
-  border-top: 1px solid rgb(239 205 120 / 35%);
+  background: linear-gradient(180deg, rgb(6 23 34 / 16%), rgb(5 19 31 / 70%));
+  box-shadow: inset 0 1px rgb(255 218 133 / 16%);
+  backdrop-filter: blur(0.45px) saturate(0.86);
 }
 
 .hud-a .verb-grid,
@@ -282,11 +292,112 @@
   height: 100%;
 }
 
+.variant-a .command-preview {
+  color: #f6dfa1;
+  background: rgb(5 18 29 / 84%);
+  border: 1px solid rgb(243 189 78 / 72%);
+  border-radius: 0.32em;
+  box-shadow: 0 0.3em 0.8em #0007;
+  font-family: "Prototype Pixelify", sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-shadow: 1px 1px #07101a;
+}
+
+.hud-a .verb {
+  position: relative;
+  color: #f0ddb0;
+  font-family: "Prototype Pixelify", sans-serif;
+  font-size: 1.55cqw;
+  font-weight: 600;
+  letter-spacing: 0.025em;
+  text-shadow: 1px 1px #071522, 0 2px #071522;
+}
+
+.hud-a .verb::after {
+  content: "";
+  position: absolute;
+  left: 36%;
+  right: 36%;
+  bottom: 0.08em;
+  height: 0.12em;
+  background: transparent;
+}
+
+.hud-a .verb:hover,
+.hud-a .verb.is-preferred {
+  color: #ffc452;
+}
+
+.hud-a .verb:hover::after,
+.hud-a .verb.is-preferred::after {
+  background: #ffc452;
+}
+
+.hud-a .verb.is-selected {
+  color: #62e8da;
+  background: transparent;
+  border-color: transparent;
+  text-shadow: 1px 1px #06222a, 0 2px #06222a;
+}
+
+.hud-a .verb.is-selected::after {
+  background: #62e8da;
+}
+
+.hud-a .inventory {
+  gap: 1.5%;
+}
+
+.hud-a .inventory-slot {
+  background: linear-gradient(180deg, rgb(20 42 54 / 48%), rgb(4 17 28 / 64%));
+  border-color: rgb(181 211 208 / 32%);
+  border-radius: 0.12em;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 3%), 0 0.16em 0.35em #0004;
+}
+
+.hud-a .inventory-slot:hover {
+  background: linear-gradient(180deg, rgb(35 68 78 / 58%), rgb(7 27 39 / 72%));
+  border-color: rgb(242 203 116 / 72%);
+}
+
+.hud-a .inventory-slot.is-selected {
+  background: linear-gradient(180deg, rgb(34 91 92 / 62%), rgb(5 38 48 / 78%));
+  border-color: #62e8da;
+  box-shadow: inset 0 0 0 1px rgb(98 232 218 / 45%), 0 0 0.45em rgb(17 107 111 / 45%);
+}
+
+.hud-a .inventory-arrow {
+  color: #f5c761;
+  font-family: "Prototype Pixelify", sans-serif;
+  text-shadow: 1px 1px #06131f;
+}
+
+.hud-a .inventory-glyph {
+  color: #f1d99d;
+  text-shadow: 1px 1px #071522;
+}
+
 .hud-a .choices-a {
   grid-column: 1 / -1;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   align-content: center;
   column-gap: 4%;
+  padding: 1.2% 2%;
+  background: linear-gradient(180deg, rgb(7 26 39 / 48%), rgb(4 17 28 / 76%));
+  box-shadow: inset 0 1px rgb(255 218 133 / 18%);
+}
+
+.hud-a .dialogue-choices button {
+  color: #f1dfb5;
+  font-family: "Prototype Pixelify", sans-serif;
+  font-size: 1.35cqw;
+  font-weight: 600;
+  text-shadow: 1px 1px #071522;
+}
+
+.hud-a .dialogue-choices button:hover {
+  color: #62e8da;
 }
 
 /* B — separated glass islands with the centre of the scene exposed. */

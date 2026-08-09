@@ -32,8 +32,8 @@ interface InventoryItem {
 const variants: VariantDefinition[] = [
   {
     key: "A",
-    name: "Fascia bilanciata",
-    note: "Un unico piano trasparente: verbi a sinistra, inventario a destra, scena ancora continua.",
+    name: "Moderno trasparente",
+    note: "La struttura bilanciata scelta, con testo pixel colorato e inventario sospeso sulla scena.",
   },
   {
     key: "B",
