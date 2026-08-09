@@ -20,6 +20,12 @@ A choice or value through which a Game Project adapts an Engine Capability to
 its artistic direction and behavior.
 _Avoid_: Engine constant, internal interface
 
+**Player Preference**:
+A locally retained presentation or control choice owned by the Player rather
+than a Game Session. It may affect help, appearance, audio, or input but never
+the logical outcome of play and is not part of a Save Snapshot.
+_Avoid_: Game Setting, Game Variable, progress flag
+
 **Logical Resolution**:
 The fixed width and height of the base visual canvas in which a Game Project
 composes every Scene and Engine-owned overlay before the whole frame is fitted
@@ -188,6 +194,11 @@ A named navigable connection that participates in a Walk To Command and leads
 from an approach in one Scene to a named Scene Entrance in another Scene.
 _Avoid_: Exit, teleporter, implicit two-way link
 
+**Passage Direction**:
+The author-declared visual direction of a Scene Passage—left, right, up, down,
+or enter—used by a HUD Theme to present its directional cursor.
+_Avoid_: Destination inference, movement vector, hard-coded cursor asset
+
 **Background**:
 The visual base that spans the whole Scene Space. A local element that needs
 its own position, depth, or behavior is Scenery instead.
@@ -291,9 +302,15 @@ The player-facing name by which a Character, Object, Scenery, background
 region, or Scene Passage participates in a Command.
 _Avoid_: Identifier, hotspot label, target kind
 
+**Noun Label**:
+The localized player-facing text selected for a Noun from ordered conditional
+variants and a required fallback. Knowledge represented by a label belongs to
+declared Game State rather than inference by the Engine.
+_Avoid_: Identifier, automatic discovery, rendered entity type
+
 **Noun Definition**:
-The declarative description of one Noun's name, Preferred Verb, Command Cases,
-and local fallbacks wherever that Noun is available to the Player.
+The declarative description of one Noun's labels, Preferred Verb, Command
+Cases, and local fallbacks wherever that Noun is available to the Player.
 _Avoid_: Hotspot, entity definition, event handlers
 
 **Command**:
@@ -343,3 +360,8 @@ The execution of a complete Command, including any required movement and
 facing. A new Player Intent replaces one still in progress, and its Interaction
 is resolved against the latest committed Game State only after arrival.
 _Avoid_: Click, queued movement, Command State
+
+**Fast Walk**:
+The presentation of a Walk To Player Intent at increased movement speed. It has
+the same destination, validation, and logical result as ordinary walking.
+_Avoid_: Teleport, skipped Interaction, separate movement rule

@@ -62,11 +62,23 @@ nove Verb. Durante una Choice, i tasti da 1 a 6 selezionano le alternative
 visibili. Touch, gamepad e navigazione completa del mondo da tastiera restano
 esclusi da questa modifica.
 
+La griglia dei Verb replica la disposizione di Thimbleweed Park: Open, Pick Up,
+Push sulla prima riga; Close, Look At, Pull sulla seconda; Give, Talk To, Use
+sulla terza. QWE, ASD e ZXC corrispondono alle tre righe indipendentemente dalla
+lingua; il Command Lexicon italiano mostra Apri, Raccogli, Spingi, Chiudi,
+Guarda, Tira, Dai, Parla con e Usa.
+
 Dopo ogni Command risolto, riuscito o fallito, il Command State torna a Walk
 To; Escape annulla una costruzione incompleta e il click destro non sostituisce
 quella corrente. Un Command rivolto alla Scene raggiunge l'Approach Point e
 viene rivalutato sul Game State più recente, mentre i Command fra soli Object
 nell'Inventory si risolvono immediatamente.
+
+In Walk To, il click sinistro cammina verso terreno o Noun e può attivare il
+comportamento di un Passage; dopo la selezione di un Verb, completa invece il
+Command. Il click destro esegue il Preferred Verb senza modificare un Command
+incompleto. Il doppio click sinistro su terreno o Passage produce una Fast Walk:
+cambia soltanto la velocità di movimento, mai condizioni o risultato.
 
 L'Inventory presenta sempre otto caselle in una griglia 4×2, scorre con frecce
 e rotellina e porta in vista ogni Object appena acquisito. Raccolta, rimozione e
@@ -187,8 +199,20 @@ I Scene Passage mostrano destinazioni esplicite quando note, come «Verso la
 piazza» e «Scalinata per Monte Solaro», e nomi fisici come «Portone» finché la
 destinazione non è nota.
 
+Ogni Scene Passage dichiara una Passage Direction fra left, right, up, down ed
+enter, che il HUD Theme rende con un cursore originale. Le Noun Label possono
+avere varianti condizionali dichiarative e richiedono sempre un fallback; è il
+Game Project a rappresentare la conoscenza tramite Game Variable, senza
+inferenze dell'Engine. I percorsi principali di Capri usano da subito nomi di
+destinazione espliciti.
+
 La migrazione incrementa il Project Version di Capri 1535; i Save Snapshot
 precedenti restano visibili ma incompatibili. I master 1586×992 restano intatti.
 Ogni copia runtime usa un ritaglio 16:9 scelto per la singola Scene e viene poi
 ridotta a 426×240 senza deformazioni, proteggendo Passage e informazioni
 essenziali dalla fascia coperta dal HUD.
+
+Options contiene anche una schermata Help. Capri mostra una sola volta brevi
+suggerimenti per click sinistro, click destro, Tab e scorrimento dell'Inventory.
+La memoria dei suggerimenti già mostrati è una Player Preference e non entra
+nel Game State o nei Save Snapshot.
