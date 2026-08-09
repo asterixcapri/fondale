@@ -23,3 +23,9 @@ Logical Resolution reale.
 La ricerca comparativa in `docs/research/classic-adventure-ui-comparison.md` ha distinto il pannello dedicato di *Monkey Island 2*, l'overlay trasparente di *Thimbleweed Park* e le interfacce contestuali. Dopo il prototipo A/B/C del commit `e962ab4`, è stata selezionata la variante **C — UI contestuale**.
 
 Questo ticket conserva la decisione e l'implementazione storiche di Fondale 1.1, ma il suo verdetto “A — Moderno trasparente” è superato per la prossima iterazione. La produzione non viene modificata finché non sono definiti separatamente apertura e chiusura dell'Inventory e presentazione dei Verb contestuali.
+
+### 9 agosto 2026 — accesso all'Inventory confermato
+
+L'Inventory contestuale si apre e si richiude con il click destro. `I` è l'alternativa da tastiera; `Escape` e il click esterno lo chiudono. Non esiste un pulsante Inventory sempre visibile. Il primo Object raccolto produce un feedback transitorio e un suggerimento una tantum sul click destro.
+
+Questa scelta supera l'uso del click destro per il Preferred Verb. La presentazione e il gesto delle azioni contestuali restano da decidere separatamente prima di riscrivere il contratto di produzione.
