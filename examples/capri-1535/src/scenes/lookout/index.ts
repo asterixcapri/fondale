@@ -74,7 +74,7 @@ export const lookout = defineScene({
     },
   ],
   entrances: {
-    fromHarbour: { groundPoint: { x: 340, y: 145 }, facing: "left" },
+    fromGrotto: { groundPoint: { x: 340, y: 145 }, facing: "left" },
   },
   passages: [
     {

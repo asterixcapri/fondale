@@ -119,13 +119,13 @@ export const alley = defineScene({
       },
     },
   ],
-  entrances: { fromHarbour: { groundPoint: { x: 208, y: 152 }, facing: "front" } },
+  entrances: { fromTownSquare: { groundPoint: { x: 208, y: 152 }, facing: "front" } },
   passages: [
     {
       area: rectangle(183, 116, 235, 166),
       approach: { groundPoint: { x: 208, y: 150 }, facing: "back" },
       when: { variable: "gateOpen", equals: true },
-      destination: { scene: "harbour", entrance: "fromAlley" },
+      destination: { scene: "townSquare", entrance: "fromAlley" },
     },
   ],
 });

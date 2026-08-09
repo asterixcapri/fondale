@@ -7,18 +7,20 @@ import { oilFlask } from "./objects/oil-flask";
 import { winchHandle } from "./objects/winch-handle";
 import { alley } from "./scenes/alley";
 import { harbour } from "./scenes/harbour";
+import { grotto } from "./scenes/grotto";
 import { lookout } from "./scenes/lookout";
+import { townSquare } from "./scenes/town-square";
 import { conversation } from "./sequences/conversation";
 import { lookoutConclusion } from "./sequences/lookout-conclusion";
 import { raffaeleConversation } from "./sequences/raffaele-conversation";
 
 export const project = defineGame({
   identity: "org.asterixcapri.capri-1535-example",
-  version: "2",
+  version: "3",
   logicalResolution: { width: 426, height: 240 },
   inventoryAppearanceSize: 32,
   letterboxColor: "#15101d",
-  scenes: { alley, harbour, lookout },
+  scenes: { alley, townSquare, harbour, grotto, lookout },
   characters: { michele, raffaele },
   playerCharacter: "michele",
   objects: { key, oilFlask, winchHandle },

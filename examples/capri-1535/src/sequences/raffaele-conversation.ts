@@ -46,7 +46,8 @@ export const raffaeleConversation = defineSequence({
     {
       type: "line",
       character: "raffaele",
-      text: "L'argano è bloccato e il gozzo deve portare un pacco al posto di vedetta.",
+      text:
+        "L'argano è bloccato e il gozzo deve attraversare la grotta per portare un pacco al posto di vedetta.",
     },
     {
       type: "line",

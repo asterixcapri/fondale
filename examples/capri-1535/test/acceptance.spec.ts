@@ -4,7 +4,7 @@ import { clickWorld, expect, openGame, shoot } from "./harness";
 
 test.setTimeout(60_000);
 
-async function reachHarbour(page: Page): Promise<void> {
+async function reachHarbour(page: Page, previousScene?: Uint8Array): Promise<void> {
   await clickWorld(page, 295, 150);
   await expect(page.locator("[data-fondale-line]")).toContainText("vecchia serratura", {
     timeout: 8_000,
@@ -38,6 +38,15 @@ async function reachHarbour(page: Page): Promise<void> {
   // The same obvious arch area becomes the Scene Passage after it opens.
   await clickWorld(page, 210, 150);
   await page.waitForTimeout(1_500);
+  const townSquare = await page.locator("[data-fondale-frame] canvas").screenshot();
+  if (previousScene) expect(townSquare.equals(previousScene)).toBe(false);
+  await shoot(page, "capri-1535-town-square");
+
+  // Cross the square through its large right-hand arch to reach the harbour.
+  await clickWorld(page, 365, 120);
+  await page.waitForTimeout(5_000);
+  const harbour = await page.locator("[data-fondale-frame] canvas").screenshot();
+  expect(harbour.equals(townSquare)).toBe(false);
 }
 
 async function meetRaffaele(
@@ -45,7 +54,7 @@ async function meetRaffaele(
   choice: "Quanto mi dai per sistemarlo?" | "Dipende: il mare paga meglio di te?",
   restoreAtChoice = false,
 ): Promise<void> {
-  await clickWorld(page, 360, 180);
+  await clickWorld(page, 322, 180);
   await expect(page.locator("[data-fondale-line]")).toContainText("guardare il mare", {
     timeout: 8_000,
   });
@@ -70,7 +79,7 @@ async function meetRaffaele(
 }
 
 async function repairWinch(page: Page): Promise<void> {
-  await clickWorld(page, 55, 228);
+  await clickWorld(page, 375, 225);
   const handle = page.locator('[data-fondale-inventory-object="winchHandle"]');
   await expect(handle).toBeVisible({ timeout: 8_000 });
   await handle.click();
@@ -83,7 +92,7 @@ async function repairWinch(page: Page): Promise<void> {
   await expect(handle).toHaveAttribute("aria-pressed", "true");
   await page.keyboard.press("Escape");
 
-  await clickWorld(page, 388, 214);
+  await clickWorld(page, 409, 207);
   const oil = page.locator('[data-fondale-inventory-object="oilFlask"]');
   await expect(oil).toBeVisible({ timeout: 8_000 });
   await oil.click();
@@ -104,8 +113,11 @@ async function repairWinch(page: Page): Promise<void> {
 }
 
 async function sailToLookoutAndReadConclusion(page: Page, expected: string): Promise<void> {
-  await clickWorld(page, 95, 185);
-  await page.waitForTimeout(1_500);
+  await clickWorld(page, 115, 145);
+  await page.waitForTimeout(3_000);
+  await shoot(page, "capri-1535-grotto");
+  await clickWorld(page, 230, 95);
+  await page.waitForTimeout(4_000);
   await clickWorld(page, 215, 120);
   await expect(page.locator("[data-fondale-line]")).toContainText("Dal parapetto", {
     timeout: 8_000,
@@ -123,9 +135,10 @@ test("the packaged Example completes the professional harbour puzzle through rea
   const canvas = page.locator("[data-fondale-frame] canvas");
   const opening = await canvas.screenshot();
 
-  await reachHarbour(page);
+  await reachHarbour(page, opening);
   const harbour = await canvas.screenshot();
   expect(harbour.equals(opening)).toBe(false);
+  await shoot(page, "capri-1535-harbour-new");
 
   await meetRaffaele(page, "Quanto mi dai per sistemarlo?", true);
   await repairWinch(page);

@@ -8,7 +8,11 @@ import { rectangle } from "../../geometry";
 
 export const harbour = defineScene({
   background: harbourBackgroundUrl,
-  walkableRegion: rectangle(20, 145, 406, 239),
+  walkableRegion: rectangle(8, 164, 425, 239),
+  perspectiveScale: [
+    { y: 164, scale: 0.82 },
+    { y: 239, scale: 1 },
+  ],
   scenery: {
     winch: {
       baseline: 214,
@@ -25,12 +29,12 @@ export const harbour = defineScene({
     {
       target: { kind: "background" },
       area: [
-        { x: 20, y: 145 },
-        { x: 166, y: 145 },
-        { x: 178, y: 214 },
-        { x: 30, y: 220 },
+        { x: 65, y: 111 },
+        { x: 165, y: 111 },
+        { x: 174, y: 169 },
+        { x: 70, y: 174 },
       ],
-      approach: { groundPoint: { x: 184, y: 205 }, facing: "left" },
+      approach: { groundPoint: { x: 180, y: 190 }, facing: "left" },
       when: { variable: "boatReady", equals: false },
       primaryAction: {
         cases: [],
@@ -51,14 +55,15 @@ export const harbour = defineScene({
     },
     {
       target: { kind: "character", character: "raffaele" },
-      area: rectangle(344, 122, 376, 210),
-      approach: { groundPoint: { x: 318, y: 205 }, facing: "right" },
+      area: rectangle(304, 121, 342, 211),
+      approach: { groundPoint: { x: 294, y: 205 }, facing: "right" },
       primaryAction: {
         cases: [
           {
             when: { variable: "boatReady", equals: true },
             label: "Parla con Raffaele",
-            response: "L'argano tiene. Prendi il gozzo e lascia il pacco al posto di vedetta.",
+            response:
+              "L'argano tiene. Prendi il gozzo, attraversa la grotta e lascia il pacco al posto di vedetta.",
             operations: [],
           },
           {
@@ -91,8 +96,8 @@ export const harbour = defineScene({
     },
     {
       target: { kind: "object", object: "oilFlask" },
-      area: rectangle(376, 187, 406, 224),
-      approach: { groundPoint: { x: 362, y: 214 }, facing: "right" },
+      area: rectangle(396, 181, 425, 220),
+      approach: { groundPoint: { x: 389, y: 211 }, facing: "right" },
       primaryAction: {
         cases: [],
         fallback: {
@@ -112,8 +117,8 @@ export const harbour = defineScene({
     },
     {
       target: { kind: "object", object: "winchHandle" },
-      area: rectangle(34, 198, 77, 239),
-      approach: { groundPoint: { x: 84, y: 226 }, facing: "left" },
+      area: rectangle(353, 202, 393, 239),
+      approach: { groundPoint: { x: 344, y: 225 }, facing: "right" },
       when: { variable: "boatReady", equals: false },
       primaryAction: {
         cases: [],
@@ -202,20 +207,26 @@ export const harbour = defineScene({
     },
   ],
   entrances: {
-    fromAlley: { groundPoint: { x: 215, y: 185 }, facing: "front" },
-    fromLookout: { groundPoint: { x: 184, y: 205 }, facing: "right" },
+    fromTownSquare: { groundPoint: { x: 338, y: 181 }, facing: "left" },
+    fromGrotto: { groundPoint: { x: 180, y: 190 }, facing: "right" },
+    fromLookout: { groundPoint: { x: 180, y: 190 }, facing: "right" },
   },
   passages: [
     {
       area: [
-        { x: 20, y: 145 },
-        { x: 166, y: 145 },
-        { x: 178, y: 214 },
-        { x: 30, y: 220 },
+        { x: 65, y: 111 },
+        { x: 165, y: 111 },
+        { x: 174, y: 169 },
+        { x: 70, y: 174 },
       ],
-      approach: { groundPoint: { x: 184, y: 205 }, facing: "left" },
+      approach: { groundPoint: { x: 180, y: 190 }, facing: "left" },
       when: { variable: "boatReady", equals: true },
-      destination: { scene: "lookout", entrance: "fromHarbour" },
+      destination: { scene: "grotto", entrance: "fromHarbour" },
+    },
+    {
+      area: rectangle(348, 67, 400, 166),
+      approach: { groundPoint: { x: 338, y: 181 }, facing: "right" },
+      destination: { scene: "townSquare", entrance: "fromHarbour" },
     },
   ],
 });

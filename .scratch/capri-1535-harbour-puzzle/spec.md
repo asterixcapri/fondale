@@ -1,4 +1,4 @@
-# Capri 1535 — Enigma del porto e posto di vedetta costiero
+# Capri 1535 — Enigma del porto e percorso costiero
 
 Status: ready-for-human
 
@@ -26,7 +26,8 @@ master, mentre ogni asset runtime appartiene al modulo di gioco che lo usa.
 ## Solution
 
 L'Example viene esteso con un micro-enigma narrativo di tre-cinque minuti nel
-porto e con una terza Scene esplorabile presso un posto di vedetta costiero. Il
+porto e con cinque Scene esplorabili: vicolo, piazza, porto, grotta e posto di
+vedetta costiero. Il
 cancello del vicolo diventa attraversabile cliccando l'intero arco dopo lo
 sblocco. Nel porto Michele incontra Raffaele, anziano responsabile
 dell'approdo, che deve mettere in acqua un gozzo per portare un pacco al posto
@@ -37,7 +38,8 @@ Il Player sceglie fra una risposta professionale e una ironica, raccoglie
 un'ampolla d'olio e la manovella dell'argano, scopre che la manovella non può
 essere montata prima di lubrificare il meccanismo, ripara l'argano e rende
 disponibile la barca. Il viaggio conduce a una terrazza di vedetta, dove Michele
-può raggiungere il parapetto, osservare l'orizzonte, ricevere una conclusione che
+raggiunge prima una grotta marina e poi la terrazza di vedetta, dove Michele può
+raggiungere il parapetto, osservare l'orizzonte, ricevere una conclusione che
 riflette la scelta fatta con Raffaele e tornare al porto.
 
 Tutti i dialoghi, la narrazione, le Interaction Response e i controlli posseduti
@@ -126,6 +128,17 @@ scrivono gli asset elaborati direttamente nel modulo runtime proprietario.
 70. Come Maintainer, voglio raccogliere gli errori del browser durante il percorso, così da non accettare un successo soltanto visivo con errori nascosti.
 71. Come Maintainer, voglio evitare asserzioni pixel-perfect sulle immagini generate, così da verificare il comportamento senza rendere fragile la suite.
 72. Come Maintainer, voglio una revisione visiva a scala 1x e ingrandita con nearest-neighbour, così da giudicare leggibilità e coerenza degli asset nel formato finale.
+73. Come Player, voglio raggiungere una piazza subito dopo il cancello, così da comprendere la continuità spaziale fra il vicolo e il porto.
+74. Come Player, voglio riconoscere il grande arco della piazza come uscita verso il porto, così da non dover cercare un passaggio invisibile.
+75. Come Player, voglio poter tornare dalla piazza al vicolo e dal porto alla piazza, così da esplorare liberamente il percorso urbano.
+76. Come Player, voglio attraversare una grotta marina durante il viaggio in barca, così da usare il nuovo fondale come breve ricompensa esplorabile.
+77. Come Player, voglio riconoscere l'apertura luminosa della grotta come direzione verso il posto di vedetta, così da seguire la composizione senza istruzioni esterne.
+78. Come Player, voglio poter tornare dalla grotta al porto, così da non essere obbligato a proseguire.
+79. Come Player, voglio che piazza e grotta offrano osservazioni in italiano, così da non essere soltanto schermate di transito.
+80. Come Author, voglio vedere un percorso di cinque Scene con Passage ed Entrance espliciti, così da provare un piccolo grafo navigabile del motore.
+81. Come Maintainer, voglio che tutti e quattro i master approvati dal Player siano presenti nella libreria art e nei rispettivi moduli runtime.
+82. Come Maintainer, voglio che il test attraversi piazza e grotta con input reali, così da proteggere i nuovi passaggi.
+83. Come Maintainer, voglio che il nuovo porto conservi l'intero enigma e riallinei Character, Object, Scenery e Hotspot alla nuova composizione.
 
 ## Implementation Decisions
 
@@ -134,7 +147,7 @@ scrivono gli asset elaborati direttamente nel modulo runtime proprietario.
 - Il lavoro modifica soltanto l'Example Capri 1535 e i suoi strumenti di
   produzione. L'interface pubblica, il runtime e il renderer dell'Engine non
   vengono estesi.
-- Il Project Version dell'Example passa da `1` a `2`, perché registri, Game
+- Il Project Version dell'Example passa a `3`, perché registri, Game
   Variable e stato iniziale cambiano. Non viene introdotta una migrazione dei
   Save Snapshot della versione precedente.
 - Il Game Project continua a installare e consumare il pacchetto distribuibile
@@ -203,9 +216,9 @@ scrivono gli asset elaborati direttamente nel modulo runtime proprietario.
 - Prima della riparazione la barca offre una Primary Action che comunica il
   blocco. Dopo la riparazione quel Hotspot non intercetta più il Player Intent
   e l'intera sagoma utile della barca diventa un Scene Passage condizionale.
-- Il Scene Passage della barca conduce a una Scene Entrance nominata presso la
-  terrazza di vedetta. Un passaggio di ritorno conduce a una diversa Scene Entrance
-  nominata nel porto.
+- Il Scene Passage della barca conduce alla grotta marina. L'apertura luminosa
+  della grotta conduce a una Scene Entrance nominata presso la terrazza di
+  vedetta; un secondo passaggio permette di tornare al porto.
 - La terrazza usa il master artistico fornito e approvato dopo la spec iniziale.
   La Walkable Region copre il cortile quasi rettangolare e la Perspective Scale
   resta contenuta, evitando una geometria profonda non necessaria.
@@ -218,6 +231,22 @@ scrivono gli asset elaborati direttamente nel modulo runtime proprietario.
   restituiscono una risposta coerente con l'orizzonte già osservato.
 - La scena non contiene un secondo enigma. Il cortile, il parapetto e il ritorno
   al porto costituiscono la ricompensa esplorabile.
+
+### Piazza e grotta
+
+- Il cancello del vicolo conduce alla piazza, non direttamente al porto. La
+  piazza usa il grande arco sulla destra come Passage verso il porto e il bordo
+  architettonico sulla sinistra come ritorno al vicolo.
+- La piazza conserva una Walkable Region ampia ma poco profonda e offre soltanto
+  due osservazioni contestuali, sulla chiesa e sul carretto; non introduce un
+  nuovo enigma.
+- Il porto usa il nuovo master approvato. Raffaele, olio, manovella, argano e
+  barca vengono riallineati alla banchina, mantenendo invariata la logica del
+  puzzle.
+- La grotta usa il primo piano roccioso come Walkable Region. Il bordo sinistro
+  torna al porto, mentre l'apertura luminosa centrale conduce al belvedere.
+- I collegamenti formano il percorso principale `alley → townSquare → harbour
+  → grotto → lookout`, con ritorni espliciti verso porto, piazza e vicolo.
 
 ### Art e pipeline
 
@@ -241,6 +270,9 @@ scrivono gli asset elaborati direttamente nel modulo runtime proprietario.
   Logical Resolution e conserva il trattamento a palette limitata. Gli asset
   separati usano alpha pulito, Visual Anchor coerenti e dimensioni native che
   non richiedono ingrandimenti nel mondo.
+- I quattro master forniti dal Player vengono conservati come Background di
+  `grotto`, `lookout`, `town-square` e `harbour`; i corrispondenti runtime
+  elaborati vivono sotto `src/scenes/`.
 - Vengono prodotti master e runtime per Raffaele statico, ampolla d'olio,
   manovella e tre stati dell'argano. Non viene prodotta una camminata completa
   per Raffaele; il Background della terrazza usa il nuovo master fornito.
@@ -263,12 +295,12 @@ scrivono gli asset elaborati direttamente nel modulo runtime proprietario.
   costituisce il prior art. Va esteso o suddiviso soltanto quanto serve a
   rendere leggibili i due percorsi narrativi, mantenendo lo stesso harness di
   coordinate logiche e raccolta degli errori browser.
-- Un percorso verifica il cancello chiuso, l'uso della chiave e un successivo
-  click nell'area evidente dell'arco che raggiunge il porto.
+- Un percorso verifica il cancello chiuso, l'uso della chiave, il passaggio
+  nella piazza e un click nel grande arco che raggiunge il porto.
 - Un percorso verifica la Choice professionale, il Save Snapshot durante la
   Sequence, il ripristino esatto, il tentativo prematuro della manovella, la
   selezione conservata, il consumo dell'olio, la manovella montata, la partenza,
-  la conclusione corrispondente e il ritorno.
+  l'attraversamento della grotta, la conclusione corrispondente e il ritorno.
 - Un secondo percorso verifica l'alternativa ironica e la diversa conclusione,
   senza duplicare ogni passo già coperto dal percorso principale.
 - Il salvataggio dopo cambiamenti committed deve ripristinare Object,
@@ -277,7 +309,7 @@ scrivono gli asset elaborati direttamente nel modulo runtime proprietario.
 - Ogni percorso raccoglie errori console e page exception e richiede una lista
   vuota al termine.
 - Le screenshot sono artefatti per revisione umana, non golden image
-  pixel-perfect. La revisione controlla il porto e la terrazza a scala
+  pixel-perfect. La revisione controlla piazza, porto, grotta e terrazza a scala
   1x e ingrandita nearest-neighbour, la leggibilità degli Object, gli alpha,
   gli anchor, la profondità e l'assenza di anacronismi evidenti.
 - Il gate di separazione dell'Example continua a verificare che il codice
@@ -299,11 +331,11 @@ scrivono gli asset elaborati direttamente nel modulo runtime proprietario.
   `Reveal hotspots`.
 - Migrazione o riparazione dei Save Snapshot appartenenti al Project Version
   precedente.
-- Una quarta Scene, un secondo enigma presso il posto di vedetta o un capitolo
-  narrativo completo.
+- Un secondo enigma nella piazza, nella grotta o presso il posto di vedetta e
+  un capitolo narrativo completo.
 - Animazioni idle o parlate complete per Raffaele, ritratti di dialogo, doppiaggio,
   musica, effetti sonori o loop ambientali.
-- Generazione di un ulteriore Background oltre al master della terrazza fornito dal Player.
+- Generazione di Background ulteriori rispetto ai quattro master forniti dal Player.
 - Valuta numerica, economia, quest log o modellazione del compenso oltre alla
   risposta narrativa.
 - Nuove promesse per touch, gamepad, keyboard-only world navigation, browser

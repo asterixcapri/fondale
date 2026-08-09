@@ -6,7 +6,7 @@ import sceneUrl from "./scene.png";
 
 export const winchHandle = defineObject({
   initialScene: "harbour",
-  initialGroundPoint: { x: 55, y: 228 },
+  initialGroundPoint: { x: 375, y: 225 },
   initialAppearance: "loose",
   appearances: {
     loose: { kind: "static", image: sceneUrl },

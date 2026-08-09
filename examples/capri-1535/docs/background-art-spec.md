@@ -149,7 +149,7 @@ cornici. Non aggiungere bordi decorativi. Non sfocare alcun piano.
 ## Criteri di accettazione
 
 - Il luogo è riconoscibile e non contiene anacronismi evidenti.
-- La scena appartiene visivamente alla stessa famiglia dei quattro riferimenti.
+- La scena appartiene visivamente alla stessa famiglia dei master approvati.
 - La composizione resta leggibile dopo riduzione e quantizzazione.
 - Esiste un percorso continuo tra ingresso e uscita.
 - Gli hotspot si distinguono senza contorni artificiali o testo.

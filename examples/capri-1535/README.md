@@ -25,3 +25,7 @@ that owns them; `src/assets/` is reserved for media genuinely shared by multiple
 modules. The `art/` directory contains only source masters and their prompt or
 provenance notes; tools write processed game assets directly beside their owning
 modules under `src/`.
+
+The playable route is `alley → town square → harbour → grotto → lookout`.
+The harbour puzzle unlocks the boat; the town square, grotto, and lookout also
+provide visible return passages so the Example remains freely explorable.

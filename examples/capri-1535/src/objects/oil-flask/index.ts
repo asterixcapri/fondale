@@ -5,7 +5,7 @@ import sceneUrl from "./scene.png";
 
 export const oilFlask = defineObject({
   initialScene: "harbour",
-  initialGroundPoint: { x: 388, y: 214 },
+  initialGroundPoint: { x: 409, y: 207 },
   initialAppearance: "full",
   appearances: {
     full: { kind: "static", image: sceneUrl },
