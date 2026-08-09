@@ -15,3 +15,16 @@ degli Object.
 La somiglianza riguarda il modello d'interazione, non la copia di contenuti,
 grafica o interfacce proprietarie. Fondale conserva il proprio dominio e lascia
 ai Game Project identità artistica, scrittura e regole degli enigmi originali.
+
+I nove Verb visibili sono Give, Talk To, Pick Up, Look At, Open, Close, Push,
+Pull e Use; Walk To resta implicito per terreno e Scene Passage. Il passaggio
+del puntatore presenta il Noun e il Verb preferito, il click sinistro costruisce
+il Command o cammina sul terreno e il click destro esegue il Verb preferito.
+Il HUD occupa una regione permanente della Logical Resolution 426×240 invece di
+sovrapporsi alla Scene; la proporzione esatta viene validata con un prototipo.
+
+Il modello contestuale non rimane come Game Setting alternativo: la modifica è
+incompatibile, introduce Fondale 2.0 e richiede la migrazione dei Game Project.
+Character Switching e Inventory separati per Character non appartengono a
+questa decisione e richiederanno una futura Engine Capability motivata da un
+Game Project concreto.

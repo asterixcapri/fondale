@@ -216,13 +216,14 @@ belong to the Game Project rather than a Scene.
 _Avoid_: Scenery, synonym for Hotspot
 
 **HUD**:
-The Engine-owned interface overlaid on a Scene for the Inventory and other play
-controls. It is neither part of Scene Space nor content of the Game Project.
-_Avoid_: Scene, game menu, world element
+The permanent Engine-owned region of the Logical Resolution that presents the
+Sentence Line, Verb controls, Inventory, and other play controls. It is not
+part of Scene Space or content of the Game Project.
+_Avoid_: Scene overlay, game menu, world element
 
 **Inventory**:
-The acquisition-ordered collection of Objects currently carried by the Player,
-with at most one of them selected for an Inventory Use.
+The acquisition-ordered collection of Objects currently carried by the Player
+and presented in a permanent region of the HUD, even when empty.
 _Avoid_: Container, equipment, item stack
 
 **Inventory Appearance**:
@@ -245,6 +246,11 @@ An action word available to the Player for constructing a Command and
 exploring the possibilities offered by the world.
 _Avoid_: Primary Action, contextual action
 
+**Preferred Verb**:
+The state-appropriate Verb advertised for a Noun and executed when the Player
+requests its quick action.
+_Avoid_: Only action, inferred click handler
+
 **Noun**:
 The player-facing name by which a Character, Object, Scenery, background
 region, or Scene Passage participates in a Command.
@@ -254,6 +260,11 @@ _Avoid_: Identifier, hotspot label, target kind
 A Player-authored sentence combining one Verb with one or two Nouns before it
 is executed as a Player Intent.
 _Avoid_: Click, callback, Interaction
+
+**Sentence Line**:
+The HUD presentation of the Command being constructed, including the Noun
+currently considered under the Player's pointer.
+_Avoid_: Interaction Response, dialogue text, tooltip
 
 **Interaction Case**:
 An authored conditional alternative for resolving either a Primary Action or
