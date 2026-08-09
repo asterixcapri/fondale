@@ -172,3 +172,23 @@ Scene Passage di ritorno.
 I master ricevuti appartengono rispettivamente ad `art/scenes/tavern/` e
 `art/scenes/monte-solaro/`. I Game Definition e le copie elaborate caricate a
 runtime appartengono esclusivamente alle corrispondenti directory sotto `src/`.
+
+La mappa di Capri 1535 segue collegamenti bidirezionali leggibili:
+`alley ↔ townSquare ↔ harbour ↔ grotto ↔ monteSolaro`, con la deviazione
+facoltativa `harbour ↔ tavern`. Monte Solaro torna alla grotta tramite la
+scalinata sinistra e non salta direttamente al porto. Nel porto il grande arco
+continua a condurre alla piazza e una porta immediatamente alla sua sinistra
+diventa l'ingresso della taverna; nella taverna, il portone centrale torna al
+porto e la porta sinistra è un Noun chiuso ma esaminabile.
+
+La taverna contiene un Oste con un breve dialogo italiano opzionale e Noun
+ambientali, ma non introduce Object o passaggi necessari all'enigma principale.
+I Scene Passage mostrano destinazioni esplicite quando note, come «Verso la
+piazza» e «Scalinata per Monte Solaro», e nomi fisici come «Portone» finché la
+destinazione non è nota.
+
+La migrazione incrementa il Project Version di Capri 1535; i Save Snapshot
+precedenti restano visibili ma incompatibili. I master 1586×992 restano intatti.
+Ogni copia runtime usa un ritaglio 16:9 scelto per la singola Scene e viene poi
+ridotta a 426×240 senza deformazioni, proteggendo Passage e informazioni
+essenziali dalla fascia coperta dal HUD.

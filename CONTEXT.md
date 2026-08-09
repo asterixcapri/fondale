@@ -56,6 +56,17 @@ The declarative description of an adventure element, kept separate from
 exceptional behavior written specifically for a Game Project.
 _Avoid_: Engine class, generic configuration
 
+**Art Master**:
+The original, lossless visual source preserved outside runtime code so that a
+Game Project can derive fitted and optimized visual files without modifying its
+source artwork.
+_Avoid_: Runtime import, generated variant, preview
+
+**Runtime Asset**:
+A processed visual or audio file loaded by a Game Project from beside its
+owning definition under `src/`, derived from an Art Master when one exists.
+_Avoid_: Art Master, source artwork, reproducible intermediate
+
 **Game Behavior**:
 A rule specific to an adventure that complements its Game Definitions without
 changing the engine's internals. It is deterministic for the context supplied
