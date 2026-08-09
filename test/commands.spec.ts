@@ -17,3 +17,71 @@ test("the public browser completes Look At → Noun → Command Response", async
   await expect(frame.locator("[aria-live=polite]")).toHaveText("Un vecchio portone.");
   await expect(frame.locator('[data-fondale-verb="look-at"]')).toHaveAttribute("aria-pressed", "false");
 });
+
+test("the command HUD keeps its grid, keyboard mapping, preview, cancel, and Preferred Verb", async ({ page }) => {
+  await page.goto("/test/fixtures/commands.html");
+  const frame = page.locator("[data-fondale-frame]");
+  await expect(frame).toBeVisible();
+  const verbs = frame.locator("[data-fondale-verb]");
+  await expect(verbs).toHaveText([
+    "Apri", "Raccogli", "Spingi",
+    "Chiudi", "Guarda", "Tira",
+    "Dai", "Parla con", "Usa",
+  ]);
+
+  await frame.focus();
+  await page.keyboard.press("z");
+  await expect(frame.locator('[data-fondale-verb="give"]')).toHaveAttribute("aria-pressed", "true");
+  await page.keyboard.press("Escape");
+  await expect(frame.locator('[data-fondale-verb="give"]')).toHaveAttribute("aria-pressed", "false");
+  await page.keyboard.press("z");
+
+  const canvas = frame.locator("canvas");
+  const bounds = await canvas.boundingBox();
+  if (!bounds) throw new Error("missing canvas bounds");
+  const door = {
+    x: bounds.x + (230 / 426) * bounds.width,
+    y: bounds.y + (110 / 240) * bounds.height,
+  };
+  await page.mouse.move(door.x, door.y);
+  await expect(frame.locator("[data-fondale-command-preview]")).toContainText("Dai Portone");
+  await page.mouse.click(door.x, door.y, { button: "right" });
+
+  await expect(frame.locator("[aria-live=polite]")).toHaveText("Un vecchio portone.");
+  await expect(frame.locator('[data-fondale-verb="give"]')).toHaveAttribute("aria-pressed", "true");
+});
+
+test("an Inventory Object becomes the first Noun of a binary Use Command", async ({ page }) => {
+  await page.goto("/test/fixtures/commands.html");
+  const frame = page.locator("[data-fondale-frame]");
+  await expect(frame).toBeVisible();
+  const canvas = frame.locator("canvas");
+  const bounds = await canvas.boundingBox();
+  if (!bounds) throw new Error("missing canvas bounds");
+  const logicalClick = (x: number, y: number) => page.mouse.click(
+    bounds.x + (x / 426) * bounds.width,
+    bounds.y + (y / 240) * bounds.height,
+  );
+  await expect(frame.locator('[data-fondale-inventory-slot="empty"]')).toHaveCount(8);
+
+  await frame.locator('[data-fondale-verb="pick-up"]').click();
+  await logicalClick(120, 145);
+  const key = frame.locator('[data-fondale-inventory-object="key"]');
+  await expect(key).toBeVisible();
+  await expect(frame.locator('[data-fondale-inventory-slot="empty"]')).toHaveCount(7);
+  await expect(frame.locator("[aria-live=polite]")).toHaveText("Raccolgo la chiave.");
+
+  await frame.locator('[data-fondale-verb="use"]').click();
+  await key.click();
+  await expect(key).toHaveAttribute("aria-pressed", "true");
+  await expect(frame.locator("[data-fondale-command-preview]")).toContainText("Usa Chiave");
+  await page.mouse.move(
+    bounds.x + (230 / 426) * bounds.width,
+    bounds.y + (110 / 240) * bounds.height,
+  );
+  await expect(frame.locator("[data-fondale-command-preview]")).toHaveText("Usa Chiave con Portone");
+  await logicalClick(230, 110);
+
+  await expect(frame.locator("[aria-live=polite]")).toHaveText("La chiave gira nella serratura.");
+  await expect(key).toHaveAttribute("aria-pressed", "false");
+});

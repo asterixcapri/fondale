@@ -82,6 +82,21 @@ export function defineNoun(input: NounDefinition): NounDefinition {
     }
   });
   input.cases.forEach((candidate, index) => {
+    if (candidate.verb === "give" && candidate.firstNoun === undefined) {
+      diagnostics.push({
+        code: "definition.command-case.arity",
+        family: "definition",
+        path: `cases[${index}].firstNoun`,
+        message: "Give Command Cases always require a first Noun.",
+      });
+    } else if (candidate.verb !== "give" && candidate.verb !== "use" && candidate.firstNoun !== undefined) {
+      diagnostics.push({
+        code: "definition.command-case.arity",
+        family: "definition",
+        path: `cases[${index}].firstNoun`,
+        message: `The '${candidate.verb}' Verb is unary and cannot declare a first Noun.`,
+      });
+    }
     if (!candidate.response && !(candidate.operations?.length) && !candidate.sequence) {
       diagnostics.push({
         code: "definition.command-case.empty",

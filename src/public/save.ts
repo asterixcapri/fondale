@@ -157,8 +157,11 @@ function validActivity(value: unknown, data: GameProjectData, state: GameState):
       if (value.intent.selectedObject !== state.inventory.selected) return false;
       if (value.intent.selectedObject !== null && typeof value.intent.selectedObject !== "string") return false;
       if (value.intent.command !== undefined) {
-        if (!isRecord(value.intent.command) || !hasExactKeys(value.intent.command, ["verb"])) return false;
+        if (!isRecord(value.intent.command) || !hasExactKeys(value.intent.command, ["verb"], ["firstNoun", "preserveState"])) return false;
         if (!["open", "pick-up", "push", "close", "look-at", "pull", "give", "talk-to", "use"].includes(String(value.intent.command.verb))) return false;
+        if (value.intent.command.preserveState !== undefined && typeof value.intent.command.preserveState !== "boolean") return false;
+        if (value.intent.command.firstNoun !== undefined &&
+            (typeof value.intent.command.firstNoun !== "string" || !state.inventory.objects.includes(value.intent.command.firstNoun))) return false;
       }
       return true;
     }

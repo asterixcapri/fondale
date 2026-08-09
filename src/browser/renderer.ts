@@ -8,7 +8,7 @@ import {
   Texture,
 } from "pixi.js";
 
-import type { CoreEffect, CoreSession, GameState } from "../internal/core";
+import type { AvailableHotspot, CoreEffect, CoreSession, GameState } from "../internal/core";
 import type {
   EntityAppearance,
   GameProjectData,
@@ -45,6 +45,7 @@ export class BrowserRenderer {
     application.stage.addChild(this.world);
     application.canvas.setAttribute("aria-label", "Fondale game world");
     application.canvas.addEventListener("pointerup", this.onPointerUp);
+    application.canvas.addEventListener("contextmenu", this.onContextMenu);
     application.canvas.addEventListener("pointermove", this.onPointerMove);
     application.canvas.addEventListener("pointerleave", this.onPointerLeave);
   }
@@ -64,6 +65,7 @@ export class BrowserRenderer {
 
   destroy(): void {
     this.application.canvas.removeEventListener("pointerup", this.onPointerUp);
+    this.application.canvas.removeEventListener("contextmenu", this.onContextMenu);
     this.application.canvas.removeEventListener("pointermove", this.onPointerMove);
     this.application.canvas.removeEventListener("pointerleave", this.onPointerLeave);
     this.overlay.destroy();
@@ -184,6 +186,7 @@ export class BrowserRenderer {
   }
 
   private readonly onPointerUp = (event: PointerEvent): void => {
+    if (event.button !== 0) return;
     this.frame.focus({ preventScroll: true });
     const point = this.scenePoint(event);
     if (this.core.snapshot().activity?.type === "sequence") return;
@@ -195,22 +198,35 @@ export class BrowserRenderer {
     } else this.core.input({ type: "move", point });
   };
 
+  private readonly onContextMenu = (event: MouseEvent): void => {
+    event.preventDefault();
+    this.frame.focus({ preventScroll: true });
+    if (this.core.snapshot().activity?.type === "sequence") return;
+    const point = this.scenePoint(event);
+    const target = this.core.hitTest(point);
+    if (target?.kind === "hotspot") {
+      this.core.input({ type: "quick-hotspot", hotspot: target.index });
+    } else if (target?.kind === "passage") {
+      this.core.input({ type: "activate-passage", passage: target.index });
+    }
+  };
+
   private readonly onPointerMove = (event: PointerEvent): void => {
     const point = this.scenePoint(event);
     const target = this.core.hitTest(point);
     const hotspot = target?.kind === "hotspot"
       ? this.core.availableHotspots().find(({ index }) => index === target.index)
       : undefined;
-    this.overlay.showAction(hotspot?.label ?? "");
+    this.overlay.showAction(hotspot);
     this.overlay.showCursor(point);
   };
 
   private readonly onPointerLeave = (): void => {
-    this.overlay.showAction("");
+    this.overlay.showAction(undefined);
     this.overlay.hideCursor();
   };
 
-  private scenePoint(event: PointerEvent): Point {
+  private scenePoint(event: Pick<MouseEvent, "clientX" | "clientY">): Point {
     const bounds = this.application.canvas.getBoundingClientRect();
     return {
       x: ((event.clientX - bounds.left) / bounds.width) * this.data.logicalResolution.width,
@@ -235,6 +251,8 @@ class EngineOverlay {
   private sequenceWasActive = false;
   private cursorPoint: Point | null = null;
   private hotspotsRevealed = false;
+  private hoveredPreferredVerb: string | null = null;
+  private hoveredHotspot: AvailableHotspot | null = null;
 
   constructor(
     private readonly frame: HTMLElement,
@@ -255,7 +273,14 @@ class EngineOverlay {
       textShadow: "1px 1px #000",
       pointerEvents: "none",
     });
-    Object.assign(this.action.style, { position: "absolute", left: "4px", top: "4px" });
+    this.action.dataset.fondaleCommandPreview = "";
+    Object.assign(this.action.style, {
+      position: "absolute",
+      left: "4px",
+      top: "4px",
+      maxWidth: "120px",
+      whiteSpace: "nowrap",
+    });
     Object.assign(this.response.style, {
       position: "absolute",
       left: "10%",
@@ -362,20 +387,54 @@ class EngineOverlay {
     if (latestResponse?.type === "interaction-response") this.response.textContent = latestResponse.text;
     for (const button of this.verbs.querySelectorAll<HTMLButtonElement>("button")) {
       const selected = button.dataset.fondaleVerb === state.command.verb;
+      const preferred = button.dataset.fondaleVerb === this.hoveredPreferredVerb;
       button.setAttribute("aria-pressed", String(selected));
       button.style.outline = selected ? "2px double white" : "none";
+      button.style.color = preferred && !selected ? "#f2ad62" : "white";
     }
     this.renderInventory(state);
+    if (!this.hoveredHotspot) {
+      const firstNoun = state.command.firstNoun;
+      if (firstNoun && state.command.verb !== "walk-to") {
+        const noun = this.core.availableInventory().find(({ object }) => object === firstNoun.object);
+        const label = this.data.commandLexicon?.verbs[state.command.verb];
+        this.action.textContent = noun && label ? `${label} ${noun.label}` : "";
+      } else {
+        this.action.textContent = "";
+      }
+    }
     this.renderActivity(state);
     if (this.hotspotsRevealed) this.renderRevealedHotspots();
   }
 
-  showAction(label: string): void {
-    this.action.textContent = label;
+  showAction(hotspot: AvailableHotspot | undefined): void {
+    const state = this.core.snapshot();
+    this.hoveredHotspot = hotspot ?? null;
+    this.hoveredPreferredVerb = hotspot?.preferredVerb ?? null;
+    if (!hotspot) {
+      this.action.textContent = "";
+      return;
+    }
+    const verb = state.command.verb === "walk-to" ? hotspot.preferredVerb : state.command.verb;
+    const verbLabel = verb && verb !== "walk-to" ? this.data.commandLexicon?.verbs[verb] : undefined;
+    const firstNoun = state.command.firstNoun
+      ? this.core.availableInventory().find(({ object }) => object === state.command.firstNoun?.object)
+      : undefined;
+    if (verbLabel && firstNoun && (verb === "give" || verb === "use")) {
+      const pattern = this.data.commandLexicon?.patterns[verb];
+      this.action.textContent = pattern
+        ?.replace("{verb}", verbLabel)
+        .replace("{first}", firstNoun.label)
+        .replace("{second}", hotspot.label) ?? `${verbLabel} ${firstNoun.label} ${hotspot.label}`;
+    } else {
+      this.action.textContent = verbLabel ? `${verbLabel} ${hotspot.label}` : hotspot.label;
+    }
   }
 
   showCursor(point: Point): void {
     this.cursorPoint = point;
+    this.action.style.left = `${Math.max(2, Math.min(this.data.logicalResolution.width - 122, point.x + 6))}px`;
+    this.action.style.top = `${Math.max(2, Math.min(this.data.logicalResolution.height - 12, point.y + 6))}px`;
     this.positionInventoryCursor();
   }
 
@@ -390,7 +449,7 @@ class EngineOverlay {
   }
 
   private renderInventory(state: GameState): void {
-    const signature = JSON.stringify(state.inventory);
+    const signature = JSON.stringify([state.inventory, state.command]);
     if (signature === this.inventorySignature) return;
     this.inventorySignature = signature;
     this.inventory.replaceChildren();
@@ -402,12 +461,15 @@ class EngineOverlay {
       this.inventoryCursor.removeAttribute("src");
       this.inventoryCursor.style.display = "none";
     }
-    for (const objectId of state.inventory.objects) {
-      const selected = state.inventory.selected === objectId;
+    const available = new Map(this.core.availableInventory().map((noun) => [noun.object, noun]));
+    for (const objectId of state.inventory.objects.slice(0, 8)) {
+      const selected = this.data.commandLexicon
+        ? state.command.firstNoun?.object === objectId
+        : state.inventory.selected === objectId;
       const button = document.createElement("button");
       button.type = "button";
       button.dataset.fondaleInventoryObject = objectId;
-      button.setAttribute("aria-label", `${selected ? "Deselect" : "Select"} ${objectId}`);
+      button.setAttribute("aria-label", available.get(objectId)?.label ?? objectId);
       button.setAttribute("aria-pressed", String(selected));
       button.style.cssText = [
         "position:relative",
@@ -431,8 +493,23 @@ class EngineOverlay {
         marker.style.cssText = "position:absolute;right:1px;bottom:0;color:white";
         button.append(marker);
       }
-      button.addEventListener("click", () => this.core.input({ type: "select-object", object: objectId }));
+      button.addEventListener("click", () => this.core.input(
+        this.data.commandLexicon
+          ? { type: "activate-object", object: objectId }
+          : { type: "select-object", object: objectId },
+      ));
       this.inventory.append(button);
+    }
+    if (this.data.commandLexicon) {
+      for (let index = state.inventory.objects.length; index < 8; index += 1) {
+        const empty = document.createElement("span");
+        empty.dataset.fondaleInventorySlot = "empty";
+        empty.setAttribute("aria-hidden", "true");
+        empty.style.cssText = "display:block;width:32px;height:32px;border:1px solid rgba(255,255,255,.45);background:rgba(20,15,28,.55)";
+        this.inventory.append(empty);
+      }
+      this.inventory.style.display = "grid";
+      this.inventory.style.gridTemplateColumns = "repeat(4,34px)";
     }
   }
 
@@ -536,7 +613,16 @@ class EngineOverlay {
       }
       return;
     }
-    if (event.key === "Escape") this.core.input({ type: "escape" });
+    const keyboardVerbs = {
+      q: "open", w: "pick-up", e: "push",
+      a: "close", s: "look-at", d: "pull",
+      z: "give", x: "talk-to", c: "use",
+    } as const;
+    const verb = keyboardVerbs[event.key.toLowerCase() as keyof typeof keyboardVerbs];
+    if (verb) {
+      event.preventDefault();
+      this.core.input({ type: "select-verb", verb });
+    } else if (event.key === "Escape") this.core.input({ type: "escape" });
   };
 }
 

@@ -733,7 +733,7 @@ function validateProjectDefinitions(
       ));
     }
   };
-  const noun = (value: NounDefinition | undefined, path: string) => {
+  const noun = (value: NounDefinition | undefined, path: string, target?: HotspotTarget) => {
     if (!value) return;
     value.labels.forEach((label, index) => condition(label.when, `${path}.labels[${index}].when`));
     value.preferredVerbs.forEach((preferred, index) =>
@@ -757,7 +757,7 @@ function validateProjectDefinitions(
         ));
       }
       response(candidate.response, `${candidatePath}.response`);
-      operations(candidate.operations ?? [], `${candidatePath}.operations`);
+      operations(candidate.operations ?? [], `${candidatePath}.operations`, { target });
     });
     for (const verb of commandVerbs) {
       const fallback = value.fallbacks?.[verb];
@@ -772,7 +772,7 @@ function validateProjectDefinitions(
       }
       if (fallback) {
         response(fallback.response, `${path}.fallbacks.${verb}.response`);
-        operations(fallback.operations ?? [], `${path}.fallbacks.${verb}.operations`);
+        operations(fallback.operations ?? [], `${path}.fallbacks.${verb}.operations`, { target });
         if (fallback.sequence !== undefined && !(fallback.sequence in sequences)) {
           diagnostics.push(referenceDiagnostic(
             "reference.sequence",
@@ -810,7 +810,11 @@ function validateProjectDefinitions(
       }
     });
     for (const [sceneryId, scenery] of Object.entries(scene.scenery ?? {})) {
-      noun(scenery.noun, `scenes.${sceneId}.scenery.${sceneryId}.noun`);
+      noun(
+        scenery.noun,
+        `scenes.${sceneId}.scenery.${sceneryId}.noun`,
+        { kind: "scenery", scenery: sceneryId },
+      );
       if (!(scenery.initialAppearance in scenery.appearances)) {
         diagnostics.push(referenceDiagnostic("reference.appearance.initial", `scenes.${sceneId}.scenery.${sceneryId}.initialAppearance`, "Initial Scenery Appearance does not exist."));
       }
@@ -832,7 +836,7 @@ function validateProjectDefinitions(
     }
     scene.hotspots?.forEach((hotspot, hotspotIndex) => {
       const base = `scenes.${sceneId}.hotspots[${hotspotIndex}]`;
-      noun(hotspot.noun, `${base}.noun`);
+      noun(hotspot.noun, `${base}.noun`, hotspot.target);
       validatePolygonBounds(hotspot.area, `${base}.area`, pointInFrame, diagnostics);
       if (!pointInFrame(hotspot.approach.groundPoint)) {
         diagnostics.push({ code: "definition.approach.bounds", family: "definition", path: `${base}.approach`, message: "Approach Point must be inside Scene Space." });
@@ -879,7 +883,7 @@ function validateProjectDefinitions(
   }
 
   for (const [characterId, character] of Object.entries(characters)) {
-    noun(character.noun, `characters.${characterId}.noun`);
+    noun(character.noun, `characters.${characterId}.noun`, { kind: "character", character: characterId });
     const scene = input.scenes[character.initialScene];
     if (!scene) continue;
     const path = `characters.${characterId}.initialGroundPoint`;
@@ -890,7 +894,7 @@ function validateProjectDefinitions(
     }
   }
   for (const [objectId, object] of Object.entries(objects)) {
-    noun(object.noun, `objects.${objectId}.noun`);
+    noun(object.noun, `objects.${objectId}.noun`, { kind: "object", object: objectId });
     if (input.scenes[object.initialScene] && !pointInFrame(object.initialGroundPoint)) {
       diagnostics.push({ code: "definition.scene-space.bounds", family: "definition", path: `objects.${objectId}.initialGroundPoint`, message: "Object Ground Points must remain inside the Logical Resolution." });
     }

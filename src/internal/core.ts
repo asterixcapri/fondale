@@ -52,7 +52,7 @@ export interface PlayerIntentState {
         scene: string;
         hotspot: number;
         selectedObject: string | null;
-        command?: { verb: CommandVerb };
+        command?: { verb: CommandVerb; firstNoun?: string; preserveState?: boolean };
       }
     | { kind: "passage"; scene: string; passage: number };
 }
@@ -86,7 +86,9 @@ export type CoreInput =
   | { readonly type: "move"; readonly point: Point }
   | { readonly type: "select-verb"; readonly verb: CommandVerb }
   | { readonly type: "activate-hotspot"; readonly hotspot: number }
+  | { readonly type: "quick-hotspot"; readonly hotspot: number }
   | { readonly type: "activate-passage"; readonly passage: number }
+  | { readonly type: "activate-object"; readonly object: string }
   | { readonly type: "select-object"; readonly object: string }
   | { readonly type: "escape" }
   | { readonly type: "advance-sequence" }
@@ -110,6 +112,12 @@ export interface AvailableHotspot {
   readonly preferredVerb?: Verb;
 }
 
+export interface AvailableInventoryNoun {
+  readonly object: string;
+  readonly label: string;
+  readonly preferredVerb: Verb;
+}
+
 /** Internal deterministic seam shared by browser and tests. */
 export interface CoreSession {
   input(input: CoreInput): void;
@@ -122,6 +130,7 @@ export interface CoreSession {
   diagnostics(): readonly AuthoringDiagnostic[];
   hitTest(point: Point): CoreWorldTarget | null;
   availableHotspots(): readonly AvailableHotspot[];
+  availableInventory(): readonly AvailableInventoryNoun[];
   stop(): void;
 }
 
@@ -197,6 +206,17 @@ export function createCoreSession(
         }];
       });
     },
+    availableInventory() {
+      return state.inventory.objects.flatMap((object) => {
+        const noun = data.objects[object]?.noun;
+        if (!noun) return [];
+        return [{
+          object,
+          label: conditionalValue(noun.labels).text,
+          preferredVerb: conditionalValue(noun.preferredVerbs).verb,
+        }];
+      });
+    },
     stop() {
       if (status === "stopped") return;
       status = "stopped";
@@ -230,11 +250,18 @@ export function createCoreSession(
       state.command = { verb: input.verb, firstNoun: null };
     } else if (input.type === "move") {
       beginIntent({ kind: "move" }, input.point);
-    } else if (input.type === "activate-hotspot") {
+    } else if (input.type === "activate-hotspot" || input.type === "quick-hotspot") {
       const scene = data.scenes[state.currentScene]!;
       const hotspot = scene.hotspots?.[input.hotspot];
       if (hotspot && hotspotAvailable(hotspot)) {
         if (data.commandLexicon && hotspot.noun && state.command.verb === "walk-to") {
+          beginIntent({ kind: "move" }, hotspot.approach.groundPoint, hotspot.approach.facing);
+          return;
+        }
+        const quickVerb = input.type === "quick-hotspot" && hotspot.noun
+          ? conditionalValue(hotspot.noun.preferredVerbs).verb
+          : undefined;
+        if (quickVerb === "walk-to") {
           beginIntent({ kind: "move" }, hotspot.approach.groundPoint, hotspot.approach.facing);
           return;
         }
@@ -244,8 +271,14 @@ export function createCoreSession(
             scene: state.currentScene,
             hotspot: input.hotspot,
             selectedObject: state.inventory.selected,
-            ...(data.commandLexicon && hotspot.noun && state.command.verb !== "walk-to"
-              ? { command: { verb: state.command.verb } }
+            ...(data.commandLexicon && hotspot.noun && (quickVerb || state.command.verb !== "walk-to")
+              ? {
+                  command: {
+                    verb: (quickVerb ?? state.command.verb) as CommandVerb,
+                    ...(state.command.firstNoun ? { firstNoun: state.command.firstNoun.object } : {}),
+                    ...(quickVerb ? { preserveState: true } : {}),
+                  },
+                }
               : {}),
           },
           hotspot.approach.groundPoint,
@@ -262,6 +295,17 @@ export function createCoreSession(
           passage.approach.facing,
         );
       }
+    } else if (input.type === "activate-object") {
+      if (!state.inventory.objects.includes(input.object)) return;
+      const noun = data.objects[input.object]?.noun;
+      if (!noun || state.command.verb === "walk-to") return;
+      if ((state.command.verb === "give" || state.command.verb === "use") && !state.command.firstNoun) {
+        state.activity = null;
+        state.command = { verb: state.command.verb, firstNoun: { kind: "object", object: input.object } };
+        return;
+      }
+      const firstNoun = state.command.firstNoun?.object;
+      resolveCommand(noun, state.command.verb, { kind: "object", object: input.object }, false, firstNoun);
     } else if (input.type === "select-object") {
       if (!state.inventory.objects.includes(input.object)) return;
       state.activity = null;
@@ -335,7 +379,13 @@ export function createCoreSession(
     }
 
     if (intent.command && hotspot.noun) {
-      resolveCommand(hotspot.noun, intent.command.verb, hotspot.target);
+      resolveCommand(
+        hotspot.noun,
+        intent.command.verb,
+        hotspot.target,
+        intent.command.preserveState ?? false,
+        intent.command.firstNoun,
+      );
       return;
     }
 
@@ -370,13 +420,19 @@ export function createCoreSession(
     applyPrimaryInteraction(interaction, hotspot.target);
   }
 
-  function resolveCommand(noun: NounDefinition, verb: CommandVerb, target: HotspotTarget): void {
+  function resolveCommand(
+    noun: NounDefinition,
+    verb: CommandVerb,
+    target: HotspotTarget,
+    preserveState: boolean,
+    firstNoun?: string,
+  ): void {
     const candidate = noun.cases.find((value) =>
-      value.verb === verb && value.firstNoun === undefined && conditionMatches(value.when),
+      value.verb === verb && value.firstNoun === firstNoun && conditionMatches(value.when),
     );
     const fallback = candidate ? undefined : noun.fallbacks?.[verb];
     const globalFallback = candidate || fallback ? undefined : data.commandFallbacks?.[verb];
-    state.command = { verb: "walk-to", firstNoun: null };
+    if (!preserveState) state.command = { verb: "walk-to", firstNoun: null };
     if (globalFallback) {
       emitted.push({ type: "interaction-response", text: globalFallback.text });
       return;

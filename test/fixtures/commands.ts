@@ -1,9 +1,12 @@
 import backgroundUrl from "./background.png";
+import keyInventoryUrl from "../../docs/public/recipes/key-inventory-32.png";
+import keyUrl from "../../docs/public/recipes/key.png";
 import {
   defineCharacter,
   defineCommandLexicon,
   defineGame,
   defineNoun,
+  defineObject,
   defineScene,
   startGame,
 } from "../../src/index";
@@ -14,6 +17,19 @@ const door = defineNoun({
   cases: [{
     verb: "look-at",
     response: { text: "Un vecchio portone.", presentation: "narration" },
+  }, {
+    verb: "use",
+    firstNoun: "key",
+    response: { text: "La chiave gira nella serratura." },
+  }],
+});
+const keyNoun = defineNoun({
+  labels: [{ text: "Chiave" }],
+  preferredVerbs: [{ verb: "pick-up" }],
+  cases: [{
+    verb: "pick-up",
+    response: { text: "Raccolgo la chiave." },
+    operations: [{ type: "collect-target-object" }],
   }],
 });
 const globalResponse = { text: "Non succede nulla." };
@@ -23,6 +39,17 @@ const project = defineGame({
   logicalResolution: { width: 426, height: 240 },
   initialScene: "opening",
   playerCharacter: "player",
+  inventoryAppearanceSize: 32,
+  objects: {
+    key: defineObject({
+      initialScene: "opening",
+      initialGroundPoint: { x: 120, y: 150 },
+      initialAppearance: "scene",
+      appearances: { scene: { kind: "static", image: keyUrl } },
+      inventoryAppearance: keyInventoryUrl,
+      noun: keyNoun,
+    }),
+  },
   characters: {
     player: defineCharacter({
       initialScene: "opening",
@@ -64,6 +91,15 @@ const project = defineGame({
         primaryAction: {
           cases: [],
           fallback: { label: "Portone", response: "Legacy.", operations: [] },
+        },
+      }, {
+        target: { kind: "object", object: "key" },
+        area: [{ x: 100, y: 125 }, { x: 140, y: 125 }, { x: 140, y: 165 }, { x: 100, y: 165 }],
+        approach: { groundPoint: { x: 120, y: 150 }, facing: "front" },
+        noun: keyNoun,
+        primaryAction: {
+          cases: [],
+          fallback: { label: "Chiave", response: "Legacy.", operations: [] },
         },
       }],
     }),
