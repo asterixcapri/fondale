@@ -15,7 +15,21 @@ library is developed in the same repository. It contains the same installable
 artifact an external project consumes. Fondale maintainers refresh it from the
 repository root with `npm run package:example`.
 
-Runtime media follow the game's domain structure:
+Source files follow Fondale's authored concepts, while `main.ts` owns only the
+browser lifecycle:
+
+```text
+src/
+├── main.ts
+├── project.ts
+├── geometry.ts
+├── scenes/
+├── characters/
+├── objects/
+└── sequences/
+```
+
+Runtime media follow the same domain structure:
 
 ```text
 src/assets/
