@@ -13,6 +13,12 @@ La ricerca separa tre architetture che, pur mostrando talvolta gli stessi verbi,
 
 La conseguenza principale è semplice: dire «come *Monkey Island 2*, ma trasparente» combina **A** e **B**, due decisioni strutturali in tensione. Prima di discutere misure, slot o colori bisogna scegliere quale delle tre architetture si vuole.
 
+## Decisione successiva alla ricerca
+
+Il **9 agosto 2026** è stata selezionata l'architettura **C — controlli contestuali o nascosti** attraverso il prototipo comparativo conservato nel commit `e962ab4`.
+
+La decisione stabilisce che la Scene occupa l'intero frame a riposo e che Verb e Inventory non formano un HUD inferiore persistente. Non stabilisce ancora il gesto che apre l'Inventory, il modo in cui si richiude o la presentazione esatta dei Verb contestuali: queste restano decisioni separate da affrontare una alla volta prima di modificare il contratto di produzione.
+
 ## Metodo e limiti delle misure
 
 Sono state usate solo fonti o artefatti primari:

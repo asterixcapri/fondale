@@ -15,3 +15,11 @@ Logical Resolution reale.
 - [x] Tema incompleto, font non caricabile o asset incompatibile impediscono un mount parziale e producono Authoring Diagnostic contestuali.
 - [x] A 1280×720 e 900×700 il frame mantiene proporzioni, ordine, hit area e safe region senza deformazioni.
 - [x] I test automatici usano geometria e stati osservabili; una revisione screenshot documenta l'esito senza snapshot pixel-perfect come gate.
+
+## Comments
+
+### 9 agosto 2026 — verdetto visuale superato
+
+La ricerca comparativa in `docs/research/classic-adventure-ui-comparison.md` ha distinto il pannello dedicato di *Monkey Island 2*, l'overlay trasparente di *Thimbleweed Park* e le interfacce contestuali. Dopo il prototipo A/B/C del commit `e962ab4`, è stata selezionata la variante **C — UI contestuale**.
+
+Questo ticket conserva la decisione e l'implementazione storiche di Fondale 1.1, ma il suo verdetto “A — Moderno trasparente” è superato per la prossima iterazione. La produzione non viene modificata finché non sono definiti separatamente apertura e chiusura dell'Inventory e presentazione dei Verb contestuali.
