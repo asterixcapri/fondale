@@ -19,7 +19,7 @@ Il **9 agosto 2026** è stata selezionata l'architettura **C — controlli conte
 
 La decisione stabilisce che la Scene occupa l'intero frame a riposo e che Verb e Inventory non formano un HUD inferiore persistente. Non stabilisce ancora il gesto che apre l'Inventory, il modo in cui si richiude o la presentazione esatta dei Verb contestuali: queste restano decisioni separate da affrontare una alla volta prima di modificare il contratto di produzione.
 
-L'accesso all'Inventory è stato successivamente confermato: il **click destro** lo apre e lo richiude, `I` offre l'alternativa da tastiera, mentre `Escape` e il click esterno lo chiudono. Non rimane un pulsante Inventory sempre visibile. Al primo Object raccolto, un feedback transitorio e un suggerimento una tantum rendono il gesto scopribile. Il click destro non eseguirà quindi più il Preferred Verb; la presentazione precisa delle azioni contestuali resta la prossima decisione separata.
+L'accesso all'Inventory è stato successivamente confermato: il **click destro** lo apre e lo richiude, `I` offre l'alternativa da tastiera, mentre `Escape` e il click esterno lo chiudono. Non rimane un pulsante Inventory sempre visibile. Al primo Object raccolto, un feedback transitorio e un suggerimento una tantum rendono il gesto scopribile. Il click sinistro esegue l'azione contestuale principale o cammina; la pressione prolungata del sinistro apre il verb coin per le alternative. Il click destro non eseguirà quindi più il Preferred Verb. Il contenuto e la presentazione precisa del verb coin restano la prossima decisione separata.
 
 ## Metodo e limiti delle misure
 

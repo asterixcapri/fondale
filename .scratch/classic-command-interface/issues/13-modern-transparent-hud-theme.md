@@ -26,6 +26,6 @@ Questo ticket conserva la decisione e l'implementazione storiche di Fondale 1.1,
 
 ### 9 agosto 2026 — accesso all'Inventory confermato
 
-L'Inventory contestuale si apre e si richiude con il click destro. `I` è l'alternativa da tastiera; `Escape` e il click esterno lo chiudono. Non esiste un pulsante Inventory sempre visibile. Il primo Object raccolto produce un feedback transitorio e un suggerimento una tantum sul click destro.
+L'Inventory contestuale si apre e si richiude con il click destro. `I` è l'alternativa da tastiera; `Escape` e il click esterno lo chiudono. Non esiste un pulsante Inventory sempre visibile. Il primo Object raccolto produce un feedback transitorio e un suggerimento una tantum sul click destro. Il click sinistro cammina o esegue l'azione contestuale principale; una pressione prolungata apre il verb coin per scegliere un'alternativa.
 
-Questa scelta supera l'uso del click destro per il Preferred Verb. La presentazione e il gesto delle azioni contestuali restano da decidere separatamente prima di riscrivere il contratto di produzione.
+Questa scelta supera l'uso del click destro per il Preferred Verb. Il contenuto e la presentazione esatta del verb coin restano da decidere separatamente prima di riscrivere il contratto di produzione.
