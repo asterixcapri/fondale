@@ -427,13 +427,18 @@ export interface OperationsStep {
 export interface ChoiceAlternative {
   readonly text: string;
   readonly when?: InteractionCondition;
+  readonly spoken?: boolean;
   readonly steps: readonly SequenceStep[];
 }
 
 export interface ChoiceStep {
   readonly type: "choice";
   readonly alternatives: readonly ChoiceAlternative[];
-  readonly fallback: { readonly text: string; readonly steps: readonly SequenceStep[] };
+  readonly fallback: {
+    readonly text: string;
+    readonly spoken?: boolean;
+    readonly steps: readonly SequenceStep[];
+  };
 }
 
 export interface BranchStep {
@@ -447,6 +452,7 @@ export type SequenceStep = LineStep | OperationsStep | ChoiceStep | BranchStep;
 /** A finite, root-level Sequence definition. */
 export interface SequenceDefinition {
   readonly steps: readonly SequenceStep[];
+  readonly skippable?: boolean;
 }
 
 /** Creates and freezes a finite Sequence of Lines, Choices, branches and operations. */
@@ -466,6 +472,14 @@ export function defineSequence(input: SequenceDefinition): SequenceDefinition {
     visiting.add(steps);
     steps.forEach((step, index) => {
       if (step.type === "choice") {
+        if (step.alternatives.length > 6) {
+          diagnostics.push({
+            code: "definition.choice.limit",
+            family: "definition",
+            path: `${path}[${index}].alternatives`,
+            message: "A Choice can present at most six eligible alternatives.",
+          });
+        }
         step.alternatives.forEach((alternative, alternativeIndex) =>
           visit(alternative.steps, `${path}[${index}].alternatives[${alternativeIndex}].steps`),
         );

@@ -210,6 +210,13 @@ test("a modal Sequence exposes a resumable Line and Choice, then commits its bra
 
   session.input({ type: "choose", alternative: 0 });
   session.steps();
+  expect(session.snapshot().activity).toMatchObject({
+    type: "sequence",
+    active: { kind: "line", choiceText: "Yes" },
+  });
+  expect(session.snapshot().variables.met).toBe(false);
+  session.input({ type: "advance-sequence" });
+  session.steps();
   expect(session.snapshot().activity).toMatchObject({ type: "sequence", active: { kind: "line" } });
   expect(session.snapshot().variables.met).toBe(true);
   expect(session.snapshot().characters.player!.appearance).toBe("happy");

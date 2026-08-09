@@ -93,7 +93,7 @@ test("Tab reveals active Nouns and a directional Passage supports Fast Walk", as
   await frame.focus();
 
   await page.keyboard.down("Tab");
-  await expect(frame.locator("[data-fondale-revealed-hotspot]")).toHaveCount(2);
+  await expect(frame.locator("[data-fondale-revealed-hotspot]")).toHaveCount(3);
   await expect(frame.locator("[data-fondale-revealed-passage]")).toHaveCount(1);
   await page.keyboard.up("Tab");
   await expect(frame.locator("[data-fondale-revealed-hotspots]")).toBeHidden();
@@ -112,4 +112,54 @@ test("Tab reveals active Nouns and a directional Passage supports Fast Walk", as
 
   await expect(frame).toHaveAttribute("data-fondale-movement", "fast");
   await expect(frame).toHaveAttribute("data-fondale-scene", "hall");
+});
+
+test("Speech follows its Character and Choice uses the HUD with spoken alternatives", async ({ page }) => {
+  await page.goto("/test/fixtures/commands.html");
+  const frame = page.locator("[data-fondale-frame]");
+  await expect(frame).toBeVisible();
+  const canvas = frame.locator("canvas");
+  const bounds = await canvas.boundingBox();
+  if (!bounds) throw new Error("missing canvas bounds");
+  const host = {
+    x: bounds.x + (315 / 426) * bounds.width,
+    y: bounds.y + (135 / 240) * bounds.height,
+  };
+
+  await frame.locator('[data-fondale-verb="talk-to"]').click();
+  await page.mouse.click(host.x, host.y);
+  const line = frame.locator("[data-fondale-line]");
+  await expect(line).toHaveText("Benvenuto.");
+  await expect(line).toHaveAttribute("data-fondale-speaker", "host");
+  await expect(line).toHaveAttribute("data-fondale-presentation", "speech");
+  const lineBounds = await line.boundingBox();
+  if (!lineBounds) throw new Error("missing line bounds");
+  expect(lineBounds.y + lineBounds.height).toBeLessThan(bounds.y + (180 / 240) * bounds.height);
+
+  await page.mouse.click(host.x, host.y);
+  await expect(line).toHaveText("Benvenuto.");
+  await frame.focus();
+  await page.keyboard.press(".");
+  const choice = frame.locator("[data-fondale-choice]");
+  await expect(choice).toBeVisible();
+  await expect(frame.locator('[aria-label="Verbs"]')).toBeHidden();
+  await page.keyboard.press("1");
+  await expect(line).toHaveText("Grazie!");
+  await expect(line).toHaveAttribute("data-fondale-speaker", "player");
+  await page.mouse.click(host.x, host.y, { button: "middle" });
+  await expect(line).toHaveText("A te.");
+  await frame.focus();
+  await page.keyboard.press("Escape");
+  await expect(line).toHaveCount(0);
+  await expect(frame.locator('[aria-label="Verbs"]')).toBeVisible();
+
+  await frame.locator('[data-fondale-verb="talk-to"]').click();
+  await page.mouse.click(host.x, host.y);
+  await expect(line).toHaveText("Benvenuto.");
+  await frame.focus();
+  await page.keyboard.press(".");
+  await expect(choice).toBeVisible();
+  await page.keyboard.press("2");
+  await expect(line).toHaveText("Come vuoi.");
+  await expect(line).toHaveAttribute("data-fondale-speaker", "host");
 });

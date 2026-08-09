@@ -188,10 +188,19 @@ function validActivity(value: unknown, data: GameProjectData, state: GameState):
     if (!isRecord(value.active) || typeof value.active.kind !== "string" || typeof value.active.path !== "string") return false;
     const step = resolvePath(definition, value.active.path);
     const expectedPending = expectedPendingPaths(definition, value.active.path);
-    if (expectedPending === null || !sameOrderedStrings(value.pendingPaths as string[], expectedPending)) return false;
     if (value.active.kind === "line") {
-      return hasExactKeys(value.active, ["kind", "path"]) && isSequenceStep(step) && step.type === "line";
+      if (!hasExactKeys(value.active, ["kind", "path"], ["choiceText", "choiceCharacter"])) return false;
+      if (value.active.choiceText !== undefined) {
+        if (typeof value.active.choiceText !== "string" || !isSequenceStep(step) || step.type !== "choice") return false;
+        if (value.active.choiceCharacter !== undefined &&
+            (typeof value.active.choiceCharacter !== "string" || !(value.active.choiceCharacter in data.characters))) return false;
+        return true;
+      }
+      return expectedPending !== null &&
+        sameOrderedStrings(value.pendingPaths as string[], expectedPending) &&
+        isSequenceStep(step) && step.type === "line";
     }
+    if (expectedPending === null || !sameOrderedStrings(value.pendingPaths as string[], expectedPending)) return false;
     if (
       value.active.kind !== "choice" ||
       !hasExactKeys(value.active, ["kind", "path", "eligibleAlternatives"]) ||

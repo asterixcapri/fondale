@@ -8,6 +8,7 @@ import {
   defineNoun,
   defineObject,
   defineScene,
+  defineSequence,
   startGame,
 } from "../../src/index";
 
@@ -42,6 +43,11 @@ const returnNoun = defineNoun({
   preferredVerbs: [{ verb: "walk-to" }],
   cases: [],
 });
+const hostNoun = defineNoun({
+  labels: [{ text: "Oste" }],
+  preferredVerbs: [{ verb: "talk-to" }],
+  cases: [{ verb: "talk-to", sequence: "hostGreeting" }],
+});
 const globalResponse = { text: "Non succede nulla." };
 const project = defineGame({
   identity: "test.commands",
@@ -66,8 +72,29 @@ const project = defineGame({
       initialGroundPoint: { x: 180, y: 175 },
       initialFacing: "front",
       initialAppearance: "idle",
-      appearances: { idle: { kind: "static", image: backgroundUrl } },
+      appearances: { idle: { kind: "static", image: keyUrl } },
       movementSpeed: 600,
+    }),
+    host: defineCharacter({
+      initialScene: "opening",
+      initialGroundPoint: { x: 315, y: 150 },
+      initialFacing: "front",
+      initialAppearance: "idle",
+      appearances: { idle: { kind: "static", image: keyUrl } },
+      movementSpeed: 60,
+      noun: hostNoun,
+    }),
+  },
+  sequences: {
+    hostGreeting: defineSequence({
+      skippable: true,
+      steps: [{ type: "line", character: "host", text: "Benvenuto." }, {
+        type: "choice",
+        alternatives: [{ text: "Grazie!", steps: [{ type: "line", character: "host", text: "A te." }] }, {
+          text: "Non ora.", spoken: false, steps: [{ type: "line", character: "host", text: "Come vuoi." }],
+        }],
+        fallback: { text: "Arrivederci.", spoken: false, steps: [] },
+      }],
     }),
   },
   commandLexicon: defineCommandLexicon({
@@ -118,6 +145,15 @@ const project = defineGame({
         primaryAction: {
           cases: [],
           fallback: { label: "Chiave", response: "Legacy.", operations: [] },
+        },
+      }, {
+        target: { kind: "character", character: "host" },
+        area: [{ x: 290, y: 110 }, { x: 340, y: 110 }, { x: 340, y: 165 }, { x: 290, y: 165 }],
+        approach: { groundPoint: { x: 285, y: 150 }, facing: "right" },
+        noun: hostNoun,
+        primaryAction: {
+          cases: [],
+          fallback: { label: "Oste", response: "Legacy.", operations: [] },
         },
       }],
     }),

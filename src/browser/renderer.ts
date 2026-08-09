@@ -201,6 +201,12 @@ export class BrowserRenderer {
   }
 
   private readonly onPointerUp = (event: PointerEvent): void => {
+    const activity = this.core.snapshot().activity;
+    if (event.button === 1 && activity?.type === "sequence" && activity.active?.kind === "line") {
+      event.preventDefault();
+      this.core.input({ type: "advance-sequence" });
+      return;
+    }
     if (event.button !== 0) return;
     this.frame.focus({ preventScroll: true });
     const point = this.scenePoint(event);
@@ -419,7 +425,12 @@ class EngineOverlay {
 
   render(state: GameState, effects: readonly CoreEffect[]): void {
     const latestResponse = [...effects].reverse().find(({ type }) => type === "interaction-response");
-    if (latestResponse?.type === "interaction-response") this.response.textContent = latestResponse.text;
+    if (latestResponse?.type === "interaction-response") {
+      this.response.textContent = latestResponse.text;
+      const presentation = latestResponse.response?.presentation ?? "speech";
+      const speaker = latestResponse.response?.speaker ?? this.data.playerCharacter;
+      this.positionSpeech(this.response, state, presentation, speaker);
+    }
     for (const button of this.verbs.querySelectorAll<HTMLButtonElement>("button")) {
       const selected = button.dataset.fondaleVerb === state.command.verb;
       const preferred = button.dataset.fondaleVerb === this.hoveredPreferredVerb;
@@ -439,6 +450,9 @@ class EngineOverlay {
       }
     }
     this.renderActivity(state);
+    const choosing = state.activity?.type === "sequence" && state.activity.active?.kind === "choice";
+    this.verbs.style.visibility = choosing ? "hidden" : "visible";
+    this.inventory.style.visibility = choosing ? "hidden" : "visible";
     if (this.hotspotsRevealed) this.renderRevealedHotspots();
   }
 
@@ -573,16 +587,18 @@ class EngineOverlay {
     this.sequenceWasActive = true;
     const definition = this.data.sequences[sequence.sequence]!;
     const step = resolvePath(definition, sequence.active.path) as SequenceStep;
-    if (sequence.active.kind === "line" && step.type === "line") {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.dataset.fondaleLine = "";
-      button.style.cssText = overlayButtonStyle;
-      button.style.pointerEvents = "auto";
-      button.textContent = `${step.character ? `${step.character}: ` : ""}${step.text}`;
-      button.addEventListener("click", () => this.core.input({ type: "advance-sequence" }));
-      this.activity.append(button);
-      button.focus();
+    if (sequence.active.kind === "line") {
+      const isChoiceSpeech = sequence.active.choiceText !== undefined;
+      const authoredLine = step.type === "line" ? step : undefined;
+      if (!isChoiceSpeech && !authoredLine) return;
+      const line = document.createElement("div");
+      line.dataset.fondaleLine = "";
+      line.setAttribute("role", "status");
+      line.textContent = isChoiceSpeech ? sequence.active.choiceText! : authoredLine!.text;
+      const speaker = isChoiceSpeech ? sequence.active.choiceCharacter : authoredLine?.character;
+      this.positionSpeech(line, state, speaker ? "speech" : "narration", speaker);
+      this.activity.append(line);
+      this.frame.focus({ preventScroll: true });
     } else if (sequence.active.kind === "choice" && step.type === "choice") {
       const list = document.createElement("div");
       list.dataset.fondaleChoice = "";
@@ -599,6 +615,36 @@ class EngineOverlay {
       }
       this.activity.append(list);
       list.querySelector<HTMLButtonElement>("button")?.focus();
+    }
+  }
+
+  private positionSpeech(
+    element: HTMLElement,
+    state: GameState,
+    presentation: "speech" | "narration",
+    speaker?: string,
+  ): void {
+    const character = speaker ? state.characters[speaker] : undefined;
+    const visible = character?.scene === state.currentScene;
+    element.dataset.fondalePresentation = presentation;
+    if (speaker) element.dataset.fondaleSpeaker = speaker;
+    else delete element.dataset.fondaleSpeaker;
+    element.style.cssText = [
+      "position:absolute",
+      "width:150px",
+      "max-width:150px",
+      "white-space:normal",
+      "text-align:center",
+      "color:#f4dfb4",
+      "text-shadow:1px 1px #000",
+      "pointer-events:none",
+    ].join(";");
+    if (presentation === "speech" && visible && character) {
+      element.style.left = `${Math.max(2, Math.min(this.data.logicalResolution.width - 152, character.groundPoint.x - 75))}px`;
+      element.style.top = `${Math.max(4, Math.min(this.data.logicalResolution.height - 80, character.groundPoint.y - 45))}px`;
+    } else {
+      element.style.left = `${(this.data.logicalResolution.width - 150) / 2}px`;
+      element.style.top = "72px";
     }
   }
 
@@ -645,10 +691,19 @@ class EngineOverlay {
   private readonly onKeyDown = (event: KeyboardEvent): void => {
     const state = this.core.snapshot();
     if (state.activity?.type === "sequence") {
-      if ((event.key === "Enter" || event.key === " ") && state.activity.active?.kind === "line") {
+      if (event.key === "." && state.activity.active?.kind === "line") {
         event.preventDefault();
         this.core.input({ type: "advance-sequence" });
       } else if (state.activity.active?.kind === "choice") {
+        const numeric = Number(event.key);
+        if (Number.isInteger(numeric) && numeric >= 1 && numeric <= 6) {
+          const alternative = state.activity.active.eligibleAlternatives[numeric - 1];
+          if (alternative !== undefined) {
+            event.preventDefault();
+            this.core.input({ type: "choose", alternative });
+          }
+          return;
+        }
         const buttons = [...this.activity.querySelectorAll<HTMLButtonElement>("button")];
         const current = Math.max(0, buttons.indexOf(document.activeElement as HTMLButtonElement));
         if (event.key === "ArrowDown" || event.key === "ArrowRight") {
@@ -659,6 +714,7 @@ class EngineOverlay {
           buttons[(current - 1 + buttons.length) % buttons.length]?.focus();
         }
       }
+      if (event.key === "Escape") this.core.input({ type: "skip-sequence" });
       return;
     }
     const keyboardVerbs = {

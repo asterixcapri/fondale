@@ -1,5 +1,5 @@
 import { AuthoringError, type AuthoringDiagnostic } from "../public/diagnostics";
-import type { CommandVerb, NounDefinition, Verb } from "../public/commands";
+import type { CommandResponse, CommandVerb, NounDefinition, Verb } from "../public/commands";
 import {
   getGameProjectData,
   type Facing,
@@ -59,7 +59,7 @@ export interface PlayerIntentState {
 }
 
 export type SequenceActiveState =
-  | { kind: "line"; path: string }
+  | { kind: "line"; path: string; choiceText?: string; choiceCharacter?: string }
   | { kind: "choice"; path: string; eligibleAlternatives: number[] };
 
 export interface SequenceActivityState {
@@ -93,12 +93,13 @@ export type CoreInput =
   | { readonly type: "select-object"; readonly object: string }
   | { readonly type: "escape" }
   | { readonly type: "advance-sequence" }
+  | { readonly type: "skip-sequence" }
   | { readonly type: "choose"; readonly alternative: number };
 
 export type CoreEffect =
   | { readonly type: "movement-started"; readonly destination: Point; readonly fast?: true }
   | { readonly type: "movement-finished"; readonly destination: Point }
-  | { readonly type: "interaction-response"; readonly text: string }
+  | { readonly type: "interaction-response"; readonly text: string; readonly response?: CommandResponse }
   | { readonly type: "scene-changed"; readonly scene: string }
   | { readonly type: "sequence-changed" };
 
@@ -264,6 +265,9 @@ export function createCoreSession(
         advanceSequence();
       } else if (input.type === "choose" && state.activity.active?.kind === "choice") {
         chooseAlternative(input.alternative);
+      } else if (input.type === "skip-sequence" && data.sequences[state.activity.sequence]?.skippable) {
+        state.activity = null;
+        emitted.push({ type: "sequence-changed" });
       }
       return;
     }
@@ -467,7 +471,7 @@ export function createCoreSession(
     const globalFallback = candidate || fallback ? undefined : data.commandFallbacks?.[verb];
     if (!preserveState) state.command = { verb: "walk-to", firstNoun: null };
     if (globalFallback) {
-      emitted.push({ type: "interaction-response", text: globalFallback.text });
+      emitted.push({ type: "interaction-response", text: globalFallback.text, response: globalFallback });
       return;
     }
     const resolution = candidate ?? fallback;
@@ -478,7 +482,11 @@ export function createCoreSession(
     ];
     if (!applyOperations(requested, target)) return;
     if (resolution.response) {
-      emitted.push({ type: "interaction-response", text: resolution.response.text });
+      emitted.push({
+        type: "interaction-response",
+        text: resolution.response.text,
+        response: resolution.response,
+      });
     }
   }
 
@@ -667,8 +675,19 @@ export function createCoreSession(
         ? `${activity.active.path}/fallback/steps`
         : `${activity.active.path}/alternatives/${alternative}/steps`;
     activity.pendingPaths.unshift(...pathsForContainer(definition, container));
-    activity.active = null;
-    advanceSequence();
+    const choice = alternative === -1 ? stepDefinition.fallback : stepDefinition.alternatives[alternative]!;
+    if (choice.spoken !== false) {
+      activity.active = {
+        kind: "line",
+        path: activity.active.path,
+        choiceText: choice.text,
+        ...(data.playerCharacter ? { choiceCharacter: data.playerCharacter } : {}),
+      };
+      emitted.push({ type: "sequence-changed" });
+    } else {
+      activity.active = null;
+      advanceSequence();
+    }
   }
 
   function conditionMatches(condition?: InteractionCondition): boolean {
