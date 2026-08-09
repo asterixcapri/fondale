@@ -75,3 +75,27 @@ Character che parla e la narrazione è centrata nella Scene. Le Choice
 sostituiscono temporaneamente Verb e Inventory con l'elenco delle frasi nel HUD;
 la frase selezionata viene pronunciata dal Player Character nella Scene prima
 di proseguire, poi il Command State sospeso viene ripristinato.
+
+Il testo di una Choice Alternative è anche la Line pronunciata dal Player
+Character, senza duplicazione nell'authoring. Line e Command Response condividono
+la stessa presentazione sopra il Character, limitata ai bordi della Scene e
+centrata quando lo speaker non è visibile. La durata dipende dal testo, dalla
+velocità configurata o dall'eventuale audio; click, Enter e Space anticipano la
+battuta, mentre Escape salta soltanto Sequence dichiarate skippable.
+
+Hotspot, Object nell'Inventory e Scene Passage adottano la stessa Noun
+Definition con nome, Preferred Verb e Command Case. La risoluzione considera
+prima un caso specifico, poi il fallback locale del Verb e infine il fallback
+globale e response-only del Game Project; l'assenza di ogni risposta è un
+Authoring Diagnostic. Casi e fallback locali possono produrre Game Operation o
+avviare Sequence.
+
+Tab rivela contorno e nome dei soli Noun e Scene Passage disponibili finché il
+tasto resta premuto. L'Engine possiede la struttura del HUD, mentre il Game
+Project fornisce un HUD Theme dichiarativo per palette, font, bordi, selezione,
+sfondo e colori del parlato, senza DOM o CSS personalizzato.
+
+La schermata Save/Load offre Save Slot scorrevoli con nome, data, Scene e azioni
+Save, Load, Delete e Resume. Un Save Snapshot incompatibile rimane visibile con
+la relativa spiegazione ma non può essere caricato; autosave, cloud e miniature
+restano fuori da questa versione.

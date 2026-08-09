@@ -97,7 +97,7 @@ _Avoid_: Save slot, storage record, event log
 
 **Save Slot**:
 A Player-named browser record that owns one Save Snapshot together with the
-minimal presentation metadata needed to find and restore it.
+name, date, and Scene metadata needed to find, manage, and restore it.
 _Avoid_: Save Snapshot, checkpoint, autosave
 
 **Command State**:
@@ -130,7 +130,8 @@ _Avoid_: Cutscene, Dialogue as a separate activity model, nested sequence, scrip
 **Line**:
 A single authored unit of speech or narration within a Sequence. Speech
 identifies its Character and is presented above that Character; narration omits
-the Character and is presented centrally. Every Line awaits Player advancement.
+the Character and is presented centrally. Its presentation may advance by
+timing or Player input.
 _Avoid_: Subtitle, dialogue node, renderer text
 
 **Choice**:
@@ -233,6 +234,11 @@ Sentence Line, Verb controls, Inventory, and other play controls. It is not
 part of Scene Space or content of the Game Project.
 _Avoid_: Scene overlay, game menu, world element
 
+**HUD Theme**:
+The Game Project's declarative visual language for the Engine-owned HUD,
+including its palette, font, borders, selection, and Character speech colours.
+_Avoid_: Custom DOM, custom CSS, Scene art
+
 **Inventory**:
 The acquisition-ordered collection of Objects currently carried by the Player
 and presented in a permanent region of the HUD, even when empty.
@@ -268,6 +274,11 @@ The player-facing name by which a Character, Object, Scenery, background
 region, or Scene Passage participates in a Command.
 _Avoid_: Identifier, hotspot label, target kind
 
+**Noun Definition**:
+The declarative description of one Noun's name, Preferred Verb, Command Cases,
+and local fallbacks wherever that Noun is available to the Player.
+_Avoid_: Hotspot, entity definition, event handlers
+
 **Command**:
 A Player-authored sentence combining one Verb with one or two Nouns before it
 is executed as a Player Intent.
@@ -285,8 +296,14 @@ _Avoid_: Interaction Response, dialogue text, tooltip
 
 **Command Case**:
 An authored conditional alternative for resolving a Verb against one or two
-Nouns; eligible cases are considered in their declared order.
+Nouns; eligible cases are considered in their declared order and may produce a
+Command Response, Game Operations, or a Sequence.
 _Avoid_: Handler, event listener, priority rule
+
+**Command Fallback**:
+The guaranteed response used when no Command Case matches, resolved locally on
+a Noun before the Game Project's response-only fallback for that Verb.
+_Avoid_: Silent no-op, exception, implicit default
 
 **Interaction Condition**:
 An authored proposition over the current Game State that determines whether an
