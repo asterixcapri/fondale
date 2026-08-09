@@ -136,9 +136,10 @@ _Avoid_: Subtitle, dialogue node, renderer text
 
 **Choice**:
 A point in a Sequence where the Player selects one of the authored alternatives
-eligible in the current Game State from the HUD. The selected phrase is
-pronounced by the Player Character before the Sequence continues along its
-branch; ineligible alternatives are not presented.
+eligible in the current Game State from the HUD. By default, the selected phrase
+is pronounced by the Player Character before the Sequence continues along its
+branch, but an alternative may explicitly remain unspoken; ineligible
+alternatives are not presented.
 _Avoid_: Menu, disabled answer, arbitrary input prompt
 
 ## Interaction language
@@ -229,10 +230,11 @@ belong to the Game Project rather than a Scene.
 _Avoid_: Scenery, synonym for Hotspot
 
 **HUD**:
-The permanent Engine-owned region of the Logical Resolution that presents the
-Sentence Line, Verb controls, Inventory, and other play controls. It is not
-part of Scene Space or content of the Game Project.
-_Avoid_: Scene overlay, game menu, world element
+The permanent Engine-owned transparent overlay across a reserved lower region
+of the Scene that presents Verb controls, Inventory, and other play controls.
+The Background remains full-frame beneath it, while the reserved region cannot
+contain Interaction or essential scene information.
+_Avoid_: Cropped Scene, game menu, world element
 
 **HUD Theme**:
 The Game Project's declarative visual language for the Engine-owned HUD,
@@ -289,10 +291,16 @@ The Game Project's localized labels and sentence patterns for presenting
 semantic Verb and Noun combinations without linguistic inference by the Engine.
 _Avoid_: Locale detection, translated identifiers, automatic grammar
 
+**Command Preview**:
+The presentation of the Command being constructed, including the Noun currently
+considered under the Player's pointer. By default it follows the pointer and is
+clamped within the Logical Resolution.
+_Avoid_: Interaction Response, dialogue text, generic tooltip
+
 **Sentence Line**:
-The HUD presentation of the Command being constructed, including the Noun
-currently considered under the Player's pointer.
-_Avoid_: Interaction Response, dialogue text, tooltip
+The optional classic fixed placement of the Command Preview enabled by a Game
+Setting instead of its default pointer-following placement.
+_Avoid_: Required HUD row, dialogue text, Interaction Response
 
 **Command Case**:
 An authored conditional alternative for resolving a Verb against one or two

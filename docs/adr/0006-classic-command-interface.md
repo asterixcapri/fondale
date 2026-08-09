@@ -23,8 +23,13 @@ I nove Verb visibili sono Give, Talk To, Pick Up, Look At, Open, Close, Push,
 Pull e Use; Walk To resta implicito per terreno e Scene Passage. Il passaggio
 del puntatore presenta il Noun e il Verb preferito, il click sinistro costruisce
 il Command o cammina sul terreno e il click destro esegue il Verb preferito.
-Il HUD occupa una regione permanente della Logical Resolution 426×240 invece di
-sovrapporsi alla Scene; la proporzione esatta viene validata con un prototipo.
+Il Background continua a occupare l'intera Logical Resolution 426×240. Il HUD
+trasparente si sovrappone alla fascia inferiore della Scene, come in Thimbleweed
+Park; il Game Project riserva quella fascia da Interaction e informazioni
+visive essenziali. Il Command Preview segue il puntatore e resta entro i bordi;
+una Sentence Line fissa in stile classico è un Game Setting opzionale. Altezza,
+leggibilità e hit area vengono validate con un prototipo senza ritagliare o
+rielaborare i master delle Scene.
 
 Il modello contestuale non rimane come Game Setting alternativo: la modifica è
 incompatibile, introduce Fondale 2.0 e richiede la migrazione dei Game Project.
@@ -51,9 +56,11 @@ fornisce etichette e modelli grammaticali localizzati senza inferenze
 linguistiche dell'Engine.
 
 La Support Baseline 2.0 include mouse, esecuzione rapida con click destro,
-rotellina per l'Inventory, F5 per i salvataggi e scorciatoie posizionali
-QWE/ASD/ZXC per i nove Verb. Touch, gamepad e navigazione completa del mondo da
-tastiera restano esclusi da questa modifica.
+rotellina per l'Inventory, Tab per rivelare i Noun, F5 per aprire Options,
+Ctrl+S per Save, Ctrl+L per Load e scorciatoie posizionali QWE/ASD/ZXC per i
+nove Verb. Durante una Choice, i tasti da 1 a 6 selezionano le alternative
+visibili. Touch, gamepad e navigazione completa del mondo da tastiera restano
+esclusi da questa modifica.
 
 Dopo ogni Command risolto, riuscito o fallito, il Command State torna a Walk
 To; Escape annulla una costruzione incompleta e il click destro non sostituisce
@@ -72,19 +79,23 @@ Scene Passage mostra il proprio Noun, preferisce Walk To e usa un cursore a
 freccia; Tab rivela temporaneamente Noun e Passage, mentre il controllo
 diagnostico permanente viene rimosso dal normale HUD.
 
-F5 apre una schermata Engine-owned di Save Slot nominati, identificati per Game
-Project e versione, senza miniature. Le Line pronunciate sono ancorate sopra il
-Character che parla e la narrazione è centrata nella Scene. Le Choice
+Save e Load sono accessibili dalla schermata Engine-owned Options e tramite
+Ctrl+S e Ctrl+L; F5 apre Options. I Save Slot sono nominati e identificati per
+Game Project e versione. Le Line pronunciate sono ancorate sopra il Character
+che parla e la narrazione è centrata nella Scene. Le Choice
 sostituiscono temporaneamente Verb e Inventory con l'elenco delle frasi nel HUD;
-la frase selezionata viene pronunciata dal Player Character nella Scene prima
-di proseguire, poi il Command State sospeso viene ripristinato.
+per impostazione predefinita la frase selezionata viene pronunciata dal Player
+Character nella Scene prima di proseguire, ma una Choice Alternative può
+dichiararsi non pronunciata. Poi il Command State sospeso viene ripristinato.
 
 Il testo di una Choice Alternative è anche la Line pronunciata dal Player
-Character, senza duplicazione nell'authoring. Line e Command Response condividono
-la stessa presentazione sopra il Character, limitata ai bordi della Scene e
-centrata quando lo speaker non è visibile. La durata dipende dal testo, dalla
-velocità configurata o dall'eventuale audio; click, Enter e Space anticipano la
-battuta, mentre Escape salta soltanto Sequence dichiarate skippable.
+Character, senza duplicazione nell'authoring, salvo quando l'Author la dichiara
+non pronunciata. Line e Command Response condividono la stessa presentazione
+sopra il Character, limitata ai bordi della Scene e centrata quando lo speaker
+non è visibile. La durata dipende dal testo, dalla velocità configurata o
+dall'eventuale audio; punto e click centrale anticipano la battuta. Click
+sinistro e destro non la saltano né attraversano il blocco di input. Escape
+salta soltanto Sequence dichiarate skippable.
 
 Hotspot, Object nell'Inventory e Scene Passage adottano la stessa Noun
 Definition con nome, Preferred Verb e Command Case. La risoluzione considera
@@ -98,7 +109,7 @@ tasto resta premuto. L'Engine possiede la struttura del HUD, mentre il Game
 Project fornisce un HUD Theme dichiarativo per palette, font, bordi, selezione,
 sfondo e colori del parlato, senza DOM o CSS personalizzato.
 
-La schermata Save/Load offre Save Slot scorrevoli con nome, data, Scene e azioni
-Save, Load, Delete e Resume. Un Save Snapshot incompatibile rimane visibile con
-la relativa spiegazione ma non può essere caricato; autosave, cloud e miniature
-restano fuori da questa versione.
+La schermata Save/Load offre Save Slot liberi e nominati. Un Save Snapshot
+incompatibile rimane visibile con la relativa spiegazione ma non può essere
+caricato. Numero esatto dei Save Slot, miniature, autosave e cloud non vengono
+dedotti da Thimbleweed Park e restano fuori da questa decisione.
