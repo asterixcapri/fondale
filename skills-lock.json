@@ -37,6 +37,11 @@
       "skillPath": "skills/engineering/domain-modeling/SKILL.md",
       "computedHash": "363cb0f53b0b431e7c00086ad1f823500b7e1b70b5616ee969c979f0934e9e6e"
     },
+    "generate-character-animation-sprite": {
+      "source": "./skills",
+      "sourceType": "local",
+      "computedHash": "5e3d0d6efb1b4b3765635f483c0a60ca6642a83d0bd4759559c5ec3b04c7ae2f"
+    },
     "git-guardrails-claude-code": {
       "source": "mattpocock/skills",
       "sourceType": "github",
