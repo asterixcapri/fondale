@@ -67,7 +67,7 @@ export class BrowserRenderer {
     private readonly controls: BrowserSessionControls,
   ) {
     this.world.sortableChildren = true;
-    this.overlay = new EngineOverlay(frame, data, core, controls);
+    this.overlay = new EngineOverlay(frame, data, assets, core, controls);
     application.stage.addChild(this.world);
     application.canvas.setAttribute("aria-label", "Fondale game world");
     application.canvas.addEventListener("pointerup", this.onPointerUp);
@@ -326,10 +326,12 @@ class EngineOverlay {
   private inventoryPage = 0;
   private previousInventoryCount = 0;
   private lineTimer: number | undefined;
+  private activeAudio: HTMLAudioElement | undefined;
 
   constructor(
     private readonly frame: HTMLElement,
     private readonly data: GameProjectData,
+    private readonly assets: LoadedAssets,
     private readonly core: CoreSession,
     private readonly controls: BrowserSessionControls,
   ) {
@@ -566,7 +568,13 @@ class EngineOverlay {
         .replace("{first}", firstNoun.label)
         .replace("{second}", hotspot.label) ?? `${verbLabel} ${firstNoun.label} ${hotspot.label}`;
     } else {
-      this.action.textContent = verbLabel ? `${verbLabel} ${hotspot.label}` : hotspot.label;
+      this.action.textContent = verbLabel
+        ? verb === "give"
+          ? `${verbLabel} ${hotspot.label}`
+          : this.data.commandLexicon?.patterns.unary
+            .replace("{verb}", verbLabel)
+            .replace("{noun}", hotspot.label) ?? `${verbLabel} ${hotspot.label}`
+        : hotspot.label;
     }
   }
 
@@ -687,8 +695,8 @@ class EngineOverlay {
       line.setAttribute("role", "status");
       line.textContent = isChoiceSpeech ? sequence.active.choiceText! : authoredLine!.text;
       const speaker = isChoiceSpeech ? sequence.active.choiceCharacter : authoredLine?.character;
-      this.positionSpeech(line, state, speaker ? "speech" : "narration", speaker);
       this.activity.append(line);
+      this.positionSpeech(line, state, speaker ? "speech" : "narration", speaker);
       this.frame.focus({ preventScroll: true });
       const millisecondsPerCharacter = {
         slow: 130,
@@ -699,10 +707,13 @@ class EngineOverlay {
         this.preferences.textSpeed
       ];
       const duration = Math.max(minimumDuration, (line.textContent?.length ?? 0) * millisecondsPerCharacter);
+      const audioDuration = !isChoiceSpeech && authoredLine?.audio
+        ? this.playLineAudio(authoredLine.audio)
+        : 0;
       this.lineTimer = window.setTimeout(() => {
         this.lineTimer = undefined;
         if (!this.modalKind) this.core.input({ type: "advance-sequence" });
-      }, duration);
+      }, Math.max(duration, audioDuration));
     } else if (sequence.active.kind === "choice" && step.type === "choice") {
       const list = document.createElement("div");
       list.dataset.fondaleChoice = "";
@@ -738,6 +749,9 @@ class EngineOverlay {
       `width:${this.data.hudTheme?.maxSpeechWidth ?? 150}px`,
       `max-width:${this.data.hudTheme?.maxSpeechWidth ?? 150}px`,
       "white-space:normal",
+      "overflow-wrap:anywhere",
+      `max-height:${this.data.logicalResolution.height - 76}px`,
+      "overflow-y:auto",
       "text-align:center",
       `color:${speaker && this.data.hudTheme?.speechColors[speaker] || this.data.hudTheme?.colors.text || "#f4dfb4"}`,
       "text-shadow:1px 1px #000",
@@ -747,10 +761,12 @@ class EngineOverlay {
     if (presentation === "speech" && visible && character) {
       const width = this.data.hudTheme?.maxSpeechWidth ?? 150;
       element.style.left = `${Math.max(2, Math.min(this.data.logicalResolution.width - width - 2, character.groundPoint.x - width / 2))}px`;
-      element.style.top = `${Math.max(4, Math.min(this.data.logicalResolution.height - 80, character.groundPoint.y - 45))}px`;
+      const height = element.offsetHeight;
+      element.style.top = `${Math.max(4, Math.min(176 - height, character.groundPoint.y - 45))}px`;
     } else {
       element.style.left = `${(this.data.logicalResolution.width - (this.data.hudTheme?.maxSpeechWidth ?? 150)) / 2}px`;
-      element.style.top = "72px";
+      const height = element.offsetHeight;
+      element.style.top = `${Math.max(4, Math.min(176 - height, 72))}px`;
     }
   }
 
@@ -897,6 +913,20 @@ class EngineOverlay {
     opacity.value = String(this.preferences.hudOpacity);
     opacity.setAttribute("aria-label", "HUD opacity");
     controls.append(textSpeed.label, preview.label, speech.label, backing.label, opacity);
+    if (this.assets.audio.size > 0) {
+      const volume = document.createElement("input");
+      volume.type = "range";
+      volume.min = "0";
+      volume.max = "1";
+      volume.step = "0.05";
+      volume.value = String(this.preferences.audioVolume);
+      volume.setAttribute("aria-label", "Speech volume");
+      volume.addEventListener("input", () => {
+        this.updatePreference({ audioVolume: Number(volume.value) });
+        if (this.activeAudio) this.activeAudio.volume = Number(volume.value);
+      });
+      controls.append(volume);
+    }
     textSpeed.select.addEventListener("change", () => this.updatePreference({ textSpeed: textSpeed.select.value as PlayerPreferences["textSpeed"] }));
     preview.select.addEventListener("change", () => this.updatePreference({ commandPreview: preview.select.value as PlayerPreferences["commandPreview"] }));
     speech.input.addEventListener("change", () => this.updatePreference({ speechText: speech.input.checked }));
@@ -980,6 +1010,18 @@ class EngineOverlay {
   private clearLineTimer(): void {
     if (this.lineTimer !== undefined) window.clearTimeout(this.lineTimer);
     this.lineTimer = undefined;
+    this.activeAudio?.pause();
+    this.activeAudio = undefined;
+  }
+
+  private playLineAudio(reference: URL | string): number {
+    const source = this.assets.audio.get(assetUrl(reference));
+    if (!source) return 0;
+    source.currentTime = 0;
+    source.volume = this.preferences.audioVolume;
+    this.activeAudio = source;
+    void source.play().catch(() => undefined);
+    return Number.isFinite(source.duration) ? source.duration * 1_000 : 0;
   }
 }
 
@@ -989,6 +1031,7 @@ interface PlayerPreferences {
   readonly hudBacking: boolean;
   readonly hudOpacity: number;
   readonly commandPreview: "pointer" | "sentence-line";
+  readonly audioVolume: number;
   readonly shownHints: readonly string[];
 }
 
@@ -1022,6 +1065,7 @@ const defaultPreferences: PlayerPreferences = {
   hudBacking: true,
   hudOpacity: 0.9,
   commandPreview: "pointer",
+  audioVolume: 1,
   shownHints: [],
 };
 
@@ -1040,6 +1084,9 @@ function readPreferences(identity: string): PlayerPreferences {
         ? value.hudOpacity
         : defaultPreferences.hudOpacity,
       shownHints: Array.isArray(value.shownHints) ? value.shownHints.filter((hint): hint is string => typeof hint === "string") : [],
+      audioVolume: typeof value.audioVolume === "number" && value.audioVolume >= 0 && value.audioVolume <= 1
+        ? value.audioVolume
+        : defaultPreferences.audioVolume,
     };
   } catch {
     return defaultPreferences;

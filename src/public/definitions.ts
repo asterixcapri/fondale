@@ -352,6 +352,7 @@ export interface LineStep {
   readonly type: "line";
   readonly text: string;
   readonly character?: string;
+  readonly audio?: URL | string;
 }
 
 export interface OperationsStep {

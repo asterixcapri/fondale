@@ -4,6 +4,7 @@ import { AuthoringError, type AuthoringDiagnostic } from "../public/diagnostics"
 import type {
   EntityAppearance,
   GameProjectData,
+  SequenceStep,
   StaticAppearance,
   WalkingAppearance,
 } from "../public/definitions";
@@ -11,15 +12,17 @@ import type {
 export interface LoadedAssets {
   readonly textures: ReadonlyMap<string, Texture>;
   readonly walkFrames: ReadonlyMap<string, readonly Texture[]>;
+  readonly audio: ReadonlyMap<string, HTMLAudioElement>;
 }
 
 export function assetUrl(url: URL | string): string {
   return url instanceof URL ? url.href : url;
 }
 
-/** Loads and validates every PNG before a Game Session becomes observable. */
+/** Loads and validates every visual and Line audio asset before a Game Session becomes observable. */
 export async function loadProjectAssets(data: GameProjectData): Promise<LoadedAssets> {
   const references = new Map<string, string[]>();
+  const audioReferences = new Map<string, string[]>();
   const add = (url: URL | string, path: string) => {
     const resolved = assetUrl(url);
     references.set(resolved, [...(references.get(resolved) ?? []), path]);
@@ -49,6 +52,9 @@ export async function loadProjectAssets(data: GameProjectData): Promise<LoadedAs
   for (const [direction, cursor] of Object.entries(data.hudTheme?.cursors ?? {})) {
     add(cursor, `hudTheme.cursors.${direction}`);
   }
+  for (const [sequenceId, sequence] of Object.entries(data.sequences)) {
+    collectSequenceAudio(sequence.steps, `sequences.${sequenceId}.steps`, audioReferences);
+  }
 
   const textures = new Map<string, Texture>();
   const diagnostics: AuthoringDiagnostic[] = [];
@@ -71,6 +77,29 @@ export async function loadProjectAssets(data: GameProjectData): Promise<LoadedAs
       }
     }),
   );
+
+  const audio = new Map<string, HTMLAudioElement>();
+  await Promise.all([...audioReferences].map(([url, paths]) => new Promise<void>((resolve) => {
+    const element = new Audio();
+    element.preload = "metadata";
+    element.addEventListener("loadedmetadata", () => {
+      audio.set(url, element);
+      resolve();
+    }, { once: true });
+    element.addEventListener("error", () => {
+      for (const path of paths) {
+        diagnostics.push({
+          code: "asset.audio.load.failed",
+          family: "asset",
+          path,
+          message: `Audio asset '${url}' could not be loaded and decoded.`,
+        });
+      }
+      resolve();
+    }, { once: true });
+    element.src = url;
+    element.load();
+  })));
 
   for (const [sceneId, scene] of Object.entries(data.scenes)) {
     const background = textures.get(assetUrl(scene.background));
@@ -150,7 +179,31 @@ export async function loadProjectAssets(data: GameProjectData): Promise<LoadedAs
   }
 
   if (diagnostics.length > 0) throw new AuthoringError(diagnostics);
-  return { textures, walkFrames };
+  return { textures, walkFrames, audio };
+}
+
+function collectSequenceAudio(
+  steps: readonly SequenceStep[],
+  path: string,
+  references: Map<string, string[]>,
+): void {
+  steps.forEach((step, index) => {
+    const stepPath = `${path}[${index}]`;
+    if (step.type === "line" && step.audio) {
+      const url = assetUrl(step.audio);
+      references.set(url, [...(references.get(url) ?? []), `${stepPath}.audio`]);
+    } else if (step.type === "choice") {
+      step.alternatives.forEach((alternative, alternativeIndex) =>
+        collectSequenceAudio(alternative.steps, `${stepPath}.alternatives[${alternativeIndex}].steps`, references),
+      );
+      collectSequenceAudio(step.fallback.steps, `${stepPath}.fallback.steps`, references);
+    } else if (step.type === "branch") {
+      step.cases.forEach((branch, branchIndex) =>
+        collectSequenceAudio(branch.steps, `${stepPath}.cases[${branchIndex}].steps`, references),
+      );
+      collectSequenceAudio(step.fallback, `${stepPath}.fallback`, references);
+    }
+  });
 }
 
 function addAppearance(

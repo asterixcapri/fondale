@@ -49,7 +49,8 @@ named static Appearances, square `inventoryAppearance`, and optional Noun. An
 Object is in one Scene, in Inventory, or consumed.
 
 `defineSequence` validates a finite `SequenceDefinition`. `SequenceStep` is a
-Line, Choice, Branch, or atomic Operations group. A `ChoiceAlternative` has
+Line, Choice, Branch, or atomic Operations group. A Line may declare an audio
+asset; its playback duration participates in automatic advancement. A `ChoiceAlternative` has
 text, optional condition, optional `spoken` (default true), and steps. At most
 six alternatives are allowed. A Sequence may be `skippable`.
 
@@ -113,7 +114,7 @@ asset, or environment.
 | `PerspectiveScaleStop` | depth-scale sample | in-frame y and positive scale | stops interpolate linearly | perspective diagnostic | [Scene](recipes/first-scene.ts) |
 | `SceneInput` | Scene helper input | Background, region and optional structures | optional collections are empty | helper diagnostics | [Scene](recipes/first-scene.ts) |
 | `SceneDefinition` | frozen local Scene | same values as SceneInput | registry key supplies identity | project adds references | [Scene](recipes/first-scene.ts) |
-| `LineStep` | modal spoken/narrated text | line type, text, optional Character | waits for advance | Character reference diagnostic | [Sequence](recipes/sequence.ts) |
+| `LineStep` | modal spoken/narrated text | line type, text, optional Character and audio | waits for advance and audio duration | Character/asset diagnostics | [Sequence](recipes/sequence.ts) |
 | `OperationsStep` | Sequence state commit | operations type and operation group | commits before continuation | nested/operation diagnostics | [Sequence](recipes/sequence.ts) |
 | `ChoiceAlternative` | eligible answer | text, condition, spoken, steps | spoken defaults true | condition/cycle diagnostics | [Sequence](recipes/sequence.ts) |
 | `ChoiceStep` | modal answer set | alternatives and fallback | maximum six alternatives | choice-limit diagnostic | [Sequence](recipes/sequence.ts) |
@@ -156,7 +157,7 @@ Exact reachable fields also include `x`, `y`, `width`, `height`, `kind`,
 `logicalResolution`, `scenes`, `characters`, `playerCharacter`, `objects`,
 `sequences`, `variables`, `inventoryAppearanceSize`, `initialScene`,
 `letterboxColor`, `commandLexicon`, `commandFallbacks`, `hudTheme`, `verb`,
-`presentation`, `speaker`, `firstNoun`, `response`, `operations`, `fallbacks`,
+`presentation`, `speaker`, `audio`, `firstNoun`, `response`, `operations`, `fallbacks`,
 `labels`, `preferredVerbs`, `verbs`, `patterns`, `unary`, `give`, `use`, `code`,
 `path`, `message`, `suggestion`, `cause`, `formatVersion`, `projectIdentity`,
 `projectVersion`, `state`, `ok`, `snapshot`, `diagnostics`, and `target`.
@@ -197,8 +198,10 @@ Reference codes: `reference.appearance`, `reference.appearance.initial`,
 Runtime, save, asset and environment codes: `state.operation.invalid`,
 `save.shape`, `save.fields.unexpected`, `save.format.version`,
 `save.project.identity`, `save.project.version`, `save.state.command`,
-`save.state.command-noun`, `save.state.invalid`,
-`save.validation.required`, `asset.load.failed`, `asset.background.dimensions`,
+`save.state.command-noun`, `save.state.intent-command`,
+`save.state.intent-command-noun`, `save.state.invalid`,
+`save.validation.required`, `asset.load.failed`, `asset.audio.load.failed`,
+`asset.background.dimensions`,
 `asset.cursor.dimensions`, `asset.font.load.failed`,
 `asset.inventory-appearance.dimensions`, `asset.walk-strip.frames`,
 `asset.walk-strip.consistency`, `asset.visual-anchor.bounds`,

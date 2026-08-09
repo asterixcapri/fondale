@@ -9,6 +9,11 @@ test("the public browser completes Look At → Noun → Command Response", async
   const canvas = frame.locator("canvas");
   const bounds = await canvas.boundingBox();
   if (!bounds) throw new Error("missing canvas bounds");
+  await page.mouse.move(
+    bounds.x + (230 / 426) * bounds.width,
+    bounds.y + (110 / 240) * bounds.height,
+  );
+  await expect(frame.locator("[data-fondale-command-preview]")).toHaveText("Portone / Guarda");
   await page.mouse.click(
     bounds.x + (230 / 426) * bounds.width,
     bounds.y + (110 / 240) * bounds.height,
@@ -115,6 +120,13 @@ test("an Inventory Object becomes the first Noun of a binary Use Command", async
     bounds.y + (110 / 240) * bounds.height,
   );
   await expect(frame.locator("[data-fondale-command-preview]")).toHaveText("Usa Chiave con Portone");
+  await page.mouse.click(
+    bounds.x + (230 / 426) * bounds.width,
+    bounds.y + (110 / 240) * bounds.height,
+    { button: "right" },
+  );
+  await expect(frame.locator("[aria-live=polite]")).toHaveText("Un vecchio portone.");
+  await expect(key).toHaveAttribute("aria-pressed", "true");
   await logicalClick(230, 110);
 
   await expect(frame.locator("[aria-live=polite]")).toHaveText("La chiave gira nella serratura.");
@@ -305,6 +317,27 @@ test("Speech follows its Character and Choice uses the HUD with spoken alternati
   await expect(line).toHaveAttribute("data-fondale-speaker", "host");
 });
 
+test("wrapped Speech remains inside the safe region above the HUD", async ({ page }) => {
+  await page.goto("/test/fixtures/commands.html");
+  const frame = page.locator("[data-fondale-frame]");
+  await expect(frame).toBeVisible();
+  const canvas = frame.locator("canvas");
+  const bounds = await canvas.boundingBox();
+  if (!bounds) throw new Error("missing canvas bounds");
+  await frame.locator('[data-fondale-verb="talk-to"]').click();
+  await page.mouse.click(
+    bounds.x + (230 / 426) * bounds.width,
+    bounds.y + (110 / 240) * bounds.height,
+  );
+  const speech = frame.locator("[aria-live=polite]");
+  await expect(speech).toContainText("domanda molto lunga");
+  const speechBounds = await speech.boundingBox();
+  if (!speechBounds) throw new Error("missing speech bounds");
+  expect(speechBounds.y + speechBounds.height).toBeLessThanOrEqual(
+    bounds.y + (180 / 240) * bounds.height,
+  );
+});
+
 test("text speed controls automatic Line advancement", async ({ page }) => {
   await page.goto("/test/fixtures/commands.html");
   const frame = page.locator("[data-fondale-frame]");
@@ -376,8 +409,11 @@ test("Options, Help, named Save Slots, and Command State restore through shortcu
   await page.keyboard.press("F5");
   const options = frame.locator('[data-fondale-modal="options"]');
   await expect(options).toBeVisible();
+  await expect(options.getByLabel("Speech volume")).toBeVisible();
+  await options.getByLabel("Speech volume").fill("0.5");
   await options.getByLabel("Command preview").selectOption("sentence-line");
   expect(await page.evaluate(() => localStorage.getItem("fondale.preferences.test.commands"))).toContain("sentence-line");
+  expect(await page.evaluate(() => localStorage.getItem("fondale.preferences.test.commands"))).toContain('"audioVolume":0.5');
   expect(await page.evaluate(() => localStorage.getItem("fondale.save-slots"))).not.toContain("sentence-line");
   await frame.getByRole("button", { name: "Help" }).click();
   await expect(frame.locator("[data-fondale-help]")).toContainText("QWE/ASD/ZXC");

@@ -12,12 +12,21 @@ import {
   startGame,
 } from "../../src/index";
 
+const silenceAudio = "data:audio/wav;base64,UklGRnQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YVAAAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgA==";
+
 const door = defineNoun({
   labels: [{ text: "Portone" }],
   preferredVerbs: [{ verb: "look-at" }],
   cases: [{
     verb: "look-at",
     response: { text: "Un vecchio portone.", presentation: "narration" },
+  }, {
+    verb: "talk-to",
+    response: {
+      text: "Il vecchio portone non risponde, anche se continuo a rivolgergli una domanda molto lunga e inutilmente cerimoniosa.",
+      presentation: "speech",
+      speaker: "host",
+    },
   }, {
     verb: "use",
     firstNoun: "key",
@@ -119,7 +128,7 @@ const project = defineGame({
   sequences: {
     hostGreeting: defineSequence({
       skippable: true,
-      steps: [{ type: "line", character: "host", text: "Benvenuto." }, {
+      steps: [{ type: "line", character: "host", text: "Benvenuto.", audio: silenceAudio }, {
         type: "choice",
         alternatives: [{ text: "Grazie!", steps: [{ type: "line", character: "host", text: "A te." }] }, {
           text: "Non ora.", spoken: false, steps: [{ type: "line", character: "host", text: "Come vuoi." }],
@@ -135,7 +144,7 @@ const project = defineGame({
       give: "Dai", "talk-to": "Parla con", use: "Usa",
     },
     patterns: {
-      unary: "{verb} {noun}",
+      unary: "{noun} / {verb}",
       give: "{verb} {first} a {second}",
       use: "{verb} {first} con {second}",
     },

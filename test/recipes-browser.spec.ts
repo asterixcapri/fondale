@@ -14,6 +14,11 @@ test("Command recipes execute through the installed public package", async ({ pa
   await expect(page.locator("[data-fondale-frame]")).toHaveCount(2, { timeout: 20_000 });
 
   await interaction.locator("[data-fondale-frame]").focus();
+  await page.keyboard.press("F5");
+  await expect(interaction.getByLabel("Speech volume")).toHaveCount(0);
+  await page.keyboard.press("Escape");
+
+  await interaction.locator("[data-fondale-frame]").focus();
   await page.keyboard.press("q");
   await clickLogical(page, interaction, 20, 20);
   await expect(interaction).toContainText("Open Door");

@@ -302,7 +302,9 @@ export function createCoreSession(
             hotspot: input.hotspot,
             command: {
               verb: (quickVerb ?? state.command.verb) as CommandVerb,
-              ...(state.command.firstNoun ? { firstNoun: state.command.firstNoun.object } : {}),
+              ...(state.command.firstNoun && (!quickVerb || quickVerb === "give" || quickVerb === "use")
+                ? { firstNoun: state.command.firstNoun.object }
+                : {}),
               ...(quickVerb ? { preserveState: true } : {}),
             },
           },
@@ -332,7 +334,9 @@ export function createCoreSession(
               passage: input.passage,
               command: {
                 verb: (preferredVerb ?? state.command.verb) as CommandVerb,
-                ...(state.command.firstNoun ? { firstNoun: state.command.firstNoun.object } : {}),
+                ...(state.command.firstNoun && (!preferredVerb || preferredVerb === "give" || preferredVerb === "use")
+                  ? { firstNoun: state.command.firstNoun.object }
+                  : {}),
                 ...(preferredVerb ? { preserveState: true } : {}),
               },
             };

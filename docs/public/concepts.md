@@ -35,7 +35,8 @@ returns a validated value.
 
 An **Authoring Diagnostic** has stable code, family, and author-facing path.
 Definitions fail at helpers or `defineGame`; external save data returns an
-explicit result; environment and PNG checks happen asynchronously at startup.
+explicit result; environment, visual asset and Line audio checks happen
+asynchronously at startup.
 
 Projects written for Fondale 1.0 must follow the [1.1 migration guide](migration-1.1.md).
 See the [reference](reference.md) for precise fields and the

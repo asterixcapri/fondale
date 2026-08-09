@@ -246,7 +246,7 @@ function invalidCommandStateDiagnostic(
       "Save Snapshot.state.command",
     );
   }
-  if (command.firstNoun === null) return undefined;
+  if (command.firstNoun === null) return invalidIntentCommandDiagnostic(value, data);
   if (
     !isRecord(command.firstNoun) ||
     !hasExactKeys(command.firstNoun, ["kind", "object"]) ||
@@ -267,6 +267,41 @@ function invalidCommandStateDiagnostic(
       "save.state.command-noun",
       "Save Snapshot refers to a first Noun that is not available in the Inventory.",
       "Save Snapshot.state.command.firstNoun.object",
+    );
+  }
+  return invalidIntentCommandDiagnostic(value, data);
+}
+
+function invalidIntentCommandDiagnostic(
+  state: Record<string, unknown>,
+  data: GameProjectData,
+): AuthoringDiagnostic | undefined {
+  const activity = state.activity;
+  if (!isRecord(activity) || activity.type !== "player-intent" || !isRecord(activity.intent)) return undefined;
+  const intent = activity.intent;
+  if (intent.kind !== "interaction" && intent.kind !== "passage-command") return undefined;
+  const command = intent.command;
+  if (command === undefined && intent.kind === "interaction") return undefined;
+  if (!isRecord(command) || !hasExactKeys(command, ["verb"], ["firstNoun", "preserveState"]) || !isCommandVerb(command.verb)) {
+    return saveDiagnostic(
+      "save.state.intent-command",
+      "Save Snapshot contains a malformed pending Command.",
+      "Save Snapshot.state.activity.intent.command",
+    );
+  }
+  if (command.firstNoun === undefined) return undefined;
+  const inventory = isRecord(state.inventory) && Array.isArray(state.inventory.objects)
+    ? state.inventory.objects
+    : [];
+  if (
+    typeof command.firstNoun !== "string" ||
+    !(command.firstNoun in data.objects) ||
+    !inventory.includes(command.firstNoun)
+  ) {
+    return saveDiagnostic(
+      "save.state.intent-command-noun",
+      "Save Snapshot refers to a pending first Noun that is not available in the Inventory.",
+      "Save Snapshot.state.activity.intent.command.firstNoun",
     );
   }
   return undefined;
