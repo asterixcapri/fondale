@@ -12,8 +12,14 @@ const errorOutput = document.querySelector<HTMLOutputElement>("#error")!;
 
 if (import.meta.env.MODE === "prototype") {
   restore.hidden = true;
-  const { startHudArchitecturePrototype } = await import("./prototypes/hud-architecture-prototype");
-  startHudArchitecturePrototype(target);
+  const focus = new URLSearchParams(window.location.search).get("focus");
+  if (focus === "verb-coin") {
+    const { startVerbCoinPrototype } = await import("./prototypes/verb-coin-prototype");
+    startVerbCoinPrototype(target);
+  } else {
+    const { startHudArchitecturePrototype } = await import("./prototypes/hud-architecture-prototype");
+    startHudArchitecturePrototype(target);
+  }
 } else {
   let session: GameSession = await startGame(project, { target });
 

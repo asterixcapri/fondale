@@ -29,3 +29,13 @@ Questo ticket conserva la decisione e l'implementazione storiche di Fondale 1.1,
 L'Inventory contestuale si apre e si richiude con il click destro. `I` è l'alternativa da tastiera; `Escape` e il click esterno lo chiudono. Non esiste un pulsante Inventory sempre visibile. Il primo Object raccolto produce un feedback transitorio e un suggerimento una tantum sul click destro. Il click sinistro cammina o esegue l'azione contestuale principale; una pressione prolungata apre il verb coin per scegliere un'alternativa.
 
 Questa scelta supera l'uso del click destro per il Preferred Verb. Il contenuto e la presentazione esatta del verb coin restano da decidere separatamente prima di riscrivere il contratto di produzione.
+
+### 9 agosto 2026 — prototipo focalizzato sul verb coin
+
+Il prototipo avviabile con `npm run prototype:capri-verb-coin` e l'URL `http://localhost:5174/?focus=verb-coin&variant=A` confronta tre politiche sullo stesso Noun e sullo stesso Object selezionato:
+
+- A mostra soltanto Preferred Verb e Command Case pertinenti;
+- B mostra le azioni pertinenti e permette di espandere volontariamente tutte le nove;
+- C mostra sempre le nove azioni, attenuando quelle che produrranno soltanto un fallback.
+
+Il prototipo espone Preferred Verb, casi contestuali, azioni visibili e fallback nello state inspector. Nessuna variante è ancora approvata.
