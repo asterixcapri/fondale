@@ -176,7 +176,7 @@ export type InteractionCondition =
   | { readonly variable: string; readonly equals: boolean }
   | { readonly hasObject: string };
 
-/** The finite set of state transitions authored in Fondale 1.0. */
+/** The finite set of declarative state transitions authored in Fondale 1.1. */
 export type GameOperation =
   | { readonly type: "set-variable"; readonly variable: string; readonly value: boolean }
   | {
