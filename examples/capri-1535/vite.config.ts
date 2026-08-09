@@ -7,7 +7,7 @@ export default defineConfig({
   plugins: [viteSingleFile()],
   build: {
     target: "esnext",
-    outDir: "../../dist-example",
+    outDir: "dist",
     emptyOutDir: true,
     assetsInlineLimit: Number.MAX_SAFE_INTEGER,
     cssCodeSplit: false,

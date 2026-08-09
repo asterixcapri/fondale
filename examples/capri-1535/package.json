@@ -3,7 +3,18 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
+  "scripts": {
+    "dev": "vite --force",
+    "typecheck": "tsc --noEmit",
+    "build": "npm run typecheck && vite build",
+    "preview": "vite preview"
+  },
   "dependencies": {
-    "@asterixcapri/fondale": "1.0.0"
+    "@asterixcapri/fondale": "file:vendor/asterixcapri-fondale-1.0.0.tgz"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "vite": "^6.4.3",
+    "vite-plugin-singlefile": "^2.3.3"
   }
 }

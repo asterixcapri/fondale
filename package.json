@@ -20,11 +20,12 @@
     "dev": "npm run build:package && npm run package:example && vite --force",
     "typecheck": "tsc --noEmit",
     "build:package": "vite build --config vite.lib.config.ts && tsc -p tsconfig.declarations.json",
-    "package:example": "mkdir -p .release && npm pack --pack-destination .release && npm install --prefix examples/capri-1535 --no-audit --no-fund --no-package-lock --no-save .release/asterixcapri-fondale-1.0.0.tgz",
-    "build:example": "vite build --config examples/capri-1535/vite.config.ts",
-    "build": "npm run build:package && npm run package:example && npm run typecheck && npm run build:example && npm run verify:docs",
-    "preview": "vite preview --config examples/capri-1535/vite.config.ts --port 4173",
+    "package:example": "mkdir -p examples/capri-1535/vendor && npm pack --pack-destination examples/capri-1535/vendor && node tools/sync-example-package-lock.mjs && npm ci --prefix examples/capri-1535 --no-audit --no-fund",
+    "build:example": "npm run build --prefix examples/capri-1535",
+    "build": "npm run build:package && npm run package:example && npm run typecheck && npm run verify:example-separation && npm run build:example && npm run verify:docs",
+    "preview": "npm run preview --prefix examples/capri-1535",
     "verify:docs": "node tools/verify-docs.mjs",
+    "verify:example-separation": "node tools/verify-example-separation.mjs",
     "verify": "playwright test"
   },
   "dependencies": {

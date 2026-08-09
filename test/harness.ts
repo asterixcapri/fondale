@@ -12,7 +12,10 @@ export const SHOTS_DIR = "test/shots";
 export async function openGame(page: Page, url = "/"): Promise<{ errors: string[] }> {
   const errors: string[] = [];
   page.on("console", (message) => {
-    if (message.type() === "error") errors.push(message.text());
+    if (message.type() === "error") {
+      const location = message.location().url;
+      errors.push(location ? `${message.text()} (${location})` : message.text());
+    }
   });
   page.on("pageerror", (error) => errors.push(String(error)));
 

@@ -8,3 +8,4 @@ test/.artifacts
 .release
 dist-example
 examples/capri-1535/node_modules
+examples/capri-1535/dist

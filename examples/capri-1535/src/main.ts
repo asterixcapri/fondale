@@ -9,14 +9,14 @@ import {
   type GameSession,
 } from "@asterixcapri/fondale";
 
-import keyInventoryUrl from "../../../art/example/key-inventory.png";
-import keyUrl from "../../../art/example/key.png";
-import unlockedMarkerUrl from "../../../art/example/unlocked-marker.png";
-import endingBackgroundUrl from "../../../art/rooms/marina-grande.png";
-import openingBackgroundUrl from "../../../art/rooms/vicolo-capri.png";
-import walkBackUrl from "../../../art/sprites/michele-walk-back.png";
-import walkFrontUrl from "../../../art/sprites/michele-walk-front.png";
-import walkSideUrl from "../../../art/sprites/michele-walk.png";
+import keyInventoryUrl from "./assets/key-inventory.png";
+import keyUrl from "./assets/key.png";
+import unlockedMarkerUrl from "./assets/unlocked-marker.png";
+import endingBackgroundUrl from "./assets/marina-grande.png";
+import openingBackgroundUrl from "./assets/vicolo-capri.png";
+import walkBackUrl from "./assets/michele-walk-back.png";
+import walkFrontUrl from "./assets/michele-walk-front.png";
+import walkSideUrl from "./assets/michele-walk-side.png";
 
 const polygon = (left: number, top: number, right: number, bottom: number) => [
   { x: left, y: top },

@@ -13,6 +13,16 @@ Install it with `npm install @asterixcapri/fondale`, then follow the
 The complete [Capri 1535 Example](examples/capri-1535) installs the packed
 artifact and demonstrates every Engine Capability promised by Fondale 1.0.
 
+Run the Example as its own project:
+
+```sh
+cd examples/capri-1535
+npm ci
+npm run dev
+```
+
+Then open <http://localhost:5173>.
+
 ## Development
 
 ```sh
@@ -21,8 +31,8 @@ npm run build
 npm run verify
 ```
 
-`npm run build` produces the package, installs its tarball into the independent
-Example, compiles both, and runs the documentation gate. `npm run verify` runs
-the deterministic and current-Chrome acceptance tests.
+`npm run build` produces the package, refreshes the vendored tarball consumed by
+the independent Example, compiles both, and runs the documentation gate.
+`npm run verify` runs the deterministic and current-Chrome acceptance tests.
 
 Fondale is distributed under the [MIT License](LICENSE).
