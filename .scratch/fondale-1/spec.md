@@ -1,6 +1,6 @@
 # Fondale 1.0
 
-Status: ready-for-agent
+Status: ready-for-human
 
 ## Problem Statement
 

@@ -1,0 +1,9 @@
+{
+  "name": "@asterixcapri/capri-1535-example",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@asterixcapri/fondale": "1.0.0"
+  }
+}

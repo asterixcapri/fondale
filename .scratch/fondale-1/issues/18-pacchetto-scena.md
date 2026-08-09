@@ -9,29 +9,29 @@ slice con la struttura sulla quale cresceranno le altre Engine Capability.
 
 **Blocked by:** None — can start immediately.
 
-**Status:** ready-for-agent
+**Status:** ready-for-human
 
-- [ ] Il pacchetto distribuibile usa nome `@asterixcapri/fondale`, licenza MIT,
+- [x] Il pacchetto distribuibile usa nome `@asterixcapri/fondale`, licenza MIT,
       un solo entry point pubblico e include JavaScript, dichiarazioni di tipo
       e documentazione necessaria al primo utilizzo.
-- [ ] L'Example è un consumer separato che installa l'artefatto prodotto e non
+- [x] L'Example è un consumer separato che installa l'artefatto prodotto e non
       importa sorgenti interni, path profondi, PixiJS o tipi PixiJS.
-- [ ] Gli helper minimi compongono una Scene nominata e un Game Project opaco,
+- [x] Gli helper minimi compongono una Scene nominata e un Game Project opaco,
       immutabile e validato con Logical Resolution, Background e colore del
       letterbox.
-- [ ] `startGame` monta il Game Project in un target HTML libero, carica il
+- [x] `startGame` monta il Game Project in un target HTML libero, carica il
       Background prima di risolversi e restituisce una Game Session soltanto
       quando il primo frame è pronto.
-- [ ] Il renderer WebGL interno mostra il Background alla Logical Resolution,
+- [x] Il renderer WebGL interno mostra il Background alla Logical Resolution,
       usa il profilo `pixel`, centra il quadro e applica letterbox senza crop o
       deformazioni anche a proporzioni diverse.
-- [ ] `stop()` è idempotente, terminale e rimuove renderer, input e risorse dal
+- [x] `stop()` è idempotente, terminale e rimuove renderer, input e risorse dal
       target; un target già occupato viene rifiutato senza montaggio parziale.
-- [ ] Definizione locale invalida, riferimento globale invalido, Background di
+- [x] Definizione locale invalida, riferimento globale invalido, Background di
       dimensioni errate o WebGL assente producono un fallimento comprensibile
       attraverso l'interface pubblica.
-- [ ] Type-check, build dell'artefatto, build statica dell'Example e una prova
+- [x] Type-check, build dell'artefatto, build statica dell'Example e una prova
       browser della Scene passano usando il pacchetto installato.
-- [ ] Ogni export introdotto ha documentazione pubblica di scopo, uso,
+- [x] Ogni export introdotto ha documentazione pubblica di scopo, uso,
       invarianti, default, errori ed esempio minimo.
 

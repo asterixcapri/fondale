@@ -8,33 +8,33 @@ risultato di una partita mai interrotta.
 **Blocked by:** 22 — Eseguire una Sequence con Line e Choice; 25 — Attraversare
 un Scene Passage e concludere l'Example.
 
-**Status:** ready-for-agent
+**Status:** ready-for-human
 
-- [ ] Ogni Game Project dichiara Project Identity e Project Version distinte da
+- [x] Ogni Game Project dichiara Project Identity e Project Version distinte da
       titolo, versione commerciale e versione del pacchetto.
-- [ ] Il Save Snapshot include versione del formato, Project Identity, Project
+- [x] Il Save Snapshot include versione del formato, Project Identity, Project
       Version e tutti i fatti canonici necessari alla ripresa esatta.
-- [ ] Scene, Scenery, Character, Object, Inventory, Game Variable e progresso
+- [x] Scene, Scenery, Character, Object, Inventory, Game Variable e progresso
       della Game Activity dominante sono rappresentati senza includere Game
       Definition, callback, asset o interni derivabili.
-- [ ] La Game Session crea su richiesta un valore JSON-safe dall'ultimo stato
+- [x] La Game Session crea su richiesta un valore JSON-safe dall'ultimo stato
       committed anche durante attività o transizioni, senza catturare
       preparazione parziale.
-- [ ] Dopo `stop()` o `failed` non è possibile creare un nuovo Save Snapshot.
-- [ ] Un dato recuperato viene trattato come `unknown`; la validazione restituisce
+- [x] Dopo `stop()` o `failed` non è possibile creare un nuovo Save Snapshot.
+- [x] Un dato recuperato viene trattato come `unknown`; la validazione restituisce
       un esito esplicito e richiede corrispondenza esatta di formato, Project
       Identity e Project Version.
-- [ ] Dati corrotti, incompleti, con campi inattesi, riferimenti mancanti o
+- [x] Dati corrotti, incompleti, con campi inattesi, riferimenti mancanti o
       invarianti contraddittorie vengono rifiutati senza riparazioni, migrazioni
       o nuova partita silenziosa.
-- [ ] Soltanto il risultato validato può essere passato a `startGame`, che crea
+- [x] Soltanto il risultato validato può essere passato a `startGame`, che crea
       una nuova Game Session indipendente.
-- [ ] Il ripristino sulla Choice conserva Sequence, percorso, alternative
+- [x] Il ripristino sulla Choice conserva Sequence, percorso, alternative
       eleggibili e stato del mondo senza rieseguire Game Operation già committed.
-- [ ] Una prosecuzione ininterrotta e quella con Save Snapshot raggiungono gli
+- [x] Una prosecuzione ininterrotta e quella con Save Snapshot raggiungono gli
       stessi snapshot ed effetti a parità di input successivi.
-- [ ] L'Example conserva il dato con storage posseduto dal Game Project; Fondale
+- [x] L'Example conserva il dato con storage posseduto dal Game Project; Fondale
       non introduce slot, UI, autosave o storage.
-- [ ] Creazione, validazione, compatibilità, ripristino e limiti di sicurezza
+- [x] Creazione, validazione, compatibilità, ripristino e limiti di sicurezza
       sono documentati con una ricetta compilata e verificata.
 

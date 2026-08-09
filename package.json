@@ -1,21 +1,39 @@
 {
-  "name": "capri-1535",
-  "version": "0.0.0",
-  "private": true,
+  "name": "@asterixcapri/fondale",
+  "version": "1.0.0",
+  "description": "A web-native, TypeScript-first point-and-click adventure engine.",
+  "license": "MIT",
   "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "docs/public",
+    "LICENSE",
+    "README.md"
+  ],
   "scripts": {
-    "dev": "vite",
-    "build": "tsc --noEmit && vite build",
-    "preview": "vite preview --port 4173",
+    "dev": "npm run build:package && npm run package:example && vite --force",
+    "typecheck": "tsc --noEmit",
+    "build:package": "vite build --config vite.lib.config.ts && tsc -p tsconfig.declarations.json",
+    "package:example": "mkdir -p .release && npm pack --pack-destination .release && npm install --prefix examples/capri-1535 --no-audit --no-fund --no-package-lock --no-save .release/asterixcapri-fondale-1.0.0.tgz",
+    "build:example": "vite build --config examples/capri-1535/vite.config.ts",
+    "build": "npm run build:package && npm run package:example && npm run typecheck && npm run build:example && npm run verify:docs",
+    "preview": "vite preview --config examples/capri-1535/vite.config.ts --port 4173",
+    "verify:docs": "node tools/verify-docs.mjs",
     "verify": "playwright test"
   },
   "dependencies": {
-    "pixi.js": "^8.6.6"
+    "pixi.js": "^8.19.0"
   },
   "devDependencies": {
-    "@playwright/test": "^1.49.1",
-    "typescript": "^5.7.2",
-    "vite": "^6.0.7",
+    "@playwright/test": "^1.62.1",
+    "typescript": "^5.9.3",
+    "vite": "^6.4.3",
     "vite-plugin-singlefile": "^2.3.3"
   }
 }

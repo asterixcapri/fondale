@@ -7,28 +7,28 @@ verificato senza esporre il Game State o una seam pubblica di test.
 
 **Blocked by:** 18 — Pubblicare un Game Project a una Scene dal pacchetto root.
 
-**Status:** ready-for-agent
+**Status:** ready-for-human
 
-- [ ] Una Scene dichiara una sola Walkable Region poligonale statica; geometria
+- [x] Una Scene dichiara una sola Walkable Region poligonale statica; geometria
       degenerata, auto-intersecante o fuori dallo Scene Space viene rifiutata.
-- [ ] Un Character persistente dichiara posizione iniziale, Ground Point,
+- [x] Un Character persistente dichiara posizione iniziale, Ground Point,
       orientamento e Appearance statico nella Scene.
-- [ ] Un click sul mondo viene tradotto dallo schermo allo Scene Space e crea
+- [x] Un click sul mondo viene tradotto dallo schermo allo Scene Space e crea
       un Player Intent senza rendere pubblici renderer o coordinate fisiche.
-- [ ] Una destinazione esterna viene ricondotta deterministicamente al punto
+- [x] Una destinazione esterna viene ricondotta deterministicamente al punto
       raggiungibile geometricamente più vicino;
       il Character non attraversa bordi e non viene teletrasportato.
-- [ ] Un nuovo Player Intent sostituisce immediatamente quello in corso invece
+- [x] Un nuovo Player Intent sostituisce immediatamente quello in corso invece
       di accodarsi.
-- [ ] Il core riceve input ordinati e passi logici espliciti e restituisce
+- [x] Il core riceve input ordinati e passi logici espliciti e restituisce
       snapshot committed ed effetti; browser adapter e test adapter usano la
       stessa seam interna.
-- [ ] A parità di Game Project, Game State, input e passi logici, due esecuzioni
+- [x] A parità di Game Project, Game State, input e passi logici, due esecuzioni
       producono gli stessi snapshot ed effetti indipendentemente dal ritmo del
       renderer.
-- [ ] Una scheda sospesa riprende dal passo successivo senza recuperare in
+- [x] Una scheda sospesa riprende dal passo successivo senza recuperare in
       blocco il tempo reale trascorso.
-- [ ] Playwright esercita il movimento tramite eventi reali del mouse; gli hook
+- [x] Playwright esercita il movimento tramite eventi reali del mouse; gli hook
       globali della vertical slice non vengono usati come prova.
-- [ ] Interface, comportamento deterministico, sostituzione dell'intento e casi
+- [x] Interface, comportamento deterministico, sostituzione dell'intento e casi
       di destinazione invalida sono documentati e verificati.

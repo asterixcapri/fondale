@@ -8,29 +8,29 @@ stato logico.
 **Blocked by:** 22 — Eseguire una Sequence con Line e Choice; 23 — Raccogliere e
 usare un Object tramite l'Inventory.
 
-**Status:** ready-for-agent
+**Status:** ready-for-human
 
-- [ ] La piattaforma verificata usa l'ultima Google Chrome stabile desktop con
+- [x] La piattaforma verificata usa l'ultima Google Chrome stabile desktop con
       WebGL; la configurazione non implica supporto per altri browser.
-- [ ] Mouse e click reali controllano navigazione, Hotspot, HUD, Line e Choice;
+- [x] Mouse e click reali controllano navigazione, Hotspot, HUD, Line e Choice;
       nessuna azione richiesta dipende esclusivamente dal tasto destro.
-- [ ] `Tab` e `Shift+Tab` percorrono in ordine prevedibile i controlli visibili
+- [x] `Tab` e `Shift+Tab` percorrono in ordine prevedibile i controlli visibili
       del HUD e `Enter` o `Space` attivano il controllo corrente.
-- [ ] `Enter` o `Space` avanzano una Line; le frecce cambiano alternativa nella
+- [x] `Enter` o `Space` avanzano una Line; le frecce cambiano alternativa nella
       Choice e `Enter` o `Space` la confermano.
-- [ ] Quando una Choice diventa attiva acquisisce il controllo da tastiera senza
+- [x] Quando una Choice diventa attiva acquisisce il controllo da tastiera senza
       click preliminare e al termine della Sequence lo restituisce al controllo
       precedente.
-- [ ] `Escape` deseleziona l'Object dell'Inventory quando il contesto lo
+- [x] `Escape` deseleziona l'Object dell'Inventory quando il contesto lo
       consente e non interferisce con la modalità della Sequence.
-- [ ] Alternare mouse e tastiera non attiva azioni, non perde selezioni logiche
+- [x] Alternare mouse e tastiera non attiva azioni, non perde selezioni logiche
       e non lascia il Player intrappolato.
-- [ ] Focus da tastiera e Object selezionato hanno un indicatore inequivocabile
+- [x] Focus da tastiera e Object selezionato hanno un indicatore inequivocabile
       oltre al solo colore.
-- [ ] Le prove Playwright usano eventi reali e coprono una finestra desktop
+- [x] Le prove Playwright usano eventi reali e coprono una finestra desktop
       ampia e una più piccola o con proporzioni differenti, inclusi letterbox,
       HUD e Sequence.
-- [ ] La documentazione dichiara esattamente la Support Baseline e le esclusioni:
+- [x] La documentazione dichiara esattamente la Support Baseline e le esclusioni:
       vecchie Chrome, altri browser, touch, gamepad, sola tastiera nel mondo,
       lettori di schermo e conformità WCAG generale.
 

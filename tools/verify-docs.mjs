@@ -1,0 +1,170 @@
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
+import ts from "typescript";
+
+const repository = resolve(import.meta.dirname, "..");
+const referencePath = join(repository, "docs/public/reference.md");
+const reference = readFileSync(referencePath, "utf8");
+const entry = readFileSync(join(repository, "src/index.ts"), "utf8");
+const publicNames = [...entry.matchAll(/\b(?:type\s+)?([A-Z]\w+|define\w+|startGame|validateSaveSnapshot),?/g)]
+  .map((match) => match[1])
+  .filter((name, index, names) => names.indexOf(name) === index);
+const undocumented = publicNames.filter((name) => !reference.includes(`\`${name}\``));
+if (undocumented.length > 0) {
+  throw new Error(`Public exports missing from reference.md: ${undocumented.join(", ")}`);
+}
+
+const contractSources = [
+  "src/public/definitions.ts",
+  "src/public/diagnostics.ts",
+  "src/public/save.ts",
+  "src/browser/start-game.ts",
+];
+const contractNames = new Set();
+const contractFields = new Set();
+for (const relativePath of contractSources) {
+  const path = join(repository, relativePath);
+  const source = ts.createSourceFile(path, readFileSync(path, "utf8"), ts.ScriptTarget.Latest, true);
+  for (const statement of source.statements) {
+    const exported = statement.modifiers?.some(({ kind }) => kind === ts.SyntaxKind.ExportKeyword);
+    const namedContract = ts.isInterfaceDeclaration(statement) ||
+      ts.isTypeAliasDeclaration(statement) || ts.isClassDeclaration(statement);
+    if (!exported || !namedContract || !statement.name || hasInternalTag(statement)) continue;
+    contractNames.add(statement.name.text);
+    collectFields(statement, contractFields);
+  }
+}
+const undocumentedContracts = [...contractNames].filter((name) => !reference.includes(`\`${name}\``));
+const undocumentedFields = [...contractFields].filter((name) => !reference.includes(`\`${name}\``));
+if (undocumentedContracts.length > 0 || undocumentedFields.length > 0) {
+  throw new Error([
+    undocumentedContracts.length > 0 ? `nested structures: ${undocumentedContracts.join(", ")}` : "",
+    undocumentedFields.length > 0 ? `nested fields: ${undocumentedFields.join(", ")}` : "",
+  ].filter(Boolean).join("; "));
+}
+const contractRows = new Map(
+  reference.split("\n").flatMap((line) => {
+    const cells = line.split("|").slice(1, -1).map((cell) => cell.trim());
+    const match = cells[0]?.match(/^`([A-Za-z]\w+)`$/);
+    return match ? [[match[1], cells]] : [];
+  }),
+);
+for (const name of contractNames) {
+  const cells = contractRows.get(name);
+  if (!cells || cells.length !== 6 || cells.slice(1, 5).some((cell) => cell.length < 8) ||
+      !/\[[^\]]+\]\([^)]+\)/.test(cells[5])) {
+    throw new Error(`Contract matrix needs purpose, values, invariants, errors and example: ${name}`);
+  }
+}
+
+const sourceText = contractSources
+  .concat(["src/browser/assets.ts", "src/internal/core.ts"])
+  .map((path) => readFileSync(join(repository, path), "utf8"))
+  .join("\n");
+const diagnosticCodes = [...sourceText.matchAll(/(?:code:\s*|Diagnostic\()\s*["']([a-z][a-z0-9.-]+)["']/g)]
+  .map((match) => match[1])
+  .filter((code, index, codes) => codes.indexOf(code) === index);
+const undocumentedCodes = diagnosticCodes.filter((code) => !reference.includes(`\`${code}\``));
+if (undocumentedCodes.length > 0) {
+  throw new Error(`Stable diagnostic codes missing from reference.md: ${undocumentedCodes.join(", ")}`);
+}
+
+for (const invariant of [
+  "default `#000000`",
+  "Omission means scale `1`",
+  "Registry keys are identities",
+  "either commit together or",
+  "latest committed Game State",
+]) {
+  if (!reference.includes(invariant)) throw new Error(`Missing documented default/invariant: ${invariant}`);
+}
+
+const docs = [join(repository, "README.md"), ...markdownFiles(join(repository, "docs/public"))];
+for (const file of docs) {
+  const markdown = readFileSync(file, "utf8");
+  for (const match of markdown.matchAll(/\[[^\]]+\]\(([^)]+)\)/g)) {
+    const target = match[1].split("#")[0];
+    if (!target || /^(https?:|mailto:)/.test(target)) continue;
+    const resolved = resolve(dirname(file), target);
+    if (!existsSync(resolved)) throw new Error(`${file}: broken link to ${target}`);
+  }
+}
+
+const requiredRecipes = [
+  "first-scene.ts",
+  "character-walking.ts",
+  "interaction.ts",
+  "sequence.ts",
+  "inventory.ts",
+  "save-snapshot.ts",
+  "game-behavior.ts",
+];
+for (const recipe of requiredRecipes) {
+  if (!existsSync(join(repository, "docs/public/recipes", recipe))) {
+    throw new Error(`Missing verified recipe: ${recipe}`);
+  }
+}
+
+const recipeTest = readFileSync(join(repository, "test/recipes.spec.ts"), "utf8");
+for (const recipe of requiredRecipes) {
+  const source = readFileSync(join(repository, "docs/public/recipes", recipe), "utf8");
+  if (!source.includes('from "@asterixcapri/fondale"') || source.includes("/src/")) {
+    throw new Error(`Recipe must consume only the distributable package root: ${recipe}`);
+  }
+  if (!recipeTest.includes(`docs/public/recipes/${recipe.replace(/\.ts$/, "")}`)) {
+    throw new Error(`Recipe is not executed by the packaged-recipe test: ${recipe}`);
+  }
+}
+const browserRecipeProof = ["test/fixtures/recipes.ts", "test/recipes-browser.spec.ts"]
+  .map((path) => readFileSync(join(repository, path), "utf8"))
+  .join("\n");
+for (const requiredBehavior of [
+  "interactionScene",
+  "greeting",
+  "successfulUse",
+  "validateSaveSnapshot",
+  "The door opens.",
+  "eligible branch",
+  "The key turns.",
+]) {
+  if (!browserRecipeProof.includes(requiredBehavior)) {
+    throw new Error(`Packaged browser recipe proof is missing behavior: ${requiredBehavior}`);
+  }
+}
+
+const recipeSource = readdirSync(join(repository, "docs/public/recipes"))
+  .filter((name) => name.endsWith(".ts"))
+  .map((name) => readFileSync(join(repository, "docs/public/recipes", name), "utf8"))
+  .join("\n");
+for (const callable of [
+  "defineGame",
+  "defineCharacter",
+  "defineScene",
+  "defineObject",
+  "defineSequence",
+  "startGame",
+  "validateSaveSnapshot",
+]) {
+  if (!new RegExp(`\\b${callable}\\s*\\(`).test(recipeSource)) {
+    throw new Error(`Public callable has no compiled recipe example: ${callable}`);
+  }
+}
+
+console.log(`Documentation gate passed for ${publicNames.length} root exports and ${docs.length} Markdown files.`);
+
+function markdownFiles(directory) {
+  return readdirSync(directory).flatMap((name) => {
+    const path = join(directory, name);
+    return statSync(path).isDirectory() ? markdownFiles(path) : path.endsWith(".md") ? [path] : [];
+  });
+}
+
+function hasInternalTag(node) {
+  return ts.getJSDocTags(node).some(({ tagName }) => tagName.text === "internal");
+}
+
+function collectFields(node, fields) {
+  if (ts.isPropertySignature(node) && ts.isIdentifier(node.name)) fields.add(node.name.text);
+  if (ts.isPropertyDeclaration(node) && ts.isIdentifier(node.name)) fields.add(node.name.text);
+  ts.forEachChild(node, (child) => collectFields(child, fields));
+}

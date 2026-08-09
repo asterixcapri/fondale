@@ -17,9 +17,17 @@ export async function openGame(page: Page, url = "/"): Promise<{ errors: string[
   page.on("pageerror", (error) => errors.push(String(error)));
 
   await page.goto(url);
-  await page.waitForFunction(() => window.__gameReady === true, undefined, { timeout: 20_000 });
+  await page.locator("[data-fondale-frame]").waitFor({ timeout: 20_000 });
 
   return { errors };
+}
+
+/** Clicks one logical Scene Space point through the visible canvas. */
+export async function clickWorld(page: Page, x: number, y: number): Promise<void> {
+  const canvas = page.locator("[data-fondale-frame] canvas");
+  const box = await canvas.boundingBox();
+  if (!box) throw new Error("Fondale canvas is not visible");
+  await page.mouse.click(box.x + (x / 426) * box.width, box.y + (y / 240) * box.height);
 }
 
 /** Saves a screenshot under a stable name the agent can open and look at. */

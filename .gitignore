@@ -4,3 +4,7 @@ node_modules
 dist
 test/shots
 test/.artifacts
+.playwright-cli
+.release
+dist-example
+examples/capri-1535/node_modules
