@@ -4,7 +4,7 @@ import {
   type GameSession,
 } from "@asterixcapri/fondale";
 
-import { project } from "./project";
+import { project } from "./game";
 
 const target = document.querySelector<HTMLElement>("#game")!;
 const restore = document.querySelector<HTMLButtonElement>("#restore")!;

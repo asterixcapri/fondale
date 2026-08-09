@@ -21,7 +21,7 @@ browser lifecycle:
 ```text
 src/
 ├── main.ts
-├── project.ts
+├── game.ts
 ├── geometry.ts
 ├── scenes/
 ├── characters/
