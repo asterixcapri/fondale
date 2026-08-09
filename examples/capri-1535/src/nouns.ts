@@ -1,6 +1,6 @@
 import { defineNoun } from "@asterixcapri/fondale";
 
-const simple = (text: string, preferred: Parameters<typeof defineNoun>[0]["preferredVerbs"][number]["verb"], response: string) =>
+const defineUnaryNoun = (text: string, preferred: Parameters<typeof defineNoun>[0]["preferredVerbs"][number]["verb"], response: string) =>
   defineNoun({ labels: [{ text }], preferredVerbs: [{ verb: preferred }], cases: [{ verb: preferred === "walk-to" ? "look-at" : preferred, response: { text: response } }] });
 
 const passage = (text: string) => defineNoun({
@@ -32,14 +32,14 @@ export const alleyNouns = {
 };
 
 export const townSquareNouns = {
-  church: simple("Chiesa", "look-at", "La chiesa domina la piazza; da dentro arriva odore d'incenso e cera."),
-  cart: simple("Carretto", "look-at", "Il carretto aspetta un carico che nessuno ha fretta di consegnare."),
+  church: defineUnaryNoun("Chiesa", "look-at", "La chiesa domina la piazza; da dentro arriva odore d'incenso e cera."),
+  cart: defineUnaryNoun("Carretto", "look-at", "Il carretto aspetta un carico che nessuno ha fretta di consegnare."),
   toAlley: passage("Verso il vicolo"),
   toHarbour: passage("Verso il porto"),
 };
 
 export const harbourNouns = {
-  boat: simple("Gozzo", "look-at", "Il gozzo aspetta che l'argano torni a funzionare."),
+  boat: defineUnaryNoun("Gozzo", "look-at", "Il gozzo aspetta che l'argano torni a funzionare."),
   raffaele: defineNoun({
     labels: [{ text: "Raffaele" }], preferredVerbs: [{ verb: "talk-to" }],
     cases: [
@@ -80,7 +80,7 @@ export const harbourNouns = {
 };
 
 export const grottoNouns = {
-  water: simple("Acqua della grotta", "look-at", "Sotto l'azzurro, la roccia sembra muoversi con le onde."),
+  water: defineUnaryNoun("Acqua della grotta", "look-at", "Sotto l'azzurro, la roccia sembra muoversi con le onde."),
   toHarbour: passage("Verso il porto"),
   toMonteSolaro: passage("Scalinata per Monte Solaro"),
 };
@@ -92,13 +92,13 @@ export const monteSolaroNouns = {
       verb: "look-at", response: { text: "Michele si avvicina al parapetto." }, operations: [{ type: "set-variable", variable: "monteSolaroObserved", value: true }], sequence: "monteSolaroConclusion",
     }],
   }),
-  door: simple("Porta del posto di guardia", "look-at", "La porta è chiusa dall'interno."),
+  door: defineUnaryNoun("Porta del posto di guardia", "look-at", "La porta è chiusa dall'interno."),
   toGrotto: passage("Scalinata per la grotta"),
 };
 
 export const tavernNouns = {
   host: defineNoun({ labels: [{ text: "Oste" }], preferredVerbs: [{ verb: "talk-to" }], cases: [{ verb: "talk-to", sequence: "hostConversation" }] }),
-  closedDoor: simple("Porta chiusa", "look-at", "La porta a sinistra è chiusa e non sembra destinata agli ospiti."),
-  room: simple("Sala della taverna", "look-at", "Legno scuro, brocche e storie che migliorano a ogni bicchiere."),
+  closedDoor: defineUnaryNoun("Porta chiusa", "look-at", "La porta a sinistra è chiusa e non sembra destinata agli ospiti."),
+  interior: defineUnaryNoun("Sala della taverna", "look-at", "Legno scuro, brocche e storie che migliorano a ogni bicchiere."),
   toHarbour: passage("Portone per il porto"),
 };

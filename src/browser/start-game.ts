@@ -154,13 +154,22 @@ export async function startGame(
     resizeObserver.observe(target);
 
     core = createCoreSession(project, options.snapshot);
+    let controls: BrowserSessionControls;
+    const replaceCore = (snapshot: ValidatedSaveSnapshot) => {
+      renderer?.destroy();
+      core?.stop();
+      core = createCoreSession(project, snapshot);
+      renderer = new BrowserRenderer(application!, frame!, data, assets, core, controls);
+      renderer.render(core.snapshot(), []);
+    };
+    controls = createBrowserSessionControls(project, () => core!, replaceCore);
     renderer = new BrowserRenderer(
       application,
       frame,
       data,
       assets,
       core,
-      createBrowserSessionControls(project, core),
+      controls,
     );
     renderer.render(core.snapshot(), []);
     const fixedStepClock = new FixedStepClock();
@@ -218,7 +227,8 @@ const saveSlotsKey = "fondale.save-slots";
 
 function createBrowserSessionControls(
   project: GameProject,
-  core: CoreSession,
+  currentCore: () => CoreSession,
+  replaceCore: (snapshot: ValidatedSaveSnapshot) => void,
 ): BrowserSessionControls {
   const read = (): StoredSaveSlot[] => {
     try {
@@ -254,7 +264,7 @@ function createBrowserSessionControls(
       const next = {
         name: normalized,
         savedAt: new Date().toISOString(),
-        snapshot: core.createSaveSnapshot(),
+        snapshot: currentCore().createSaveSnapshot(),
       };
       const existing = slots.findIndex((slot) => slot.name === normalized);
       if (existing >= 0) slots[existing] = next;
@@ -265,7 +275,7 @@ function createBrowserSessionControls(
       const slot = read()[index];
       const validation = validateSaveSnapshot(project, slot?.snapshot);
       if (!validation.ok) return { ok: false, diagnostics: validation.diagnostics };
-      core.restore(validation.snapshot);
+      replaceCore(validation.snapshot);
       return { ok: true };
     },
   };

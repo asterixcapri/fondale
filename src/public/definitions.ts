@@ -407,7 +407,7 @@ export function defineSequence(input: SequenceDefinition): SequenceDefinition {
     visiting.add(steps);
     steps.forEach((step, index) => {
       if (step.type === "choice") {
-        if (step.alternatives.length > 6) {
+        if (maximumEligibleAlternatives(step.alternatives) > 6) {
           diagnostics.push({
             code: "definition.choice.limit",
             family: "definition",
@@ -431,6 +431,25 @@ export function defineSequence(input: SequenceDefinition): SequenceDefinition {
   visit(input.steps, "steps");
   if (diagnostics.length > 0) throw new AuthoringError(diagnostics);
   return deepFreeze(structuredClone(input));
+}
+
+function maximumEligibleAlternatives(alternatives: readonly ChoiceAlternative[]): number {
+  let simultaneouslyEligible = 0;
+  const variableCases = new Map<string, { true: number; false: number }>();
+  for (const alternative of alternatives) {
+    const condition = alternative.when;
+    if (!condition || "hasObject" in condition) {
+      simultaneouslyEligible += 1;
+      continue;
+    }
+    const counts = variableCases.get(condition.variable) ?? { true: 0, false: 0 };
+    counts[String(condition.equals) as "true" | "false"] += 1;
+    variableCases.set(condition.variable, counts);
+  }
+  for (const counts of variableCases.values()) {
+    simultaneouslyEligible += Math.max(counts.true, counts.false);
+  }
+  return simultaneouslyEligible;
 }
 
 /** Input accepted by {@link defineGame}. Registry keys are definition identities. */

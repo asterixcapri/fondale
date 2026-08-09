@@ -52,6 +52,12 @@ export interface PlayerIntentState {
         hotspot: number;
         command?: { verb: CommandVerb; firstNoun?: string; preserveState?: boolean };
       }
+    | {
+        kind: "passage-command";
+        scene: string;
+        passage: number;
+        command: { verb: CommandVerb; firstNoun?: string; preserveState?: boolean };
+      }
     | { kind: "passage"; scene: string; passage: number };
 }
 
@@ -85,7 +91,8 @@ export type CoreInput =
   | { readonly type: "select-verb"; readonly verb: CommandVerb }
   | { readonly type: "activate-hotspot"; readonly hotspot: number }
   | { readonly type: "quick-hotspot"; readonly hotspot: number }
-  | { readonly type: "activate-passage"; readonly passage: number; readonly fast?: boolean }
+  | { readonly type: "activate-passage"; readonly passage: number; readonly fast?: boolean; readonly forceWalk?: boolean }
+  | { readonly type: "quick-passage"; readonly passage: number }
   | { readonly type: "activate-object"; readonly object: string }
   | { readonly type: "escape" }
   | { readonly type: "advance-sequence" }
@@ -132,7 +139,6 @@ export interface CoreSession {
   effects(): readonly CoreEffect[];
   takeEffects(): readonly CoreEffect[];
   createSaveSnapshot(): SaveSnapshot;
-  restore(snapshot: ValidatedSaveSnapshot): void;
   lifecycle(): "running" | "failed" | "stopped";
   diagnostics(): readonly AuthoringDiagnostic[];
   hitTest(point: Point): CoreWorldTarget | null;
@@ -182,13 +188,6 @@ export function createCoreSession(
       assertRunning();
       return createSaveSnapshot(data, state);
     },
-    restore(snapshot) {
-      assertRunning();
-      state = getValidatedSaveState(snapshot);
-      inputs.length = 0;
-      emitted.length = 0;
-      emitted.push({ type: "sequence-changed" });
-    },
     lifecycle: () => status,
     diagnostics: () => failureDiagnostics,
     hitTest(point) {
@@ -230,7 +229,7 @@ export function createCoreSession(
     availablePassages() {
       const scene = data.scenes[state.currentScene]!;
       return (scene.passages ?? []).flatMap((passage, index) => {
-        if (!conditionMatches(passage.when) || !passage.noun || !passage.direction) return [];
+        if (!conditionMatches(passage.when)) return [];
         return [{
           index,
           area: passage.area.map((point) => ({ ...point })),
@@ -306,15 +305,32 @@ export function createCoreSession(
           hotspot.approach.facing,
         );
       }
-    } else if (input.type === "activate-passage") {
+    } else if (input.type === "activate-passage" || input.type === "quick-passage") {
       const scene = data.scenes[state.currentScene]!;
       const passage = scene.passages?.[input.passage];
       if (passage && conditionMatches(passage.when)) {
+        const preferredVerb = input.type === "quick-passage"
+          ? conditionalValue(passage.noun.preferredVerbs).verb
+          : undefined;
+        const shouldWalk = input.type === "activate-passage" &&
+          (input.forceWalk || state.command.verb === "walk-to") || preferredVerb === "walk-to";
+        const intent: PlayerIntentState["intent"] = shouldWalk
+          ? { kind: "passage", scene: state.currentScene, passage: input.passage }
+          : {
+              kind: "passage-command",
+              scene: state.currentScene,
+              passage: input.passage,
+              command: {
+                verb: (preferredVerb ?? state.command.verb) as CommandVerb,
+                ...(state.command.firstNoun ? { firstNoun: state.command.firstNoun.object } : {}),
+                ...(preferredVerb ? { preserveState: true } : {}),
+              },
+            };
         beginIntent(
-          { kind: "passage", scene: state.currentScene, passage: input.passage },
+          intent,
           passage.approach.groundPoint,
           passage.approach.facing,
-          input.fast,
+          input.type === "activate-passage" && input.fast,
         );
       }
     } else if (input.type === "activate-object") {
@@ -393,6 +409,7 @@ export function createCoreSession(
     state.activity = null;
     emitted.push({ type: "movement-finished", destination: { ...activity.destination } });
     if (activity.intent.kind === "interaction") resolveInteraction(activity.intent);
+    if (activity.intent.kind === "passage-command") resolvePassageCommand(activity.intent);
     if (activity.intent.kind === "passage") resolvePassage(activity.intent);
   }
 
@@ -424,6 +441,12 @@ export function createCoreSession(
     preserveState: boolean,
     firstNoun?: string,
   ): void {
+    if (firstNoun && !state.inventory.objects.includes(firstNoun)) {
+      if (!preserveState) state.command = { verb: "walk-to", firstNoun: null };
+      const response = noun.fallbacks?.[verb]?.response ?? data.commandFallbacks?.[verb];
+      if (response) emitted.push({ type: "interaction-response", text: response.text, response });
+      return;
+    }
     const candidate = noun.cases.find((value) =>
       value.verb === verb && value.firstNoun === firstNoun && conditionMatches(value.when),
     );
@@ -436,12 +459,6 @@ export function createCoreSession(
     }
     const resolution = candidate ?? fallback;
     if (!resolution) return;
-    if (firstNoun) {
-      if (!state.inventory.objects.includes(firstNoun)) {
-        emitted.push({ type: "interaction-response", text: "That Object is no longer available." });
-        return;
-      }
-    }
     const requested = [
       ...(resolution.operations ?? []),
       ...(resolution.sequence ? [{ type: "start-sequence" as const, sequence: resolution.sequence }] : []),
@@ -454,6 +471,24 @@ export function createCoreSession(
         response: resolution.response,
       });
     }
+  }
+
+  function resolvePassageCommand(
+    intent: Extract<PlayerIntentState["intent"], { kind: "passage-command" }>,
+  ): void {
+    if (intent.scene !== state.currentScene) return;
+    const passage = data.scenes[intent.scene]?.passages?.[intent.passage];
+    if (!passage || !conditionMatches(passage.when)) {
+      if (!intent.command.preserveState) state.command = { verb: "walk-to", firstNoun: null };
+      return;
+    }
+    resolveCommand(
+      passage.noun,
+      intent.command.verb,
+      { kind: "background" },
+      intent.command.preserveState ?? false,
+      intent.command.firstNoun,
+    );
   }
 
   function resolvePassage(intent: Extract<PlayerIntentState["intent"], { kind: "passage" }>): void {

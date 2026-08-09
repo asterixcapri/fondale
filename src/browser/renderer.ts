@@ -101,6 +101,9 @@ export class BrowserRenderer {
     this.application.canvas.removeEventListener("pointermove", this.onPointerMove);
     this.application.canvas.removeEventListener("pointerleave", this.onPointerLeave);
     this.overlay.destroy();
+    this.application.stage.removeChild(this.world);
+    this.world.removeChildren();
+    this.characterViews.clear();
   }
 
   private rebuildWorld(state: GameState): void {
@@ -239,7 +242,7 @@ export class BrowserRenderer {
 
   private readonly onContextMenu = (event: MouseEvent): void => {
     event.preventDefault();
-    this.overlay.showHint("right-click", "Click destro: esegue il Preferred Verb.");
+    this.overlay.showHint("right-click", "Right click executes the Preferred Verb.");
     this.frame.focus({ preventScroll: true });
     if (this.overlay.blocksWorldInput() || this.core.snapshot().activity?.type === "sequence") return;
     const point = this.scenePoint(event);
@@ -247,7 +250,7 @@ export class BrowserRenderer {
     if (target?.kind === "hotspot") {
       this.core.input({ type: "quick-hotspot", hotspot: target.index });
     } else if (target?.kind === "passage") {
-      this.core.input({ type: "activate-passage", passage: target.index });
+      this.core.input({ type: "quick-passage", passage: target.index });
     }
   };
 
@@ -256,7 +259,7 @@ export class BrowserRenderer {
     const point = this.scenePoint(event);
     const target = this.core.hitTest(point);
     if (target?.kind === "passage") {
-      this.core.input({ type: "activate-passage", passage: target.index, fast: true });
+      this.core.input({ type: "activate-passage", passage: target.index, fast: true, forceWalk: true });
     } else if (!target) {
       this.core.input({ type: "move", point, fast: true });
     }
@@ -395,10 +398,11 @@ class EngineOverlay {
       bottom: "4px",
       pointerEvents: "auto",
     });
+    this.inventory.dataset.fondaleInventory = "";
     this.inventory.addEventListener("wheel", (event) => {
       event.preventDefault();
       this.changeInventoryPage(event.deltaY > 0 ? 1 : -1);
-      this.showHint("inventory", "Usa la rotellina o le frecce per scorrere l'Inventory.");
+      this.showHint("inventory", "Use the wheel or arrows to scroll the Inventory.");
     });
     this.inventoryNav.style.cssText = "position:absolute;right:143px;bottom:28px;display:flex;flex-direction:column;pointer-events:auto";
     const previous = this.modalButton("‹", () => this.changeInventoryPage(-1));
@@ -831,7 +835,7 @@ class EngineOverlay {
     if (event.key === "Tab" && this.data.commandLexicon) {
       event.preventDefault();
       this.hotspotsRevealed = true;
-      this.showHint("tab", "Tieni premuto Tab per rivelare i Noun attivi.");
+      this.showHint("tab", "Hold Tab to reveal active Nouns.");
       this.renderRevealedHotspots();
       return;
     }
@@ -925,6 +929,11 @@ class EngineOverlay {
       if (!slot.compatible) {
         button.textContent = `${slot.name} — incompatible`;
         button.title = slot.diagnostics.map(({ message }) => message).join(" ");
+        const diagnostic = document.createElement("p");
+        diagnostic.dataset.fondaleLoadDiagnostic = String(index);
+        diagnostic.textContent = slot.diagnostics.map(({ message }) => message).join(" ");
+        list.append(button, diagnostic);
+        return;
       }
       list.append(button);
     });

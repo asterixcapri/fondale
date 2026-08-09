@@ -93,8 +93,8 @@ test("Tab reveals active Nouns and a directional Passage supports Fast Walk", as
   await frame.focus();
 
   await page.keyboard.down("Tab");
-  await expect(frame.locator("[data-fondale-revealed-hotspot]")).toHaveCount(3);
-  await expect(frame.locator("[data-fondale-revealed-passage]")).toHaveCount(1);
+  await expect(frame.locator("[data-fondale-revealed-hotspot]")).toHaveCount(11);
+  await expect(frame.locator("[data-fondale-revealed-passage]")).toHaveCount(4);
   await page.keyboard.up("Tab");
   await expect(frame.locator("[data-fondale-revealed-hotspots]")).toBeHidden();
 
@@ -105,13 +105,66 @@ test("Tab reveals active Nouns and a directional Passage supports Fast Walk", as
     x: bounds.x + (405 / 426) * bounds.width,
     y: bounds.y + (135 / 240) * bounds.height,
   };
+  for (const [x, expectedCursor] of [[28, "n-resize"], [83, "s-resize"], [138, "pointer"]] as const) {
+    await page.mouse.move(
+      bounds.x + (x / 426) * bounds.width,
+      bounds.y + (82 / 240) * bounds.height,
+    );
+    await expect(canvas).toHaveCSS("cursor", expectedCursor);
+  }
   await page.mouse.move(passage.x, passage.y);
   await expect(frame.locator("[data-fondale-command-preview]")).toHaveText("Verso l'uscita");
   await expect(canvas).toHaveCSS("cursor", "e-resize");
-  await page.mouse.dblclick(passage.x, passage.y);
+
+  await frame.locator('[data-fondale-verb="look-at"]').click();
+  await page.mouse.click(passage.x, passage.y);
+  await expect(frame.locator("[aria-live=polite]")).toHaveText("Non succede nulla.");
+  await expect(frame).toHaveAttribute("data-fondale-scene", "opening");
+
+  await page.mouse.click(passage.x, passage.y, { button: "right" });
+  await expect(frame).toHaveAttribute("data-fondale-scene", "hall");
+  const returnPassage = {
+    x: bounds.x + (20 / 426) * bounds.width,
+    y: bounds.y + (135 / 240) * bounds.height,
+  };
+  await page.mouse.move(returnPassage.x, returnPassage.y);
+  await expect(canvas).toHaveCSS("cursor", "w-resize");
+  await page.mouse.dblclick(returnPassage.x, returnPassage.y);
 
   await expect(frame).toHaveAttribute("data-fondale-movement", "fast");
-  await expect(frame).toHaveAttribute("data-fondale-scene", "hall");
+  await expect(frame).toHaveAttribute("data-fondale-scene", "opening");
+});
+
+test("Inventory pagination exposes more than eight collected Objects", async ({ page }) => {
+  await page.goto("/test/fixtures/commands.html");
+  const frame = page.locator("[data-fondale-frame]");
+  await expect(frame).toBeVisible();
+  const canvas = frame.locator("canvas");
+  const bounds = await canvas.boundingBox();
+  if (!bounds) throw new Error("missing canvas bounds");
+  const clickLogical = (x: number, y: number) => page.mouse.click(
+    bounds.x + (x / 426) * bounds.width,
+    bounds.y + (y / 240) * bounds.height,
+  );
+
+  for (let index = 0; index < 8; index += 1) {
+    await frame.locator('[data-fondale-verb="pick-up"]').click();
+    await clickLogical(20 + index * 22, 110);
+    await expect(frame.locator(`[data-fondale-inventory-object="item${index + 1}"]`)).toBeVisible();
+  }
+  await frame.locator('[data-fondale-verb="pick-up"]').click();
+  await clickLogical(120, 145);
+
+  await expect(frame.locator('[data-fondale-inventory-object="key"]')).toBeVisible();
+  await expect(frame.locator("[data-fondale-inventory-object]")).toHaveCount(1);
+  await expect(frame.locator('[data-fondale-inventory-slot="empty"]')).toHaveCount(7);
+  await frame.locator("[data-fondale-inventory-previous]").click();
+  await expect(frame.locator("[data-fondale-inventory-object]")).toHaveCount(8);
+  await expect(frame.locator('[data-fondale-inventory-object="item1"]')).toBeVisible();
+
+  await frame.locator("[data-fondale-inventory]").hover();
+  await page.mouse.wheel(0, 100);
+  await expect(frame.locator('[data-fondale-inventory-object="key"]')).toBeVisible();
 });
 
 test("Speech follows its Character and Choice uses the HUD with spoken alternatives", async ({ page }) => {
@@ -246,4 +299,5 @@ test("Options, Help, named Save Slots, and Command State restore through shortcu
   const incompatible = frame.locator('[data-fondale-load-slot="1"]');
   await expect(incompatible).toBeDisabled();
   await expect(incompatible).toContainText("incompatible");
+  await expect(frame.locator('[data-fondale-load-diagnostic="1"]')).toContainText("Project Version");
 });

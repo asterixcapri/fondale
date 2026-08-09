@@ -151,6 +151,40 @@ test("a Choice cannot expose more than six alternatives", () => {
   })).toThrow(/at most six/i);
 });
 
+test("a Choice may declare more than six mutually exclusive alternatives", () => {
+  const sequence = defineSequence({
+    steps: [{
+      type: "choice",
+      alternatives: [
+        ...Array.from({ length: 4 }, (_, index) => ({
+          text: `Open ${index + 1}`,
+          when: { variable: "doorOpen", equals: true } as const,
+          steps: [],
+        })),
+        ...Array.from({ length: 3 }, (_, index) => ({
+          text: `Closed ${index + 1}`,
+          when: { variable: "doorOpen", equals: false } as const,
+          steps: [],
+        })),
+      ],
+      fallback: { text: "Leave", steps: [] },
+    }],
+  });
+
+  expect(sequence.steps).toHaveLength(1);
+});
+
+test("an Object-moving Command Case must provide player feedback", () => {
+  expect(() => defineNoun({
+    labels: [{ text: "Key" }],
+    preferredVerbs: [{ verb: "pick-up" }],
+    cases: [{
+      verb: "pick-up",
+      operations: [{ type: "collect-target-object" }],
+    }],
+  })).toThrow(/must provide a Command Response or Sequence/i);
+});
+
 test("defineGame composes Command authoring and aggregates Noun reference failures", () => {
   const noun = defineNoun({
     labels: [{ when: { variable: "missingVariable", equals: true }, text: "Antica porta" }, { text: "Porta" }],

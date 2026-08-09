@@ -33,6 +33,26 @@ const keyNoun = defineNoun({
     operations: [{ type: "collect-target-object" }],
   }],
 });
+const extraNouns = Array.from({ length: 8 }, (_, index) => defineNoun({
+  labels: [{ text: `Oggetto ${index + 1}` }],
+  preferredVerbs: [{ verb: "pick-up" }],
+  cases: [{
+    verb: "pick-up",
+    response: { text: `Raccolgo Oggetto ${index + 1}.` },
+    operations: [{ type: "collect-target-object" }],
+  }],
+}));
+const extraObjects = Object.fromEntries(extraNouns.map((noun, index) => [
+  `item${index + 1}`,
+  defineObject({
+    initialScene: "opening",
+    initialGroundPoint: { x: 20 + index * 22, y: 110 },
+    initialAppearance: "scene",
+    appearances: { scene: { kind: "static", image: keyUrl } },
+    inventoryAppearance: keyInventoryUrl,
+    noun,
+  }),
+]));
 const exitNoun = defineNoun({
   labels: [{ text: "Verso l'uscita" }],
   preferredVerbs: [{ verb: "walk-to" }],
@@ -65,6 +85,7 @@ const project = defineGame({
       inventoryAppearance: keyInventoryUrl,
       noun: keyNoun,
     }),
+    ...extraObjects,
   },
   characters: {
     player: defineCharacter({
@@ -127,7 +148,18 @@ const project = defineGame({
         noun: exitNoun,
         direction: "right",
         destination: { scene: "hall", entrance: "fromOpening" },
-      }],
+      }, ...(["up", "down", "enter"] as const).map((direction, index) => ({
+        area: [
+          { x: 10 + index * 55, y: 70 },
+          { x: 45 + index * 55, y: 70 },
+          { x: 45 + index * 55, y: 95 },
+          { x: 10 + index * 55, y: 95 },
+        ],
+        approach: { groundPoint: { x: 28 + index * 55, y: 110 }, facing: "back" as const },
+        noun: exitNoun,
+        direction,
+        destination: { scene: "hall", entrance: "fromOpening" },
+      }))],
       hotspots: [{
         target: { kind: "background" },
         area: [{ x: 200, y: 80 }, { x: 260, y: 80 }, { x: 260, y: 150 }, { x: 200, y: 150 }],
@@ -143,7 +175,17 @@ const project = defineGame({
         area: [{ x: 290, y: 110 }, { x: 340, y: 110 }, { x: 340, y: 165 }, { x: 290, y: 165 }],
         approach: { groundPoint: { x: 285, y: 150 }, facing: "right" },
         noun: hostNoun,
-      }],
+      }, ...extraNouns.map((noun, index) => ({
+        target: { kind: "object" as const, object: `item${index + 1}` },
+        area: [
+          { x: 10 + index * 22, y: 100 },
+          { x: 30 + index * 22, y: 100 },
+          { x: 30 + index * 22, y: 120 },
+          { x: 10 + index * 22, y: 120 },
+        ],
+        approach: { groundPoint: { x: 20 + index * 22, y: 130 }, facing: "back" as const },
+        noun,
+      }))],
     }),
     hall: defineScene({
       background: backgroundUrl,

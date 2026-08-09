@@ -1,5 +1,6 @@
 import type { GameState } from "../internal/core";
 import { conditionMatchesState, hotspotAvailableInState } from "../internal/state-queries";
+import { commandVerbs, type CommandVerb, type Verb } from "./commands";
 import { AuthoringError, type AuthoringDiagnostic } from "./diagnostics";
 import {
   getGameProjectData,
@@ -128,7 +129,7 @@ function validStateShape(value: unknown, data: GameProjectData): value is GameSt
   if (new Set(value.inventory.objects).size !== value.inventory.objects.length) return false;
   if (!sameValues(value.inventory.objects, inventoryLocations)) return false;
   if (!isRecord(value.command) || !hasExactKeys(value.command, ["verb", "firstNoun"])) return false;
-  if (!["walk-to", "open", "pick-up", "push", "close", "look-at", "pull", "give", "talk-to", "use"].includes(String(value.command.verb))) return false;
+  if (!isVerb(value.command.verb)) return false;
   if (value.command.firstNoun !== null) {
     if (!isRecord(value.command.firstNoun) || !hasExactKeys(value.command.firstNoun, ["kind", "object"])) return false;
     if (value.command.firstNoun.kind !== "object" || typeof value.command.firstNoun.object !== "string") return false;
@@ -156,12 +157,23 @@ function validActivity(value: unknown, data: GameProjectData, state: GameState):
       if (!hotspot || !hotspotAvailableInState(hotspot, state)) return false;
       if (value.intent.command !== undefined) {
         if (!isRecord(value.intent.command) || !hasExactKeys(value.intent.command, ["verb"], ["firstNoun", "preserveState"])) return false;
-        if (!["open", "pick-up", "push", "close", "look-at", "pull", "give", "talk-to", "use"].includes(String(value.intent.command.verb))) return false;
+        if (!isCommandVerb(value.intent.command.verb)) return false;
         if (value.intent.command.preserveState !== undefined && typeof value.intent.command.preserveState !== "boolean") return false;
         if (value.intent.command.firstNoun !== undefined &&
             (typeof value.intent.command.firstNoun !== "string" || !state.inventory.objects.includes(value.intent.command.firstNoun))) return false;
       }
       return true;
+    }
+    if (value.intent.kind === "passage-command") {
+      if (!hasExactKeys(value.intent, ["kind", "scene", "passage", "command"])) return false;
+      if (value.intent.scene !== state.currentScene || !Number.isInteger(value.intent.passage)) return false;
+      const passage = data.scenes[state.currentScene]!.passages?.[value.intent.passage as number];
+      if (!passage || !conditionMatchesState(passage.when, state)) return false;
+      if (!isRecord(value.intent.command) || !hasExactKeys(value.intent.command, ["verb"], ["firstNoun", "preserveState"])) return false;
+      if (!isCommandVerb(value.intent.command.verb)) return false;
+      if (value.intent.command.preserveState !== undefined && typeof value.intent.command.preserveState !== "boolean") return false;
+      return value.intent.command.firstNoun === undefined ||
+        typeof value.intent.command.firstNoun === "string" && state.inventory.objects.includes(value.intent.command.firstNoun);
     }
     if (value.intent.kind === "passage") {
       if (!hasExactKeys(value.intent, ["kind", "scene", "passage"])) return false;
@@ -216,6 +228,14 @@ function validActivity(value: unknown, data: GameProjectData, state: GameState):
 
 function validOptionalFacing(value: unknown): boolean {
   return value === undefined || ["front", "back", "left", "right"].includes(String(value));
+}
+
+function isCommandVerb(value: unknown): value is CommandVerb {
+  return typeof value === "string" && commandVerbs.some((verb) => verb === value);
+}
+
+function isVerb(value: unknown): value is Verb {
+  return value === "walk-to" || isCommandVerb(value);
 }
 
 function resolvePath(sequence: SequenceDefinition, path: string): unknown {

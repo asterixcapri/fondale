@@ -15,7 +15,7 @@ export const tavern = defineScene({
     approach: { groundPoint: { x: 120, y: 170 }, facing: "left" }, noun: tavernNouns.closedDoor,
   }, {
     target: { kind: "background" }, area: rectangle(325, 80, 395, 155),
-    approach: { groundPoint: { x: 320, y: 170 }, facing: "right" }, noun: tavernNouns.room,
+    approach: { groundPoint: { x: 320, y: 170 }, facing: "right" }, noun: tavernNouns.interior,
   }],
   entrances: { fromHarbour: { groundPoint: { x: 210, y: 170 }, facing: "front" } },
   passages: [{

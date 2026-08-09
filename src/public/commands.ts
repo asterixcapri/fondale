@@ -105,6 +105,22 @@ export function defineNoun(input: NounDefinition): NounDefinition {
         message: "A Command Case must produce a Command Response, Game Operation, or Sequence.",
       });
     }
+    if (
+      !candidate.response &&
+      !candidate.sequence &&
+      candidate.operations?.some(({ type }) =>
+        type === "collect-target-object" ||
+        type === "place-selected-object" ||
+        type === "consume-selected-object"
+      )
+    ) {
+      diagnostics.push({
+        code: "definition.command-case.object-feedback",
+        family: "definition",
+        path: `cases[${index}]`,
+        message: "A Command Case that moves or consumes an Object must provide a Command Response or Sequence.",
+      });
+    }
   });
   if (diagnostics.length > 0) throw new AuthoringError(diagnostics);
   return deepFreeze(structuredClone(input));
