@@ -145,3 +145,30 @@ Prima della specifica definitiva, un prototipo giocabile su una Scene di Capri
 Scene Passage riconoscibile, il Command Preview vicino al puntatore, le Line
 sopra i Character, le Choice nella fascia inferiore, un Command binario fra
 Object e il comportamento a diverse dimensioni del viewport.
+
+Il prototipo usa la Scene del porto, che riunisce Raffaele, Object, argano,
+dialogo e Scene Passage. Il riconoscimento di un Passage deriva dalla
+composizione della Scene, dal cursore a freccia e dal Noun nel Command Preview;
+Tab aggiunge la rivelazione temporanea, ma non esiste un contorno permanente.
+
+Una Choice presenta al massimo sei alternative eleggibili, selezionabili anche
+con i tasti da 1 a 6; superare il limite è un Authoring Diagnostic. Una Line
+ancorata a un Character resta nella zona sicura sopra il HUD, va a capo entro la
+larghezza massima del tema e si sposta solo quanto serve a rimanere leggibile.
+
+La Logical Resolution viene scalata uniformemente nel viewport con eventuale
+letterboxing. Il HUD conserva sempre disposizione e proporzioni; il prototipo
+verifica la leggibilità alla dimensione desktop minima della Support Baseline.
+Il primo prototipo usa un HUD Theme originale ma provvisorio; la direzione
+artistica definitiva viene prodotta dopo la validazione del layout.
+
+Capri 1535 aggiunge una taverna collegata al porto come deviazione facoltativa,
+utile per dialoghi e interazioni ma non necessaria all'enigma principale. Il
+nuovo master panoramico approvato sostituisce il precedente belvedere: la Scene
+e i suoi termini di Game Project prendono il nome Monte Solaro, conservando la
+funzione narrativa del precedente `lookout`. La scalinata sinistra comunica il
+Scene Passage di ritorno.
+
+I master ricevuti appartengono rispettivamente ad `art/scenes/tavern/` e
+`art/scenes/monte-solaro/`. I Game Definition e le copie elaborate caricate a
+runtime appartengono esclusivamente alle corrispondenti directory sotto `src/`.

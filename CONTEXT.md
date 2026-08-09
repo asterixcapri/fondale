@@ -23,7 +23,7 @@ _Avoid_: Engine constant, internal interface
 **Logical Resolution**:
 The fixed width and height of the base visual canvas in which a Game Project
 composes every Scene and Engine-owned overlay before the whole frame is fitted
-to its display target.
+to its display target through uniform scaling and, when required, letterboxing.
 _Avoid_: Window size, renderer resolution, per-Scene resolution
 
 **Author**:
@@ -130,8 +130,9 @@ _Avoid_: Cutscene, Dialogue as a separate activity model, nested sequence, scrip
 **Line**:
 A single authored unit of speech or narration within a Sequence. Speech
 identifies its Character and is presented above that Character; narration omits
-the Character and is presented centrally. Its presentation may advance by
-timing or Player input.
+the Character and is presented centrally. Character speech remains inside the
+safe region above the HUD and wraps within the configured maximum width. Its
+presentation may advance by timing or Player input.
 _Avoid_: Subtitle, dialogue node, renderer text
 
 **Choice**:
@@ -139,7 +140,8 @@ A point in a Sequence where the Player selects one of the authored alternatives
 eligible in the current Game State from the HUD. By default, the selected phrase
 is pronounced by the Player Character before the Sequence continues along its
 branch, but an alternative may explicitly remain unspoken; ineligible
-alternatives are not presented.
+alternatives are not presented. At most six alternatives may be eligible at
+once.
 _Avoid_: Menu, disabled answer, arbitrary input prompt
 
 ## Interaction language
