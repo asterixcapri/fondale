@@ -148,8 +148,8 @@ _Avoid_: Cutscene, Dialogue as a separate activity model, nested sequence, scrip
 A single authored unit of speech or narration within a Sequence. Speech
 identifies its Character and is presented above that Character; narration omits
 the Character and is presented centrally. Character speech remains inside the
-safe region above the HUD and wraps within the configured maximum width. Its
-presentation may advance by timing or Player input.
+Logical Resolution, uses a readable backing, and wraps within the configured
+maximum width. Its presentation may advance by timing or Player input.
 _Avoid_: Subtitle, dialogue node, renderer text
 
 **Choice**:
@@ -254,22 +254,23 @@ belong to the Game Project rather than a Scene.
 _Avoid_: Scenery, synonym for Hotspot
 
 **HUD**:
-The permanent Engine-owned transparent overlay across a reserved lower region
-of the Scene that presents Verb controls, Inventory, and other play controls.
-The Background remains full-frame beneath it, while the reserved region cannot
-contain Interaction or essential scene information.
-_Avoid_: Cropped Scene, game menu, world element
+The Engine-owned overlay that presents Contextual Actions, Inventory, Choices,
+play feedback and utility controls without reserving or cropping any region of
+the Scene. At rest only small persistent controls such as the Inventory trigger
+remain visible.
+_Avoid_: Lower band, cropped Scene, world element
 
 **HUD Theme**:
 The Game Project's declarative visual language for the Engine-owned HUD,
-including its original palette, font, icons, borders, selection, background,
-opacity, and Character speech colours. It adapts a stable interaction structure
-without copying the visual assets of another Game Project or product.
+including its original palette, font, cursors, borders, contextual prompts,
+Inventory drawer, and Character speech colours. It adapts a stable interaction
+structure without copying the visual assets of another Game Project or product.
 _Avoid_: Custom DOM, custom CSS, Scene art
 
 **Inventory**:
 The acquisition-ordered collection of Objects currently carried by the Player
-and presented in a permanent region of the HUD, even when empty.
+and presented in an Engine-owned drawer opened from a persistent trigger or
+keyboard shortcut.
 _Avoid_: Container, equipment, item stack
 
 **Inventory Appearance**:
@@ -288,14 +289,30 @@ the Player as a response or a change in the world.
 _Avoid_: Click handler, silent no-op
 
 **Verb**:
-An action word available to the Player for constructing a Command and
-exploring the possibilities offered by the world.
-_Avoid_: Primary Action, contextual action
+An authored action word used to construct a Command and resolve an Interaction.
+The contextual overlay advertises only the Verb choices relevant to its Noun.
+_Avoid_: Click handler, renderer action
 
 **Preferred Verb**:
-The state-appropriate Verb advertised for a Noun and executed when the Player
-requests its quick action.
-_Avoid_: Only action, inferred click handler
+The state-appropriate Verb advertised as a Noun's primary Contextual Action
+when no Object is selected.
+_Avoid_: Only Verb, inferred click handler
+
+**Secondary Verb**:
+The optional state-appropriate Verb advertised as a Noun's secondary
+Contextual Action. Its absence is meaningful: the right mouse button then has
+no world action.
+_Avoid_: Required alternative, inferred fallback
+
+**Selected Object Verb**:
+The state-appropriate Verb used as the primary Contextual Action when an Object
+is selected from Inventory; it defaults to Use and may be authored as Give.
+_Avoid_: Object callback, target-type inference
+
+**Contextual Action**:
+One complete player-facing Command phrase advertised beside a Noun and bound to
+the primary or secondary mouse button for that moment.
+_Avoid_: Verb grid entry, tooltip, click handler
 
 **Noun**:
 The player-facing name by which a Character, Object, Scenery, background
@@ -309,8 +326,9 @@ declared Game State rather than inference by the Engine.
 _Avoid_: Identifier, automatic discovery, rendered entity type
 
 **Noun Definition**:
-The declarative description of one Noun's labels, Preferred Verb, Command
-Cases, and local fallbacks wherever that Noun is available to the Player.
+The declarative description of one Noun's labels, Preferred Verb, optional
+Secondary and Selected Object Verbs, Command Cases, and local fallbacks
+wherever that Noun is available to the Player.
 _Avoid_: Hotspot, entity definition, event handlers
 
 **Command**:
@@ -324,15 +342,9 @@ semantic Verb and Noun combinations without linguistic inference by the Engine.
 _Avoid_: Locale detection, translated identifiers, automatic grammar
 
 **Command Preview**:
-The presentation of the Command being constructed, including the Noun currently
-considered under the Player's pointer. By default it follows the pointer and is
-clamped within the Logical Resolution.
-_Avoid_: Interaction Response, dialogue text, generic tooltip
-
-**Sentence Line**:
-The optional classic fixed placement of the Command Preview enabled by a Game
-Setting instead of its default pointer-following placement.
-_Avoid_: Required HUD row, dialogue text, Interaction Response
+The pointer-following presentation of one or two Contextual Action phrases,
+clamped within the Logical Resolution and visually separated from Scene art.
+_Avoid_: Interaction Response, dialogue text, generic tooltip, Sentence Line
 
 **Command Case**:
 An authored conditional alternative for resolving a Verb against one or two

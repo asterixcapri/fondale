@@ -41,6 +41,8 @@ test("an Author defines immutable Noun and Command Lexicon definitions through t
       { text: "Porta" },
     ],
     preferredVerbs: [{ verb: "open" }],
+    secondaryVerbs: [{ verb: "look-at" }],
+    objectVerbs: [{ verb: "use" }],
     cases: [{
       verb: "look-at",
       response: { text: "Una porta molto antica.", presentation: "narration" },
@@ -70,6 +72,8 @@ test("an Author defines immutable Noun and Command Lexicon definitions through t
 
   expect(Object.isFrozen(noun)).toBe(true);
   expect(Object.isFrozen(noun.labels)).toBe(true);
+  expect(Object.isFrozen(noun.secondaryVerbs)).toBe(true);
+  expect(Object.isFrozen(noun.objectVerbs)).toBe(true);
   expect(Object.isFrozen(lexicon.verbs)).toBe(true);
   expect(lexicon.verbs["look-at"]).toBe("Guarda");
 });
@@ -78,6 +82,8 @@ test("Noun and Command Lexicon helpers aggregate independent local diagnostics",
   expect(() => defineNoun({
     labels: [{ when: { variable: "known", equals: true }, text: "Porta" }],
     preferredVerbs: [{ when: { variable: "open", equals: true }, verb: "open" }],
+    secondaryVerbs: [{ when: { variable: "known", equals: true }, verb: "look-at" }],
+    objectVerbs: [{ when: { variable: "known", equals: true }, verb: "use" }],
     cases: [],
   })).toThrow(AuthoringError);
 

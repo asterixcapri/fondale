@@ -2,7 +2,7 @@ import { AuthoringError, type AuthoringDiagnostic } from "./diagnostics";
 
 export type PassageDirection = "left" | "right" | "up" | "down" | "enter";
 
-/** Declarative visual language for the stable Engine-owned HUD. */
+/** Declarative visual language for the stable Engine-owned overlay. */
 export interface HUDTheme {
   readonly font: { readonly family: string; readonly source: URL | string };
   readonly colors: {

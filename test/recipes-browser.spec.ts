@@ -18,13 +18,9 @@ test("Command recipes execute through the installed public package", async ({ pa
   await expect(interaction.getByLabel("Speech volume")).toHaveCount(0);
   await page.keyboard.press("Escape");
 
-  await interaction.locator("[data-fondale-frame]").focus();
-  await page.keyboard.press("q");
   await clickLogical(page, interaction, 20, 20);
   await expect(interaction).toContainText("Open Door");
 
-  await sequenceInventory.locator("[data-fondale-frame]").focus();
-  await page.keyboard.press("x");
   await clickLogical(page, sequenceInventory, 20, 20);
   await expect(sequenceInventory.locator("[data-fondale-line]")).toContainText("finite conversation");
   await sequenceInventory.locator("[data-fondale-frame]").focus();
@@ -40,13 +36,10 @@ test("Command recipes execute through the installed public package", async ({ pa
   await page.keyboard.press(".");
   await expect(sequenceInventory.locator("[data-fondale-line]")).toHaveCount(0);
 
-  await sequenceInventory.locator("[data-fondale-frame]").focus();
-  await page.keyboard.press("w");
   await clickLogical(page, sequenceInventory, 40, 25);
+  await sequenceInventory.locator("[data-fondale-inventory-trigger]").click();
   const inventoryKey = sequenceInventory.locator('[data-fondale-inventory-object="key"]');
   await expect(inventoryKey).toBeVisible();
-  await sequenceInventory.locator("[data-fondale-frame]").focus();
-  await page.keyboard.press("c");
   await inventoryKey.click();
   await clickLogical(page, sequenceInventory, 80, 22);
   await expect(inventoryKey).toHaveCount(0);

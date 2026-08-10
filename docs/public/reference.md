@@ -5,18 +5,21 @@ not supported. This is the normative Fondale 1.1 contract.
 
 ## Commands and HUD
 
-`commandVerbs` fixes the visible grid order: `open`, `pick-up`, `push`, `close`,
-`look-at`, `pull`, `give`, `talk-to`, `use`. `CommandVerb` is that union and
+`commandVerbs` lists the semantic Command actions: `open`, `pick-up`, `push`,
+`close`, `look-at`, `pull`, `give`, `talk-to`, `use`. `CommandVerb` is that union and
 `Verb` also includes implicit `walk-to`.
 
 `defineNoun` validates and freezes a `NounDefinition`. Its `labels` and
 `preferredVerbs` are ordered conditional variants with exactly one
-unconditional final fallback. `cases` are ordered `CommandCase` values. Give is
+unconditional final fallback. Optional `secondaryVerbs` and `objectVerbs` use
+the same conditional contract. They advertise the right-button action at rest
+and the primary action when an Inventory Object is selected, respectively;
+Selected Object Verb defaults to Use. `cases` are ordered `CommandCase` values. Give is
 binary, Use may be unary or binary, and all other visible verbs are unary. A
 case may provide a `CommandResponse`, `GameOperation` values, a `sequence`, or
 a combination. `fallbacks` map a Verb to a local `CommandFallback`.
 
-`defineCommandLexicon` validates and freezes a `CommandLexicon`: all nine Verb
+`defineCommandLexicon` validates and freezes a `CommandLexicon`: all nine semantic Verb
 labels plus explicit `unary`, `give`, and `use` sentence patterns. The required
 placeholders are `{verb}`, `{noun}`, `{first}`, and `{second}` as appropriate.
 `defineGame` rejects Nouns without a lexicon and rejects any complete Command
@@ -26,7 +29,8 @@ that lacks a specific case, local fallback, or response-only global fallback.
 six CSS-hex colours, HUD `opacity`, `maxSpeechWidth`, five directional cursor
 assets, and Character-keyed `speechColors`. `PassageDirection` is `left`,
 `right`, `up`, `down`, or `enter`. Theme data styles the stable Engine-owned
-HUD; it cannot change its controls or structure.
+contextual prompts, Inventory drawer and speech; it cannot change their
+controls or structure.
 
 ## Definitions
 
@@ -35,9 +39,8 @@ PNG `background`, finite simple `walkableRegion`, optional `perspectiveScale`,
 named Scenery, ordered Hotspots, named Entrances, and ordered Passages.
 Omission means scale `1`. A Hotspot requires `target`, polygon `area`, `approach`, one
 Noun and optional `when`. A Passage additionally requires one Noun,
-`PassageDirection`, and a destination Scene/Entrance. With a Command Lexicon,
-interactive geometry must remain above the bottom 60 logical pixels reserved
-for the HUD.
+`PassageDirection`, and a destination Scene/Entrance. The Scene has no region
+reserved for the HUD; authored geometry may use the complete Logical Resolution.
 
 `defineCharacter` validates a persistent Character with initial Scene, Ground
 Point, Facing, Appearance, positive `movementSpeed`, optional Noun, and static
@@ -124,13 +127,14 @@ asset, or environment.
 | `GameInput` | project composition | identity, version, resolution, registries, commands, theme | empty registries; black letterbox | aggregated diagnostics | [Scene](recipes/first-scene.ts) |
 | `GameProject` | validated opaque project | only returned by defineGame | immutable and fieldless | forged project rejected | [Scene](recipes/first-scene.ts) |
 | `NounLabel` | conditional visible name | text and optional condition | one final unconditional label | conditional/text diagnostics | [Interaction](recipes/interaction.ts) |
-| `PreferredVerbCase` | conditional quick action | Verb and optional condition | one final unconditional Verb | conditional diagnostic | [Interaction](recipes/interaction.ts) |
+| `PreferredVerbCase` | conditional contextual action | Verb and optional condition | one final unconditional Verb per declared set | conditional diagnostic | [Interaction](recipes/interaction.ts) |
+| `SelectedObjectVerbCase` | Object-first contextual action | Give or Use and optional condition | one final unconditional Verb when declared | conditional diagnostic | [Inventory](recipes/inventory.ts) |
 | `CommandResponse` | perceivable outcome | text, speech/narration, speaker | speech uses Player by default | text/speaker diagnostics | [Interaction](recipes/interaction.ts) |
 | `CommandCase` | specific resolution | Verb, firstNoun, condition, response, operations, sequence | ordered; arity is fixed | arity/reference diagnostics | [Command](recipes/command-case.ts) |
 | `CommandFallback` | local final resolution | response, operations, sequence | used after specific cases | response/reference diagnostics | [Interaction](recipes/interaction.ts) |
-| `NounDefinition` | common interaction model | labels, Preferred Verbs, cases, fallbacks | immutable; response guaranteed globally | Noun/Command diagnostics | [Interaction](recipes/interaction.ts) |
+| `NounDefinition` | common interaction model | labels, Preferred, Secondary and Selected Object Verbs, cases, fallbacks | secondary/object sets optional; immutable | Noun/Command diagnostics | [Interaction](recipes/interaction.ts) |
 | `CommandLexicon` | localized Command grammar | nine labels and three patterns | Engine never infers grammar | lexicon diagnostics | [Scene](recipes/first-scene.ts) |
-| `CommandVerb` | visible Verb union | nine commandVerbs values | stable grid order | compile-time restriction | [Interaction](recipes/interaction.ts) |
+| `CommandVerb` | semantic Verb union | nine commandVerbs values | fixed Engine vocabulary | compile-time restriction | [Interaction](recipes/interaction.ts) |
 | `Verb` | complete Verb union | CommandVerb or walk-to | walk-to is implicit | compile-time restriction | [Scene](recipes/first-scene.ts) |
 | `PassageDirection` | Passage cursor direction | left, right, up, down, enter | every Passage declares one | cursor/reference diagnostics | [Scene](recipes/first-scene.ts) |
 | `HUDTheme` | project visual language | font, colours, opacity, width, cursors, speech colours | complete local asset set | theme/asset diagnostics | [migration](migration-1.1.md) |
@@ -172,9 +176,7 @@ Definition codes: `definition.approach.bounds`,
 `definition.command-lexicon.label`, `definition.command-lexicon.pattern`,
 `definition.command-lexicon.required`, `definition.command-response.text`,
 `definition.command.silent`, `definition.conditional-fallback`,
-`definition.entrance.walkable`, `definition.hud-reserved.approach`,
-`definition.hud-reserved.hotspot`, `definition.hud-reserved.passage`,
-`definition.hud-reserved.walkable-region`, `definition.hud-theme.color`,
+`definition.entrance.walkable`, `definition.hud-theme.color`,
 `definition.hud-theme.cursor`, `definition.hud-theme.font`,
 `definition.hud-theme.opacity`, `definition.hud-theme.speech-color`,
 `definition.hud-theme.speech-width`, `definition.inventory-appearance-size`,

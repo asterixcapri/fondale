@@ -1,7 +1,7 @@
 import type { GameOperation, InteractionCondition } from "./definitions";
 import { AuthoringError, type AuthoringDiagnostic } from "./diagnostics";
 
-/** The nine visible actions in the stable Engine-owned command grid. */
+/** The semantic actions available to authored Commands. */
 export const commandVerbs = [
   "open",
   "pick-up",
@@ -26,6 +26,12 @@ export interface NounLabel {
 /** One state-dependent Preferred Verb, with an unconditional final variant. */
 export interface PreferredVerbCase {
   readonly verb: Verb;
+  readonly when?: InteractionCondition;
+}
+
+/** One state-dependent Verb for a selected Inventory Object. */
+export interface SelectedObjectVerbCase {
+  readonly verb: "give" | "use";
   readonly when?: InteractionCondition;
 }
 
@@ -57,6 +63,8 @@ export interface CommandFallback {
 export interface NounDefinition {
   readonly labels: readonly NounLabel[];
   readonly preferredVerbs: readonly PreferredVerbCase[];
+  readonly secondaryVerbs?: readonly PreferredVerbCase[];
+  readonly objectVerbs?: readonly SelectedObjectVerbCase[];
   readonly cases: readonly CommandCase[];
   readonly fallbacks?: Readonly<Partial<Record<CommandVerb, CommandFallback>>>;
 }
@@ -71,6 +79,22 @@ export function defineNoun(input: NounDefinition): NounDefinition {
     "Preferred Verb",
     diagnostics,
   );
+  if (input.secondaryVerbs) {
+    validateConditionalFallback(
+      input.secondaryVerbs,
+      "secondaryVerbs",
+      "Secondary Verb",
+      diagnostics,
+    );
+  }
+  if (input.objectVerbs) {
+    validateConditionalFallback(
+      input.objectVerbs,
+      "objectVerbs",
+      "Selected Object Verb",
+      diagnostics,
+    );
+  }
   input.labels.forEach((label, index) => {
     if (!label.text.trim()) {
       diagnostics.push({

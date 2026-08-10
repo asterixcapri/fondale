@@ -396,6 +396,19 @@ test("a successful binary Use can consume its first Object terminally", () => {
   expect(session.snapshot().objects.key!.location).toEqual({ kind: "consumed" });
 });
 
+test("contextual input resolves an Object selection queued in the same step", () => {
+  const session = createTestSession(projectFixture());
+  interact(session, 1);
+
+  session.input({ type: "select-object", object: "key" });
+  session.input({ type: "contextual-hotspot", hotspot: 2, action: "primary" });
+  session.steps(20);
+
+  expect(session.snapshot().variables.gateOpen).toBe(true);
+  expect(session.snapshot().inventory.objects).toEqual([]);
+  expect(session.snapshot().command).toEqual({ verb: "walk-to", firstNoun: null });
+});
+
 test("a declarative Command commits operations and an enabled passage transitions atomically", () => {
   const session = createTestSession(projectFixture());
   interact(session, 1);

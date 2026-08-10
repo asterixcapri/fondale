@@ -22,7 +22,7 @@ import type {
   SceneryAppearance,
   SequenceStep,
 } from "../public/definitions";
-import { commandVerbs } from "../public/commands";
+import type { Verb } from "../public/commands";
 import type { AuthoringDiagnostic } from "../public/diagnostics";
 import type { SaveSnapshot } from "../public/save";
 import { assetUrl, type LoadedAssets } from "./assets";
@@ -235,9 +235,9 @@ export class BrowserRenderer {
     if (this.core.snapshot().activity?.type === "sequence") return;
     const target = this.core.hitTest(point);
     if (target?.kind === "hotspot") {
-      this.core.input({ type: "activate-hotspot", hotspot: target.index });
+      this.core.input({ type: "contextual-hotspot", hotspot: target.index, action: "primary" });
     } else if (target?.kind === "passage") {
-      this.core.input({ type: "activate-passage", passage: target.index, fast: event.detail >= 2 });
+      this.core.input({ type: "contextual-passage", passage: target.index, action: "primary" });
     } else this.core.input({ type: "move", point, fast: event.detail >= 2 });
   };
 
@@ -249,9 +249,9 @@ export class BrowserRenderer {
     const point = this.scenePoint(event);
     const target = this.core.hitTest(point);
     if (target?.kind === "hotspot") {
-      this.core.input({ type: "quick-hotspot", hotspot: target.index });
+      this.core.input({ type: "contextual-hotspot", hotspot: target.index, action: "secondary" });
     } else if (target?.kind === "passage") {
-      this.core.input({ type: "quick-passage", passage: target.index });
+      this.core.input({ type: "contextual-passage", passage: target.index, action: "secondary" });
     }
   };
 
@@ -267,6 +267,10 @@ export class BrowserRenderer {
   };
 
   private readonly onPointerMove = (event: PointerEvent): void => {
+    if (this.overlay.blocksWorldInput()) {
+      this.overlay.showAction(undefined);
+      return;
+    }
     const point = this.scenePoint(event);
     const target = this.core.hitTest(point);
     const hotspot = target?.kind === "hotspot"
@@ -305,10 +309,15 @@ export class BrowserRenderer {
 class EngineOverlay {
   private readonly root = document.createElement("div");
   private readonly action = document.createElement("div");
+  private readonly primaryAction = document.createElement("div");
+  private readonly secondaryAction = document.createElement("div");
+  private readonly actionLeader = document.createElement("span");
   private readonly response = document.createElement("div");
-  private readonly verbs = document.createElement("div");
   private readonly inventory = document.createElement("div");
   private readonly inventoryNav = document.createElement("div");
+  private readonly inventoryTrigger = document.createElement("button");
+  private readonly inventoryPanel = document.createElement("aside");
+  private readonly inventoryScrim = document.createElement("button");
   private readonly hint = document.createElement("div");
   private readonly activity = document.createElement("div");
   private readonly modal = document.createElement("section");
@@ -319,11 +328,11 @@ class EngineOverlay {
   private focusBeforeSequence: HTMLElement | null = null;
   private sequenceWasActive = false;
   private hotspotsRevealed = false;
-  private hoveredPreferredVerb: string | null = null;
   private hoveredHotspot: AvailableHotspot | AvailablePassage | null = null;
   private modalKind: "options" | "help" | "save" | "load" | null = null;
   private preferences: PlayerPreferences;
   private inventoryPage = 0;
+  private inventoryOpen = false;
   private previousInventoryCount = 0;
   private lineTimer: number | undefined;
   private activeAudio: HTMLAudioElement | undefined;
@@ -353,11 +362,46 @@ class EngineOverlay {
     this.action.dataset.fondaleCommandPreview = "";
     Object.assign(this.action.style, {
       position: "absolute",
+      display: "none",
+      zIndex: "8",
       left: "4px",
       top: "4px",
-      maxWidth: "120px",
-      whiteSpace: "nowrap",
+      width: "190px",
+      pointerEvents: "none",
     });
+    this.primaryAction.dataset.fondalePrimaryAction = "";
+    this.secondaryAction.dataset.fondaleSecondaryAction = "";
+    for (const [element, marker] of [[this.primaryAction, "L"], [this.secondaryAction, "R"]] as const) {
+      element.style.cssText = [
+        "display:flex",
+        "align-items:center",
+        "width:max-content",
+        "max-width:190px",
+        "gap:4px",
+        "box-sizing:border-box",
+        "padding:3px 6px",
+        "color:#ffffff",
+        `background:${colorWithAlpha(data.hudTheme?.colors.backing ?? "#071016", 0.94)}`,
+        `border:1px solid ${data.hudTheme?.colors.border ?? "#789690"}`,
+        "border-radius:4px",
+        "box-shadow:0 2px 7px rgba(0,0,0,.72)",
+        "font-size:8px",
+        "line-height:1.25",
+        "white-space:normal",
+        "text-shadow:1px 1px #000,-1px -1px #000",
+      ].join(";");
+      const input = document.createElement("span");
+      input.textContent = marker;
+      input.setAttribute("aria-hidden", "true");
+      input.style.cssText = "display:grid;place-items:center;flex:0 0 auto;width:9px;height:9px;color:#172925;background:#f4dfb4;border-radius:50%;font:700 6px/1 sans-serif;text-shadow:none";
+      const text = document.createElement("span");
+      text.dataset.fondaleActionText = "";
+      element.append(input, text);
+    }
+    this.secondaryAction.style.marginTop = "2px";
+    this.secondaryAction.style.opacity = "0.92";
+    this.actionLeader.style.cssText = "display:block;width:1px;height:7px;margin-left:14px;background:#fff;box-shadow:1px 0 #000";
+    this.action.append(this.primaryAction, this.secondaryAction, this.actionLeader);
     Object.assign(this.response.style, {
       position: "absolute",
       left: "10%",
@@ -366,50 +410,19 @@ class EngineOverlay {
       textAlign: "center",
     });
     this.response.setAttribute("aria-live", "polite");
-    if (data.commandLexicon) {
-      this.verbs.setAttribute("aria-label", "Verbs");
-      this.verbs.style.cssText = [
-        "position:absolute",
-        "display:grid",
-        "grid-template-columns:repeat(3,40px)",
-        "gap:1px",
-        "left:4px",
-        "bottom:6px",
-        "pointer-events:auto",
-      ].join(";");
-      for (const verb of commandVerbs) {
-        const button = document.createElement("button");
-        button.type = "button";
-        button.dataset.fondaleVerb = verb;
-        button.textContent = data.commandLexicon.verbs[verb];
-        button.setAttribute("aria-pressed", "false");
-        button.style.cssText = overlayButtonStyle;
-        if (data.hudTheme) {
-          button.style.color = data.hudTheme.colors.text;
-          button.style.borderColor = data.hudTheme.colors.border;
-          button.style.background = colorWithAlpha(
-            data.hudTheme.colors.backing,
-            data.hudTheme.opacity * 0.6,
-          );
-        }
-        button.addEventListener("click", () => this.core.input({ type: "select-verb", verb }));
-        this.verbs.append(button);
-      }
-    }
     Object.assign(this.inventory.style, {
-      position: "absolute",
-      display: "flex",
-      gap: "2px",
-      right: "4px",
-      bottom: "4px",
-      pointerEvents: "auto",
+      display: "grid",
+      gridTemplateColumns: "repeat(2,minmax(0,1fr))",
+      gridTemplateRows: "repeat(4,minmax(0,1fr))",
+      minHeight: "0",
+      gap: "3px",
     });
     this.inventory.dataset.fondaleInventory = "";
     this.inventory.addEventListener("wheel", (event) => {
       event.preventDefault();
       this.changeInventoryPage(event.deltaY > 0 ? 1 : -1);
     });
-    this.inventoryNav.style.cssText = "position:absolute;right:109px;bottom:14px;display:flex;flex-direction:column;pointer-events:auto";
+    this.inventoryNav.style.cssText = "display:flex;justify-content:center;gap:4px;pointer-events:auto";
     const previous = this.modalButton("‹", () => this.changeInventoryPage(-1));
     previous.dataset.fondaleInventoryPrevious = "";
     previous.setAttribute("aria-label", "Previous Inventory page");
@@ -417,6 +430,78 @@ class EngineOverlay {
     next.dataset.fondaleInventoryNext = "";
     next.setAttribute("aria-label", "Next Inventory page");
     this.inventoryNav.append(previous, next);
+    this.inventoryTrigger.type = "button";
+    this.inventoryTrigger.dataset.fondaleInventoryTrigger = "";
+    this.inventoryTrigger.setAttribute("aria-label", "Open Inventory");
+    this.inventoryTrigger.setAttribute("aria-expanded", "false");
+    this.inventoryTrigger.style.cssText = [
+      "position:absolute",
+      "z-index:9",
+      "left:7px",
+      "bottom:7px",
+      "display:grid",
+      "place-items:center",
+      "width:20px",
+      "height:20px",
+      "padding:0",
+      "pointer-events:auto",
+      `color:${data.hudTheme?.colors.preferred ?? "#f2ad62"}`,
+      `background:${colorWithAlpha(data.hudTheme?.colors.backing ?? "#0c1626", 0.94)}`,
+      `border:1px solid ${data.hudTheme?.colors.preferred ?? "#f2ad62"}`,
+      "border-radius:50%",
+      "box-shadow:0 2px 7px rgba(0,0,0,.8)",
+      "font:700 8px/1 sans-serif",
+    ].join(";");
+    const bag = document.createElement("span");
+    bag.setAttribute("aria-hidden", "true");
+    bag.style.cssText = `position:relative;display:block;width:11px;height:8px;margin-top:3px;box-sizing:border-box;background:${data.hudTheme?.colors.preferred ?? "#f2ad62"};border:1px solid ${data.hudTheme?.colors.text ?? "#f4dfb4"};border-radius:2px 2px 3px 3px`;
+    const bagHandle = document.createElement("span");
+    bagHandle.style.cssText = `position:absolute;left:3px;top:-5px;width:4px;height:4px;box-sizing:border-box;border:1px solid ${data.hudTheme?.colors.preferred ?? "#f2ad62"};border-bottom:0;border-radius:3px 3px 0 0`;
+    const bagBand = document.createElement("span");
+    bagBand.style.cssText = "position:absolute;left:0;right:0;top:3px;height:1px;background:#6e4d16";
+    bag.append(bagHandle, bagBand);
+    const key = document.createElement("span");
+    key.textContent = "I";
+    key.setAttribute("aria-hidden", "true");
+    key.style.cssText = "position:absolute;right:-3px;bottom:-2px;padding:1px 2px;color:#172925;background:#fff;border:1px solid #172925;border-radius:2px;font:700 5px/1 sans-serif";
+    this.inventoryTrigger.append(bag, key);
+    this.inventoryTrigger.addEventListener("click", () => this.setInventoryOpen(!this.inventoryOpen));
+    this.inventoryScrim.type = "button";
+    this.inventoryScrim.dataset.fondaleInventoryScrim = "";
+    this.inventoryScrim.setAttribute("aria-label", "Close Inventory");
+    this.inventoryScrim.style.cssText = "position:absolute;display:none;z-index:19;inset:0;padding:0;pointer-events:auto;background:rgba(2,6,9,.32);border:0";
+    this.inventoryScrim.addEventListener("click", () => this.setInventoryOpen(false));
+    this.inventoryPanel.dataset.fondaleInventoryPanel = "";
+    this.inventoryPanel.setAttribute("aria-label", "Inventory");
+    this.inventoryPanel.style.cssText = [
+      "position:absolute",
+      "display:none",
+      "z-index:20",
+      "top:6px",
+      "right:6px",
+      "bottom:6px",
+      "width:158px",
+      "box-sizing:border-box",
+      "grid-template-rows:auto minmax(0,1fr) auto",
+      "gap:4px",
+      "padding:6px",
+      "pointer-events:auto",
+      `color:${data.hudTheme?.colors.text ?? "#f4dfb4"}`,
+      `background:${colorWithAlpha(data.hudTheme?.colors.backing ?? "#0c1626", 0.96)}`,
+      `border:1px solid ${data.hudTheme?.colors.border ?? "#5c7182"}`,
+      "border-radius:5px",
+      "box-shadow:0 4px 14px rgba(0,0,0,.85)",
+    ].join(";");
+    const inventoryHeader = document.createElement("header");
+    inventoryHeader.style.cssText = "display:flex;align-items:center;justify-content:space-between";
+    const inventoryTitle = document.createElement("strong");
+    inventoryTitle.textContent = "Inventory";
+    const closeInventory = this.modalButton("×", () => this.setInventoryOpen(false));
+    closeInventory.dataset.fondaleInventoryClose = "";
+    closeInventory.setAttribute("aria-label", "Close Inventory");
+    closeInventory.style.margin = "0";
+    inventoryHeader.append(inventoryTitle, closeInventory);
+    this.inventoryPanel.append(inventoryHeader, this.inventory, this.inventoryNav);
     this.hint.dataset.fondaleHint = "";
     this.hint.setAttribute("role", "status");
     this.hint.style.cssText = "position:absolute;left:132px;bottom:40px;width:160px;text-align:center;color:#f2ad62;pointer-events:none";
@@ -477,9 +562,9 @@ class EngineOverlay {
       this.revealedHotspots,
       this.action,
       this.response,
-      this.verbs,
-      this.inventory,
-      this.inventoryNav,
+      this.inventoryScrim,
+      this.inventoryPanel,
+      this.inventoryTrigger,
       this.reveal,
       this.activity,
       this.hint,
@@ -493,15 +578,15 @@ class EngineOverlay {
   }
 
   blocksWorldInput(): boolean {
-    return this.modalKind !== null;
+    return this.modalKind !== null || this.inventoryOpen;
   }
 
   showNextIntroHint(): void {
     const next = [
-      ["left-click", "Left click walks or completes a Command."],
-      ["right-click", "Right click executes the Preferred Verb."],
+      ["left-click", "Left click executes the main action."],
+      ["right-click", "Right click executes the secondary action when shown."],
       ["tab", "Hold Tab to reveal active Nouns."],
-      ["inventory", "Use the wheel or arrows to scroll the Inventory."],
+      ["inventory", "Click the bag or press I to open the Inventory."],
     ].find(([kind]) => !this.preferences.shownHints.includes(kind!));
     if (!next) return;
     const [kind, text] = next;
@@ -521,71 +606,42 @@ class EngineOverlay {
       const speaker = latestResponse.response?.speaker ?? this.data.playerCharacter;
       this.positionSpeech(this.response, state, presentation, speaker);
     }
-    for (const button of this.verbs.querySelectorAll<HTMLButtonElement>("button")) {
-      const selected = button.dataset.fondaleVerb === state.command.verb;
-      const preferred = button.dataset.fondaleVerb === this.hoveredPreferredVerb;
-      button.setAttribute("aria-pressed", String(selected));
-      button.style.outline = selected ? "2px double white" : "none";
-      button.style.color = selected
-        ? this.data.hudTheme?.colors.selected ?? "white"
-        : preferred
-          ? this.data.hudTheme?.colors.preferred ?? "#f2ad62"
-          : this.data.hudTheme?.colors.text ?? "white";
-    }
     this.renderInventory(state);
     if (!this.hoveredHotspot) {
-      const firstNoun = state.command.firstNoun;
-      if (firstNoun && state.command.verb !== "walk-to") {
-        const noun = this.core.availableInventory().find(({ object }) => object === firstNoun.object);
-        const label = this.data.commandLexicon?.verbs[state.command.verb];
-        this.action.textContent = noun && label ? `${label} ${noun.label}` : "";
-      } else {
-        this.action.textContent = "";
-      }
+      this.action.style.display = "none";
     }
     this.renderActivity(state);
     const choosing = state.activity?.type === "sequence" && state.activity.active?.kind === "choice";
-    this.verbs.style.visibility = choosing ? "hidden" : "visible";
-    this.inventory.style.visibility = choosing ? "hidden" : "visible";
-    this.inventoryNav.style.visibility = choosing ? "hidden" : "visible";
+    this.inventoryTrigger.style.visibility = choosing ? "hidden" : "visible";
+    if (choosing && this.inventoryOpen) this.setInventoryOpen(false);
     if (this.hotspotsRevealed) this.renderRevealedHotspots();
   }
 
   showAction(hotspot: AvailableHotspot | AvailablePassage | undefined): void {
     const state = this.core.snapshot();
     this.hoveredHotspot = hotspot ?? null;
-    this.hoveredPreferredVerb = hotspot?.preferredVerb ?? null;
     if (!hotspot) {
-      this.action.textContent = "";
+      this.action.style.display = "none";
       return;
     }
-    const verb = state.command.verb === "walk-to" ? hotspot.preferredVerb : state.command.verb;
-    const verbLabel = verb && verb !== "walk-to" ? this.data.commandLexicon?.verbs[verb] : undefined;
     const firstNoun = state.command.firstNoun
       ? this.core.availableInventory().find(({ object }) => object === state.command.firstNoun?.object)
       : undefined;
-    if (verbLabel && firstNoun && (verb === "give" || verb === "use")) {
-      const pattern = this.data.commandLexicon?.patterns[verb];
-      this.action.textContent = pattern
-        ?.replace("{verb}", verbLabel)
-        .replace("{first}", firstNoun.label)
-        .replace("{second}", hotspot.label) ?? `${verbLabel} ${firstNoun.label} ${hotspot.label}`;
-    } else {
-      this.action.textContent = verbLabel
-        ? verb === "give"
-          ? `${verbLabel} ${hotspot.label}`
-          : this.data.commandLexicon?.patterns.unary
-            .replace("{verb}", verbLabel)
-            .replace("{noun}", hotspot.label) ?? `${verbLabel} ${hotspot.label}`
-        : hotspot.label;
-    }
+    const primaryVerb = firstNoun ? hotspot.objectVerb ?? "use" : hotspot.preferredVerb;
+    const secondaryVerb = firstNoun ? hotspot.preferredVerb : hotspot.secondaryVerb;
+    this.setActionText(this.primaryAction, this.commandPhrase(primaryVerb, hotspot.label, firstNoun?.label));
+    const secondary = secondaryVerb && secondaryVerb !== primaryVerb
+      ? this.commandPhrase(secondaryVerb, hotspot.label)
+      : "";
+    this.setActionText(this.secondaryAction, secondary);
+    this.secondaryAction.style.display = secondary ? "flex" : "none";
+    this.action.style.display = "block";
   }
 
   showCursor(point: Point): void {
-    if (this.preferences.commandPreview === "pointer") {
-      this.action.style.left = `${Math.max(2, Math.min(this.data.logicalResolution.width - 122, point.x + 6))}px`;
-      this.action.style.top = `${Math.max(2, Math.min(this.data.logicalResolution.height - 12, point.y + 6))}px`;
-    }
+    const actionHeight = this.secondaryAction.style.display === "none" ? 25 : 39;
+    this.action.style.left = `${Math.max(3, Math.min(this.data.logicalResolution.width - 193, point.x + 7))}px`;
+    this.action.style.top = `${Math.max(3, Math.min(this.data.logicalResolution.height - actionHeight, point.y - actionHeight))}px`;
   }
 
   hideCursor(): void {
@@ -605,7 +661,7 @@ class EngineOverlay {
     this.previousInventoryCount = state.inventory.objects.length;
     const maximumPage = Math.max(0, Math.ceil(state.inventory.objects.length / 8) - 1);
     this.inventoryPage = Math.min(this.inventoryPage, maximumPage);
-    const signature = JSON.stringify([state.inventory, state.command, this.inventoryPage]);
+    const signature = JSON.stringify([state.inventory, state.command, this.inventoryPage, this.inventoryOpen]);
     if (signature === this.inventorySignature) return;
     this.inventorySignature = signature;
     this.inventory.replaceChildren();
@@ -620,13 +676,24 @@ class EngineOverlay {
       button.setAttribute("aria-pressed", String(selected));
       button.style.cssText = [
         "position:relative",
-        "padding:0",
-        "border:1px solid white",
+        "display:grid",
+        "grid-template-columns:32px minmax(0,1fr)",
+        "align-items:center",
+        "gap:3px",
+        "min-width:0",
+        "min-height:0",
+        "padding:2px",
+        `color:${selected ? this.data.hudTheme?.colors.backing ?? "#0c1626" : this.data.hudTheme?.colors.text ?? "#f4dfb4"}`,
+        `border:1px solid ${selected ? this.data.hudTheme?.colors.selected ?? "#58d6d2" : this.data.hudTheme?.colors.border ?? "#5c7182"}`,
         `outline:${selected ? "2px double white" : "none"}`,
-        `background:${this.data.hudTheme
+        `background:${selected
+          ? this.data.hudTheme?.colors.selected ?? "#58d6d2"
+          : this.data.hudTheme
           ? colorWithAlpha(this.data.hudTheme.colors.inventoryWell, this.data.hudTheme.opacity * 0.68)
           : "rgba(33,27,45,.68)"}`,
         "image-rendering:pixelated",
+        "font:inherit",
+        "text-align:left",
       ].join(";");
       const image = document.createElement("img");
       const displaySize = Math.min(this.data.inventoryAppearanceSize ?? 24, 24);
@@ -635,6 +702,10 @@ class EngineOverlay {
       image.alt = "";
       image.src = assetUrl(this.data.objects[objectId]!.inventoryAppearance);
       button.append(image);
+      const label = document.createElement("span");
+      label.textContent = available.get(objectId)?.label ?? objectId;
+      label.style.cssText = "min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap";
+      button.append(label);
       if (selected) {
         const marker = document.createElement("span");
         marker.textContent = "✓";
@@ -642,7 +713,10 @@ class EngineOverlay {
         marker.style.cssText = "position:absolute;right:1px;bottom:0;color:white";
         button.append(marker);
       }
-      button.addEventListener("click", () => this.core.input({ type: "activate-object", object: objectId }));
+      button.addEventListener("click", () => {
+        this.core.input({ type: "select-object", object: objectId });
+        this.setInventoryOpen(false);
+      });
       this.inventory.append(button);
     }
     if (this.data.commandLexicon) {
@@ -650,18 +724,47 @@ class EngineOverlay {
         const empty = document.createElement("span");
         empty.dataset.fondaleInventorySlot = "empty";
         empty.setAttribute("aria-hidden", "true");
-        const displaySize = Math.min(this.data.inventoryAppearanceSize ?? 24, 24);
         const well = this.data.hudTheme
           ? colorWithAlpha(this.data.hudTheme.colors.inventoryWell, this.data.hudTheme.opacity * 0.68)
           : "rgba(20,15,28,.55)";
-        empty.style.cssText = `display:block;width:${displaySize}px;height:${displaySize}px;border:1px solid ${this.data.hudTheme?.colors.border ?? "rgba(255,255,255,.45)"};background:${well}`;
+        empty.style.cssText = `display:block;min-width:0;min-height:0;border:1px solid ${this.data.hudTheme?.colors.border ?? "rgba(255,255,255,.45)"};background:${well};opacity:.4`;
         this.inventory.append(empty);
       }
-      this.inventory.style.display = "grid";
-      this.inventory.style.gridTemplateColumns = "repeat(4,26px)";
       this.inventoryNav.querySelector<HTMLButtonElement>("[data-fondale-inventory-previous]")!.disabled = this.inventoryPage === 0;
       this.inventoryNav.querySelector<HTMLButtonElement>("[data-fondale-inventory-next]")!.disabled = this.inventoryPage >= maximumPage;
     }
+  }
+
+  private setInventoryOpen(open: boolean): void {
+    this.inventoryOpen = open;
+    this.inventoryPanel.style.display = open ? "grid" : "none";
+    this.inventoryScrim.style.display = open ? "block" : "none";
+    this.inventoryTrigger.setAttribute("aria-expanded", String(open));
+    this.inventoryTrigger.setAttribute("aria-label", open ? "Close Inventory" : "Open Inventory");
+    this.inventorySignature = "";
+    this.hint.style.visibility = open ? "hidden" : "visible";
+    if (open) this.action.style.display = "none";
+    if (open) this.inventoryPanel.querySelector<HTMLButtonElement>("button")?.focus({ preventScroll: true });
+    else this.frame.focus({ preventScroll: true });
+  }
+
+  private setActionText(element: HTMLElement, text: string): void {
+    element.querySelector<HTMLElement>("[data-fondale-action-text]")!.textContent = text;
+  }
+
+  private commandPhrase(verb: Verb | undefined, noun: string, firstNoun?: string): string {
+    if (!verb || verb === "walk-to") return noun;
+    const label = this.data.commandLexicon?.verbs[verb];
+    if (!label) return noun;
+    if (firstNoun && (verb === "give" || verb === "use")) {
+      return (this.data.commandLexicon?.patterns[verb] ?? `${label} {first} {second}`)
+        .replace("{verb}", label)
+        .replace("{first}", firstNoun)
+        .replace("{second}", noun);
+    }
+    return (this.data.commandLexicon?.patterns.unary ?? "{verb} {noun}")
+      .replace("{verb}", label)
+      .replace("{noun}", noun);
   }
 
   private changeInventoryPage(amount: number): void {
@@ -750,7 +853,7 @@ class EngineOverlay {
   ): void {
     const character = speaker ? state.characters[speaker] : undefined;
     const visible = character?.scene === state.currentScene;
-    const safeBottom = this.data.logicalResolution.height - 64;
+    const safeBottom = this.data.logicalResolution.height - 4;
     element.dataset.fondalePresentation = presentation;
     if (speaker) element.dataset.fondaleSpeaker = speaker;
     else delete element.dataset.fondaleSpeaker;
@@ -764,7 +867,13 @@ class EngineOverlay {
       "overflow-y:auto",
       "text-align:center",
       `color:${speaker && this.data.hudTheme?.speechColors[speaker] || this.data.hudTheme?.colors.text || "#f4dfb4"}`,
-      "text-shadow:1px 1px #000",
+      "box-sizing:border-box",
+      "padding:4px 7px",
+      `background:${colorWithAlpha(this.data.hudTheme?.colors.backing ?? "#071016", 0.88)}`,
+      `border:1px solid ${this.data.hudTheme?.colors.border ?? "#5c7182"}`,
+      "border-radius:4px",
+      "box-shadow:0 2px 8px rgba(0,0,0,.72)",
+      "text-shadow:1px 1px #000,-1px -1px #000",
       "pointer-events:none",
       `display:${this.preferences.speechText ? "block" : "none"}`,
     ].join(";");
@@ -861,11 +970,12 @@ class EngineOverlay {
       if (event.key === "Escape") this.core.input({ type: "skip-sequence" });
       return;
     }
-    const keyboardVerbs = {
-      q: "open", w: "pick-up", e: "push",
-      a: "close", s: "look-at", d: "pull",
-      z: "give", x: "talk-to", c: "use",
-    } as const;
+    if (event.key.toLowerCase() === "i" && this.data.commandLexicon) {
+      event.preventDefault();
+      this.setInventoryOpen(!this.inventoryOpen);
+      this.showNextIntroHint();
+      return;
+    }
     if (event.key === "Tab" && this.data.commandLexicon) {
       event.preventDefault();
       this.hotspotsRevealed = true;
@@ -873,11 +983,10 @@ class EngineOverlay {
       this.renderRevealedHotspots();
       return;
     }
-    const verb = keyboardVerbs[event.key.toLowerCase() as keyof typeof keyboardVerbs];
-    if (verb) {
-      event.preventDefault();
-      this.core.input({ type: "select-verb", verb });
-    } else if (event.key === "Escape") this.core.input({ type: "escape" });
+    if (event.key === "Escape") {
+      if (this.inventoryOpen) this.setInventoryOpen(false);
+      else this.core.input({ type: "escape" });
+    }
   };
 
   private readonly onKeyUp = (event: KeyboardEvent): void => {
@@ -889,6 +998,7 @@ class EngineOverlay {
 
   private openModal(kind: EngineOverlay["modalKind"]): void {
     this.clearLineTimer();
+    if (kind && this.inventoryOpen) this.setInventoryOpen(false);
     this.modalKind = kind;
     this.modal.replaceChildren();
     this.modal.style.display = kind ? "block" : "none";
@@ -912,17 +1022,8 @@ class EngineOverlay {
     const controls = document.createElement("div");
     controls.style.cssText = "display:grid;grid-template-columns:1fr 1fr;gap:5px";
     const textSpeed = selectPreference("Text speed", ["slow", "normal", "fast"], this.preferences.textSpeed);
-    const preview = selectPreference("Command preview", ["pointer", "sentence-line"], this.preferences.commandPreview);
     const speech = checkboxPreference("Speech text", this.preferences.speechText);
-    const backing = checkboxPreference("HUD backing", this.preferences.hudBacking);
-    const opacity = document.createElement("input");
-    opacity.type = "range";
-    opacity.min = "0.35";
-    opacity.max = "1";
-    opacity.step = "0.05";
-    opacity.value = String(this.preferences.hudOpacity);
-    opacity.setAttribute("aria-label", "HUD opacity");
-    controls.append(textSpeed.label, preview.label, speech.label, backing.label, opacity);
+    controls.append(textSpeed.label, speech.label);
     if (this.assets.audio.size > 0) {
       const volume = document.createElement("input");
       volume.type = "range";
@@ -938,17 +1039,14 @@ class EngineOverlay {
       controls.append(volume);
     }
     textSpeed.select.addEventListener("change", () => this.updatePreference({ textSpeed: textSpeed.select.value as PlayerPreferences["textSpeed"] }));
-    preview.select.addEventListener("change", () => this.updatePreference({ commandPreview: preview.select.value as PlayerPreferences["commandPreview"] }));
     speech.input.addEventListener("change", () => this.updatePreference({ speechText: speech.input.checked }));
-    backing.input.addEventListener("change", () => this.updatePreference({ hudBacking: backing.input.checked }));
-    opacity.addEventListener("input", () => this.updatePreference({ hudOpacity: Number(opacity.value) }));
     this.modal.append(controls, this.modalButton("Help", () => this.openModal("help")), this.modalButton("Save", () => this.openModal("save")), this.modalButton("Load", () => this.openModal("load")));
   }
 
   private renderHelp(): void {
     const text = document.createElement("p");
     text.dataset.fondaleHelp = "";
-    text.textContent = "Mouse: left walk/Command, right Preferred Verb, middle skip Line. Tab reveal. Wheel Inventory. QWE/ASD/ZXC Verbs. 1–6 Choice. F5 Options. Ctrl+S Save. Ctrl+L Load. Period skips a Line. Escape cancels a Command or a skippable Sequence.";
+    text.textContent = "Mouse: left main action, right secondary action when shown, middle skip Line. Bag or I opens Inventory. Tab reveals Nouns. 1–6 selects a Choice. F5 Options. Ctrl+S Save. Ctrl+L Load. Period skips a Line. Escape closes Inventory, deselects an Object, or skips a skippable Sequence.";
     this.modal.append(text, this.modalButton("Back", () => this.openModal("options")));
   }
 
@@ -1001,21 +1099,6 @@ class EngineOverlay {
   private updatePreference(change: Partial<PlayerPreferences>): void {
     this.preferences = { ...this.preferences, ...change };
     localStorage.setItem(preferencesKey(this.data.identity), JSON.stringify(this.preferences));
-    this.root.style.setProperty("--fondale-hud-opacity", String(this.preferences.hudOpacity));
-    this.verbs.style.opacity = String(this.preferences.hudOpacity);
-    this.inventory.style.opacity = String(this.preferences.hudOpacity);
-    this.root.style.background = this.preferences.hudBacking
-      ? `linear-gradient(to bottom, transparent 75%, ${this.data.hudTheme
-        ? colorWithAlpha(this.data.hudTheme.colors.backing, this.data.hudTheme.opacity * 0.38)
-        : "rgba(12,22,38,.34)"} 75%)`
-      : "none";
-    if (this.preferences.commandPreview === "sentence-line") {
-      this.action.style.left = "153px";
-      this.action.style.top = "174px";
-      this.action.style.textAlign = "center";
-    } else {
-      this.action.style.textAlign = "left";
-    }
     this.activitySignature = "";
   }
 
@@ -1040,9 +1123,6 @@ class EngineOverlay {
 interface PlayerPreferences {
   readonly textSpeed: "slow" | "normal" | "fast";
   readonly speechText: boolean;
-  readonly hudBacking: boolean;
-  readonly hudOpacity: number;
-  readonly commandPreview: "pointer" | "sentence-line";
   readonly audioVolume: number;
   readonly shownHints: readonly string[];
 }
@@ -1074,9 +1154,6 @@ function revealLabel(
 const defaultPreferences: PlayerPreferences = {
   textSpeed: "normal",
   speechText: true,
-  hudBacking: true,
-  hudOpacity: 0.9,
-  commandPreview: "pointer",
   audioVolume: 1,
   shownHints: [],
 };
@@ -1092,9 +1169,6 @@ function readPreferences(identity: string): PlayerPreferences {
     return {
       ...defaultPreferences,
       ...value,
-      hudOpacity: typeof value.hudOpacity === "number" && value.hudOpacity >= 0.35 && value.hudOpacity <= 1
-        ? value.hudOpacity
-        : defaultPreferences.hudOpacity,
       shownHints: Array.isArray(value.shownHints) ? value.shownHints.filter((hint): hint is string => typeof hint === "string") : [],
       audioVolume: typeof value.audioVolume === "number" && value.audioVolume >= 0 && value.audioVolume <= 1
         ? value.audioVolume

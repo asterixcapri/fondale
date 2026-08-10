@@ -94,3 +94,16 @@ Passage come Verso la piazza, Arco, Sentiero e Vicolo mostrano quindi la sola
 azione principale; Noun come Argano, Raffaele, Panca e Macina continuano a
 esporre click sinistro e destro. Con un Object selezionato, il suo uso diventa
 la primaria e l'azione principale del Noun resta disponibile come secondaria.
+
+### 10 agosto 2026 — modello contestuale promosso in produzione
+
+Il verdetto C è ora il contratto canonico del runtime. ADR-0007 sostituisce la
+fascia inferiore di ADR-0006 con callout contestuali, borsa Inventory cliccabile
+e cassetto laterale. `preferredVerbs`, `secondaryVerbs` e `objectVerbs`
+mantengono nel Noun la politica delle azioni senza introdurre callback nel
+renderer; l'assenza della Secondary Action resta significativa.
+
+Le verifiche visuali di produzione sono conservate in
+`production-contextual-action.png` e `production-inventory-drawer.png`. La suite
+del pacchetto e l'acceptance completa di Capri coprono inoltre selezione Object,
+Use/Give, Passage, speech leggibile, Choice, paginazione e ripristino dei Save.

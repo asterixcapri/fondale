@@ -15,6 +15,7 @@ export {
   type NounDefinition,
   type NounLabel,
   type PreferredVerbCase,
+  type SelectedObjectVerbCase,
   type Verb,
 } from "./public/commands";
 export {

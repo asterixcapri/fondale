@@ -17,6 +17,7 @@ const silenceAudio = "data:audio/wav;base64,UklGRnQAAABXQVZFZm10IBAAAAABAAEAQB8A
 const door = defineNoun({
   labels: [{ text: "Portone" }],
   preferredVerbs: [{ verb: "look-at" }],
+  secondaryVerbs: [{ verb: "talk-to" }],
   cases: [{
     verb: "look-at",
     response: { text: "Un vecchio portone.", presentation: "narration" },
@@ -36,6 +37,7 @@ const door = defineNoun({
 const keyNoun = defineNoun({
   labels: [{ text: "Chiave" }],
   preferredVerbs: [{ verb: "pick-up" }],
+  secondaryVerbs: [{ verb: "look-at" }],
   cases: [{
     verb: "pick-up",
     response: { text: "Raccolgo la chiave." },
@@ -44,7 +46,8 @@ const keyNoun = defineNoun({
 });
 const extraNouns = Array.from({ length: 8 }, (_, index) => defineNoun({
   labels: [{ text: `Oggetto ${index + 1}` }],
-  preferredVerbs: [{ verb: index === 0 ? "use" : "pick-up" }],
+  preferredVerbs: [{ verb: "pick-up" }],
+  secondaryVerbs: [{ verb: "look-at" }],
   cases: [{
     verb: "pick-up",
     response: { text: `Raccolgo Oggetto ${index + 1}.` },
@@ -82,6 +85,8 @@ const returnNoun = defineNoun({
 const hostNoun = defineNoun({
   labels: [{ text: "Oste" }],
   preferredVerbs: [{ verb: "talk-to" }],
+  secondaryVerbs: [{ verb: "look-at" }],
+  objectVerbs: [{ verb: "give" }],
   cases: [
     { verb: "talk-to", sequence: "hostGreeting" },
     { verb: "give", firstNoun: "key", response: { text: "L'oste rifiuta la chiave." } },

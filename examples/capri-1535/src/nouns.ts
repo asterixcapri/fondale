@@ -10,15 +10,19 @@ const passage = (text: string) => defineNoun({
 export const alleyNouns = {
   traveller: defineNoun({
     labels: [{ text: "Viandante" }], preferredVerbs: [{ verb: "talk-to" }],
+    secondaryVerbs: [{ verb: "look-at" }],
+    objectVerbs: [{ verb: "give" }],
     cases: [{ verb: "talk-to", sequence: "conversation" }],
   }),
   key: defineNoun({
     labels: [{ text: "Chiave d'ottone" }], preferredVerbs: [{ verb: "pick-up" }],
+    secondaryVerbs: [{ verb: "look-at" }],
     cases: [{ verb: "pick-up", response: { text: "Prendo la chiave d'ottone." }, operations: [{ type: "collect-target-object" }] }],
   }),
   gate: defineNoun({
     labels: [{ when: { variable: "gateOpen", equals: true }, text: "Cancello aperto" }, { text: "Cancello chiuso" }],
     preferredVerbs: [{ when: { variable: "gateOpen", equals: true }, verb: "look-at" }, { verb: "open" }],
+    secondaryVerbs: [{ verb: "look-at" }],
     cases: [
       { verb: "open", response: { text: "La serratura ha bisogno di una chiave." } },
       { verb: "use", firstNoun: "key", response: { text: "La chiave d'ottone apre il cancello." }, operations: [
@@ -42,6 +46,8 @@ export const harbourNouns = {
   boat: defineUnaryNoun("Gozzo", "look-at", "Il gozzo aspetta che l'argano torni a funzionare."),
   raffaele: defineNoun({
     labels: [{ text: "Raffaele" }], preferredVerbs: [{ verb: "talk-to" }],
+    secondaryVerbs: [{ verb: "look-at" }],
+    objectVerbs: [{ verb: "give" }],
     cases: [
       { verb: "talk-to", when: { variable: "boatReady", equals: true }, response: { text: "L'argano tiene. Attraversa la grotta e porta il pacco a Monte Solaro.", speaker: "raffaele" } },
       { verb: "talk-to", when: { variable: "raffaeleMet", equals: true }, response: { text: "L'olio è vicino alle botti; la manovella era fra le reti.", speaker: "raffaele" } },
@@ -50,14 +56,17 @@ export const harbourNouns = {
   }),
   oilFlask: defineNoun({
     labels: [{ text: "Ampolla d'olio" }], preferredVerbs: [{ verb: "pick-up" }],
+    secondaryVerbs: [{ verb: "look-at" }],
     cases: [{ verb: "pick-up", response: { text: "Prendo la piccola ampolla d'olio." }, operations: [{ type: "collect-target-object" }] }],
   }),
   winchHandle: defineNoun({
     labels: [{ text: "Manovella" }], preferredVerbs: [{ verb: "pick-up" }],
+    secondaryVerbs: [{ verb: "look-at" }],
     cases: [{ verb: "pick-up", response: { text: "Libero la manovella dalle reti." }, operations: [{ type: "collect-target-object" }] }],
   }),
   winch: defineNoun({
     labels: [{ text: "Argano" }], preferredVerbs: [{ verb: "look-at" }],
+    secondaryVerbs: [{ verb: "push" }],
     cases: [
       { verb: "look-at", when: { variable: "boatReady", equals: true }, response: { text: "La manovella gira e la corda è finalmente in tensione." } },
       { verb: "look-at", when: { variable: "winchLubricated", equals: true }, response: { text: "Gli ingranaggi sono liberi. Ora manca la manovella." } },
@@ -97,7 +106,7 @@ export const monteSolaroNouns = {
 };
 
 export const tavernNouns = {
-  host: defineNoun({ labels: [{ text: "Oste" }], preferredVerbs: [{ verb: "talk-to" }], cases: [{ verb: "talk-to", sequence: "hostConversation" }] }),
+  host: defineNoun({ labels: [{ text: "Oste" }], preferredVerbs: [{ verb: "talk-to" }], secondaryVerbs: [{ verb: "look-at" }], objectVerbs: [{ verb: "give" }], cases: [{ verb: "talk-to", sequence: "hostConversation" }] }),
   closedDoor: defineUnaryNoun("Porta chiusa", "look-at", "La porta a sinistra è chiusa e non sembra destinata agli ospiti."),
   interior: defineUnaryNoun("Sala della taverna", "look-at", "Legno scuro, brocche e storie che migliorano a ogni bicchiere."),
   toHarbour: passage("Portone per il porto"),

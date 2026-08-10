@@ -725,6 +725,12 @@ function validateProjectDefinitions(
     value.preferredVerbs.forEach((preferred, index) =>
       condition(preferred.when, `${path}.preferredVerbs[${index}].when`),
     );
+    value.secondaryVerbs?.forEach((secondary, index) =>
+      condition(secondary.when, `${path}.secondaryVerbs[${index}].when`),
+    );
+    value.objectVerbs?.forEach((objectVerb, index) =>
+      condition(objectVerb.when, `${path}.objectVerbs[${index}].when`),
+    );
     value.cases.forEach((candidate, index) => {
       const candidatePath = `${path}.cases[${index}]`;
       condition(candidate.when, `${candidatePath}.when`);
@@ -775,15 +781,6 @@ function validateProjectDefinitions(
   }
 
   for (const [sceneId, scene] of Object.entries(input.scenes)) {
-    const hudTop = height - 60;
-    if (input.commandLexicon && scene.walkableRegion.some(({ y }) => y > hudTop)) {
-      diagnostics.push({
-        code: "definition.hud-reserved.walkable-region",
-        family: "definition",
-        path: `scenes.${sceneId}.walkableRegion`,
-        message: "A Walkable Region cannot extend beneath the Engine-owned HUD.",
-      });
-    }
     scene.walkableRegion.forEach((point, index) => {
       if (!pointInFrame(point)) {
         diagnostics.push({
@@ -831,22 +828,6 @@ function validateProjectDefinitions(
     }
     scene.hotspots?.forEach((hotspot, hotspotIndex) => {
       const base = `scenes.${sceneId}.hotspots[${hotspotIndex}]`;
-      if (input.commandLexicon && hotspot.area.some(({ y }) => y > hudTop)) {
-        diagnostics.push({
-          code: "definition.hud-reserved.hotspot",
-          family: "definition",
-          path: `${base}.area`,
-          message: "A Hotspot cannot extend beneath the Engine-owned HUD.",
-        });
-      }
-      if (input.commandLexicon && hotspot.approach.groundPoint.y > hudTop) {
-        diagnostics.push({
-          code: "definition.hud-reserved.approach",
-          family: "definition",
-          path: `${base}.approach`,
-          message: "An Approach Point cannot lie beneath the Engine-owned HUD.",
-        });
-      }
       noun(hotspot.noun, `${base}.noun`, hotspot.target);
       validatePolygonBounds(hotspot.area, `${base}.area`, pointInFrame, diagnostics);
       if (!pointInFrame(hotspot.approach.groundPoint)) {
@@ -864,22 +845,6 @@ function validateProjectDefinitions(
     });
     scene.passages?.forEach((passage, passageIndex) => {
       const base = `scenes.${sceneId}.passages[${passageIndex}]`;
-      if (input.commandLexicon && passage.area.some(({ y }) => y > hudTop)) {
-        diagnostics.push({
-          code: "definition.hud-reserved.passage",
-          family: "definition",
-          path: `${base}.area`,
-          message: "A Scene Passage cannot extend beneath the Engine-owned HUD.",
-        });
-      }
-      if (input.commandLexicon && passage.approach.groundPoint.y > hudTop) {
-        diagnostics.push({
-          code: "definition.hud-reserved.approach",
-          family: "definition",
-          path: `${base}.approach`,
-          message: "An Approach Point cannot lie beneath the Engine-owned HUD.",
-        });
-      }
       noun(passage.noun, `${base}.noun`);
       validatePolygonBounds(passage.area, `${base}.area`, pointInFrame, diagnostics);
       if (!pointInFrame(passage.approach.groundPoint)) {

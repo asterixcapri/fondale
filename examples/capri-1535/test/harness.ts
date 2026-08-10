@@ -33,6 +33,14 @@ export async function clickWorld(page: Page, x: number, y: number): Promise<void
   await page.mouse.click(box.x + (x / 426) * box.width, box.y + (y / 240) * box.height);
 }
 
+/** Hovers one logical Scene Space point through the visible canvas. */
+export async function hoverWorld(page: Page, x: number, y: number): Promise<void> {
+  const canvas = page.locator("[data-fondale-frame] canvas");
+  const box = await canvas.boundingBox();
+  if (!box) throw new Error("Fondale canvas is not visible");
+  await page.mouse.move(box.x + (x / 426) * box.width, box.y + (y / 240) * box.height);
+}
+
 /** Saves a screenshot under a stable name the agent can open and look at. */
 export async function shoot(page: Page, name: string): Promise<void> {
   await page.screenshot({ path: `${SHOTS_DIR}/${name}.png` });

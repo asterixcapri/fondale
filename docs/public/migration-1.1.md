@@ -6,7 +6,9 @@ there is no compatibility mode.
 
 For every interactive Hotspot, create a `NounDefinition` with `defineNoun` and
 assign it to `noun`. Move the former visible label into the final unconditional
-`labels` entry and the old default action into `preferredVerbs`. Convert each
+`labels` entry and the old default action into `preferredVerbs`. Add optional
+`secondaryVerbs` only when right click should expose another meaningful action,
+and `objectVerbs` when a selected Object should use Give instead of Use. Convert each
 Primary Action branch to an ordered `CommandCase`. Convert Inventory Use cases
 to binary `use` cases on the target Noun, naming the Inventory Object in
 `firstNoun`. Game Behavior writes become declarative `operations`; condition
@@ -15,13 +17,13 @@ reads become `when` clauses.
 Objects used from Inventory need their own Noun Definition. Every Scene Passage
 also needs a Noun, a `direction`, and its existing destination and Approach
 Point. Add a complete `CommandLexicon` and either local Noun fallbacks or
-response-only `commandFallbacks` for all nine visible verbs. A complete Command
+response-only `commandFallbacks` for all semantic Command verbs. A complete Command
 must never resolve silently.
 
-Finally, define an optional local `HUDTheme`, move essential geometry above the
-bottom 60 logical pixels reserved for the Engine HUD, increment the Project
-Version so old Save Snapshots remain visible but incompatible, and verify real
-mouse and keyboard input in desktop Chrome.
+Finally, define an optional local `HUDTheme`. Scene geometry may use the entire
+Logical Resolution because the contextual overlay reserves no lower band.
+Increment the Project Version so old Save Snapshots remain visible but
+incompatible, and verify real mouse and keyboard input in desktop Chrome.
 
 See the compiled [Interaction](recipes/interaction.ts),
 [Inventory](recipes/inventory.ts), [Command Case](recipes/command-case.ts), and

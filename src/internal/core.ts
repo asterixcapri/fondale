@@ -90,10 +90,13 @@ export type CoreInput =
   | { readonly type: "move"; readonly point: Point; readonly fast?: boolean }
   | { readonly type: "select-verb"; readonly verb: CommandVerb }
   | { readonly type: "activate-hotspot"; readonly hotspot: number }
-  | { readonly type: "quick-hotspot"; readonly hotspot: number }
+  | { readonly type: "quick-hotspot"; readonly hotspot: number; readonly verb?: Verb }
+  | { readonly type: "contextual-hotspot"; readonly hotspot: number; readonly action: "primary" | "secondary" }
   | { readonly type: "activate-passage"; readonly passage: number; readonly fast?: boolean; readonly forceWalk?: boolean }
-  | { readonly type: "quick-passage"; readonly passage: number }
+  | { readonly type: "quick-passage"; readonly passage: number; readonly verb?: Verb }
+  | { readonly type: "contextual-passage"; readonly passage: number; readonly action: "primary" | "secondary" }
   | { readonly type: "activate-object"; readonly object: string }
+  | { readonly type: "select-object"; readonly object: string }
   | { readonly type: "escape" }
   | { readonly type: "advance-sequence" }
   | { readonly type: "skip-sequence" }
@@ -115,12 +118,15 @@ export interface AvailableHotspot {
   readonly area: readonly Point[];
   readonly label: string;
   readonly preferredVerb?: Verb;
+  readonly secondaryVerb?: Verb;
+  readonly objectVerb?: Verb;
 }
 
 export interface AvailableInventoryNoun {
   readonly object: string;
   readonly label: string;
   readonly preferredVerb: Verb;
+  readonly secondaryVerb?: Verb;
 }
 
 export interface AvailablePassage {
@@ -128,6 +134,8 @@ export interface AvailablePassage {
   readonly area: readonly Point[];
   readonly label: string;
   readonly preferredVerb: Verb;
+  readonly secondaryVerb?: Verb;
+  readonly objectVerb?: Verb;
   readonly direction: "left" | "right" | "up" | "down" | "enter";
 }
 
@@ -207,11 +215,15 @@ export function createCoreSession(
         if (!hotspotAvailable(hotspot)) return [];
         const label = conditionalValue(hotspot.noun.labels).text;
         const preferredVerb = conditionalValue(hotspot.noun.preferredVerbs).verb;
+        const secondaryVerb = conditionalOptionalValue(hotspot.noun.secondaryVerbs)?.verb;
+        const objectVerb = conditionalOptionalValue(hotspot.noun.objectVerbs)?.verb;
         return [{
           index,
           area: hotspot.area.map((point) => ({ ...point })),
           label,
           ...(preferredVerb ? { preferredVerb } : {}),
+          ...(secondaryVerb ? { secondaryVerb } : {}),
+          ...(objectVerb ? { objectVerb } : {}),
         }];
       });
     },
@@ -219,10 +231,12 @@ export function createCoreSession(
       return state.inventory.objects.flatMap((object) => {
         const noun = data.objects[object]?.noun;
         if (!noun) return [];
+        const secondaryVerb = conditionalOptionalValue(noun.secondaryVerbs)?.verb;
         return [{
           object,
           label: conditionalValue(noun.labels).text,
           preferredVerb: conditionalValue(noun.preferredVerbs).verb,
+          ...(secondaryVerb ? { secondaryVerb } : {}),
         }];
       });
     },
@@ -230,11 +244,15 @@ export function createCoreSession(
       const scene = data.scenes[state.currentScene]!;
       return (scene.passages ?? []).flatMap((passage, index) => {
         if (!conditionMatches(passage.when)) return [];
+        const secondaryVerb = conditionalOptionalValue(passage.noun.secondaryVerbs)?.verb;
+        const objectVerb = conditionalOptionalValue(passage.noun.objectVerbs)?.verb;
         return [{
           index,
           area: passage.area.map((point) => ({ ...point })),
           label: conditionalValue(passage.noun.labels).text,
           preferredVerb: conditionalValue(passage.noun.preferredVerbs).verb,
+          ...(secondaryVerb ? { secondaryVerb } : {}),
+          ...(objectVerb ? { objectVerb } : {}),
           direction: passage.direction,
         }];
       });
@@ -275,7 +293,11 @@ export function createCoreSession(
       state.command = { verb: input.verb, firstNoun: null };
     } else if (input.type === "move") {
       beginIntent({ kind: "move" }, input.point, undefined, input.fast);
-    } else if (input.type === "activate-hotspot" || input.type === "quick-hotspot") {
+    } else if (
+      input.type === "activate-hotspot" ||
+      input.type === "quick-hotspot" ||
+      input.type === "contextual-hotspot"
+    ) {
       const scene = data.scenes[state.currentScene]!;
       const hotspot = scene.hotspots?.[input.hotspot];
       if (hotspot && hotspotAvailable(hotspot)) {
@@ -289,8 +311,11 @@ export function createCoreSession(
           return;
         }
         const quickVerb = input.type === "quick-hotspot"
-          ? conditionalValue(hotspot.noun.preferredVerbs).verb
-          : undefined;
+          ? input.verb ?? conditionalValue(hotspot.noun.preferredVerbs).verb
+          : input.type === "contextual-hotspot"
+            ? contextualVerb(hotspot.noun, input.action)
+            : undefined;
+        if (input.type === "contextual-hotspot" && !quickVerb) return;
         const commandFirstNoun = quickVerb
           ? preferredFirstNoun(hotspot.noun, quickVerb)
           : state.command.firstNoun?.object;
@@ -315,7 +340,11 @@ export function createCoreSession(
           hotspot.approach.facing,
         );
       }
-    } else if (input.type === "activate-passage" || input.type === "quick-passage") {
+    } else if (
+      input.type === "activate-passage" ||
+      input.type === "quick-passage" ||
+      input.type === "contextual-passage"
+    ) {
       const scene = data.scenes[state.currentScene]!;
       const passage = scene.passages?.[input.passage];
       if (passage && conditionMatches(passage.when)) {
@@ -325,8 +354,11 @@ export function createCoreSession(
           !state.command.firstNoun
         ) return;
         const preferredVerb = input.type === "quick-passage"
-          ? conditionalValue(passage.noun.preferredVerbs).verb
-          : undefined;
+          ? input.verb ?? conditionalValue(passage.noun.preferredVerbs).verb
+          : input.type === "contextual-passage"
+            ? contextualVerb(passage.noun, input.action)
+            : undefined;
+        if (input.type === "contextual-passage" && !preferredVerb) return;
         const commandFirstNoun = preferredVerb
           ? preferredFirstNoun(passage.noun, preferredVerb)
           : state.command.firstNoun?.object;
@@ -353,6 +385,12 @@ export function createCoreSession(
           input.type === "activate-passage" && input.fast,
         );
       }
+    } else if (input.type === "select-object") {
+      if (!state.inventory.objects.includes(input.object)) return;
+      state.activity = null;
+      state.command = state.command.firstNoun?.object === input.object
+        ? { verb: "walk-to", firstNoun: null }
+        : { verb: "use", firstNoun: { kind: "object", object: input.object } };
     } else if (input.type === "activate-object") {
       if (!state.inventory.objects.includes(input.object)) return;
       const noun = data.objects[input.object]?.noun;
@@ -413,6 +451,17 @@ export function createCoreSession(
       candidate.firstNoun === firstNoun &&
       conditionMatches(candidate.when)
     ) ? firstNoun : undefined;
+  }
+
+  function contextualVerb(noun: NounDefinition, action: "primary" | "secondary"): Verb | undefined {
+    if (state.command.firstNoun) {
+      return action === "primary"
+        ? conditionalOptionalValue(noun.objectVerbs)?.verb ?? "use"
+        : conditionalValue(noun.preferredVerbs).verb;
+    }
+    return action === "primary"
+      ? conditionalValue(noun.preferredVerbs).verb
+      : conditionalOptionalValue(noun.secondaryVerbs)?.verb;
   }
 
   function advancePlayerIntent(): void {
@@ -572,6 +621,12 @@ export function createCoreSession(
       return false;
     }
     state = draft;
+    if (
+      state.command.firstNoun &&
+      !state.inventory.objects.includes(state.command.firstNoun.object)
+    ) {
+      state.command = { verb: "walk-to", firstNoun: null };
+    }
     if (state.activity?.type === "sequence") advanceSequence();
     return true;
   }
@@ -713,6 +768,12 @@ export function createCoreSession(
 
   function conditionalValue<T extends { readonly when?: InteractionCondition }>(values: readonly T[]): T {
     return values.find((value) => conditionMatches(value.when)) ?? values.at(-1)!;
+  }
+
+  function conditionalOptionalValue<T extends { readonly when?: InteractionCondition }>(
+    values: readonly T[] | undefined,
+  ): T | undefined {
+    return values?.find((value) => conditionMatches(value.when)) ?? values?.at(-1);
   }
 
   function hotspotAvailable(hotspot: HotspotDefinition): boolean {

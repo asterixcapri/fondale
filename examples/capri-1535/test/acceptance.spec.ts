@@ -1,14 +1,31 @@
-import { test, type Page } from "@playwright/test";
+import { test, type Locator, type Page } from "@playwright/test";
 
-import { clickWorld, expect, openGame, shoot } from "./harness";
+import { clickWorld, expect, hoverWorld, openGame, shoot } from "./harness";
 
 test.setTimeout(90_000);
 
 type Verb = "pick-up" | "look-at" | "talk-to" | "use";
 
 async function command(page: Page, verb: Verb, x: number, y: number): Promise<void> {
-  await page.locator(`[data-fondale-verb="${verb}"]`).click();
+  const labels: Record<Verb, string> = {
+    "pick-up": "Raccogli",
+    "look-at": "Guarda",
+    "talk-to": "Parla con",
+    use: "Usa",
+  };
+  await hoverWorld(page, x, y);
+  await expect(page.locator("[data-fondale-primary-action] [data-fondale-action-text]"))
+    .toContainText(labels[verb]);
   await clickWorld(page, x, y);
+}
+
+async function selectInventoryObject(page: Page, object: string): Promise<Locator> {
+  await page.locator("[data-fondale-inventory-trigger]").click();
+  const item = page.locator(`[data-fondale-inventory-object="${object}"]`);
+  await expect(item).toBeVisible();
+  await item.click();
+  await expect(page.locator("[data-fondale-inventory-panel]")).toBeHidden();
+  return item;
 }
 
 async function advance(page: Page): Promise<void> {
@@ -19,12 +36,11 @@ async function advance(page: Page): Promise<void> {
 async function reachHarbour(page: Page, previousScene?: Uint8Array): Promise<void> {
   await command(page, "pick-up", 118, 165);
   const key = page.locator('[data-fondale-inventory-object="key"]');
-  await expect(key).toBeVisible({ timeout: 8_000 });
+  await expect(key).toHaveCount(1, { timeout: 8_000 });
   await expect(page.locator("[aria-live=polite]")).toHaveText("Prendo la chiave d'ottone.");
 
-  await page.locator('[data-fondale-verb="use"]').click();
-  await key.click();
-  await clickWorld(page, 210, 150);
+  await selectInventoryObject(page, "key");
+  await command(page, "use", 210, 150);
   await expect(page.locator("[aria-live=polite]")).toHaveText(
     "La chiave d'ottone apre il cancello.",
     { timeout: 8_000 },
@@ -81,24 +97,22 @@ async function meetRaffaele(
 async function repairWinch(page: Page): Promise<void> {
   await command(page, "pick-up", 375, 160);
   const handle = page.locator('[data-fondale-inventory-object="winchHandle"]');
-  await expect(handle).toBeVisible({ timeout: 8_000 });
+  await expect(handle).toHaveCount(1, { timeout: 8_000 });
 
   await command(page, "pick-up", 409, 160);
   const oil = page.locator('[data-fondale-inventory-object="oilFlask"]');
-  await expect(oil).toBeVisible({ timeout: 8_000 });
+  await expect(oil).toHaveCount(1, { timeout: 8_000 });
 
-  await page.locator('[data-fondale-verb="use"]').click();
-  await oil.click();
-  await clickWorld(page, 250, 160);
+  await selectInventoryObject(page, "oilFlask");
+  await command(page, "use", 250, 160);
   await expect(page.locator("[aria-live=polite]")).toHaveText(
     "L'olio libera lentamente gli ingranaggi.",
     { timeout: 8_000 },
   );
   await expect(oil).toHaveCount(0);
 
-  await page.locator('[data-fondale-verb="use"]').click();
-  await handle.click();
-  await clickWorld(page, 250, 160);
+  await selectInventoryObject(page, "winchHandle");
+  await command(page, "use", 250, 160);
   await expect(page.locator("[aria-live=polite]")).toHaveText(
     "La manovella entra al suo posto. Il gozzo può partire.",
     { timeout: 8_000 },
@@ -226,36 +240,42 @@ test("pixel scaling and the Engine overlay remain usable in a smaller letterboxe
   const frame = page.locator("[data-fondale-frame]");
   await expect(frame).toHaveCSS("width", "852px");
   await expect(frame).toHaveCSS("height", "480px");
-  await expect(frame.locator('[aria-label="Verbs"] [data-fondale-verb]')).toHaveCount(9);
+  await expect(frame.locator("[data-fondale-verb]")).toHaveCount(0);
+  await expect(frame.locator("[data-fondale-inventory-trigger]")).toBeVisible();
+  await expect(frame.locator("[data-fondale-inventory-panel]")).toBeHidden();
+  await frame.locator("[data-fondale-inventory-trigger]").click();
   await expect(frame.locator("[data-fondale-inventory-slot]")).toHaveCount(8);
+  await frame.locator("[data-fondale-inventory-close]").click();
 
   await frame.focus();
   await page.keyboard.down("Tab");
   await expect(frame.locator("[data-fondale-revealed-hotspot]")).toHaveCount(3);
   await page.keyboard.up("Tab");
-  await shoot(page, "capri-1535-letterbox-command-hud");
+  await shoot(page, "capri-1535-letterbox-contextual-overlay");
   expect(errors).toEqual([]);
 });
 
-test("the command HUD is compact, translucent, and contained in its reserved band", async ({ page }) => {
+test("the contextual overlay preserves the full Scene and keeps prompts in frame", async ({ page }) => {
   await page.setViewportSize({ width: 900, height: 700 });
   await openGame(page);
   const frame = page.locator("[data-fondale-frame]");
   const canvas = frame.locator("canvas");
   const canvasBounds = await canvas.boundingBox();
-  const verbBounds = await frame.locator('[aria-label="Verbs"]').boundingBox();
-  const inventoryBounds = await frame.locator("[data-fondale-inventory]").boundingBox();
-  if (!canvasBounds || !verbBounds || !inventoryBounds) throw new Error("HUD geometry is unavailable");
+  await hoverWorld(page, 118, 165);
+  const promptBounds = await frame.locator("[data-fondale-command-preview]").boundingBox();
+  const triggerBounds = await frame.locator("[data-fondale-inventory-trigger]").boundingBox();
+  if (!canvasBounds || !promptBounds || !triggerBounds) throw new Error("Overlay geometry is unavailable");
   const scale = canvasBounds.width / 426;
-  const hudTop = canvasBounds.y + 180 * scale;
   const overlayBackground = await frame.locator("[data-fondale-overlay]").evaluate(
     (element) => (element as HTMLElement).style.background,
   );
 
-  expect.soft(overlayBackground).toMatch(/rgba\([^)]*,\s*0\.[0-9]+\)/);
-  expect.soft(verbBounds.width).toBeLessThanOrEqual(128 * scale);
-  expect.soft(inventoryBounds.y).toBeGreaterThanOrEqual(hudTop);
-  expect.soft(inventoryBounds.y + inventoryBounds.height).toBeLessThanOrEqual(canvasBounds.y + canvasBounds.height);
+  expect.soft(overlayBackground).toBe("");
+  expect.soft(triggerBounds.width).toBeLessThanOrEqual(24 * scale);
+  expect.soft(promptBounds.x).toBeGreaterThanOrEqual(canvasBounds.x);
+  expect.soft(promptBounds.y).toBeGreaterThanOrEqual(canvasBounds.y);
+  expect.soft(promptBounds.x + promptBounds.width).toBeLessThanOrEqual(canvasBounds.x + canvasBounds.width);
+  expect.soft(promptBounds.y + promptBounds.height).toBeLessThanOrEqual(canvasBounds.y + canvasBounds.height);
 });
 
 test("a Capri Project Version 3 Save remains visible and incompatible", async ({ page }) => {

@@ -17,16 +17,18 @@ and optional **Perspective Scale** determine composition. A Walkable Region
 governs movement; a Hotspot adds an Approach Point and one **Noun Definition**.
 
 An **Object** exists in exactly one place: a Scene, the acquisition-ordered
-**Inventory**, or terminal consumption. A Command combines one of nine visible
-**Verb** values with one or two Nouns; **Walk To** remains implicit. Ordered
+**Inventory**, or terminal consumption. A Command combines one semantic
+**Verb** with one or two Nouns; **Walk To** remains implicit. Ordered
 **Command Case** values resolve specific outcomes, then local and global
 fallbacks guarantee visible feedback. A **Sequence** is a finite, modal path
 of Lines, Choices, branches, and operation groups.
 
-The Engine owns the semantic HUD: Verb grid, eight Inventory slots, Command
-Preview, Choices, Options, Help and Save/Load. The project-owned HUD Theme may
-choose local font and cursor assets, colours, opacity and speech styling, but
-cannot rearrange those controls.
+The Engine owns the semantic HUD: pointer-following Contextual Actions, the
+Inventory trigger and drawer, Choices, Options, Help and Save/Load. A Noun's
+Preferred Verb supplies the primary action, while optional Secondary and
+Selected Object Verbs control the right mouse button and Object-first Commands.
+The project-owned HUD Theme may choose local font and cursor assets, colours,
+opacity and speech styling, but cannot rearrange those controls.
 
 A **Save Snapshot** is an inspectable JSON-safe copy of the latest committed
 Game State, identified by Project Identity, Project Version, and Fondale's
