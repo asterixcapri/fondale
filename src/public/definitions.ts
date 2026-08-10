@@ -29,26 +29,41 @@ export interface SceneSize {
 /** The four authored facings used by directional Character walking. */
 export type Facing = "front" | "back" | "left" | "right";
 
-/** A static PNG Appearance aligned to a Character or Object Ground Point. */
-export interface StaticAppearance {
-  readonly kind: "static";
+/** One horizontal image strip containing a positive number of Animation frames. */
+export interface AnimationStrip {
   readonly image: URL | string;
-  readonly visualAnchor?: Point;
+  readonly count: number;
 }
 
-/** One horizontal PNG strip used by a directional walking Appearance. */
-export interface WalkStrip {
-  readonly image: URL | string;
-  readonly frames: number;
-}
+/** Frames used by one Animation, either as images or directional strips. */
+export type AnimationFrames =
+  | readonly (URL | string)[]
+  | {
+      readonly side: AnimationStrip;
+      readonly front: AnimationStrip;
+      readonly back: AnimationStrip;
+    };
 
-/** The three authored directions of a basic Character walking Appearance. */
-export interface WalkingAppearance {
-  readonly kind: "walking";
-  readonly side: WalkStrip;
-  readonly front: WalkStrip;
-  readonly back: WalkStrip;
+/** A declarative transient visual performance owned by an Appearance. */
+export interface AnimationDefinition {
+  readonly frames: AnimationFrames;
   readonly framesPerSecond: number;
+  readonly loop?: boolean;
+  /** Named logical seconds from the start of the Animation. */
+  readonly cues?: Readonly<Record<string, number>>;
+}
+
+/** Semantic Animation selections used automatically by the Engine. */
+export interface AnimationRoles {
+  readonly default: string;
+  readonly speaking?: string;
+  readonly walking?: string;
+}
+
+/** A persistent visual condition that owns all transient Animations available in it. */
+export interface Appearance {
+  readonly animations: Readonly<Record<string, AnimationDefinition>>;
+  readonly roles: AnimationRoles;
   readonly visualAnchor?: Point;
 }
 
@@ -58,8 +73,8 @@ export interface BackgroundRegionAppearance {
   readonly area: readonly Point[];
 }
 
-export type EntityAppearance = StaticAppearance | WalkingAppearance;
-export type SceneryAppearance = StaticAppearance | BackgroundRegionAppearance;
+export type EntityAppearance = Appearance;
+export type SceneryAppearance = Appearance | BackgroundRegionAppearance;
 
 /** A locally validated persistent Character definition. */
 export interface CharacterDefinition {
@@ -105,26 +120,7 @@ export function defineCharacter(input: CharacterInput): CharacterDefinition {
   for (const [appearanceId, appearance] of Object.entries(input.appearances)) {
     const base = `appearances.${appearanceId}`;
     validateVisualAnchor(appearance.visualAnchor, `${base}.visualAnchor`, diagnostics);
-    if (appearance.kind === "walking") {
-      if (!Number.isFinite(appearance.framesPerSecond) || appearance.framesPerSecond <= 0) {
-        diagnostics.push({
-          code: "definition.walking.frames-per-second",
-          family: "definition",
-          path: `${base}.framesPerSecond`,
-          message: "Walking frames per second must be a positive finite number.",
-        });
-      }
-      for (const direction of ["side", "front", "back"] as const) {
-        if (!Number.isInteger(appearance[direction].frames) || appearance[direction].frames <= 0) {
-          diagnostics.push({
-            code: "definition.walking.frames",
-            family: "definition",
-            path: `${base}.${direction}.frames`,
-            message: "A walking strip must contain a positive integer number of frames.",
-          });
-        }
-      }
-    }
+    validateAppearance(appearance, base, diagnostics);
   }
   if (diagnostics.length > 0) throw new AuthoringError(diagnostics);
   return deepFreeze({
@@ -139,7 +135,7 @@ export interface ObjectDefinition {
   readonly initialScene: string;
   readonly initialGroundPoint: Point;
   readonly initialAppearance: string;
-  readonly appearances: Readonly<Record<string, StaticAppearance>>;
+  readonly appearances: Readonly<Record<string, EntityAppearance>>;
   readonly inventoryAppearance: URL | string;
   readonly noun?: NounDefinition;
 }
@@ -169,6 +165,7 @@ export function defineObject(input: ObjectDefinition): ObjectDefinition {
       `appearances.${appearanceId}.visualAnchor`,
       diagnostics,
     );
+    validateAppearance(appearance, `appearances.${appearanceId}`, diagnostics);
   }
   if (diagnostics.length > 0) throw new AuthoringError(diagnostics);
   return deepFreeze({
@@ -198,6 +195,13 @@ export type GameOperation =
   | { readonly type: "collect-target-object" }
   | {
       readonly type: "place-selected-object";
+      readonly groundPoint: Point;
+      readonly appearance?: string;
+    }
+  | {
+      readonly type: "place-object";
+      readonly object: string;
+      readonly scene: string;
       readonly groundPoint: Point;
       readonly appearance?: string;
     }
@@ -268,6 +272,13 @@ export interface ScenePassage {
   readonly destination: { readonly scene: string; readonly entrance: string };
 }
 
+/** A conditional Sequence start evaluated after arrival through a Scene Passage. */
+export interface ArrivalSequenceRule {
+  readonly sequence: string;
+  readonly entrance?: string;
+  readonly when?: InteractionCondition;
+}
+
 export interface PerspectiveScaleStop {
   readonly y: number;
   readonly scale: number;
@@ -283,6 +294,7 @@ export interface SceneInput {
   readonly hotspots?: readonly HotspotDefinition[];
   readonly entrances?: Readonly<Record<string, SceneEntrance>>;
   readonly passages?: readonly ScenePassage[];
+  readonly arrivalSequences?: readonly ArrivalSequenceRule[];
 }
 
 /** A locally validated Scene definition. Its registry key supplies its identity. */
@@ -357,7 +369,7 @@ export function defineScene(input: SceneInput): SceneDefinition {
       });
     }
     for (const [appearanceId, appearance] of Object.entries(scenery.appearances)) {
-      if (appearance.kind === "background-region") {
+      if (!isAnimatedAppearance(appearance)) {
         validateLocalPolygon(
           appearance.area,
           `scenery.${sceneryId}.appearances.${appearanceId}.area`,
@@ -367,6 +379,11 @@ export function defineScene(input: SceneInput): SceneDefinition {
         validateVisualAnchor(
           appearance.visualAnchor,
           `scenery.${sceneryId}.appearances.${appearanceId}.visualAnchor`,
+          diagnostics,
+        );
+        validateAppearance(
+          appearance,
+          `scenery.${sceneryId}.appearances.${appearanceId}`,
           diagnostics,
         );
       }
@@ -390,6 +407,7 @@ export function defineScene(input: SceneInput): SceneDefinition {
     hotspots: [...(input.hotspots ?? [])],
     entrances: { ...(input.entrances ?? {}) },
     passages: [...(input.passages ?? [])],
+    arrivalSequences: [...(input.arrivalSequences ?? [])],
   });
 }
 
@@ -397,6 +415,7 @@ export interface Line {
   readonly text: string;
   readonly character: string;
   readonly audio?: URL | string;
+  readonly animation?: string;
 }
 
 export interface LineStep extends Line {
@@ -436,17 +455,81 @@ export interface BranchStep {
   readonly fallback: readonly SequenceStep[];
 }
 
-export type SequenceStep = LineStep | NarrationStep | OperationsStep | ChoiceStep | BranchStep;
+/** A Character, Object, or current-Scene Scenery directed by a Sequence. */
+export type DirectedSubject =
+  | { readonly kind: "character"; readonly character: string }
+  | { readonly kind: "object"; readonly object: string }
+  | { readonly kind: "scenery"; readonly scenery: string };
+
+/** Starts this direction when a named Cue occurs in an earlier Animation direction. */
+export interface CueStart {
+  readonly direction: number;
+  readonly cue: string;
+}
+
+export interface AnimationDirection {
+  readonly type: "animation";
+  readonly subject: DirectedSubject;
+  readonly animation: string;
+  readonly startAfter?: CueStart;
+}
+
+export interface MotionDirection {
+  readonly type: "motion";
+  readonly subject: DirectedSubject;
+  /** Character destinations contain one point; Object and Scenery paths may contain several. */
+  readonly path: readonly Point[];
+  readonly duration?: number;
+  readonly facing?: Facing;
+  readonly startAfter?: CueStart;
+}
+
+export type CameraDirection =
+  | { readonly type: "camera"; readonly mode: "cut"; readonly point: Point; readonly startAfter?: CueStart }
+  | { readonly type: "camera"; readonly mode: "move"; readonly from: Point; readonly to: Point; readonly duration: number; readonly startAfter?: CueStart }
+  | { readonly type: "camera"; readonly mode: "hold"; readonly point: Point; readonly duration?: number; readonly startAfter?: CueStart }
+  | { readonly type: "camera"; readonly mode: "follow"; readonly subject: DirectedSubject; readonly duration?: number; readonly startAfter?: CueStart };
+
+export type SequenceDirection = AnimationDirection | MotionDirection | CameraDirection;
+
+/** One sequential Sequence step containing concurrent visual directions. */
+export interface DirectStep {
+  readonly type: "direct";
+  readonly directions: readonly SequenceDirection[];
+  /** Optional finite boundary for loops and held/following Camera direction, in logical seconds. */
+  readonly duration?: number;
+}
+
+export type SequenceStep = LineStep | NarrationStep | OperationsStep | ChoiceStep | BranchStep | DirectStep;
 
 /** A finite, root-level Sequence definition. */
 export interface SequenceDefinition {
   readonly steps: readonly SequenceStep[];
+  /** Scene that owns directed Animation, Motion, and Camera steps. */
+  readonly scene?: string;
   readonly skippable?: boolean;
+  readonly skipOutcome?: readonly GameOperation[];
 }
 
 /** Creates and freezes a finite Sequence of Lines, Narrations, Choices, branches and operations. */
 export function defineSequence(input: SequenceDefinition): SequenceDefinition {
   const diagnostics: AuthoringDiagnostic[] = [];
+  if (input.skippable && input.skipOutcome === undefined) {
+    diagnostics.push({
+      code: "definition.sequence.skip-outcome",
+      family: "definition",
+      path: "skipOutcome",
+      message: "A skippable Sequence must declare its Skip Outcome.",
+    });
+  }
+  if (!input.skippable && input.skipOutcome !== undefined) {
+    diagnostics.push({
+      code: "definition.sequence.skip-outcome.unused",
+      family: "definition",
+      path: "skipOutcome",
+      message: "Only a skippable Sequence can declare a Skip Outcome.",
+    });
+  }
   const visiting = new WeakSet<object>();
   const visit = (steps: readonly SequenceStep[], path: string) => {
     if (visiting.has(steps)) {
@@ -484,6 +567,8 @@ export function defineSequence(input: SequenceDefinition): SequenceDefinition {
           path: `${path}[${index}].text`,
           message: "Narration cannot be empty.",
         });
+      } else if (step.type === "direct") {
+        validateDirectStep(step, `${path}[${index}]`, diagnostics);
       } else if (step.type === "choice") {
         if (maximumEligibleAlternatives(step.alternatives) > 6) {
           diagnostics.push({
@@ -508,7 +593,11 @@ export function defineSequence(input: SequenceDefinition): SequenceDefinition {
   };
   visit(input.steps, "steps");
   if (diagnostics.length > 0) throw new AuthoringError(diagnostics);
-  return deepFreeze({ ...input, steps: cloneSequenceSteps(input.steps) });
+  return deepFreeze({
+    ...input,
+    steps: cloneSequenceSteps(input.steps),
+    ...(input.skipOutcome ? { skipOutcome: structuredClone(input.skipOutcome) } : {}),
+  });
 }
 
 function cloneSequenceSteps(steps: readonly SequenceStep[]): SequenceStep[] {
@@ -519,7 +608,7 @@ function cloneSequenceSteps(steps: readonly SequenceStep[]): SequenceStep[] {
         ...(step.audio instanceof URL ? { audio: new URL(step.audio.href) } : {}),
       };
     }
-    if (step.type === "narration" || step.type === "operations") return structuredClone(step);
+    if (step.type === "narration" || step.type === "operations" || step.type === "direct") return structuredClone(step);
     if (step.type === "choice") {
       return {
         ...step,
@@ -536,6 +625,57 @@ function cloneSequenceSteps(steps: readonly SequenceStep[]): SequenceStep[] {
       fallback: cloneSequenceSteps(step.fallback),
     };
   });
+}
+
+function validateDirectStep(
+  step: DirectStep,
+  path: string,
+  diagnostics: AuthoringDiagnostic[],
+): void {
+  if (step.directions.length === 0) {
+    diagnostics.push({ code: "definition.sequence.direct.empty", family: "definition", path: `${path}.directions`, message: "A directed step needs at least one direction." });
+  }
+  if (step.duration !== undefined && (!Number.isFinite(step.duration) || step.duration <= 0)) {
+    diagnostics.push({ code: "definition.sequence.duration", family: "definition", path: `${path}.duration`, message: "A Sequence duration must be a positive finite number of logical seconds." });
+  }
+  let hasFiniteBoundary = step.duration !== undefined && step.duration > 0;
+  step.directions.forEach((direction, index) => {
+    const directionPath = `${path}.directions[${index}]`;
+    if (direction.startAfter) {
+      if (!Number.isInteger(direction.startAfter.direction) || direction.startAfter.direction < 0 || direction.startAfter.direction >= index) {
+        diagnostics.push({ code: "definition.sequence.cue-order", family: "definition", path: `${directionPath}.startAfter.direction`, message: "A direction can wait only for an earlier Animation direction in the same step." });
+      }
+      if (!direction.startAfter.cue.trim()) {
+        diagnostics.push({ code: "definition.sequence.cue-name", family: "definition", path: `${directionPath}.startAfter.cue`, message: "A Cue reference cannot be empty." });
+      }
+    }
+    if (direction.type === "animation") return;
+    if (direction.type === "motion") {
+      direction.path.forEach((point, pointIndex) => {
+        if (!Number.isFinite(point.x) || !Number.isFinite(point.y)) diagnostics.push({ code: "definition.point.finite", family: "definition", path: `${directionPath}.path[${pointIndex}]`, message: "A Motion path must use finite Scene Space coordinates." });
+      });
+      if (direction.path.length === 0) diagnostics.push({ code: "definition.motion.path", family: "definition", path: `${directionPath}.path`, message: "A Motion needs at least one destination point." });
+      if (direction.subject.kind === "character") {
+        if (direction.path.length !== 1) diagnostics.push({ code: "definition.motion.character-path", family: "definition", path: `${directionPath}.path`, message: "A Character Motion declares one navigation destination." });
+        if (direction.duration !== undefined) diagnostics.push({ code: "definition.motion.character-duration", family: "definition", path: `${directionPath}.duration`, message: "Character Motion duration is derived from navigation and movement speed." });
+        hasFiniteBoundary = true;
+      } else if (!Number.isFinite(direction.duration) || direction.duration! <= 0) {
+        diagnostics.push({ code: "definition.motion.duration", family: "definition", path: `${directionPath}.duration`, message: "Object and Scenery Motion needs a positive finite duration." });
+      } else hasFiniteBoundary = true;
+      return;
+    }
+    if ("duration" in direction && direction.duration !== undefined) {
+      if (!Number.isFinite(direction.duration) || direction.duration <= 0) diagnostics.push({ code: "definition.camera.duration", family: "definition", path: `${directionPath}.duration`, message: "A Camera duration must be positive and finite." });
+      else hasFiniteBoundary = true;
+    }
+    for (const [pointName, point] of [["point", "point" in direction ? direction.point : undefined], ["from", "from" in direction ? direction.from : undefined], ["to", "to" in direction ? direction.to : undefined]] as const) {
+      if (point && (!Number.isFinite(point.x) || !Number.isFinite(point.y))) diagnostics.push({ code: "definition.point.finite", family: "definition", path: `${directionPath}.${pointName}`, message: "A Camera point must use finite Scene Space coordinates." });
+    }
+    if (direction.mode === "cut") hasFiniteBoundary = true;
+  });
+  if (!hasFiniteBoundary && step.directions.length > 0 && step.directions.every((direction) => direction.type !== "animation")) {
+    diagnostics.push({ code: "definition.sequence.direct.unbounded", family: "definition", path, message: "A directed step needs a finite completion boundary." });
+  }
 }
 
 function maximumEligibleAlternatives(alternatives: readonly ChoiceAlternative[]): number {
@@ -797,6 +937,12 @@ function validateProjectDefinitions(
         } else if (!(operation.appearance in appearances)) {
           diagnostics.push(referenceDiagnostic("reference.appearance", operationPath, `Appearance '${operation.appearance}' does not exist on the target.`));
         }
+      } else if (operation.type === "place-object") {
+        if (!(operation.object in objects)) diagnostics.push(referenceDiagnostic("reference.object", `${operationPath}.object`, `Object '${operation.object}' does not exist.`));
+        if (!(operation.scene in input.scenes)) diagnostics.push(referenceDiagnostic("reference.scene", `${operationPath}.scene`, `Scene '${operation.scene}' does not exist.`));
+        if (objects[operation.object] && operation.appearance !== undefined && !(operation.appearance in objects[operation.object]!.appearances)) diagnostics.push(referenceDiagnostic("reference.appearance", `${operationPath}.appearance`, `Appearance '${operation.appearance}' does not exist on Object '${operation.object}'.`));
+        const destination = input.scenes[operation.scene];
+        if (!destination || !pointInScene(destination, operation.groundPoint)) diagnostics.push({ code: "definition.operation.ground-point", family: "definition", path: `${operationPath}.groundPoint`, message: "A placed Object Ground Point must be finite and inside its destination Scene Size." });
       } else if (operation.type === "place-selected-object" && (
         !Number.isFinite(operation.groundPoint.x) ||
         !Number.isFinite(operation.groundPoint.y) ||
@@ -942,7 +1088,7 @@ function validateProjectDefinitions(
         diagnostics.push({ code: "definition.scene-space.bounds", family: "definition", path: `scenes.${sceneId}.scenery.${sceneryId}.position`, message: "Scenery positions must remain inside the Scene Size." });
       }
       for (const [appearanceId, appearance] of Object.entries(scenery.appearances)) {
-        if (appearance.kind === "background-region") {
+      if ("kind" in appearance && appearance.kind === "background-region") {
           validatePolygonBounds(appearance.area, `scenes.${sceneId}.scenery.${sceneryId}.appearances.${appearanceId}.area`, inScene, diagnostics);
         }
       }
@@ -954,6 +1100,25 @@ function validateProjectDefinitions(
         diagnostics.push({ code: "definition.entrance.walkable", family: "definition", path: `scenes.${sceneId}.entrances.${entranceId}.groundPoint`, message: "A Scene Entrance Ground Point must lie in the Walkable Region." });
       }
     }
+    scene.arrivalSequences?.forEach((rule, ruleIndex) => {
+      const base = `scenes.${sceneId}.arrivalSequences[${ruleIndex}]`;
+      if (!(rule.sequence in sequences)) diagnostics.push(referenceDiagnostic("reference.sequence", `${base}.sequence`, `Sequence '${rule.sequence}' does not exist.`));
+      else if (sequences[rule.sequence]?.scene !== undefined && sequences[rule.sequence]!.scene !== sceneId) diagnostics.push(referenceDiagnostic("reference.sequence.scene", `${base}.sequence`, `Sequence '${rule.sequence}' belongs to Scene '${sequences[rule.sequence]!.scene}'.`));
+      if (rule.entrance !== undefined && !(rule.entrance in (scene.entrances ?? {}))) diagnostics.push(referenceDiagnostic("reference.entrance", `${base}.entrance`, `Scene Entrance '${rule.entrance}' does not exist.`));
+      condition(rule.when, `${base}.when`);
+      scene.arrivalSequences!.slice(0, ruleIndex).forEach((previous, previousIndex) => {
+        const entrancesOverlap = previous.entrance === undefined || rule.entrance === undefined || previous.entrance === rule.entrance;
+        const conditionsDisjoint = previous.when !== undefined && rule.when !== undefined &&
+          "variable" in previous.when && "variable" in rule.when &&
+          previous.when.variable === rule.when.variable && previous.when.equals !== rule.when.equals;
+        if (entrancesOverlap && !conditionsDisjoint) diagnostics.push({
+          code: "definition.arrival-sequence.ambiguous",
+          family: "definition",
+          path: base,
+          message: `Arrival Sequence rules ${previousIndex} and ${ruleIndex} can both apply to the same arrival.`,
+        });
+      });
+    });
     scene.hotspots?.forEach((hotspot, hotspotIndex) => {
       const base = `scenes.${sceneId}.hotspots[${hotspotIndex}]`;
       if (hotspot.target.kind === "background") {
@@ -1025,6 +1190,17 @@ function validateProjectDefinitions(
     );
     const scene = input.scenes[character.initialScene];
     if (!scene) continue;
+    if (characterId === input.playerCharacter) {
+      for (const [appearanceId, appearance] of Object.entries(character.appearances)) {
+        if (!appearance.roles.walking) {
+          diagnostics.push(referenceDiagnostic(
+            "reference.animation.walking-role",
+            `characters.${characterId}.appearances.${appearanceId}.roles.walking`,
+            "A Player Character Appearance requires a walking Animation Role.",
+          ));
+        }
+      }
+    }
     const path = `characters.${characterId}.initialGroundPoint`;
     if (!pointInScene(scene, character.initialGroundPoint)) {
       diagnostics.push({ code: "definition.scene-space.bounds", family: "definition", path, message: "Character Ground Points must remain inside the Scene Size." });
@@ -1045,13 +1221,108 @@ function validateProjectDefinitions(
     }
   }
 
-  const visitSteps = (steps: readonly SequenceStep[], path: string) => {
+  const appearancesForSubject = (subject: DirectedSubject, sceneId?: string): Appearance[] => {
+    const candidates: (EntityAppearance | SceneryAppearance)[] = subject.kind === "character"
+      ? Object.values(characters[subject.character]?.appearances ?? {})
+      : subject.kind === "object"
+        ? Object.values(objects[subject.object]?.appearances ?? {})
+        : sceneId
+          ? Object.values(input.scenes[sceneId]?.scenery?.[subject.scenery]?.appearances ?? {})
+          : [];
+    return candidates.flatMap((appearance) => "animations" in appearance ? [appearance] : []);
+  };
+  const validateDirections = (step: DirectStep, path: string, sceneId?: string) => {
+    let hasFiniteBoundary = step.duration !== undefined;
+    step.directions.forEach((direction, directionIndex) => {
+      const directionPath = `${path}.directions[${directionIndex}]`;
+      if (direction.type !== "camera") {
+        const appearances = appearancesForSubject(direction.subject, sceneId);
+        if (appearances.length === 0) {
+          diagnostics.push(referenceDiagnostic("reference.sequence.subject", `${directionPath}.subject`, "Directed subject does not exist or has no animated Appearance."));
+        }
+        if (direction.type === "animation") {
+          const animations = appearances.map((appearance) => appearance.animations[direction.animation]);
+          if (animations.length === 0 || animations.some((animation) => animation === undefined)) {
+            diagnostics.push(referenceDiagnostic("reference.animation", `${directionPath}.animation`, `Animation '${direction.animation}' is not available in every Appearance of the subject.`));
+          }
+          if (animations.some((animation) => animation !== undefined && !animation.loop)) hasFiniteBoundary = true;
+        } else {
+          hasFiniteBoundary = true;
+          if (direction.subject.kind === "character" && appearances.some((appearance) => !appearance.roles.walking)) {
+            diagnostics.push(referenceDiagnostic("reference.animation.walking-role", `${directionPath}.subject`, "Character Motion requires a walking Animation Role in every Appearance."));
+          }
+          if (sceneId) {
+            const scene = input.scenes[sceneId];
+            direction.path.forEach((point, pointIndex) => {
+              if (!scene || !pointInScene(scene, point)) {
+                diagnostics.push({
+                  code: "definition.motion.bounds",
+                  family: "definition",
+                  path: `${directionPath}.path[${pointIndex}]`,
+                  message: "A Motion path point must remain inside the Sequence Scene Size.",
+                });
+              } else if (
+                direction.subject.kind === "character" &&
+                !pointInPolygonOrBoundary(scene.walkableRegion, point)
+              ) {
+                diagnostics.push({
+                  code: "definition.motion.walkable",
+                  family: "definition",
+                  path: `${directionPath}.path[${pointIndex}]`,
+                  message: "A Character Motion destination must lie in the Walkable Region.",
+                });
+              }
+            });
+          }
+        }
+      }
+      if (direction.type === "camera") {
+        if (direction.mode === "cut" || direction.duration !== undefined) hasFiniteBoundary = true;
+        if (direction.mode === "follow") {
+          const sceneryId = direction.subject.kind === "scenery" ? direction.subject.scenery : undefined;
+          const exists = direction.subject.kind === "character"
+            ? direction.subject.character in characters
+            : direction.subject.kind === "object"
+              ? direction.subject.object in objects
+              : sceneId !== undefined && sceneryId! in (input.scenes[sceneId]?.scenery ?? {});
+          if (!exists) diagnostics.push(referenceDiagnostic("reference.camera.subject", `${directionPath}.subject`, "Camera follow subject does not exist."));
+        }
+        const cameraPoints = [
+          ["point", "point" in direction ? direction.point : undefined],
+          ["from", "from" in direction ? direction.from : undefined],
+          ["to", "to" in direction ? direction.to : undefined],
+        ] as const;
+        for (const [pointName, point] of cameraPoints) {
+          if (point && sceneId && !pointInScene(input.scenes[sceneId]!, point)) diagnostics.push({ code: "definition.camera.bounds", family: "definition", path: `${directionPath}.${pointName}`, message: "A Camera destination must remain inside the Sequence Scene Size." });
+        }
+      }
+      if (direction.startAfter) {
+        const source = step.directions[direction.startAfter.direction];
+        if (source?.type === "animation") {
+          const animations = appearancesForSubject(source.subject, sceneId).map((appearance) => appearance.animations[source.animation]);
+          if (animations.length === 0 || animations.some((animation) => animation?.cues?.[direction.startAfter!.cue] === undefined)) {
+            diagnostics.push(referenceDiagnostic("reference.animation.cue", `${directionPath}.startAfter.cue`, `Animation Cue '${direction.startAfter.cue}' is not available in every Appearance of the source subject.`));
+          }
+        }
+      }
+    });
+    if (!hasFiniteBoundary) diagnostics.push({ code: "definition.sequence.direct.unbounded", family: "definition", path, message: "A directed step containing only loops needs a finite completion boundary." });
+  };
+
+  const visitSteps = (steps: readonly SequenceStep[], path: string, sceneId?: string) => {
     steps.forEach((step, index) => {
       const base = `${path}[${index}]`;
       if (step.type === "line" && step.character !== undefined && !(step.character in characters)) {
         diagnostics.push(referenceDiagnostic("reference.character", `${base}.character`, `Character '${step.character}' does not exist.`));
+      } else if (step.type === "line" && step.animation !== undefined) {
+        const appearances = Object.values(characters[step.character]?.appearances ?? {});
+        if (appearances.length === 0 || appearances.some((appearance) => !("animations" in appearance) || !(step.animation! in appearance.animations))) {
+          diagnostics.push(referenceDiagnostic("reference.animation.line", `${base}.animation`, `Line Animation '${step.animation}' is not available in every Appearance of Character '${step.character}'.`));
+        }
       } else if (step.type === "operations") {
         operations(step.operations, `${base}.operations`, { sequence: true });
+      } else if (step.type === "direct") {
+        validateDirections(step, base, sceneId);
       } else if (step.type === "choice") {
         step.alternatives.forEach((alternative, alternativeIndex) => {
           if (alternative.spoken !== false && !input.playerCharacter) {
@@ -1063,7 +1334,7 @@ function validateProjectDefinitions(
             });
           }
           condition(alternative.when, `${base}.alternatives[${alternativeIndex}].when`);
-          visitSteps(alternative.steps, `${base}.alternatives[${alternativeIndex}].steps`);
+          visitSteps(alternative.steps, `${base}.alternatives[${alternativeIndex}].steps`, sceneId);
         });
         if (step.fallback.spoken !== false && !input.playerCharacter) {
           diagnostics.push({
@@ -1073,18 +1344,34 @@ function validateProjectDefinitions(
             message: "A spoken Choice requires a Player Character.",
           });
         }
-        visitSteps(step.fallback.steps, `${base}.fallback.steps`);
+        visitSteps(step.fallback.steps, `${base}.fallback.steps`, sceneId);
       } else if (step.type === "branch") {
         step.cases.forEach((branch, branchIndex) => {
           condition(branch.when, `${base}.cases[${branchIndex}].when`);
-          visitSteps(branch.steps, `${base}.cases[${branchIndex}].steps`);
+          visitSteps(branch.steps, `${base}.cases[${branchIndex}].steps`, sceneId);
         });
-        visitSteps(step.fallback, `${base}.fallback`);
+        visitSteps(step.fallback, `${base}.fallback`, sceneId);
       }
     });
   };
+  const hasDirectedStep = (steps: readonly SequenceStep[]): boolean => steps.some((step) =>
+    step.type === "direct" ||
+    (step.type === "choice" && (
+      step.alternatives.some((alternative) => hasDirectedStep(alternative.steps)) ||
+      hasDirectedStep(step.fallback.steps)
+    )) ||
+    (step.type === "branch" && (
+      step.cases.some((branch) => hasDirectedStep(branch.steps)) ||
+      hasDirectedStep(step.fallback)
+    )),
+  );
   for (const [sequenceId, sequence] of Object.entries(sequences)) {
-    visitSteps(sequence.steps, `sequences.${sequenceId}.steps`);
+    const directs = hasDirectedStep(sequence.steps);
+    if (directs && (!sequence.scene || !(sequence.scene in input.scenes))) {
+      diagnostics.push(referenceDiagnostic("reference.sequence.scene", `sequences.${sequenceId}.scene`, "A directed Sequence must name its owning Scene."));
+    }
+    visitSteps(sequence.steps, `sequences.${sequenceId}.steps`, sequence.scene);
+    operations(sequence.skipOutcome ?? [], `sequences.${sequenceId}.skipOutcome`, { sequence: true });
   }
   for (const character of Object.keys(input.hudTheme?.speechColors ?? {})) {
     if (!(character in characters)) {
@@ -1192,6 +1479,98 @@ function validateVisualAnchor(
       message: "A Visual Anchor must use finite image-pixel coordinates.",
     });
   }
+}
+
+function isAnimatedAppearance(appearance: EntityAppearance | SceneryAppearance): appearance is Appearance {
+  return "animations" in appearance;
+}
+
+function validateAppearance(
+  appearance: Appearance,
+  path: string,
+  diagnostics: AuthoringDiagnostic[],
+): void {
+  const animationNames = Object.keys(appearance.animations);
+  if (animationNames.length === 0) {
+    diagnostics.push({
+      code: "definition.appearance.animations",
+      family: "definition",
+      path: `${path}.animations`,
+      message: "An Appearance must define at least one Animation.",
+    });
+  }
+  for (const [role, animation] of Object.entries(appearance.roles)) {
+    if (!(animation in appearance.animations)) {
+      diagnostics.push({
+        code: "reference.animation.role",
+        family: "reference",
+        path: `${path}.roles.${role}`,
+        message: `Animation Role '${role}' refers to missing Animation '${animation}'.`,
+      });
+    }
+  }
+  for (const [animationName, animation] of Object.entries(appearance.animations)) {
+    const animationPath = `${path}.animations.${animationName}`;
+    const frameCount = isAnimationImageFrames(animation.frames)
+      ? animation.frames.length
+      : animation.frames.side.count;
+    if (isAnimationImageFrames(animation.frames) && frameCount === 0) {
+      diagnostics.push({
+        code: "definition.animation.frames",
+        family: "definition",
+        path: `${animationPath}.frames`,
+        message: "An Animation must contain at least one frame.",
+      });
+    }
+    if (!isAnimationImageFrames(animation.frames)) {
+      const counts = new Set<number>();
+      for (const direction of ["side", "front", "back"] as const) {
+        if (!Number.isInteger(animation.frames[direction].count) || animation.frames[direction].count <= 0) {
+          diagnostics.push({
+            code: "definition.animation.frames",
+            family: "definition",
+            path: `${animationPath}.frames.${direction}.count`,
+            message: "An Animation strip must contain a positive integer number of frames.",
+          });
+        } else {
+          counts.add(animation.frames[direction].count);
+        }
+      }
+      if (counts.size > 1) {
+        diagnostics.push({
+          code: "definition.animation.directional-frame-count",
+          family: "definition",
+          path: `${animationPath}.frames`,
+          message: "Directional Animation strips must contain the same number of frames.",
+        });
+      }
+    }
+    if (!Number.isFinite(animation.framesPerSecond) || animation.framesPerSecond <= 0) {
+      diagnostics.push({
+        code: "definition.animation.frames-per-second",
+        family: "definition",
+        path: `${animationPath}.framesPerSecond`,
+        message: "Animation frames per second must be a positive finite number.",
+      });
+    }
+    const duration = frameCount > 0 && animation.framesPerSecond > 0
+      ? frameCount / animation.framesPerSecond
+      : 0;
+    for (const [cue, at] of Object.entries(animation.cues ?? {})) {
+      if (!cue.trim() || !Number.isFinite(at) || at < 0 || at > duration) {
+        diagnostics.push({
+          code: "definition.animation.cue",
+          family: "definition",
+          path: `${animationPath}.cues.${cue}`,
+          message: "An Animation Cue must have a name and occur within the Animation duration.",
+        });
+      }
+    }
+  }
+}
+
+function isAnimationImageFrames(frames: AnimationFrames): frames is readonly (URL | string)[] {
+  return Array.isArray(frames);
 }
 
 function validatePolygonBounds(

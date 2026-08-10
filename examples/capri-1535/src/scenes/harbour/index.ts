@@ -2,12 +2,59 @@ import { defineNoun, defineScene } from "@asterixcapri/fondale";
 
 import { rectangle } from "../../geometry";
 import backgroundUrl from "./background.png";
+import winchLubricatedUrl from "./winch-lubricated.png";
+import winchRepairedUrl from "./winch-repaired.png";
+import winchStuckUrl from "./winch-stuck.png";
 
 export const harbour = defineScene({
   background: backgroundUrl,
   size: { width: 640, height: 240 },
   walkableRegion: rectangle(8, 162, 632, 230),
   perspectiveScale: [{ y: 162, scale: 0.74 }, { y: 230, scale: 0.96 }],
+  scenery: {
+    winch: {
+      baseline: 210,
+      position: { x: 552, y: 210 },
+      initialAppearance: "stuck",
+      appearances: {
+        stuck: {
+          animations: {
+            idle: { frames: [winchStuckUrl], framesPerSecond: 1, loop: true },
+            engaging: {
+              frames: [winchStuckUrl, winchLubricatedUrl, winchRepairedUrl],
+              framesPerSecond: 6,
+            },
+          },
+          roles: { default: "idle" },
+          visualAnchor: { x: 37, y: 57 },
+        },
+        repaired: {
+          animations: {
+            idle: { frames: [winchRepairedUrl], framesPerSecond: 1, loop: true },
+            engaging: { frames: [winchRepairedUrl], framesPerSecond: 1 },
+          },
+          roles: { default: "idle" },
+          visualAnchor: { x: 37, y: 57 },
+        },
+      },
+      noun: defineNoun({
+        labels: [{ text: "Argano del porto" }],
+        preferredVerbs: [{ verb: "look-at" }],
+        cases: [{
+          verb: "look-at",
+          when: { variable: "boatReady", equals: true },
+          response: { text: "La manovella gira. Il piccolo gozzo per la torre può salpare." },
+        }, {
+          verb: "look-at",
+          response: { text: "Senza la sua manovella, l'argano è soltanto un monumento alla fretta di Raffaele." },
+        }, {
+          verb: "use",
+          firstNoun: "winchHandle",
+          sequence: "winchInstallation",
+        }],
+      }),
+    },
+  },
   hotspots: [{
     target: { kind: "character", character: "raffaele" },
     area: rectangle(408, 150, 452, 224),
@@ -18,33 +65,9 @@ export const harbour = defineScene({
     approach: { groundPoint: { x: 468, y: 211 }, facing: "right" },
     when: { variable: "jobAccepted", equals: true },
   }, {
-    target: { kind: "background" },
+    target: { kind: "scenery", scenery: "winch" },
     area: rectangle(505, 132, 625, 228),
     approach: { groundPoint: { x: 492, y: 211 }, facing: "right" },
-    noun: defineNoun({
-      labels: [{ text: "Argano del porto" }],
-      preferredVerbs: [{ verb: "look-at" }],
-      cases: [{
-        verb: "look-at",
-        when: { variable: "boatReady", equals: true },
-        response: { text: "La manovella gira. Il piccolo gozzo per la torre può salpare." },
-      }, {
-        verb: "look-at",
-        response: { text: "Senza la sua manovella, l'argano è soltanto un monumento alla fretta di Raffaele." },
-      }, {
-        verb: "use",
-        firstNoun: "winchHandle",
-        response: { text: "La manovella torna al suo posto. Il gozzo per la torre può salpare." },
-        operations: [
-          { type: "set-variable", variable: "boatReady", value: true },
-          {
-            type: "place-selected-object",
-            groundPoint: { x: 552, y: 210 },
-            appearance: "installed",
-          },
-        ],
-      }],
-    }),
   }],
   entrances: {
     fromTownSquare: { groundPoint: { x: 595, y: 210 }, facing: "left" },

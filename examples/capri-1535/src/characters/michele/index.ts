@@ -11,18 +11,34 @@ export const michele = defineCharacter({
   initialAppearance: "travelling",
   appearances: {
     travelling: {
-      kind: "walking",
-      side: { image: walkSideUrl, frames: 8 },
-      front: { image: walkFrontUrl, frames: 8 },
-      back: { image: walkBackUrl, frames: 8 },
-      framesPerSecond: 10,
+      animations: {
+        walking: { frames: {
+          side: { image: walkSideUrl, count: 8 },
+          front: { image: walkFrontUrl, count: 8 },
+          back: { image: walkBackUrl, count: 8 },
+        }, framesPerSecond: 10 },
+        "use-winch": { frames: {
+          side: { image: walkSideUrl, count: 8 },
+          front: { image: walkFrontUrl, count: 8 },
+          back: { image: walkBackUrl, count: 8 },
+        }, framesPerSecond: 10, cues: { contact: 0.4 } },
+      },
+      roles: { default: "walking", walking: "walking" },
     },
     determined: {
-      kind: "walking",
-      side: { image: walkSideUrl, frames: 8 },
-      front: { image: walkFrontUrl, frames: 8 },
-      back: { image: walkBackUrl, frames: 8 },
-      framesPerSecond: 12,
+      animations: {
+        walking: { frames: {
+          side: { image: walkSideUrl, count: 8 },
+          front: { image: walkFrontUrl, count: 8 },
+          back: { image: walkBackUrl, count: 8 },
+        }, framesPerSecond: 12 },
+        "use-winch": { frames: {
+          side: { image: walkSideUrl, count: 8 },
+          front: { image: walkFrontUrl, count: 8 },
+          back: { image: walkBackUrl, count: 8 },
+        }, framesPerSecond: 12, cues: { contact: 1 / 3 } },
+      },
+      roles: { default: "walking", walking: "walking" },
     },
   },
   movementSpeed: 150,

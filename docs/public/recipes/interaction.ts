@@ -13,7 +13,7 @@ export const interactionHost = defineCharacter({
   initialFacing: "left",
   initialAppearance: "idle",
   appearances: {
-    idle: { kind: "static", image: new URL("./key.png", import.meta.url) },
+    idle: { animations: { idle: { frames: [new URL("./key.png", import.meta.url)], framesPerSecond: 1, loop: true } }, roles: { default: "idle" } },
   },
   movementSpeed: 60,
   noun: defineNoun({
@@ -28,7 +28,7 @@ export const interactionKey = defineObject({
   initialGroundPoint: { x: 85, y: 35 },
   initialAppearance: "present",
   appearances: {
-    present: { kind: "static", image: new URL("./key.png", import.meta.url) },
+    present: { animations: { idle: { frames: [new URL("./key.png", import.meta.url)], framesPerSecond: 1, loop: true } }, roles: { default: "idle" } },
   },
   inventoryAppearance: new URL("./key-inventory-32.png", import.meta.url),
   noun: defineNoun({

@@ -99,7 +99,7 @@ const key = defineObject({
   initialScene: "alley",
   initialGroundPoint: { x: 118, y: 170 },
   initialAppearance: "unused",
-  appearances: { unused: { kind: "static", image: keyImage } },
+  appearances: { unused: { animations: { idle: { frames: [keyImage], framesPerSecond: 1, loop: true } }, roles: { default: "idle" } } },
   inventoryAppearance: keyInventoryImage,
   noun: defineNoun({
     labels: [
@@ -214,7 +214,8 @@ const gateNoun = defineNoun({
 ```
 
 The supported operations set Variables and Appearances, start Sequences,
-collect the target Object, place the selected Object, or consume it. A complete
+collect the target Object, place the selected or a named Object, or consume the
+selected Object. A complete
 Command that has no local match uses the project's response-only global
 fallback. `defineCommandLexicon` supplies all visible Verb labels, Inventory
 phrases, and unary/Give/Use grammar. See the [Interaction](recipes/interaction.ts),
@@ -223,19 +224,25 @@ recipes.
 
 ## Author Characters, Appearances, and Sequences
 
-Characters support static or directional walking Appearances, authored Facing,
-movement speed, and optional Nouns. Objects have static world Appearances plus
-a square Inventory Appearance. Scenery supports static images or regions cut
-from the owning Background. Named Appearance changes belong to Game State.
+Every Character, Object, and image-backed Scenery Appearance owns named
+Animations plus semantic default, optional speaking, and optional walking
+roles. A one-frame Default Animation is the static case; directional strips
+serve walking without a naming convention. Scenery may also use a region cut
+from the owning Background. Named Appearance changes belong to Game State,
+while current frames and loop phase remain derived presentation.
 
 A Sequence is a finite modal progression of Character Lines, Narrations,
-Choices, automatic branches, and operation groups. Choices may conditionally
+Choices, automatic branches, operation groups, and directed steps containing
+concurrent Animation, Motion, and Camera directions. A Cue in one Animation may
+start later directions; the Core advances after every finite direction ends.
+Skippable Sequences declare an explicit Skip Outcome. Choices may conditionally
 expose at most six alternatives; selected text is spoken by the Player
 Character unless `spoken: false`. Sequence progress is saved exactly.
 
 ```ts
 const greeting = defineSequence({
   skippable: true,
+  skipOutcome: [],
   steps: [
     { type: "line", character: "host", text: "Welcome." },
     { type: "narration", text: "Rain taps against the shutters." },

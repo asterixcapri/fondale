@@ -13,6 +13,8 @@ import { townSquare } from "./scenes/town-square";
 import { brotherEliaConversation } from "./sequences/brother-elia-conversation";
 import { prologueConclusion } from "./sequences/prologue-conclusion";
 import { raffaeleConversation } from "./sequences/raffaele-conversation";
+import { boatArrival } from "./sequences/boat-arrival";
+import { winchInstallation } from "./sequences/winch-installation";
 
 export const project = defineGame({
   identity: "org.asterixcapri.capri-1535-example",
@@ -24,7 +26,13 @@ export const project = defineGame({
   characters: { michele, raffaele, brotherElia },
   playerCharacter: "michele",
   objects: { oilFlask, winchHandle },
-  sequences: { raffaeleConversation, brotherEliaConversation, prologueConclusion },
+  sequences: {
+    raffaeleConversation,
+    brotherEliaConversation,
+    prologueConclusion,
+    winchInstallation,
+    boatArrival,
+  },
   commandLexicon: italianCommandLexicon,
   commandFallbacks: italianCommandFallbacks,
   hudTheme: capriHudTheme,
@@ -33,6 +41,7 @@ export const project = defineGame({
     wellFreed: false,
     boatReady: false,
     driftingBoatSeen: false,
+    boatLanded: false,
   },
   initialScene: "townSquare",
 });

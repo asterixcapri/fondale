@@ -87,7 +87,7 @@ const project = defineGame({
       initialGroundPoint: { x: 210, y: 175 },
       initialFacing: "front",
       initialAppearance: "idle",
-      appearances: { idle: { kind: "static", image: "/src/characters/brother-elia/idle.png" } },
+      appearances: { idle: { animations: { idle: { frames: ["/src/characters/brother-elia/idle.png"], framesPerSecond: 1, loop: true } }, roles: { default: "idle", walking: "idle" } } },
       movementSpeed: 900,
     }),
     guide: defineCharacter({
@@ -95,7 +95,7 @@ const project = defineGame({
       initialGroundPoint: { x: 334, y: 178 },
       initialFacing: "front",
       initialAppearance: "idle",
-      appearances: { idle: { kind: "static", image: "/src/characters/raffaele/idle.png" } },
+      appearances: { idle: { animations: { idle: { frames: ["/src/characters/raffaele/idle.png"], framesPerSecond: 1, loop: true } }, roles: { default: "idle" } } },
       movementSpeed: 60,
       noun: guideNoun,
     }),

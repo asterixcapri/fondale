@@ -27,7 +27,7 @@ const player = defineCharacter({
   initialFacing: "front",
   initialAppearance: "idle",
   movementSpeed: 600,
-  appearances: { idle: { kind: "static", image: new URL("../../docs/public/recipes/key.png", import.meta.url) } },
+  appearances: { idle: { animations: { idle: { frames: [new URL("../../docs/public/recipes/key.png", import.meta.url)], framesPerSecond: 1, loop: true } }, roles: { default: "idle", walking: "idle" } } },
 });
 
 const interactionProject = defineGame({

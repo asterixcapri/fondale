@@ -9,8 +9,8 @@ export const winchHandle = defineObject({
   initialGroundPoint: { x: 575, y: 211 },
   initialAppearance: "loose",
   appearances: {
-    loose: { kind: "static", image: sceneUrl },
-    installed: { kind: "static", image: installedUrl },
+    loose: { animations: { idle: { frames: [sceneUrl], framesPerSecond: 1, loop: true } }, roles: { default: "idle" } },
+    installed: { animations: { idle: { frames: [installedUrl], framesPerSecond: 1, loop: true } }, roles: { default: "idle" } },
   },
   inventoryAppearance: inventoryUrl,
   noun: defineNoun({

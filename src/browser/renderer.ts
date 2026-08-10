@@ -16,8 +16,18 @@ import type {
   CoreSession,
   GameState,
 } from "../internal/core";
+import {
+  animationDurationTicks,
+  isImageAnimationFrames,
+  pointAlongPath,
+  secondsToTicks,
+} from "../internal/sequence-directions";
 import type {
   EntityAppearance,
+  AnimationDefinition,
+  Appearance,
+  DirectStep,
+  DirectedSubject,
   GameProjectData,
   Point,
   SceneryAppearance,
@@ -34,6 +44,13 @@ interface CharacterView {
   readonly sprite: Sprite | AnimatedSprite;
   readonly appearance: EntityAppearance;
   direction?: "side" | "front" | "back";
+  animationName?: string;
+}
+
+interface AnimationSelection {
+  readonly name: string;
+  readonly elapsedTicks?: number;
+  readonly loop?: true;
 }
 
 const commandPreviewFontSize = "6px";
@@ -65,6 +82,7 @@ export class BrowserRenderer {
   private readonly characterViews = new Map<string, CharacterView>();
   private readonly camera = new Camera();
   private cameraOrigin: Point = { x: 0, y: 0 };
+  private cameraDirected = false;
   private currentScene = "";
   private sceneSignature = "";
 
@@ -114,11 +132,16 @@ export class BrowserRenderer {
       : undefined;
     const sceneChanged = state.currentScene !== this.currentScene;
     this.currentScene = state.currentScene;
+    const directedFocus = this.directedCameraFocus(state);
+    const wasDirected = this.cameraDirected;
+    this.cameraDirected = directedFocus !== undefined;
     this.cameraOrigin = this.camera.update({
       viewport: this.data.logicalResolution,
       scene: scene.size,
-      ...(player?.scene === state.currentScene ? { follow: player.groundPoint } : {}),
-      continuous: !sceneChanged,
+      ...(directedFocus
+        ? { follow: directedFocus }
+        : player?.scene === state.currentScene ? { follow: player.groundPoint } : {}),
+      continuous: !sceneChanged && !this.cameraDirected && !wasDirected,
     });
     this.world.position.set(-this.cameraOrigin.x, -this.cameraOrigin.y);
     this.overlay.render(state, effects);
@@ -149,11 +172,18 @@ export class BrowserRenderer {
     for (const [sceneryId, scenery] of Object.entries(scene.scenery ?? {})) {
       const selected = state.scenery[state.currentScene]?.[sceneryId] ?? scenery.initialAppearance;
       const appearance = scenery.appearances[selected]!;
-      const view = this.createScenery(appearance, backgroundTexture);
+      const view = this.createScenery(
+        appearance,
+        backgroundTexture,
+        `scenes.${state.currentScene}.scenery.${sceneryId}.appearances.${selected}`,
+        this.animationSelection(state, { kind: "scenery", scenery: sceneryId }, appearance),
+      );
       view.label = `scenery:${sceneryId}`;
       view.zIndex = scenery.baseline;
-      if (scenery.position && appearance.kind === "static") {
-        view.position.set(scenery.position.x, scenery.position.y);
+      const directedPosition = this.directedSceneryPoint(state, sceneryId);
+      if (directedPosition ?? scenery.position) {
+        const position = directedPosition ?? scenery.position!;
+        view.position.set(position.x, position.y);
       }
       this.world.addChild(view);
     }
@@ -162,29 +192,46 @@ export class BrowserRenderer {
       if (object.location.kind !== "scene" || object.location.scene !== state.currentScene) continue;
       const definition = this.data.objects[objectId]!;
       const appearance = definition.appearances[object.appearance]!;
-      const sprite = this.staticSprite(appearance.image, appearance.visualAnchor);
-      sprite.label = `object:${objectId}`;
-      sprite.position.set(object.location.groundPoint.x, object.location.groundPoint.y);
-      sprite.zIndex = object.location.groundPoint.y;
-      sprite.scale.set(scaleAt(scene.perspectiveScale, object.location.groundPoint.y));
-      this.world.addChild(sprite);
+      const view = this.createCharacter(
+        appearance,
+        `objects.${objectId}.appearances.${object.appearance}`,
+        this.animationSelection(state, { kind: "object", object: objectId }, appearance),
+        "front",
+      );
+      view.container.label = `object:${objectId}`;
+      view.container.position.set(object.location.groundPoint.x, object.location.groundPoint.y);
+      view.container.zIndex = object.location.groundPoint.y;
+      view.container.scale.set(scaleAt(scene.perspectiveScale, object.location.groundPoint.y));
+      this.world.addChild(view.container);
     }
 
     for (const [characterId, character] of Object.entries(state.characters)) {
       if (character.scene !== state.currentScene) continue;
       const definition = this.data.characters[characterId]!;
       const appearance = definition.appearances[character.appearance]!;
-      const view = this.createCharacter(appearance, `characters.${characterId}.appearances.${character.appearance}`);
+      const direction = character.facing === "left" || character.facing === "right" ? "side" : character.facing;
+      const view = this.createCharacter(
+        appearance,
+        `characters.${characterId}.appearances.${character.appearance}`,
+        this.animationSelection(state, { kind: "character", character: characterId }, appearance),
+        direction,
+      );
       view.container.label = `character:${characterId}`;
       this.characterViews.set(characterId, view);
       this.world.addChild(view.container);
     }
   }
 
-  private createScenery(appearance: SceneryAppearance, background: Texture): Container {
-    if (appearance.kind === "static") {
+  private createScenery(
+    appearance: SceneryAppearance,
+    background: Texture,
+    path: string,
+    selection?: AnimationSelection,
+  ): Container {
+    if ("animations" in appearance) {
       const container = new Container();
-      container.addChild(this.staticSprite(appearance.image, appearance.visualAnchor));
+      const sprite = this.animatedSprite(appearance, path, selection ?? { name: appearance.roles.default }, "front");
+      container.addChild(sprite);
       return container;
     }
     const bounds = boundingBox(appearance.area);
@@ -199,20 +246,21 @@ export class BrowserRenderer {
     return container;
   }
 
-  private createCharacter(appearance: EntityAppearance, path: string): CharacterView {
+  private createCharacter(
+    appearance: EntityAppearance,
+    path: string,
+    selection?: AnimationSelection,
+    selectedDirection: "side" | "front" | "back" = "front",
+  ): CharacterView {
     const container = new Container();
-    if (appearance.kind === "static") {
-      const sprite = this.staticSprite(appearance.image, appearance.visualAnchor);
-      container.addChild(sprite);
-      return { container, sprite, appearance };
-    }
-    const frames = this.assets.walkFrames.get(`${path}.front`)!;
-    const sprite = new AnimatedSprite([...frames]);
-    const texture = frames[0]!;
-    setAnchor(sprite, appearance.visualAnchor, texture.width, texture.height);
-    sprite.animationSpeed = appearance.framesPerSecond / 60;
+    const sprite = this.animatedSprite(
+      appearance,
+      path,
+      selection ?? { name: appearance.roles.default },
+      selectedDirection,
+    );
     container.addChild(sprite);
-    return { container, sprite, appearance, direction: "front" };
+    return { container, sprite, appearance, direction: selectedDirection, animationName: selection?.name ?? appearance.roles.default };
   }
 
   private updateCharacters(state: GameState): void {
@@ -226,29 +274,182 @@ export class BrowserRenderer {
         character.facing === "left" || character.facing === "right" ? "side" : character.facing;
       const horizontal = character.facing === "left" ? -perspective : perspective;
       view.container.scale.set(horizontal, perspective);
-      if (view.appearance.kind === "walking" && view.sprite instanceof AnimatedSprite) {
-        if (view.direction !== direction) {
-          view.direction = direction;
-          const appearance = state.characters[characterId]!.appearance;
-          view.sprite.textures = [
-            ...this.assets.walkFrames.get(
-              `characters.${characterId}.appearances.${appearance}.${direction}`,
-            )!,
-          ];
-        }
-        const walking =
-          state.activity?.type === "player-intent" && characterId === this.data.playerCharacter;
-        if (walking && !view.sprite.playing) view.sprite.play();
-        if (!walking && view.sprite.playing) view.sprite.gotoAndStop(0);
+      if (
+        "animations" in view.appearance &&
+        view.sprite instanceof AnimatedSprite &&
+        view.direction !== direction &&
+        view.animationName
+      ) {
+        view.direction = direction;
+        const animation = view.appearance.animations[view.animationName]!;
+        const appearance = state.characters[characterId]!.appearance;
+        const frames = this.animationFrames(
+          `characters.${characterId}.appearances.${appearance}`,
+          view.animationName,
+          animation,
+          direction,
+        );
+        if (frames.length > 0) view.sprite.textures = [...frames];
       }
     }
   }
 
-  private staticSprite(url: URL | string, anchor?: Point): Sprite {
-    const texture = this.assets.textures.get(assetUrl(url))!;
-    const sprite = new Sprite(texture);
-    setAnchor(sprite, anchor, texture.width, texture.height);
+  private animatedSprite(
+    appearance: Appearance,
+    path: string,
+    selection: AnimationSelection,
+    direction: "side" | "front" | "back",
+  ): Sprite | AnimatedSprite {
+    const animation = appearance.animations[selection.name] ?? appearance.animations[appearance.roles.default]!;
+    const frames = this.animationFrames(path, selection.name, animation, direction);
+    const loops = selection.loop || animation.loop;
+    const logicalFrame = selection.elapsedTicks === undefined
+      ? undefined
+      : Math.floor(selection.elapsedTicks * animation.framesPerSecond / 60);
+    const frameIndex = logicalFrame === undefined
+      ? 0
+      : loops
+        ? logicalFrame % frames.length
+        : Math.min(frames.length - 1, logicalFrame);
+    const sprite = logicalFrame === undefined && frames.length > 1
+      ? new AnimatedSprite([...frames])
+      : new Sprite(frames[Math.max(0, frameIndex)]!);
+    const texture = frames[Math.max(0, frameIndex)]!;
+    setAnchor(sprite, appearance.visualAnchor, texture.width, texture.height);
+    if (sprite instanceof AnimatedSprite) {
+      sprite.animationSpeed = animation.framesPerSecond / 60;
+      sprite.loop = Boolean(loops);
+      sprite.play();
+    }
     return sprite;
+  }
+
+  private animationSelection(
+    state: GameState,
+    subject: DirectedSubject,
+    appearance: EntityAppearance | SceneryAppearance,
+  ): AnimationSelection | undefined {
+    if (!("animations" in appearance)) return undefined;
+    const active = this.activeDirect(state);
+    if (active) {
+      for (let index = active.step.directions.length - 1; index >= 0; index -= 1) {
+        const direction = active.step.directions[index]!;
+        if (direction.type !== "animation" || !sameSubject(direction.subject, subject)) continue;
+        const elapsedTicks = active.elapsedTicks - this.directionStartTick(state, active.step, index);
+        const animation = appearance.animations[direction.animation];
+        if (!animation || elapsedTicks < 0) continue;
+        if (animation.loop || elapsedTicks < animationDurationTicks(animation)) {
+          return { name: direction.animation, elapsedTicks };
+        }
+      }
+      if (
+        subject.kind === "character" &&
+        active.step.directions.some((direction, index) =>
+          direction.type === "motion" && sameSubject(direction.subject, subject) &&
+          active.elapsedTicks >= this.directionStartTick(state, active.step, index),
+        ) && appearance.roles.walking
+      ) return { name: appearance.roles.walking, elapsedTicks: active.elapsedTicks, loop: true };
+    }
+    const line = this.activeLine(state);
+    if (subject.kind === "character" && line?.character === subject.character) {
+      return { name: line.animation ?? appearance.roles.speaking ?? appearance.roles.default };
+    }
+    if (
+      subject.kind === "character" &&
+      subject.character === this.data.playerCharacter &&
+      state.activity?.type === "player-intent" &&
+      appearance.roles.walking
+    ) return { name: appearance.roles.walking, loop: true };
+    return { name: appearance.roles.default };
+  }
+
+  private activeLine(state: GameState): { character: string; animation?: string } | undefined {
+    if (state.activity?.type === "line") return state.activity.line;
+    if (state.activity?.type !== "sequence" || state.activity.active?.kind !== "line") return undefined;
+    if (state.activity.active.choiceCharacter) return { character: state.activity.active.choiceCharacter };
+    const sequence = this.data.sequences[state.activity.sequence]!;
+    const step = resolvePath(sequence, state.activity.active.path) as SequenceStep;
+    return step.type === "line" ? { character: step.character, ...(step.animation ? { animation: step.animation } : {}) } : undefined;
+  }
+
+  private activeDirect(state: GameState): { step: DirectStep; elapsedTicks: number } | undefined {
+    if (state.activity?.type !== "sequence" || state.activity.active?.kind !== "direct") return undefined;
+    const step = resolvePath(this.data.sequences[state.activity.sequence], state.activity.active.path) as DirectStep;
+    return { step, elapsedTicks: state.activity.active.elapsedTicks };
+  }
+
+  private directionStartTick(state: GameState, step: DirectStep, index: number): number {
+    const dependency = step.directions[index]?.startAfter;
+    if (!dependency) return 0;
+    const source = step.directions[dependency.direction];
+    if (!source || source.type !== "animation") return 0;
+    const appearance = this.appearanceFor(state, source.subject);
+    const cue = appearance?.animations[source.animation]?.cues?.[dependency.cue] ?? 0;
+    return this.directionStartTick(state, step, dependency.direction) + secondsToTicks(cue);
+  }
+
+  private appearanceFor(state: GameState, subject: DirectedSubject): Appearance | undefined {
+    const appearance = subject.kind === "character"
+      ? this.data.characters[subject.character]?.appearances[state.characters[subject.character]?.appearance ?? ""]
+      : subject.kind === "object"
+        ? this.data.objects[subject.object]?.appearances[state.objects[subject.object]?.appearance ?? ""]
+        : this.data.scenes[state.currentScene]?.scenery?.[subject.scenery]?.appearances[state.scenery[state.currentScene]?.[subject.scenery] ?? ""];
+    return appearance && "animations" in appearance ? appearance : undefined;
+  }
+
+  private directedSceneryPoint(state: GameState, scenery: string): Point | undefined {
+    const active = this.activeDirect(state);
+    if (!active) return undefined;
+    for (let index = active.step.directions.length - 1; index >= 0; index -= 1) {
+      const direction = active.step.directions[index]!;
+      if (direction.type !== "motion" || direction.subject.kind !== "scenery" || direction.subject.scenery !== scenery) continue;
+      const elapsed = active.elapsedTicks - this.directionStartTick(state, active.step, index);
+      if (elapsed < 0) continue;
+      return pointAlongPath(direction.path, Math.min(1, elapsed / secondsToTicks(direction.duration!)));
+    }
+    return undefined;
+  }
+
+  private directedCameraFocus(state: GameState): Point | undefined {
+    const active = this.activeDirect(state);
+    if (!active) return undefined;
+    for (let index = active.step.directions.length - 1; index >= 0; index -= 1) {
+      const direction = active.step.directions[index]!;
+      if (direction.type !== "camera") continue;
+      const elapsed = active.elapsedTicks - this.directionStartTick(state, active.step, index);
+      if (elapsed < 0) continue;
+      if (direction.mode === "cut" || direction.mode === "hold") return direction.point;
+      if (direction.mode === "move") {
+        const progress = Math.min(1, elapsed / secondsToTicks(direction.duration));
+        return { x: direction.from.x + (direction.to.x - direction.from.x) * progress, y: direction.from.y + (direction.to.y - direction.from.y) * progress };
+      }
+      return this.subjectPoint(state, direction.subject);
+    }
+    return undefined;
+  }
+
+  private subjectPoint(state: GameState, subject: DirectedSubject): Point | undefined {
+    if (subject.kind === "character") {
+      const character = state.characters[subject.character];
+      return character?.scene === state.currentScene ? character.groundPoint : undefined;
+    }
+    if (subject.kind === "object") {
+      const object = state.objects[subject.object];
+      return object?.location.kind === "scene" && object.location.scene === state.currentScene
+        ? object.location.groundPoint
+        : undefined;
+    }
+    return this.directedSceneryPoint(state, subject.scenery) ?? this.data.scenes[state.currentScene]?.scenery?.[subject.scenery]?.position;
+  }
+
+  private animationFrames(
+    path: string,
+    animationName: string,
+    animation: AnimationDefinition,
+    direction: "side" | "front" | "back",
+  ): readonly Texture[] {
+    const base = `${path}.animations.${animationName}`;
+    return this.assets.animationFrames.get(isImageAnimationFrames(animation.frames) ? base : `${base}.${direction}`) ?? [];
   }
 
   private readonly onPointerUp = (event: PointerEvent): void => {
@@ -378,6 +579,13 @@ export class BrowserRenderer {
       y: point.y - this.cameraOrigin.y,
     };
   }
+}
+
+function sameSubject(left: DirectedSubject, right: DirectedSubject): boolean {
+  if (left.kind !== right.kind) return false;
+  if (left.kind === "character" && right.kind === "character") return left.character === right.character;
+  if (left.kind === "object" && right.kind === "object") return left.object === right.object;
+  return left.kind === "scenery" && right.kind === "scenery" && left.scenery === right.scenery;
 }
 
 class EngineOverlay {
@@ -1554,6 +1762,7 @@ function sceneSignature(state: GameState): string {
       Object.entries(state.characters).map(([id, character]) => [id, [character.scene, character.appearance]]),
     ),
     objects: state.objects,
+    activity: state.activity,
   });
 }
 

@@ -69,7 +69,7 @@ const extraObjects = Object.fromEntries(extraNouns.map((noun, index) => [
     initialScene: "opening",
     initialGroundPoint: { x: 20 + index * 22, y: 110 },
     initialAppearance: "scene",
-    appearances: { scene: { kind: "static", image: keyUrl } },
+    appearances: { scene: { animations: { idle: { frames: [keyUrl], framesPerSecond: 1, loop: true } }, roles: { default: "idle" } } },
     inventoryAppearance: keyInventoryUrl,
     noun,
   }),
@@ -107,7 +107,7 @@ const project = defineGame({
       initialScene: "opening",
       initialGroundPoint: { x: 120, y: 150 },
       initialAppearance: "scene",
-      appearances: { scene: { kind: "static", image: keyUrl } },
+      appearances: { scene: { animations: { idle: { frames: [keyUrl], framesPerSecond: 1, loop: true } }, roles: { default: "idle" } } },
       inventoryAppearance: keyInventoryUrl,
       noun: keyNoun,
     }),
@@ -119,7 +119,7 @@ const project = defineGame({
       initialGroundPoint: { x: 180, y: 175 },
       initialFacing: "front",
       initialAppearance: "idle",
-      appearances: { idle: { kind: "static", image: keyUrl } },
+      appearances: { idle: { animations: { idle: { frames: [keyUrl], framesPerSecond: 1, loop: true } }, roles: { default: "idle", walking: "idle" } } },
       movementSpeed: 600,
     }),
     host: defineCharacter({
@@ -127,7 +127,7 @@ const project = defineGame({
       initialGroundPoint: { x: 315, y: 150 },
       initialFacing: "front",
       initialAppearance: "idle",
-      appearances: { idle: { kind: "static", image: keyUrl } },
+      appearances: { idle: { animations: { idle: { frames: [keyUrl], framesPerSecond: 1, loop: true } }, roles: { default: "idle" } } },
       movementSpeed: 60,
       noun: hostNoun,
     }),
@@ -135,6 +135,7 @@ const project = defineGame({
   sequences: {
     hostGreeting: defineSequence({
       skippable: true,
+      skipOutcome: [],
       steps: [
         { type: "line", character: "host", text: "Benvenuto.", audio: silenceAudio },
         { type: "narration", text: "La sera scende lentamente sul porto." },

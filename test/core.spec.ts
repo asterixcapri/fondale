@@ -18,7 +18,7 @@ const player = defineCharacter({
   initialGroundPoint: { x: 10, y: 10 },
   initialFacing: "front",
   initialAppearance: "idle",
-  appearances: { idle: { kind: "static", image: "player.png" } },
+  appearances: { idle: { animations: { idle: { frames: ["player.png"], framesPerSecond: 1, loop: true } }, roles: { default: "idle", walking: "idle" } } },
   movementSpeed: 60,
 });
 const project = defineGame({
@@ -81,7 +81,7 @@ test("movement follows a route inside a concave Walkable Region", () => {
     initialGroundPoint: { x: 10, y: 10 },
     initialFacing: "front",
     initialAppearance: "idle",
-    appearances: { idle: { kind: "static", image: "player.png" } },
+    appearances: { idle: { animations: { idle: { frames: ["player.png"], framesPerSecond: 1, loop: true } }, roles: { default: "idle", walking: "idle" } } },
     movementSpeed: 60,
   });
   const concaveProject = defineGame({

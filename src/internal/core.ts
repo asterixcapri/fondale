@@ -11,6 +11,11 @@ import {
   type InteractionCondition,
   type Line,
   type Point,
+  type Appearance,
+  type AnimationDefinition,
+  type DirectStep,
+  type DirectedSubject,
+  type MotionDirection,
   type SequenceDefinition,
   type SequenceStep,
 } from "../public/definitions";
@@ -21,6 +26,7 @@ import {
   type ValidatedSaveSnapshot,
 } from "../public/save";
 import { isInside, navigationPath, nearestPoint } from "./geometry";
+import { animationDurationTicks, pointAlongPath, secondsToTicks } from "./sequence-directions";
 import { conditionMatchesState, hotspotAvailableInState } from "./state-queries";
 
 export interface CharacterState {
@@ -65,7 +71,8 @@ export interface PlayerIntentState {
 export type SequenceActiveState =
   | { kind: "line"; path: string; choiceText?: string; choiceCharacter?: string }
   | { kind: "narration"; path: string }
-  | { kind: "choice"; path: string; eligibleAlternatives: number[] };
+  | { kind: "choice"; path: string; eligibleAlternatives: number[] }
+  | { kind: "direct"; path: string; elapsedTicks: number };
 
 export interface SequenceActivityState {
   type: "sequence";
@@ -280,6 +287,7 @@ export function createCoreSession(
 
   function step(): void {
     for (const input of inputs.splice(0)) handleInput(input);
+    advanceDirectedStep();
     advancePlayerIntent();
     state.tick += 1;
   }
@@ -299,8 +307,7 @@ export function createCoreSession(
       } else if (input.type === "choose" && state.activity.active?.kind === "choice") {
         chooseAlternative(input.alternative);
       } else if (input.type === "skip-sequence" && data.sequences[state.activity.sequence]?.skippable) {
-        state.activity = null;
-        emitted.push({ type: "sequence-changed" });
+        applySkipOutcome(data.sequences[state.activity.sequence]!);
       }
       return;
     }
@@ -449,6 +456,21 @@ export function createCoreSession(
     } else if (input.type === "escape") {
       state.command = { verb: "walk-to", firstNoun: null };
     }
+  }
+
+  function applySkipOutcome(sequence: SequenceDefinition): void {
+    const draft = structuredClone(state);
+    try {
+      for (const operation of sequence.skipOutcome ?? []) {
+        applyOperation(draft, operation, { kind: "background" });
+      }
+    } catch (cause) {
+      failOperation(cause instanceof Error ? cause.message : String(cause), cause);
+      return;
+    }
+    draft.activity = null;
+    state = draft;
+    emitted.push({ type: "sequence-changed" });
   }
 
   function beginIntent(
@@ -656,8 +678,26 @@ export function createCoreSession(
       facing: entrance.facing,
     };
     next.activity = null;
+    const arrivalRules = (destination.arrivalSequences ?? []).filter((rule) =>
+      (rule.entrance === undefined || rule.entrance === passage.destination.entrance) &&
+      conditionMatchesState(rule.when, next),
+    );
+    if (arrivalRules.length > 1) {
+      failOperation("More than one Sequence is applicable to this Scene arrival.");
+      return;
+    }
+    const arrival = arrivalRules[0];
+    if (arrival) {
+      next.activity = {
+        type: "sequence",
+        sequence: arrival.sequence,
+        pendingPaths: topLevelPaths(data.sequences[arrival.sequence]!),
+        active: null,
+      };
+    }
     state = next;
     emitted.push({ type: "scene-changed", scene: state.currentScene });
+    if (state.activity?.type === "sequence") advanceSequence();
   }
 
   function applyOperations(
@@ -717,6 +757,7 @@ export function createCoreSession(
       }
     } else if (operation.type === "start-sequence") {
       if (!data.sequences[operation.sequence]) throw new Error(`Unknown Sequence '${operation.sequence}'.`);
+      if (data.sequences[operation.sequence]!.scene !== undefined && data.sequences[operation.sequence]!.scene !== draft.currentScene) throw new Error(`Sequence '${operation.sequence}' belongs to another Scene.`);
       if (draft.activity?.type === "sequence") throw new Error("A Sequence cannot start another Sequence.");
       draft.activity = {
         type: "sequence",
@@ -755,6 +796,16 @@ export function createCoreSession(
       };
       if (operation.appearance !== undefined) object.appearance = operation.appearance;
       draft.inventory.objects = draft.inventory.objects.filter((id) => id !== selected);
+    } else if (operation.type === "place-object") {
+      const object = draft.objects[operation.object];
+      const definition = data.objects[operation.object];
+      const destination = data.scenes[operation.scene];
+      if (!object || !definition || !destination) throw new Error("Placed Object or destination Scene does not exist.");
+      if (operation.groundPoint.x < 0 || operation.groundPoint.y < 0 || operation.groundPoint.x > destination.size.width || operation.groundPoint.y > destination.size.height) throw new Error("The placed Object Ground Point is outside the destination Scene Size.");
+      if (operation.appearance !== undefined && !(operation.appearance in definition.appearances)) throw new Error(`Unknown Object Appearance '${operation.appearance}'.`);
+      object.location = { kind: "scene", scene: operation.scene, groundPoint: { ...operation.groundPoint } };
+      if (operation.appearance !== undefined) object.appearance = operation.appearance;
+      draft.inventory.objects = draft.inventory.objects.filter((id) => id !== operation.object);
     } else if (operation.type === "consume-selected-object") {
       const selected = firstNounObject;
       if (!selected || !draft.inventory.objects.includes(selected)) throw new Error("No Object is selected.");
@@ -794,8 +845,126 @@ export function createCoreSession(
         activity.pendingPaths.unshift(...pathsForContainer(definition, container));
       } else if (stepDefinition.type === "operations") {
         if (!applyOperations(stepDefinition.operations, { kind: "background" })) return;
+      } else if (stepDefinition.type === "direct") {
+        activity.active = { kind: "direct", path, elapsedTicks: 0 };
       }
       emitted.push({ type: "sequence-changed" });
+    }
+  }
+
+  function advanceDirectedStep(): void {
+    const activity = state.activity;
+    if (activity?.type !== "sequence" || activity.active?.kind !== "direct") return;
+    const definition = data.sequences[activity.sequence]!;
+    const direct = resolvePath(definition, activity.active.path) as DirectStep;
+    activity.active.elapsedTicks += 1;
+    applyDirectedMotions(direct, activity.active.elapsedTicks);
+    if (!directStepComplete(direct, activity.active.elapsedTicks)) return;
+    activity.active = null;
+    advanceSequence();
+  }
+
+  function directStepComplete(step: DirectStep, elapsedTicks: number): boolean {
+    const boundaries: boolean[] = [];
+    if (step.duration !== undefined) {
+      boundaries.push(elapsedTicks >= secondsToTicks(step.duration));
+    }
+    step.directions.forEach((direction, index) => {
+      const localTick = elapsedTicks - directionStartTick(step, index);
+      if (direction.type === "animation") {
+        const animation = directedAnimation(direction.subject, direction.animation);
+        if (animation && !animation.loop) {
+          boundaries.push(localTick >= animationDurationTicks(animation));
+        }
+        return;
+      }
+      if (direction.type === "motion") {
+        if (direction.subject.kind === "character") {
+          const character = state.characters[direction.subject.character];
+          const destination = direction.path[0];
+          boundaries.push(
+            localTick >= 0 &&
+            character !== undefined &&
+            destination !== undefined &&
+            Math.hypot(
+              destination.x - character.groundPoint.x,
+              destination.y - character.groundPoint.y,
+            ) <= 1e-8,
+          );
+          return;
+        }
+        boundaries.push(localTick >= secondsToTicks(direction.duration!));
+        return;
+      }
+      if (direction.mode === "cut") boundaries.push(localTick >= 1);
+      else if (direction.duration !== undefined) {
+        boundaries.push(localTick >= secondsToTicks(direction.duration));
+      }
+    });
+    return boundaries.length > 0 && boundaries.every(Boolean);
+  }
+
+  function directionStartTick(step: DirectStep, index: number): number {
+    const startAfter = step.directions[index]?.startAfter;
+    if (!startAfter) return 0;
+    const source = step.directions[startAfter.direction];
+    if (!source || source.type !== "animation") return 0;
+    const animation = directedAnimation(source.subject, source.animation);
+    const cue = animation?.cues?.[startAfter.cue];
+    return directionStartTick(step, startAfter.direction) + secondsToTicks(cue ?? 0);
+  }
+
+  function directedAnimation(subject: DirectedSubject, animationName: string): AnimationDefinition | undefined {
+    const appearance = directedAppearance(subject);
+    return appearance?.animations[animationName];
+  }
+
+  function directedAppearance(subject: DirectedSubject): Appearance | undefined {
+    const appearance = subject.kind === "character"
+      ? data.characters[subject.character]?.appearances[state.characters[subject.character]?.appearance ?? ""]
+      : subject.kind === "object"
+        ? data.objects[subject.object]?.appearances[state.objects[subject.object]?.appearance ?? ""]
+        : data.scenes[state.currentScene]?.scenery?.[subject.scenery]?.appearances[state.scenery[state.currentScene]?.[subject.scenery] ?? ""];
+    return appearance && "animations" in appearance ? appearance : undefined;
+  }
+
+  function applyDirectedMotions(step: DirectStep, elapsedTicks: number): void {
+    step.directions.forEach((direction, index) => {
+      if (direction.type !== "motion") return;
+      const localTick = elapsedTicks - directionStartTick(step, index);
+      if (localTick <= 0) return;
+      if (direction.subject.kind === "character") {
+        advanceDirectedCharacter(direction);
+      } else if (direction.subject.kind === "object") {
+        const object = state.objects[direction.subject.object];
+        if (object?.location.kind !== "scene" || object.location.scene !== state.currentScene) return;
+        object.location.groundPoint = pointAlongPath(
+          direction.path,
+          Math.min(1, localTick / secondsToTicks(direction.duration!)),
+        );
+      }
+    });
+  }
+
+  function advanceDirectedCharacter(direction: MotionDirection): void {
+    if (direction.subject.kind !== "character") return;
+    const character = state.characters[direction.subject.character];
+    const definition = data.characters[direction.subject.character];
+    const destination = direction.path[0];
+    if (!character || !definition || !destination || character.scene !== state.currentScene) return;
+    const scene = data.scenes[state.currentScene]!;
+    const route = navigationPath(scene.walkableRegion, character.groundPoint, destination);
+    const waypoint = route[1] ?? destination;
+    const dx = waypoint.x - character.groundPoint.x;
+    const dy = waypoint.y - character.groundPoint.y;
+    const distance = Math.hypot(dx, dy);
+    const travel = definition.movementSpeed / 60;
+    if (distance > travel) {
+      character.facing = facingAlong(dx, dy);
+      character.groundPoint = { x: character.groundPoint.x + dx / distance * travel, y: character.groundPoint.y + dy / distance * travel };
+    } else {
+      character.groundPoint = { ...waypoint };
+      if (Math.hypot(destination.x - waypoint.x, destination.y - waypoint.y) <= 1e-8 && direction.facing) character.facing = direction.facing;
     }
   }
 

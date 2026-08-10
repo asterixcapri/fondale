@@ -149,10 +149,11 @@ function validActivity(value: unknown, data: GameProjectData, state: GameState):
   if (!isRecord(value) || typeof value.type !== "string") return false;
   if (value.type === "line") {
     if (!hasExactKeys(value, ["type", "line"]) || !isRecord(value.line)) return false;
-    if (!hasExactKeys(value.line, ["character", "text"], ["audio"])) return false;
+    if (!hasExactKeys(value.line, ["character", "text"], ["audio", "animation"])) return false;
     return typeof value.line.character === "string" && value.line.character in data.characters &&
       typeof value.line.text === "string" && value.line.text.trim().length > 0 &&
-      (value.line.audio === undefined || typeof value.line.audio === "string");
+      (value.line.audio === undefined || typeof value.line.audio === "string") &&
+      (value.line.animation === undefined || typeof value.line.animation === "string");
   }
   if (value.type === "player-intent") {
     if (!hasExactKeys(value, ["type", "destination", "intent"], ["finalFacing", "fast"])) return false;
@@ -224,6 +225,14 @@ function validActivity(value: unknown, data: GameProjectData, state: GameState):
         expectedPending !== null &&
         sameOrderedStrings(value.pendingPaths as string[], expectedPending) &&
         isSequenceStep(step) && step.type === "narration";
+    }
+    if (value.active.kind === "direct") {
+      return hasExactKeys(value.active, ["kind", "path", "elapsedTicks"]) &&
+        expectedPending !== null &&
+        sameOrderedStrings(value.pendingPaths as string[], expectedPending) &&
+        isSequenceStep(step) && step.type === "direct" &&
+        Number.isInteger(value.active.elapsedTicks) &&
+        (value.active.elapsedTicks as number) >= 0;
     }
     if (expectedPending === null || !sameOrderedStrings(value.pendingPaths as string[], expectedPending)) return false;
     if (
@@ -341,7 +350,7 @@ function resolvePath(sequence: SequenceDefinition, path: string): unknown {
 }
 
 function isSequenceStep(value: unknown): value is SequenceStep {
-  return isRecord(value) && ["line", "narration", "operations", "choice", "branch"].includes(String(value.type));
+  return isRecord(value) && ["line", "narration", "operations", "choice", "branch", "direct"].includes(String(value.type));
 }
 
 function expectedPendingPaths(sequence: SequenceDefinition, activePath: string): string[] | null {

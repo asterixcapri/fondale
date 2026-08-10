@@ -15,7 +15,8 @@ A **Logical Resolution** is the fixed visible frame and HUD canvas. A
 **Scene** has a **Scene Size** that defaults to that frame and may be wider,
 taller, or both; its **Scene Space** has its origin at the top-left and spans
 the complete Background. The derived **Camera** follows the visible Player
-Character through an oversized Scene without becoming Game State. A
+Character through an oversized Scene without becoming independent Game State;
+a Sequence may temporarily direct it from its saved logical progress. A
 Character's **Ground Point**, a Scenery **Baseline**, and optional
 **Perspective Scale** determine composition in Scene Space. A Walkable Region
 governs movement; a Hotspot adds an Approach Point and identifies what is
@@ -29,9 +30,14 @@ An **Object** exists in exactly one place: a Scene, the acquisition-ordered
 **Verb** with one or two Nouns; **Walk To** remains implicit. Ordered
 **Command Case** values resolve specific outcomes, then local and global
 fallbacks guarantee visible feedback. A **Sequence** is a finite, modal path
-of Character-bound Lines, explicit Narrations, Choices, branches, and operation
-groups. A direct Line or neutral Command Response may also conclude one Command
-without introducing a one-step Sequence.
+of Character-bound Lines, explicit Narrations, Choices, branches, operation
+groups, and directed steps. One directed step may start concurrent
+**Animation**, **Motion**, and Camera directions and waits for every finite
+boundary. An **Appearance** owns named Animations and semantic default,
+speaking, and walking **Animation Roles**; only the selected Appearance is
+persistent. **Animation Cues** coordinate directions without callbacks. A
+direct Line or neutral Command Response may also conclude one Command without
+introducing a one-step Sequence.
 
 The Camera projects world input, Character speech and revealed Hotspots between
 Scene Space and the viewport. The Engine owns the semantic HUD:

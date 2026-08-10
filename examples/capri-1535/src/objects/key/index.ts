@@ -8,8 +8,8 @@ export const key = defineObject({
   initialGroundPoint: { x: 118, y: 170 },
   initialAppearance: "unused",
   appearances: {
-    unused: { kind: "static", image: keyUrl },
-    used: { kind: "static", image: keyUrl },
+    unused: { animations: { idle: { frames: [keyUrl], framesPerSecond: 1, loop: true } }, roles: { default: "idle" } },
+    used: { animations: { idle: { frames: [keyUrl], framesPerSecond: 1, loop: true } }, roles: { default: "idle" } },
   },
   inventoryAppearance: keyInventoryUrl,
   noun: defineNoun({

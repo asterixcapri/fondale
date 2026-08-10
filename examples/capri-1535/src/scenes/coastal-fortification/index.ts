@@ -2,6 +2,7 @@ import { defineNoun, defineScene } from "@asterixcapri/fondale";
 
 import { rectangle } from "../../geometry";
 import backgroundUrl from "./background.png";
+import boatRockingUrl from "./boat-rocking.png";
 
 export const coastalFortification = defineScene({
   background: backgroundUrl,
@@ -27,6 +28,40 @@ export const coastalFortification = defineScene({
     { x: 470, y: 1136 },
   ],
   perspectiveScale: [{ y: 286, scale: 0.58 }, { y: 1136, scale: 0.98 }],
+  scenery: {
+    arrivingBoat: {
+      baseline: 560,
+      position: { x: 170, y: 560 },
+      initialAppearance: "approaching",
+      appearances: {
+        approaching: {
+          animations: {
+            idle: { frames: {
+              side: { image: boatRockingUrl, count: 4 },
+              front: { image: boatRockingUrl, count: 4 },
+              back: { image: boatRockingUrl, count: 4 },
+            }, framesPerSecond: 1 },
+            rocking: { frames: {
+              side: { image: boatRockingUrl, count: 4 },
+              front: { image: boatRockingUrl, count: 4 },
+              back: { image: boatRockingUrl, count: 4 },
+            }, framesPerSecond: 5, loop: true },
+          },
+          roles: { default: "idle" },
+          visualAnchor: { x: 32, y: 86 },
+        },
+        landed: {
+          animations: { rocking: { frames: {
+            side: { image: boatRockingUrl, count: 4 },
+            front: { image: boatRockingUrl, count: 4 },
+            back: { image: boatRockingUrl, count: 4 },
+          }, framesPerSecond: 3, loop: true } },
+          roles: { default: "rocking" },
+          visualAnchor: { x: 32, y: 86 },
+        },
+      },
+    },
+  },
   hotspots: [{
     target: { kind: "background" },
     area: rectangle(350, 8, 560, 330),
@@ -47,6 +82,11 @@ export const coastalFortification = defineScene({
   entrances: {
     fromHarbour: { groundPoint: { x: 230, y: 1080 }, facing: "back" },
   },
+  arrivalSequences: [{
+    entrance: "fromHarbour",
+    when: { variable: "boatLanded", equals: false },
+    sequence: "boatArrival",
+  }],
   passages: [{
     area: rectangle(32, 970, 470, 1137),
     approach: { groundPoint: { x: 190, y: 1060 }, facing: "left" },

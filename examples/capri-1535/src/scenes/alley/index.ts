@@ -15,7 +15,7 @@ export const alley = defineScene({
       initialAppearance: "locked",
       appearances: {
         locked: { kind: "background-region", area: rectangle(186, 118, 232, 150) },
-        unlocked: { kind: "static", image: unlockedMarkerUrl },
+        unlocked: { animations: { idle: { frames: [unlockedMarkerUrl], framesPerSecond: 1, loop: true } }, roles: { default: "idle" } },
       },
       noun: defineNoun({
         labels: [

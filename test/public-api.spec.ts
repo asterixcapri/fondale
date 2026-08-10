@@ -44,7 +44,7 @@ test("defineGame reports one owner Noun diagnostic for repeated Object Hotspots"
     initialScene: "opening",
     initialGroundPoint: { x: 20, y: 20 },
     initialAppearance: "present",
-    appearances: { present: { kind: "static", image: "object.png" } },
+    appearances: { present: { animations: { idle: { frames: ["object.png"], framesPerSecond: 1, loop: true } }, roles: { default: "idle" } } },
     inventoryAppearance: "object-inventory.png",
   });
   const hotspot = {
@@ -106,14 +106,14 @@ test("defineGame aggregates missing Character, Object, and Scenery owner Nouns",
     initialGroundPoint: { x: 20, y: 20 },
     initialFacing: "front",
     initialAppearance: "idle",
-    appearances: { idle: { kind: "static", image: "host.png" } },
+    appearances: { idle: { animations: { idle: { frames: ["host.png"], framesPerSecond: 1, loop: true } }, roles: { default: "idle" } } },
     movementSpeed: 60,
   });
   const key = defineObject({
     initialScene: "opening",
     initialGroundPoint: { x: 20, y: 20 },
     initialAppearance: "present",
-    appearances: { present: { kind: "static", image: "key.png" } },
+    appearances: { present: { animations: { idle: { frames: ["key.png"], framesPerSecond: 1, loop: true } }, roles: { default: "idle" } } },
     inventoryAppearance: "key-inventory.png",
   });
 
@@ -292,14 +292,14 @@ test("defineGame validates every Scene geometry family against Scene Size", () =
     initialGroundPoint: { x: 180, y: 180 },
     initialFacing: "front",
     initialAppearance: "idle",
-    appearances: { idle: { kind: "static", image: "player.png" } },
+    appearances: { idle: { animations: { idle: { frames: ["player.png"], framesPerSecond: 1, loop: true } }, roles: { default: "idle", walking: "idle" } } },
     movementSpeed: 60,
   });
   const object = defineObject({
     initialScene: "panoramic",
     initialGroundPoint: { x: 175, y: 175 },
     initialAppearance: "present",
-    appearances: { present: { kind: "static", image: "object.png" } },
+    appearances: { present: { animations: { idle: { frames: ["object.png"], framesPerSecond: 1, loop: true } }, roles: { default: "idle" } } },
     inventoryAppearance: "object-inventory.png",
   });
 
@@ -711,11 +711,15 @@ test("local helpers reject invalid walking rates and interaction polygons", () =
     movementSpeed: 10,
     appearances: {
       walk: {
-        kind: "walking",
-        side: { image: "side.png", frames: 0 },
-        front: { image: "front.png", frames: 1 },
-        back: { image: "back.png", frames: 1 },
-        framesPerSecond: Number.NaN,
+        animations: { walking: {
+          frames: {
+            side: { image: "side.png", count: 0 },
+            front: { image: "front.png", count: 1 },
+            back: { image: "back.png", count: 1 },
+          },
+          framesPerSecond: Number.NaN,
+        } },
+        roles: { default: "walking", walking: "walking" },
       },
     },
   })).toThrow(/frames per second/i);
@@ -835,7 +839,7 @@ test("defineGame bounds a Character-owned placement operation to its Scene Size"
     initialGroundPoint: { x: 20, y: 20 },
     initialFacing: "front",
     initialAppearance: "idle",
-    appearances: { idle: { kind: "static", image: "guide.png" } },
+    appearances: { idle: { animations: { idle: { frames: ["guide.png"], framesPerSecond: 1, loop: true } }, roles: { default: "idle" } } },
     movementSpeed: 60,
     noun: defineNoun({
       labels: [{ text: "Guide" }],
@@ -881,7 +885,7 @@ test("defineGame bounds portable Object and Sequence placements to every possibl
     initialScene: "large",
     initialGroundPoint: { x: 150, y: 20 },
     initialAppearance: "idle",
-    appearances: { idle: { kind: "static", image: "object.png" } },
+    appearances: { idle: { animations: { idle: { frames: ["object.png"], framesPerSecond: 1, loop: true } }, roles: { default: "idle" } } },
     inventoryAppearance: "inventory.png",
     noun: portableNoun,
   });

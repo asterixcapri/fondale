@@ -4,14 +4,15 @@ import { AuthoringError, type AuthoringDiagnostic } from "../public/diagnostics"
 import type {
   EntityAppearance,
   GameProjectData,
+  AnimationFrames,
+  Appearance,
+  Point,
   SequenceStep,
-  StaticAppearance,
-  WalkingAppearance,
 } from "../public/definitions";
 
 export interface LoadedAssets {
   readonly textures: ReadonlyMap<string, Texture>;
-  readonly walkFrames: ReadonlyMap<string, readonly Texture[]>;
+  readonly animationFrames: ReadonlyMap<string, readonly Texture[]>;
   readonly audio: ReadonlyMap<string, HTMLAudioElement>;
 }
 
@@ -32,8 +33,8 @@ export async function loadProjectAssets(data: GameProjectData): Promise<LoadedAs
     add(scene.background, `scenes.${sceneId}.background`);
     for (const [sceneryId, scenery] of Object.entries(scene.scenery ?? {})) {
       for (const [appearanceId, appearance] of Object.entries(scenery.appearances)) {
-        if (appearance.kind === "static") {
-          add(appearance.image, `scenes.${sceneId}.scenery.${sceneryId}.appearances.${appearanceId}`);
+        if ("animations" in appearance) {
+          addAnimatedAppearance(appearance, `scenes.${sceneId}.scenery.${sceneryId}.appearances.${appearanceId}`, add);
         }
       }
     }
@@ -46,7 +47,7 @@ export async function loadProjectAssets(data: GameProjectData): Promise<LoadedAs
   for (const [objectId, object] of Object.entries(data.objects)) {
     add(object.inventoryAppearance, `objects.${objectId}.inventoryAppearance`);
     for (const [appearanceId, appearance] of Object.entries(object.appearances)) {
-      add(appearance.image, `objects.${objectId}.appearances.${appearanceId}`);
+      addAppearance(appearance, `objects.${objectId}.appearances.${appearanceId}`, add);
     }
   }
   for (const [direction, cursor] of Object.entries(data.hudTheme?.cursors ?? {})) {
@@ -161,25 +162,48 @@ export async function loadProjectAssets(data: GameProjectData): Promise<LoadedAs
     }
   }
 
-  const walkFrames = new Map<string, readonly Texture[]>();
+  const animationFrames = new Map<string, readonly Texture[]>();
   for (const [characterId, character] of Object.entries(data.characters)) {
     for (const [appearanceId, appearance] of Object.entries(character.appearances)) {
-      if (appearance.kind === "walking") {
-        validateWalkingAppearance(
-          appearance,
-          `characters.${characterId}.appearances.${appearanceId}`,
-          textures,
-          walkFrames,
-          diagnostics,
-        );
-      } else {
-        validateAnchor(appearance, textures.get(assetUrl(appearance.image)), `characters.${characterId}.appearances.${appearanceId}`, diagnostics);
+      validateAnimatedAppearance(
+        appearance,
+        `characters.${characterId}.appearances.${appearanceId}`,
+        textures,
+        animationFrames,
+        diagnostics,
+      );
+    }
+  }
+
+  for (const [sceneId, scene] of Object.entries(data.scenes)) {
+    for (const [sceneryId, scenery] of Object.entries(scene.scenery ?? {})) {
+      for (const [appearanceId, appearance] of Object.entries(scenery.appearances)) {
+        if ("animations" in appearance) {
+          validateAnimatedAppearance(
+            appearance,
+            `scenes.${sceneId}.scenery.${sceneryId}.appearances.${appearanceId}`,
+            textures,
+            animationFrames,
+            diagnostics,
+          );
+        }
       }
+    }
+  }
+  for (const [objectId, object] of Object.entries(data.objects)) {
+    for (const [appearanceId, appearance] of Object.entries(object.appearances)) {
+      validateAnimatedAppearance(
+        appearance,
+        `objects.${objectId}.appearances.${appearanceId}`,
+        textures,
+        animationFrames,
+        diagnostics,
+      );
     }
   }
 
   if (diagnostics.length > 0) throw new AuthoringError(diagnostics);
-  return { textures, walkFrames, audio };
+  return { textures, animationFrames, audio };
 }
 
 function collectSequenceAudio(
@@ -211,72 +235,91 @@ function addAppearance(
   path: string,
   add: (url: URL | string, path: string) => void,
 ): void {
-  if (appearance.kind === "static") {
-    add(appearance.image, path);
-  } else {
-    add(appearance.side.image, `${path}.side`);
-    add(appearance.front.image, `${path}.front`);
-    add(appearance.back.image, `${path}.back`);
+  addAnimatedAppearance(appearance, path, add);
+}
+
+function addAnimatedAppearance(
+  appearance: Appearance,
+  path: string,
+  add: (url: URL | string, path: string) => void,
+): void {
+  for (const [animationId, animation] of Object.entries(appearance.animations)) {
+    const animationPath = `${path}.animations.${animationId}.frames`;
+    if (isImageFrames(animation.frames)) {
+      animation.frames.forEach((image, index) => add(image, `${animationPath}[${index}]`));
+    } else {
+      for (const direction of ["side", "front", "back"] as const) {
+        add(animation.frames[direction].image, `${animationPath}.${direction}`);
+      }
+    }
   }
 }
 
-function validateWalkingAppearance(
-  appearance: WalkingAppearance,
+function validateAnimatedAppearance(
+  appearance: Appearance,
   path: string,
   textures: ReadonlyMap<string, Texture>,
-  walkFrames: Map<string, readonly Texture[]>,
+  frames: Map<string, readonly Texture[]>,
   diagnostics: AuthoringDiagnostic[],
 ): void {
-  const strips = [appearance.side, appearance.front, appearance.back] as const;
-  const heights = new Set<number>();
-  const frameCounts = new Set<number>();
-  for (const [index, strip] of strips.entries()) {
-    const direction = ["side", "front", "back"][index]!;
-    const texture = textures.get(assetUrl(strip.image));
-    if (!texture) continue;
-    frameCounts.add(strip.frames);
-    heights.add(texture.height);
-    if (!Number.isInteger(strip.frames) || strip.frames <= 0 || texture.width % strip.frames !== 0) {
-      diagnostics.push({
-        code: "asset.walk-strip.frames",
-        family: "asset",
-        path: `${path}.${direction}`,
-        message: "A walking strip width must divide into its positive integer frame count.",
+  for (const [animationId, animation] of Object.entries(appearance.animations)) {
+    const animationPath = `${path}.animations.${animationId}`;
+    if (isImageFrames(animation.frames)) {
+      const animationTextures = animation.frames.flatMap((image) => {
+        const texture = textures.get(assetUrl(image));
+        return texture ? [texture] : [];
       });
+      frames.set(animationPath, animationTextures);
+      for (const texture of animationTextures) {
+        validateAnchor(appearance.visualAnchor, texture, path, diagnostics);
+      }
       continue;
     }
-    const frameWidth = texture.width / strip.frames;
-    const frames = Array.from({ length: strip.frames }, (_, frame) =>
-      new Texture({
-        source: texture.source,
-        frame: new Rectangle(frame * frameWidth, 0, frameWidth, texture.height),
-      }),
-    );
-    walkFrames.set(`${path}.${direction}`, frames);
-    validateAnchor(
-      { kind: "static", image: strip.image, visualAnchor: appearance.visualAnchor },
-      { width: frameWidth, height: texture.height } as Texture,
-      path,
-      diagnostics,
-    );
+    const directionalFrameSizes: { direction: "side" | "front" | "back"; width: number; height: number }[] = [];
+    for (const direction of ["side", "front", "back"] as const) {
+      const strip = animation.frames[direction];
+      const texture = textures.get(assetUrl(strip.image));
+      if (!texture) continue;
+      if (texture.width % strip.count !== 0) {
+        diagnostics.push({
+          code: "asset.animation-strip.frames",
+          family: "asset",
+          path: `${animationPath}.frames.${direction}`,
+          message: "An Animation strip width must divide into its frame count.",
+        });
+        continue;
+      }
+      const frameWidth = texture.width / strip.count;
+      directionalFrameSizes.push({ direction, width: frameWidth, height: texture.height });
+      frames.set(`${animationPath}.${direction}`, Array.from({ length: strip.count }, (_, frame) =>
+        new Texture({ source: texture.source, frame: new Rectangle(frame * frameWidth, 0, frameWidth, texture.height) }),
+      ));
+      validateAnchor(appearance.visualAnchor, { width: frameWidth, height: texture.height } as Texture, path, diagnostics);
+    }
+    const expected = directionalFrameSizes[0];
+    for (const size of directionalFrameSizes.slice(1)) {
+      if (expected && size.height !== expected.height) {
+        diagnostics.push({
+          code: "asset.animation-strip.dimensions",
+          family: "asset",
+          path: `${animationPath}.frames.${size.direction}`,
+          message: "Directional Animation strips must produce frames with matching heights.",
+        });
+      }
+    }
   }
-  if (heights.size > 1 || frameCounts.size > 1) {
-    diagnostics.push({
-      code: "asset.walk-strip.consistency",
-      family: "asset",
-      path,
-      message: "Side, front, and back walking strips must share height and frame count.",
-    });
-  }
+}
+
+function isImageFrames(frames: AnimationFrames): frames is readonly (URL | string)[] {
+  return Array.isArray(frames);
 }
 
 function validateAnchor(
-  appearance: StaticAppearance,
+  anchor: Point | undefined,
   texture: Pick<Texture, "width" | "height"> | undefined,
   path: string,
   diagnostics: AuthoringDiagnostic[],
 ): void {
-  const anchor = appearance.visualAnchor;
   if (!anchor || !texture) return;
   if (anchor.x < 0 || anchor.y < 0 || anchor.x > texture.width || anchor.y > texture.height) {
     diagnostics.push({

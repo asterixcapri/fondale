@@ -7,7 +7,7 @@ export const brotherElia = defineCharacter({
   initialGroundPoint: { x: 405, y: 205 },
   initialFacing: "left",
   initialAppearance: "welcoming",
-  appearances: { welcoming: { kind: "static", image: idleUrl } },
+  appearances: { welcoming: { animations: { idle: { frames: [idleUrl], framesPerSecond: 1, loop: true } }, roles: { default: "idle" } } },
   movementSpeed: 60,
   noun: defineNoun({
     labels: [{ text: "Frate Elia" }],

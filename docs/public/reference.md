@@ -54,12 +54,13 @@ match the resolved Scene Size; its startup diagnostic reports actual and
 expected dimensions.
 
 `defineCharacter` validates a persistent Character with initial Scene, Ground
-Point, Facing, Appearance, positive `movementSpeed`, optional Noun, and static
-or walking Appearances. A walking Appearance has side/front/back strips,
-positive frame counts and rate; the side strip is mirrored for left movement.
+Point, Facing, Appearance, positive `movementSpeed`, optional Noun, and named
+Appearances. Every Appearance owns named Animations and a required default
+Animation Role. The Player Character also requires a walking Role; directional
+walking uses side/front/back strips and mirrors the side strip when facing left.
 
 `defineObject` validates an Object with initial Scene, Ground Point, Appearance,
-named static Appearances, square `inventoryAppearance`, and optional Noun. An
+named animated Appearances, square `inventoryAppearance`, and optional Noun. An
 Object is in one Scene, in Inventory, or consumed. Its one Noun governs both
 world and Inventory interactions. A `place-selected-object` Ground Point must
 fit every Scene in which its owning Noun or Sequence can execute; portable
@@ -67,12 +68,16 @@ Objects, Player Character Nouns, and Sequences are therefore checked against
 every registered Scene Size.
 
 `defineSequence` validates a finite `SequenceDefinition`. `SequenceStep` is a
-Character-bound Line, explicit Narration, Choice, Branch, or atomic Operations
-group. A Line may declare an audio asset; its playback duration participates in
+Character-bound Line, explicit Narration, Choice, Branch, atomic Operations
+group, or concurrent Direct step. A Line may declare an audio asset and an
+Animation override; its playback duration participates in
 automatic advancement. Narration contains narrator prose and never identifies
 a Character. A `ChoiceAlternative` has
 text, optional condition, optional `spoken` (default true), and steps. At most
-six alternatives are allowed. A Sequence may be `skippable`.
+six alternatives are allowed. A skippable Sequence must declare the atomic
+`skipOutcome` applied when its transient direction is interrupted. A directed
+Sequence names one owning Scene and may coordinate Animation, Motion and Camera
+directions, including starts caused by named Animation Cues.
 
 `defineGame` composes a `GameInput` into an opaque immutable `GameProject`.
 Required values are identity, version, Logical Resolution, Scene registry and
@@ -89,7 +94,8 @@ target remains the distinct `reference.hotspot.target` failure.
 
 `InteractionCondition` reads a boolean Variable or held Object. `GameOperation`
 can set a Variable or Appearance, start a Sequence, collect the target Object,
-place the selected first Object, or consume it. Operations in one group see
+place the selected first Object, place a named Object, or consume the selected
+Object. Operations in one group see
 earlier writes and either commit together or fail without a partial commit.
 Conditions always read the latest committed Game State.
 
@@ -107,12 +113,13 @@ unowned `target` and optional validated snapshot. `GameSession` exposes
 state, including an incomplete Command. Only the branded
 `ValidatedSaveSnapshot` from successful validation may restore a session.
 Camera position, hover, pointer position and Player Preferences are not saved.
-On oversized Scenes the internal Camera follows only the visible Player
+On oversized Scenes the internal Camera normally follows the visible Player
 Character, eases ordinary walking, snaps on startup, restoration and Scene
 entry, clamps independently on both axes, and translates the world on whole
-logical pixels. This presentation does not delay Core activity or expose a
-public Camera interface. World pointer input, Character speech, and revealed
-Hotspots are projected; Engine-owned HUD controls remain in viewport space.
+logical pixels. A Sequence may cut, move, hold, or follow another subject in
+its current Scene; completion and skip restore Player following. World pointer
+input, Character speech, and revealed Hotspots are projected; Engine-owned HUD
+controls remain in viewport space.
 
 `AuthoringError` contains stably ordered `AuthoringDiagnostic` values. Each has
 stable `code`, `family`, `path`, `message`, optional `suggestion`, and optional
@@ -127,35 +134,45 @@ asset, or environment.
 | `LogicalResolution` | fixed viewport dimensions | positive integer width and height | shared by output canvas and HUD | positive-integer diagnostic | [Scene](recipes/first-scene.ts) |
 | `SceneSize` | complete Scene Space extent | positive integer width and height | omission defaults to Logical Resolution; neither axis may be smaller | Scene-size diagnostics | [Scene](recipes/first-scene.ts) |
 | `Facing` | authored orientation | front, back, left, right | required where present | type and reference validation | [Character](recipes/character-walking.ts) |
-| `StaticAppearance` | single PNG visual | static kind, image, optional anchor | anchor defaults bottom-centre | asset and anchor diagnostics | [Inventory](recipes/inventory.ts) |
-| `WalkStrip` | directional strip | image and positive frame count | frame zero is idle | walking frame diagnostics | [Character](recipes/character-walking.ts) |
-| `WalkingAppearance` | moving Character visual | three strips, rate, optional anchor | side mirrors for left | rate and strip diagnostics | [Character](recipes/character-walking.ts) |
+| `AnimationStrip` | horizontal frame source | image and positive count | directions share one declarative shape | frame and asset diagnostics | [Character](recipes/character-walking.ts) |
+| `AnimationFrames` | Animation frame source | image list or side/front/back strips | concrete frames remain derived | frame and asset diagnostics | [Sequence](recipes/sequence.ts) |
+| `AnimationDefinition` | transient visual performance | frames, positive rate, loop, named Cues | loop defaults false | Animation/Cue diagnostics | [Sequence](recipes/sequence.ts) |
+| `AnimationRoles` | semantic Engine selections | default, optional speaking and walking names | default is required; speaking falls back to default | missing Animation diagnostics | [Character](recipes/character-walking.ts) |
+| `Appearance` | persistent semantic visual condition | named Animations, roles, optional anchor | registry key identifies selected condition | Animation, role, asset, and anchor diagnostics | [Character](recipes/character-walking.ts) |
+| `EntityAppearance` | Character/Object visual condition | definitive animated Appearance | alias preserves entity-specific signatures | Appearance diagnostics | [Character](recipes/character-walking.ts) |
+| `SceneryAppearance` | Scenery visual condition | animated Appearance or Background Region | Background Regions remain tied to their Scene | Appearance/polygon diagnostics | [Scene](recipes/first-scene.ts) |
 | `BackgroundRegionAppearance` | Background cut-out | background-region and polygon | belongs to owning Background | polygon and bounds diagnostics | [Scene](recipes/first-scene.ts) |
-| `EntityAppearance` | Character visual union | static or walking | registry key identifies variant | selected variant validation | [Character](recipes/character-walking.ts) |
-| `SceneryAppearance` | Scenery visual union | static or Background Region | registry key identifies variant | selected variant validation | [Scene](recipes/first-scene.ts) |
 | `CharacterDefinition` | persistent Character | initial values, appearances, speed, noun | initial point is walkable | Character/reference diagnostics | [Character](recipes/character-walking.ts) |
 | `CharacterInput` | Character helper input | Character definition fields | no additional defaults | helper aggregates failures | [Character](recipes/character-walking.ts) |
 | `ObjectDefinition` | persistent Object | initial values, appearances, Inventory PNG, noun | begins in one Scene | Object/asset diagnostics | [Inventory](recipes/inventory.ts) |
 | `InteractionCondition` | state predicate | variable equality or held Object | omission is unconditional | missing-reference diagnostics | [Command](recipes/command-case.ts) |
-| `GameOperation` | atomic state change | six declared operation variants | order matters; group atomic | operation/reference diagnostics | [Inventory](recipes/inventory.ts) |
+| `GameOperation` | atomic state change | seven declared operation variants | order matters; group atomic | operation/reference diagnostics | [Inventory](recipes/inventory.ts) |
 | `HotspotTarget` | interaction subject | Background, Character, Object, Scenery | target is required | target reference diagnostic | [Interaction](recipes/interaction.ts) |
 | `ApproachPoint` | interaction destination | groundPoint and facing | must be walkable and HUD-safe | approach diagnostics | [Interaction](recipes/interaction.ts) |
 | `HotspotDefinition` | Scene interaction surface | target, area, approach, condition; local noun only for Background | target kind discriminates Noun ownership; later overlap wins hit-test | geometry, target and owner-Noun diagnostics | [Interaction](recipes/interaction.ts) |
 | `SceneryDefinition` | depth-sorted visual | baseline, appearances, position, noun | initial Appearance required | Scenery diagnostics | [Scene](recipes/first-scene.ts) |
 | `SceneEntrance` | named arrival | Ground Point and Facing | point must be walkable | entrance diagnostics | [Scene](recipes/first-scene.ts) |
 | `ScenePassage` | directional transition | area, approach, noun, direction, destination | transition is atomic | passage diagnostics | [Scene](recipes/first-scene.ts) |
+| `ArrivalSequenceRule` | post-Passage direction transfer | Sequence, optional Entrance and condition | at most one rule may apply; startup/restore are not arrivals | ambiguity/reference diagnostics | [Sequence](recipes/sequence.ts) |
 | `PerspectiveScaleStop` | depth-scale sample | Scene Space y and positive scale | stops interpolate linearly | perspective diagnostic | [Scene](recipes/first-scene.ts) |
 | `SceneInput` | Scene helper input | Background, optional size, region and optional structures | size defaults to Logical Resolution; optional collections are empty | helper and composition diagnostics | [Scene](recipes/first-scene.ts) |
 | `SceneDefinition` | frozen local Scene | same values as SceneInput | registry key supplies identity | project adds references | [Scene](recipes/first-scene.ts) |
-| `Line` | Character-spoken phrase | text, Character and optional audio | Character is always explicit | Line/Character diagnostics | [Command](recipes/command-case.ts) |
+| `Line` | Character-spoken phrase | text, Character, optional audio and Animation override | speaking role falls back to default | Line/Character/Animation diagnostics | [Command](recipes/command-case.ts) |
 | `LineStep` | modal Character speech | line type plus Line fields | waits for advance and audio duration | Line/Character/asset diagnostics | [Sequence](recipes/sequence.ts) |
 | `NarrationStep` | narrator prose | narration type and non-empty text | lower warm presentation | Narration diagnostics | [Sequence](recipes/sequence.ts) |
 | `OperationsStep` | Sequence state commit | operations type and operation group | commits before continuation | nested/operation diagnostics | [Sequence](recipes/sequence.ts) |
 | `ChoiceAlternative` | eligible answer | text, condition, spoken, steps | spoken defaults true | condition/cycle diagnostics | [Sequence](recipes/sequence.ts) |
 | `ChoiceStep` | modal answer set | alternatives and fallback | maximum six alternatives | choice-limit diagnostic | [Sequence](recipes/sequence.ts) |
 | `BranchStep` | automatic branch | ordered cases and fallback | first eligible case wins | condition/cycle diagnostics | [Sequence](recipes/sequence.ts) |
-| `SequenceStep` | finite step union | Line, Narration, Choice, Branch, Operations | nested starts forbidden | Sequence diagnostics | [Sequence](recipes/sequence.ts) |
-| `SequenceDefinition` | root modal flow | finite steps and skippable flag | registry key is identity | cycle/reference diagnostics | [Sequence](recipes/sequence.ts) |
+| `DirectedSubject` | target of transient direction | Character, Object, or current-Scene Scenery | declarative registry identity | subject/reference diagnostics | [Sequence](recipes/sequence.ts) |
+| `CueStart` | causal direction start | earlier direction index and Cue name | source must be an earlier Animation | Cue/order diagnostics | [Sequence](recipes/sequence.ts) |
+| `AnimationDirection` | explicit transient playback | subject, Animation name and optional Cue start | finite playback blocks; loops need another boundary | Animation/Cue diagnostics | [Sequence](recipes/sequence.ts) |
+| `MotionDirection` | transient Scene Space movement | subject, path, optional Character facing or non-Character duration | Character uses navigation; Scenery position remains derived | Motion/subject diagnostics | [Sequence](recipes/sequence.ts) |
+| `CameraDirection` | transient framing | cut, move, hold or follow | clamped to owning Scene and returns to Player following | Camera/subject diagnostics | [Sequence](recipes/sequence.ts) |
+| `SequenceDirection` | concurrent direction | Animation, Motion, or Camera | starts with its direct step or Cue | direction diagnostics | [Sequence](recipes/sequence.ts) |
+| `DirectStep` | concurrent directed beat | directions and optional duration | waits for all finite boundaries; loops do not block alone | finite-boundary diagnostics | [Sequence](recipes/sequence.ts) |
+| `SequenceStep` | finite step union | Line, Narration, Choice, Branch, Operations, Direct | nested starts forbidden | Sequence diagnostics | [Sequence](recipes/sequence.ts) |
+| `SequenceDefinition` | root modal flow | finite steps, optional owning Scene, skippable and Skip Outcome | directed flows remain in one Scene | cycle/reference/direction diagnostics | [Sequence](recipes/sequence.ts) |
 | `GameInput` | project composition | identity, version, resolution, registries, commands, theme | empty registries; black letterbox | aggregated diagnostics | [Scene](recipes/first-scene.ts) |
 | `GameProject` | validated opaque project | only returned by defineGame | immutable and fieldless | forged project rejected | [Scene](recipes/first-scene.ts) |
 | `NounLabel` | conditional visible name | text and optional condition | one final unconditional label | conditional/text diagnostics | [Interaction](recipes/interaction.ts) |
@@ -181,6 +198,7 @@ asset, or environment.
 
 Exact reachable fields also include `x`, `y`, `width`, `height`, `kind`,
 `image`, `visualAnchor`, `frames`, `side`, `front`, `back`, `framesPerSecond`,
+`count`, `loop`, `cues`, `animations`, `roles`, `default`, `speaking`, `walking`,
 `area`, `facing`, `font`, `initialScene`, `initialGroundPoint`, `initialFacing`,
 `initialAppearance`, `appearances`, `movementSpeed`, `noun`, `source`, `family`,
 `colors`, `text`, `preferred`, `selected`, `backing`, `border`, `inventoryWell`,
@@ -189,7 +207,10 @@ Exact reachable fields also include `x`, `y`, `width`, `height`, `kind`,
 `appearance`, `sequence`, `groundPoint`, `baseline`, `position`, `approach`,
 `when`, `direction`, `destination`, `entrance`, `scale`, `background`, `size`,
 `walkableRegion`, `perspectiveScale`, `hotspots`, `entrances`, `passages`,
-`alternatives`, `fallback`, `steps`, `cases`, `skippable`, `identity`, `version`,
+`arrivalSequences`, `alternatives`, `fallback`, `steps`, `cases`, `skippable`,
+`skipOutcome`, `subject`, `animation`, `startAfter`, `cue`, `duration`, `mode`,
+`point`, `from`, `to`, `directions`,
+`identity`, `version`,
 `logicalResolution`, `scenes`, `characters`, `playerCharacter`, `objects`,
 `sequences`, `variables`, `inventoryAppearanceSize`, `initialScene`,
 `letterboxColor`, `commandLexicon`, `commandFallbacks`, `hudTheme`, `verb`,
@@ -227,14 +248,28 @@ Definition codes: `definition.approach.bounds`,
 `definition.project.identity`, `definition.project.version`,
 `definition.scene-space.bounds`, `definition.scenery.baseline`,
 `definition.sequence.cycle`, `definition.sequence.nested`,
-`definition.walking.frames`, and `definition.walking.frames-per-second`.
+`definition.sequence.skip-outcome`, `definition.sequence.skip-outcome.unused`,
+`definition.sequence.direct.empty`, `definition.sequence.duration`,
+`definition.sequence.cue-order`, `definition.sequence.cue-name`,
+`definition.sequence.direct.unbounded`, `definition.motion.path`,
+`definition.motion.character-path`, `definition.motion.character-duration`,
+`definition.motion.duration`, `definition.motion.bounds`,
+`definition.motion.walkable`, `definition.camera.duration`,
+`definition.camera.bounds`, `definition.arrival-sequence.ambiguous`,
+`definition.appearance.animations`, `definition.animation.frames`,
+`definition.animation.directional-frame-count`,
+`definition.animation.frames-per-second`, and `definition.animation.cue`.
 
 Reference codes: `reference.appearance`, `reference.appearance.initial`,
 `reference.appearance.target`, `reference.character`,
 `reference.character.initial-scene`, `reference.character.player`,
 `reference.hotspot.target`, `reference.object`, `reference.object.initial-scene`,
 `reference.passage.entrance`, `reference.passage.scene`,
-`reference.scene.initial`, `reference.sequence`, and `reference.variable`.
+`reference.scene`, `reference.scene.initial`, `reference.sequence`,
+`reference.sequence.scene`, `reference.sequence.subject`, `reference.entrance`,
+`reference.animation`, `reference.animation.role`,
+`reference.animation.walking-role`, `reference.animation.cue`,
+`reference.animation.line`, `reference.camera.subject`, and `reference.variable`.
 
 Runtime, save, asset and environment codes: `state.operation.invalid`,
 `save.shape`, `save.fields.unexpected`, `save.format.version`,
@@ -244,8 +279,8 @@ Runtime, save, asset and environment codes: `state.operation.invalid`,
 `save.validation.required`, `asset.load.failed`, `asset.audio.load.failed`,
 `asset.background.dimensions`,
 `asset.cursor.dimensions`, `asset.font.load.failed`,
-`asset.inventory-appearance.dimensions`, `asset.walk-strip.frames`,
-`asset.walk-strip.consistency`, `asset.visual-anchor.bounds`,
+`asset.inventory-appearance.dimensions`, `asset.animation-strip.frames`,
+`asset.animation-strip.dimensions`, `asset.visual-anchor.bounds`,
 `environment.start.failed`, `environment.target.occupied`, and
 `environment.webgl.unavailable`.
 

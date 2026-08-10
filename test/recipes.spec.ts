@@ -25,7 +25,7 @@ const sequencePlayer = defineCharacter({
   initialFacing: "front",
   initialAppearance: "idle",
   movementSpeed: 60,
-  appearances: { idle: { kind: "static", image: "player.png" } },
+  appearances: { idle: { animations: { idle: { frames: ["player.png"], framesPerSecond: 1, loop: true } }, roles: { default: "idle", walking: "idle" } } },
 });
 
 test("every public recipe executes against the built package root", () => {

@@ -104,8 +104,8 @@ function projectFixture(consumeSelectedObject = false) {
     initialFacing: "front",
     initialAppearance: "normal",
     appearances: {
-      normal: { kind: "static", image: "normal.png" },
-      happy: { kind: "static", image: "happy.png" },
+      normal: { animations: { idle: { frames: ["normal.png"], framesPerSecond: 1, loop: true } }, roles: { default: "idle", walking: "idle" } },
+      happy: { animations: { idle: { frames: ["happy.png"], framesPerSecond: 1, loop: true } }, roles: { default: "idle", walking: "idle" } },
     },
     movementSpeed: 600,
     noun: defineNoun({
@@ -127,8 +127,8 @@ function projectFixture(consumeSelectedObject = false) {
     initialGroundPoint: { x: 40, y: 40 },
     initialAppearance: "new",
     appearances: {
-      new: { kind: "static", image: "key.png" },
-      used: { kind: "static", image: "used-key.png" },
+      new: { animations: { idle: { frames: ["key.png"], framesPerSecond: 1, loop: true } }, roles: { default: "idle" } },
+      used: { animations: { idle: { frames: ["used-key.png"], framesPerSecond: 1, loop: true } }, roles: { default: "idle" } },
     },
     inventoryAppearance: "key-inventory.png",
     noun: defineNoun({
@@ -154,6 +154,7 @@ function projectFixture(consumeSelectedObject = false) {
   });
   const conversation = defineSequence({
     skippable: true,
+    skipOutcome: [],
     steps: [
       { type: "line", character: "player", text: "Can you help me?" },
       {

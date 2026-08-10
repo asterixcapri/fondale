@@ -8,7 +8,7 @@ export const oilFlask = defineObject({
   initialGroundPoint: { x: 500, y: 211 },
   initialAppearance: "full",
   appearances: {
-    full: { kind: "static", image: sceneUrl },
+    full: { animations: { idle: { frames: [sceneUrl], framesPerSecond: 1, loop: true } }, roles: { default: "idle" } },
   },
   inventoryAppearance: inventoryUrl,
   noun: defineNoun({

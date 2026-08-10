@@ -67,7 +67,7 @@ const player = defineCharacter({
   initialFacing: "front",
   initialAppearance: "idle",
   appearances: {
-    idle: { kind: "static", image: playerUrl, visualAnchor: { x: 10, y: 20 } },
+    idle: { animations: { idle: { frames: [playerUrl], framesPerSecond: 1, loop: true } }, roles: { default: "idle", walking: "idle" }, visualAnchor: { x: 10, y: 20 } },
   },
   movementSpeed: 240,
 });
@@ -77,7 +77,7 @@ const guide = defineCharacter({
   initialFacing: "front",
   initialAppearance: "idle",
   appearances: {
-    idle: { kind: "static", image: playerUrl, visualAnchor: { x: 10, y: 20 } },
+    idle: { animations: { idle: { frames: [playerUrl], framesPerSecond: 1, loop: true } }, roles: { default: "idle" }, visualAnchor: { x: 10, y: 20 } },
   },
   movementSpeed: 60,
 });

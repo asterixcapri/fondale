@@ -8,7 +8,7 @@ export const raffaele = defineCharacter({
   initialFacing: "left",
   initialAppearance: "working",
   appearances: {
-    working: { kind: "static", image: idleUrl },
+    working: { animations: { idle: { frames: [idleUrl], framesPerSecond: 1, loop: true } }, roles: { default: "idle" } },
   },
   movementSpeed: 70,
   noun: defineNoun({

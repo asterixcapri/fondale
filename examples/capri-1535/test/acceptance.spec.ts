@@ -197,13 +197,19 @@ test("Michele completes one ordinary job before the drifting boat begins the adv
 
   await selectInventoryObject(page, "winchHandle");
   await command(page, "use", 326, 190);
-  await expect(page.locator("[aria-live=polite]")).toContainText("può salpare");
+  await expect(line).toContainText("può salpare", { timeout: 8_000 });
   await expect(page.locator('[data-fondale-inventory-object="winchHandle"]')).toHaveCount(0);
+  await advance(page);
 
   await enterLeftEdgePassage(page);
   await expect(frame).toHaveAttribute("data-fondale-scene", "coastalFortification", {
     timeout: 8_000,
   });
+  const arrivalStart = await frame.locator("canvas").screenshot();
+  await page.waitForTimeout(400);
+  expect((await frame.locator("canvas").screenshot()).equals(arrivalStart)).toBe(false);
+  await frame.focus();
+  await page.keyboard.press("Escape");
   await shoot(page, "capri-1535-fortification-lower-path");
 
   let lookout: { x: number; y: number } | undefined;
