@@ -87,7 +87,7 @@ const project = defineGame({
       initialGroundPoint: { x: 210, y: 175 },
       initialFacing: "front",
       initialAppearance: "idle",
-      appearances: { idle: { kind: "static", image: "/src/characters/host/idle.png" } },
+      appearances: { idle: { kind: "static", image: "/src/characters/brother-elia/idle.png" } },
       movementSpeed: 900,
     }),
     guide: defineCharacter({

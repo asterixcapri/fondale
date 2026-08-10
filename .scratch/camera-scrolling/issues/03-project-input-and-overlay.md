@@ -7,7 +7,7 @@ mantengono la corretta appartenenza visiva.
 
 **Blocked by:** 02
 
-**Status:** resolved
+**Status:** ready-for-human
 
 - [x] Click sinistro sul terreno o su un Hotspot usa il punto corretto nello Scene Space dopo lo scrolling.
 - [x] Click destro, doppio click, hover e Scene Passage usano la stessa proiezione.

@@ -41,35 +41,46 @@ async function waitForWalk(page: Page, milliseconds = 3_000): Promise<void> {
   await page.waitForTimeout(milliseconds);
 }
 
+function polygonBounds(points: string): {
+  minimumX: number;
+  maximumX: number;
+  minimumY: number;
+  maximumY: number;
+} {
+  const coordinates = points.split(" ").map((pair) => {
+    const [x, y] = pair.split(",").map(Number);
+    return { x: x ?? 0, y: y ?? 0 };
+  });
+  const xs = coordinates.map(({ x }) => x);
+  const ys = coordinates.map(({ y }) => y);
+  return {
+    minimumX: Math.min(...xs),
+    maximumX: Math.max(...xs),
+    minimumY: Math.min(...ys),
+    maximumY: Math.max(...ys),
+  };
+}
+
 async function clickVisibleEdgePassage(page: Page, edge: "left" | "right"): Promise<boolean> {
   const frame = page.locator("[data-fondale-frame]");
   await frame.focus();
   await page.keyboard.down("Tab");
   const passages = page.locator("[data-fondale-revealed-passage]");
   await expect(passages).not.toHaveCount(0);
-  const point = await passages.evaluateAll((elements, requestedEdge) => {
-    const candidates = elements.flatMap((element) => {
-      const coordinates = (element.getAttribute("points") ?? "").split(" ").map((pair) => {
-        const [x, y] = pair.split(",").map(Number);
-        return { x: x ?? 0, y: y ?? 0 };
-      });
-      const xs = coordinates.map(({ x }) => x);
-      const ys = coordinates.map(({ y }) => y);
-      const minimumX = Math.min(...xs);
-      const maximumX = Math.max(...xs);
-      if (maximumX < 0 || minimumX > 426) return [];
-      if (requestedEdge === "left" && minimumX > 80) return [];
-      if (requestedEdge === "left" && maximumX < 48) return [];
-      if (requestedEdge === "right" && maximumX < 346) return [];
-      return [{
-        x: requestedEdge === "left"
-          ? Math.max(40, Math.min(100, maximumX - 8))
-          : Math.min(418, maximumX - Math.min(24, maximumX - minimumX)),
-        y: Math.max(8, Math.min(232, (Math.min(...ys) + Math.max(...ys)) / 2)),
-      }];
+  const candidates: Array<{ x: number; y: number }> = [];
+  for (let index = 0; index < await passages.count(); index += 1) {
+    const bounds = polygonBounds(await passages.nth(index).getAttribute("points") ?? "");
+    if (bounds.maximumX < 0 || bounds.minimumX > 426) continue;
+    if (edge === "left" && (bounds.minimumX > 80 || bounds.maximumX < 48)) continue;
+    if (edge === "right" && bounds.maximumX < 346) continue;
+    candidates.push({
+      x: edge === "left"
+        ? Math.max(40, Math.min(100, bounds.maximumX - 8))
+        : Math.min(418, bounds.maximumX - Math.min(24, bounds.maximumX - bounds.minimumX)),
+      y: Math.max(8, Math.min(232, (bounds.minimumY + bounds.maximumY) / 2)),
     });
-    return candidates.sort((a, b) => requestedEdge === "left" ? a.x - b.x : b.x - a.x)[0];
-  }, edge);
+  }
+  const point = candidates.sort((a, b) => edge === "left" ? a.x - b.x : b.x - a.x)[0];
   await page.keyboard.up("Tab");
   if (!point) return false;
   await clickWorld(page, point.x, point.y);
@@ -80,30 +91,23 @@ async function visibleHotspotPoint(page: Page, label: string): Promise<{ x: numb
   const frame = page.locator("[data-fondale-frame]");
   await frame.focus();
   await page.keyboard.down("Tab");
-  const point = await page.locator("[data-fondale-revealed-hotspot]").evaluateAll(
-    (elements, requestedLabel) => {
-      const element = elements.find((candidate) =>
-        candidate.querySelector("title")?.textContent === requestedLabel
-      );
-      if (!element) return undefined;
-      const coordinates = (element.getAttribute("points") ?? "").split(" ").map((pair) => {
-        const [x, y] = pair.split(",").map(Number);
-        return { x: x ?? 0, y: y ?? 0 };
-      });
-      const xs = coordinates.map(({ x }) => x);
-      const ys = coordinates.map(({ y }) => y);
-      const minimumX = Math.min(...xs);
-      const maximumX = Math.max(...xs);
-      const minimumY = Math.min(...ys);
-      const maximumY = Math.max(...ys);
-      if (maximumX < 0 || minimumX > 426 || maximumY < 0 || minimumY > 240) return undefined;
-      return {
-        x: Math.max(40, Math.min(418, (minimumX + maximumX) / 2)),
-        y: Math.max(8, Math.min(232, (minimumY + maximumY) / 2)),
+  const hotspots = page.locator("[data-fondale-revealed-hotspot]");
+  let point: { x: number; y: number } | undefined;
+  for (let index = 0; index < await hotspots.count(); index += 1) {
+    const hotspot = hotspots.nth(index);
+    if (await hotspot.locator("title").textContent() !== label) continue;
+    const bounds = polygonBounds(await hotspot.getAttribute("points") ?? "");
+    if (
+      bounds.maximumX >= 0 && bounds.minimumX <= 426 &&
+      bounds.maximumY >= 0 && bounds.minimumY <= 240
+    ) {
+      point = {
+        x: Math.max(40, Math.min(418, (bounds.minimumX + bounds.maximumX) / 2)),
+        y: Math.max(8, Math.min(232, (bounds.minimumY + bounds.maximumY) / 2)),
       };
-    },
-    label,
-  );
+    }
+    break;
+  }
   await page.keyboard.up("Tab");
   return point;
 }

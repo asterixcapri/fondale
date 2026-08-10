@@ -1,6 +1,6 @@
 # Fondale — Scrolling Camera
 
-Status: resolved
+Status: ready-for-human
 
 ## Problem Statement
 

@@ -8,7 +8,7 @@ produzione, non soltanto con fixture diagnostiche.
 
 **Blocked by:** 01, 02, 03
 
-**Status:** resolved
+**Status:** ready-for-human
 
 - [x] Il nuovo Art Master fornito dall'utente è conservato integralmente e la copia runtime ha la Scene Size esatta scelta dall'Author.
 - [x] La composizione conserva torre, percorso continuo, Ground Point leggibili e informazioni essenziali fuori dalle zone coperte dal HUD.

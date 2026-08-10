@@ -27,9 +27,9 @@ the logical outcome of play and is not part of a Save Snapshot.
 _Avoid_: Game Setting, Game Variable, progress flag
 
 **Logical Resolution**:
-The fixed width and height of the base visual canvas in which a Game Project
-composes every Scene and Engine-owned overlay before the whole frame is fitted
-to its display target through uniform scaling and, when required, letterboxing.
+The fixed width and height of the visible logical viewport and Engine-owned
+overlay before the whole frame is fitted to its display target through uniform
+scaling and, when required, letterboxing. A Scene may extend beyond it.
 _Avoid_: Window size, renderer resolution, per-Scene resolution
 
 **Scene Size**:

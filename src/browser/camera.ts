@@ -11,11 +11,13 @@ export interface CameraInput {
 export class Camera {
   private current: Point = { x: 0, y: 0 };
   private target: Point = { x: 0, y: 0 };
+  private velocity: Point = { x: 0, y: 0 };
 
   update(input: CameraInput): Point {
     if (!input.follow) {
       this.current = { x: 0, y: 0 };
       this.target = { x: 0, y: 0 };
+      this.velocity = { x: 0, y: 0 };
       return this.current;
     }
 
@@ -25,11 +27,18 @@ export class Camera {
         y: input.follow.y - input.viewport.height / 2,
       }, input);
       this.current = this.target;
+      this.velocity = { x: 0, y: 0 };
     } else {
       this.target = this.followTarget(input);
+      const horizontal = approach(this.current.x, this.target.x, this.velocity.x);
+      const vertical = approach(this.current.y, this.target.y, this.velocity.y);
       this.current = {
-        x: approach(this.current.x, this.target.x),
-        y: approach(this.current.y, this.target.y),
+        x: horizontal.value,
+        y: vertical.value,
+      };
+      this.velocity = {
+        x: horizontal.velocity,
+        y: vertical.velocity,
       };
     }
 
@@ -66,8 +75,18 @@ export class Camera {
   }
 }
 
-function approach(current: number, target: number): number {
+function approach(current: number, target: number, velocity: number): {
+  value: number;
+  velocity: number;
+} {
   const remaining = target - current;
-  if (Math.abs(remaining) < 0.01) return target;
-  return current + remaining * 0.18;
+  if (Math.abs(remaining) < 0.01 && Math.abs(velocity) < 0.01) {
+    return { value: target, velocity: 0 };
+  }
+  const directedVelocity = Math.sign(velocity) === Math.sign(remaining) ? velocity : 0;
+  const nextVelocity = (directedVelocity + remaining * 0.08) * 0.72;
+  if (Math.abs(nextVelocity) >= Math.abs(remaining)) {
+    return { value: target, velocity: 0 };
+  }
+  return { value: current + nextVelocity, velocity: nextVelocity };
 }

@@ -16,23 +16,11 @@ export const raffaeleConversation = defineSequence({
       alternatives: [
         {
           text: "Quanto vale il lavoro?",
-          steps: [
-            {
-              type: "line",
-              character: "michele",
-              text: "Quanto vale il lavoro?",
-            },
-          ],
+          steps: [],
         },
         {
           text: "Lavoro prima, monete dopo?",
-          steps: [
-            {
-              type: "line",
-              character: "michele",
-              text: "Lavoro prima, monete dopo? È una tradizione dell'isola?",
-            },
-          ],
+          steps: [],
         },
       ],
       fallback: { text: "Dimmi cosa devo fare.", steps: [] },

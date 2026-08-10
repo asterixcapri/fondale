@@ -828,3 +828,41 @@ test("defineGame rejects a non-finite Object placement operation", () => {
     initialScene: "opening",
   })).toThrow(/placed Object Ground Point/i);
 });
+
+test("defineGame bounds a Character-owned placement operation to its Scene Size", () => {
+  const guide = defineCharacter({
+    initialScene: "opening",
+    initialGroundPoint: { x: 20, y: 20 },
+    initialFacing: "front",
+    initialAppearance: "idle",
+    appearances: { idle: { kind: "static", image: "guide.png" } },
+    movementSpeed: 60,
+    noun: defineNoun({
+      labels: [{ text: "Guide" }],
+      preferredVerbs: [{ verb: "use" }],
+      cases: [{
+        verb: "use",
+        response: { text: "Placed." },
+        operations: [{ type: "place-selected-object", groundPoint: { x: 101, y: 20 } }],
+      }],
+    }),
+  });
+  const scene = defineScene({
+    background: "scene.png",
+    walkableRegion: [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 0, y: 100 }],
+    hotspots: [{
+      target: { kind: "character", character: "guide" },
+      area: [{ x: 10, y: 10 }, { x: 30, y: 10 }, { x: 20, y: 30 }],
+      approach: { groundPoint: { x: 20, y: 20 }, facing: "front" },
+    }],
+  });
+
+  expect(() => defineGame({
+    identity: "invalid.character-placement",
+    version: "1",
+    logicalResolution: { width: 100, height: 100 },
+    scenes: { opening: scene },
+    characters: { guide },
+    initialScene: "opening",
+  })).toThrow(/placed Object Ground Point/i);
+});

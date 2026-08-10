@@ -1008,7 +1008,12 @@ function validateProjectDefinitions(
   }
 
   for (const [characterId, character] of Object.entries(characters)) {
-    noun(character.noun, `characters.${characterId}.noun`, { kind: "character", character: characterId });
+    noun(
+      character.noun,
+      `characters.${characterId}.noun`,
+      { kind: "character", character: characterId },
+      character.initialScene,
+    );
     const scene = input.scenes[character.initialScene];
     if (!scene) continue;
     const path = `characters.${characterId}.initialGroundPoint`;
@@ -1019,7 +1024,12 @@ function validateProjectDefinitions(
     }
   }
   for (const [objectId, object] of Object.entries(objects)) {
-    noun(object.noun, `objects.${objectId}.noun`, { kind: "object", object: objectId });
+    noun(
+      object.noun,
+      `objects.${objectId}.noun`,
+      { kind: "object", object: objectId },
+      object.initialScene,
+    );
     const scene = input.scenes[object.initialScene];
     if (scene && !pointInScene(scene, object.initialGroundPoint)) {
       diagnostics.push({ code: "definition.scene-space.bounds", family: "definition", path: `objects.${objectId}.initialGroundPoint`, message: "Object Ground Points must remain inside the Scene Size." });

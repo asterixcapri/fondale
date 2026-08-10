@@ -1,4 +1,4 @@
-import coastalFortificationUrl from "../../examples/capri-1535/art/scenes/coastal-fortification/background.png";
+import cameraScrollingUrl from "./camera-scrolling.png";
 import playerUrl from "./invalid-inventory.png";
 import {
   commandVerbs,
@@ -16,14 +16,14 @@ declare global {
   interface Window {
     __cameraTest?: {
       session: GameSession;
-      restart(): Promise<void>;
+      restart(point?: { x: number; y: number }): Promise<void>;
     };
     __cameraError?: string;
   }
 }
 
 const scene = defineScene({
-  background: coastalFortificationUrl,
+  background: cameraScrollingUrl,
   size: { width: 1586, height: 992 },
   walkableRegion: [
     { x: 0, y: 0 },
@@ -74,13 +74,14 @@ const guide = defineCharacter({
   },
   movementSpeed: 60,
 });
+const noPlayer = new URLSearchParams(window.location.search).has("noPlayer");
 const project = defineGame({
   identity: "test.camera-scrolling",
   version: "1",
   logicalResolution: { width: 426, height: 240 },
   scenes: { fortification: scene },
-  characters: { player, guide },
-  playerCharacter: "player",
+  characters: noPlayer ? { guide } : { player, guide },
+  ...(noPlayer ? {} : { playerCharacter: "player" }),
   commandLexicon: defineCommandLexicon({
     inventory: { select: "Hold {noun}", deselect: "Put away {noun}" },
     verbs: {
@@ -101,8 +102,14 @@ try {
   const target = document.querySelector<HTMLElement>("#game")!;
   const fixture = {
     session: await startGame(project, { target }),
-    async restart() {
-      const validation = validateSaveSnapshot(project, fixture.session.createSaveSnapshot());
+    async restart(point?: { x: number; y: number }) {
+      const stored = structuredClone(fixture.session.createSaveSnapshot()) as {
+        state: { characters: Record<string, { groundPoint: { x: number; y: number } }> };
+      };
+      if (point && stored.state.characters.player) {
+        stored.state.characters.player.groundPoint = { ...point };
+      }
+      const validation = validateSaveSnapshot(project, stored);
       if (!validation.ok) throw new Error(validation.diagnostics[0]?.message);
       fixture.session.stop();
       fixture.session = await startGame(project, { target, snapshot: validation.snapshot });

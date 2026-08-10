@@ -8,7 +8,7 @@ termini canonici e la decisione architetturale insieme al contratto.
 
 **Blocked by:** None — can start immediately
 
-**Status:** resolved
+**Status:** ready-for-human
 
 - [x] Il dominio distingue Logical Resolution, Scene Size e Camera senza termini concorrenti.
 - [x] Una Scene accetta una Scene Size opzionale con larghezza e altezza intere positive.

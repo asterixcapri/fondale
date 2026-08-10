@@ -2,7 +2,7 @@ import { defineGame } from "@asterixcapri/fondale";
 
 import { michele } from "./characters/michele";
 import { raffaele } from "./characters/raffaele";
-import { brotherElia } from "./characters/host";
+import { brotherElia } from "./characters/brother-elia";
 import { capriHudTheme, italianCommandFallbacks, italianCommandLexicon } from "./hud";
 import { oilFlask } from "./objects/oil-flask";
 import { winchHandle } from "./objects/winch-handle";
@@ -10,8 +10,8 @@ import { cloister } from "./scenes/cloister";
 import { coastalFortification } from "./scenes/coastal-fortification";
 import { harbour } from "./scenes/harbour";
 import { townSquare } from "./scenes/town-square";
-import { brotherEliaConversation } from "./sequences/host-conversation";
-import { prologueConclusion } from "./sequences/monte-solaro-conclusion";
+import { brotherEliaConversation } from "./sequences/brother-elia-conversation";
+import { prologueConclusion } from "./sequences/prologue-conclusion";
 import { raffaeleConversation } from "./sequences/raffaele-conversation";
 
 export const project = defineGame({

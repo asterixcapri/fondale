@@ -7,6 +7,15 @@ async function clickViewport(page: Page, x: number, y: number): Promise<void> {
   await page.mouse.click(box.x + (x / 426) * box.width, box.y + (y / 240) * box.height);
 }
 
+async function canvasPoint(page: Page, x: number, y: number): Promise<{ x: number; y: number }> {
+  const box = await page.locator("[data-fondale-frame] canvas").boundingBox();
+  if (!box) throw new Error("Camera fixture canvas is not visible.");
+  return {
+    x: box.x + (x / 426) * box.width,
+    y: box.y + (y / 240) * box.height,
+  };
+}
+
 async function playerPoint(page: Page): Promise<{ x: number; y: number }> {
   return page.evaluate(() =>
     window.__cameraTest!.session.createSaveSnapshot().state.characters.player!.groundPoint,
@@ -64,6 +73,60 @@ test("Camera presentation does not add fields to a Save Snapshot", async ({ page
     "activity", "characters", "command", "currentScene", "inventory",
     "objects", "scenery", "tick", "variables",
   ]);
+});
+
+test("Camera presentation accelerates monotonically on whole logical pixels", async ({ page }) => {
+  await page.goto("/test/fixtures/camera-scrolling.html");
+  await waitForCameraFixture(page);
+  const frame = page.locator("[data-fondale-frame]");
+  await frame.focus();
+  await page.keyboard.down("Tab");
+  await clickViewport(page, 380, 80);
+  const samples = await page.evaluate(async () => {
+    const positions: number[] = [];
+    for (let frameIndex = 0; frameIndex < 80; frameIndex += 1) {
+      await new Promise(requestAnimationFrame);
+      const points = document.querySelector('[data-fondale-revealed-hotspot="0"]')
+        ?.getAttribute("points") ?? "";
+      positions.push(Number(points.split(/[ ,]/)[0]));
+    }
+    return positions;
+  });
+  await page.keyboard.up("Tab");
+
+  expect(samples.every(Number.isInteger)).toBe(true);
+  const movement = samples.slice(1).map((value, index) => samples[index]! - value);
+  expect(movement.every((amount) => amount >= 0)).toBe(true);
+  const positive = movement.filter((amount) => amount > 0);
+  expect(positive.length).toBeGreaterThan(3);
+  expect(Math.max(...positive)).toBeGreaterThan(positive[0]!);
+});
+
+test("double click uses Scene Space after Camera scrolling", async ({ page }) => {
+  await page.goto("/test/fixtures/camera-scrolling.html");
+  await waitForCameraFixture(page);
+  await moveViewport(page, 380, 80);
+  await page.waitForTimeout(700);
+  const before = await playerPoint(page);
+  const target = await canvasPoint(page, 400, 110);
+  await page.mouse.dblclick(target.x, target.y);
+  await expect.poll(async () => (await playerPoint(page)).x).toBeGreaterThan(before.x + 100);
+  await waitForIdle(page);
+});
+
+test("an oversized Scene without a Player Character remains at origin", async ({ page }) => {
+  await page.goto("/test/fixtures/camera-scrolling.html?noPlayer");
+  await waitForCameraFixture(page);
+  const frame = page.locator("[data-fondale-frame]");
+  await frame.focus();
+  await page.keyboard.down("Tab");
+  const points = await frame.locator('[data-fondale-revealed-hotspot="0"]').getAttribute("points");
+  await page.keyboard.up("Tab");
+  expect(points?.startsWith("480,760")).toBe(true);
+  const canvas = frame.locator("canvas");
+  const initial = await canvas.screenshot();
+  await page.waitForTimeout(300);
+  expect((await canvas.screenshot()).equals(initial)).toBe(true);
 });
 
 test("revealed world geometry and contextual input share the scrolled projection", async ({
@@ -135,7 +198,8 @@ test("Camera clamps both Scene Size axes and restoration snaps before presentati
   expect((await playerPoint(page)).x).toBeCloseTo(1160, 0);
 
   await page.waitForTimeout(800);
-  await page.evaluate(() => window.__cameraTest!.restart());
+  await page.evaluate(() => window.__cameraTest!.restart({ x: 1400, y: 200 }));
+  await expect.poll(async () => playerPoint(page)).toEqual({ x: 1400, y: 200 });
   const canvas = page.locator("[data-fondale-frame] canvas");
   const restored = await canvas.screenshot();
   await page.waitForTimeout(300);

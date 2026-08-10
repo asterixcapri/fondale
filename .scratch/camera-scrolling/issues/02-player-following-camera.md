@@ -8,7 +8,7 @@ logici interi.
 
 **Blocked by:** 01
 
-**Status:** resolved
+**Status:** ready-for-human
 
 - [x] Background, Scenery, Object e Character condividono una sola trasformazione Camera.
 - [x] La Camera segue il Player Character sugli assi orizzontale e verticale.

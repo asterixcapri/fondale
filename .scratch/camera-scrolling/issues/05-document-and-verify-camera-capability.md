@@ -6,7 +6,7 @@ le gate complete del package e dell'Example Capri 1535.
 
 **Blocked by:** 01, 02, 03, 04
 
-**Status:** resolved
+**Status:** ready-for-human
 
 - [x] Glossario, ADR, Concepts, Game Project authoring guide e Reference usano gli stessi termini canonici.
 - [x] La documentazione spiega che Logical Resolution è il viewport e Scene Size è l'estensione completa dello Scene Space.
