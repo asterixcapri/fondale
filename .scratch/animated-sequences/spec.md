@@ -1,6 +1,6 @@
 # Fondale — Animation, Motion, and Camera direction in Sequence
 
-Status: ready-for-agent
+Status: ready-for-human
 
 ## Problem Statement
 

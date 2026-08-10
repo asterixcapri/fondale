@@ -18,8 +18,10 @@ import type {
 } from "../internal/core";
 import {
   animationDurationTicks,
+  directionStartTick,
   isImageAnimationFrames,
   pointAlongPath,
+  resolveSequencePath,
   secondsToTicks,
 } from "../internal/sequence-directions";
 import type {
@@ -335,7 +337,7 @@ export class BrowserRenderer {
       for (let index = active.step.directions.length - 1; index >= 0; index -= 1) {
         const direction = active.step.directions[index]!;
         if (direction.type !== "animation" || !sameSubject(direction.subject, subject)) continue;
-        const elapsedTicks = active.elapsedTicks - this.directionStartTick(state, active.step, index);
+        const elapsedTicks = active.elapsedTicks - this.cueStartTick(state, active.step, index);
         const animation = appearance.animations[direction.animation];
         if (!animation || elapsedTicks < 0) continue;
         if (animation.loop || elapsedTicks < animationDurationTicks(animation)) {
@@ -346,7 +348,7 @@ export class BrowserRenderer {
         subject.kind === "character" &&
         active.step.directions.some((direction, index) =>
           direction.type === "motion" && sameSubject(direction.subject, subject) &&
-          active.elapsedTicks >= this.directionStartTick(state, active.step, index),
+          active.elapsedTicks >= this.cueStartTick(state, active.step, index),
         ) && appearance.roles.walking
       ) return { name: appearance.roles.walking, elapsedTicks: active.elapsedTicks, loop: true };
     }
@@ -368,24 +370,22 @@ export class BrowserRenderer {
     if (state.activity?.type !== "sequence" || state.activity.active?.kind !== "line") return undefined;
     if (state.activity.active.choiceCharacter) return { character: state.activity.active.choiceCharacter };
     const sequence = this.data.sequences[state.activity.sequence]!;
-    const step = resolvePath(sequence, state.activity.active.path) as SequenceStep;
+    const step = resolveSequencePath(sequence, state.activity.active.path) as SequenceStep;
     return step.type === "line" ? { character: step.character, ...(step.animation ? { animation: step.animation } : {}) } : undefined;
   }
 
   private activeDirect(state: GameState): { step: DirectStep; elapsedTicks: number } | undefined {
     if (state.activity?.type !== "sequence" || state.activity.active?.kind !== "direct") return undefined;
-    const step = resolvePath(this.data.sequences[state.activity.sequence], state.activity.active.path) as DirectStep;
+    const step = resolveSequencePath(this.data.sequences[state.activity.sequence], state.activity.active.path) as DirectStep;
     return { step, elapsedTicks: state.activity.active.elapsedTicks };
   }
 
-  private directionStartTick(state: GameState, step: DirectStep, index: number): number {
-    const dependency = step.directions[index]?.startAfter;
-    if (!dependency) return 0;
-    const source = step.directions[dependency.direction];
-    if (!source || source.type !== "animation") return 0;
-    const appearance = this.appearanceFor(state, source.subject);
-    const cue = appearance?.animations[source.animation]?.cues?.[dependency.cue] ?? 0;
-    return this.directionStartTick(state, step, dependency.direction) + secondsToTicks(cue);
+  private cueStartTick(state: GameState, step: DirectStep, index: number): number {
+    return directionStartTick(
+      step,
+      index,
+      (subject, animation) => this.appearanceFor(state, subject)?.animations[animation],
+    );
   }
 
   private appearanceFor(state: GameState, subject: DirectedSubject): Appearance | undefined {
@@ -403,7 +403,7 @@ export class BrowserRenderer {
     for (let index = active.step.directions.length - 1; index >= 0; index -= 1) {
       const direction = active.step.directions[index]!;
       if (direction.type !== "motion" || direction.subject.kind !== "scenery" || direction.subject.scenery !== scenery) continue;
-      const elapsed = active.elapsedTicks - this.directionStartTick(state, active.step, index);
+      const elapsed = active.elapsedTicks - this.cueStartTick(state, active.step, index);
       if (elapsed < 0) continue;
       return pointAlongPath(direction.path, Math.min(1, elapsed / secondsToTicks(direction.duration!)));
     }
@@ -416,7 +416,7 @@ export class BrowserRenderer {
     for (let index = active.step.directions.length - 1; index >= 0; index -= 1) {
       const direction = active.step.directions[index]!;
       if (direction.type !== "camera") continue;
-      const elapsed = active.elapsedTicks - this.directionStartTick(state, active.step, index);
+      const elapsed = active.elapsedTicks - this.cueStartTick(state, active.step, index);
       if (elapsed < 0) continue;
       if (direction.mode === "cut" || direction.mode === "hold") return direction.point;
       if (direction.mode === "move") {
@@ -1168,7 +1168,7 @@ class EngineOverlay {
     const active = sequence.active;
     if (!active) return;
     const definition = this.data.sequences[sequence.sequence]!;
-    const step = resolvePath(definition, active.path) as SequenceStep;
+    const step = resolveSequencePath(definition, active.path) as SequenceStep;
     if (active.kind === "line") {
       const isChoiceSpeech = active.choiceText !== undefined;
       const authoredLine = step.type === "line" ? step : undefined;
@@ -1794,11 +1794,4 @@ function boundingBox(area: readonly Point[]): Rectangle {
   const x = Math.floor(Math.min(...xs));
   const y = Math.floor(Math.min(...ys));
   return new Rectangle(x, y, Math.ceil(Math.max(...xs)) - x, Math.ceil(Math.max(...ys)) - y);
-}
-
-function resolvePath(value: unknown, path: string): unknown {
-  return path.split("/").reduce<unknown>((current, segment) => {
-    if (current === null || typeof current !== "object") return undefined;
-    return (current as Record<string, unknown>)[segment];
-  }, value);
 }

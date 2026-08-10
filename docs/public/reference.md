@@ -256,7 +256,8 @@ Definition codes: `definition.approach.bounds`,
 `definition.motion.duration`, `definition.motion.bounds`,
 `definition.motion.walkable`, `definition.camera.duration`,
 `definition.camera.bounds`, `definition.arrival-sequence.ambiguous`,
-`definition.appearance.animations`, `definition.animation.frames`,
+`definition.appearance.animations`, `definition.appearance.default-role`,
+`definition.motion.scenery-rest`, `definition.animation.frames`,
 `definition.animation.directional-frame-count`,
 `definition.animation.frames-per-second`, and `definition.animation.cue`.
 
@@ -267,9 +268,11 @@ Reference codes: `reference.appearance`, `reference.appearance.initial`,
 `reference.passage.entrance`, `reference.passage.scene`,
 `reference.scene`, `reference.scene.initial`, `reference.sequence`,
 `reference.sequence.scene`, `reference.sequence.subject`, `reference.entrance`,
+`reference.sequence.subject-scene`,
 `reference.animation`, `reference.animation.role`,
 `reference.animation.walking-role`, `reference.animation.cue`,
-`reference.animation.line`, `reference.camera.subject`, and `reference.variable`.
+`reference.animation.line`, `reference.camera.subject`,
+`reference.camera.subject-scene`, and `reference.variable`.
 
 Runtime, save, asset and environment codes: `state.operation.invalid`,
 `save.shape`, `save.fields.unexpected`, `save.format.version`,

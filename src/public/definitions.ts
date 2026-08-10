@@ -968,6 +968,15 @@ function validateProjectDefinitions(
         `${path}.character`,
         `Character '${value.character}' does not exist.`,
       ));
+    } else if (value.animation !== undefined) {
+      const appearances = Object.values(characters[value.character]!.appearances);
+      if (appearances.some((appearance) => !(value.animation! in appearance.animations))) {
+        diagnostics.push(referenceDiagnostic(
+          "reference.animation.line",
+          `${path}.animation`,
+          `Line Animation '${value.animation}' is not available in every Appearance of Character '${value.character}'.`,
+        ));
+      }
     }
   };
   const noun = (
@@ -1231,7 +1240,12 @@ function validateProjectDefinitions(
           : [];
     return candidates.flatMap((appearance) => "animations" in appearance ? [appearance] : []);
   };
-  const validateDirections = (step: DirectStep, path: string, sceneId?: string) => {
+  const validateDirections = (
+    step: DirectStep,
+    path: string,
+    sceneId?: string,
+    hasLaterSceneryMotion: (scenery: string) => boolean = () => false,
+  ) => {
     let hasFiniteBoundary = step.duration !== undefined;
     step.directions.forEach((direction, directionIndex) => {
       const directionPath = `${path}.directions[${directionIndex}]`;
@@ -1239,6 +1253,13 @@ function validateProjectDefinitions(
         const appearances = appearancesForSubject(direction.subject, sceneId);
         if (appearances.length === 0) {
           diagnostics.push(referenceDiagnostic("reference.sequence.subject", `${directionPath}.subject`, "Directed subject does not exist or has no animated Appearance."));
+        }
+        if (sceneId && !subjectBelongsToScene(direction.subject, sceneId, input.playerCharacter, characters, objects, input.scenes)) {
+          diagnostics.push(referenceDiagnostic(
+            "reference.sequence.subject-scene",
+            `${directionPath}.subject`,
+            "A directed subject must belong to the Sequence Scene.",
+          ));
         }
         if (direction.type === "animation") {
           const animations = appearances.map((appearance) => appearance.animations[direction.animation]);
@@ -1273,6 +1294,25 @@ function validateProjectDefinitions(
                 });
               }
             });
+            if (
+              direction.subject.kind === "scenery" &&
+              scene &&
+              !hasLaterSceneryMotion(direction.subject.scenery)
+            ) {
+              const rest = scene.scenery?.[direction.subject.scenery]?.position;
+              const destination = direction.path.at(-1);
+              if (
+                !rest || !destination ||
+                Math.hypot(rest.x - destination.x, rest.y - destination.y) > 1e-8
+              ) {
+                diagnostics.push({
+                  code: "definition.motion.scenery-rest",
+                  family: "definition",
+                  path: `${directionPath}.path`,
+                  message: "A Scenery Motion must end at its authored resting position.",
+                });
+              }
+            }
           }
         }
       }
@@ -1286,6 +1326,13 @@ function validateProjectDefinitions(
               ? direction.subject.object in objects
               : sceneId !== undefined && sceneryId! in (input.scenes[sceneId]?.scenery ?? {});
           if (!exists) diagnostics.push(referenceDiagnostic("reference.camera.subject", `${directionPath}.subject`, "Camera follow subject does not exist."));
+          else if (sceneId && !subjectBelongsToScene(direction.subject, sceneId, input.playerCharacter, characters, objects, input.scenes)) {
+            diagnostics.push(referenceDiagnostic(
+              "reference.camera.subject-scene",
+              `${directionPath}.subject`,
+              "A Camera follow subject must belong to the Sequence Scene.",
+            ));
+          }
         }
         const cameraPoints = [
           ["point", "point" in direction ? direction.point : undefined],
@@ -1309,6 +1356,26 @@ function validateProjectDefinitions(
     if (!hasFiniteBoundary) diagnostics.push({ code: "definition.sequence.direct.unbounded", family: "definition", path, message: "A directed step containing only loops needs a finite completion boundary." });
   };
 
+  const stepContainsSceneryMotion = (step: SequenceStep, scenery: string): boolean => {
+    if (step.type === "direct") {
+      return step.directions.some((direction) =>
+        direction.type === "motion" &&
+        direction.subject.kind === "scenery" &&
+        direction.subject.scenery === scenery,
+      );
+    }
+    if (step.type === "choice") {
+      return step.alternatives.some((alternative) =>
+        alternative.steps.some((child) => stepContainsSceneryMotion(child, scenery)),
+      ) || step.fallback.steps.some((child) => stepContainsSceneryMotion(child, scenery));
+    }
+    if (step.type === "branch") {
+      return step.cases.some((branch) =>
+        branch.steps.some((child) => stepContainsSceneryMotion(child, scenery)),
+      ) || step.fallback.some((child) => stepContainsSceneryMotion(child, scenery));
+    }
+    return false;
+  };
   const visitSteps = (steps: readonly SequenceStep[], path: string, sceneId?: string) => {
     steps.forEach((step, index) => {
       const base = `${path}[${index}]`;
@@ -1322,7 +1389,12 @@ function validateProjectDefinitions(
       } else if (step.type === "operations") {
         operations(step.operations, `${base}.operations`, { sequence: true });
       } else if (step.type === "direct") {
-        validateDirections(step, base, sceneId);
+        validateDirections(
+          step,
+          base,
+          sceneId,
+          (scenery) => steps.slice(index + 1).some((later) => stepContainsSceneryMotion(later, scenery)),
+        );
       } else if (step.type === "choice") {
         step.alternatives.forEach((alternative, alternativeIndex) => {
           if (alternative.spoken !== false && !input.playerCharacter) {
@@ -1499,6 +1571,14 @@ function validateAppearance(
       message: "An Appearance must define at least one Animation.",
     });
   }
+  if (typeof appearance.roles.default !== "string" || !appearance.roles.default.trim()) {
+    diagnostics.push({
+      code: "definition.appearance.default-role",
+      family: "definition",
+      path: `${path}.roles.default`,
+      message: "An Appearance must identify a Default Animation Role.",
+    });
+  }
   for (const [role, animation] of Object.entries(appearance.roles)) {
     if (!(animation in appearance.animations)) {
       diagnostics.push({
@@ -1567,6 +1647,21 @@ function validateAppearance(
       }
     }
   }
+}
+
+function subjectBelongsToScene(
+  subject: DirectedSubject,
+  sceneId: string,
+  playerCharacter: string | undefined,
+  characters: Readonly<Record<string, CharacterDefinition>>,
+  objects: Readonly<Record<string, ObjectDefinition>>,
+  scenes: Readonly<Record<string, SceneDefinition>>,
+): boolean {
+  if (subject.kind === "character") {
+    return subject.character === playerCharacter || characters[subject.character]?.initialScene === sceneId;
+  }
+  if (subject.kind === "object") return objects[subject.object]?.initialScene === sceneId;
+  return subject.scenery in (scenes[sceneId]?.scenery ?? {});
 }
 
 function isAnimationImageFrames(frames: AnimationFrames): frames is readonly (URL | string)[] {

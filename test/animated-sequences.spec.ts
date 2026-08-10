@@ -80,6 +80,148 @@ test("Appearance validation aggregates invalid Animation values and Role referen
     },
     movementSpeed: 60,
   })).toThrow(AuthoringError);
+
+  try {
+    defineCharacter({
+      initialScene: "room",
+      initialGroundPoint: { x: 10, y: 10 },
+      initialFacing: "front",
+      initialAppearance: "normal",
+      appearances: {
+        normal: {
+          animations: { idle: { frames: ["idle.png"], framesPerSecond: 1 } },
+          roles: {} as never,
+        },
+      },
+      movementSpeed: 60,
+    });
+    throw new Error("Expected defineCharacter to reject the Appearance.");
+  } catch (error) {
+    expect(error).toBeInstanceOf(AuthoringError);
+    expect((error as AuthoringError).diagnostics).toContainEqual(expect.objectContaining({
+      code: "definition.appearance.default-role",
+      path: "appearances.normal.roles.default",
+    }));
+  }
+});
+
+test("composition validates Command Line overrides and directed subject locality", () => {
+  const square = [
+    { x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }, { x: 0, y: 100 },
+  ];
+  const actor = defineCharacter({
+    initialScene: "elsewhere",
+    initialGroundPoint: { x: 10, y: 10 },
+    initialFacing: "front",
+    initialAppearance: "normal",
+    appearances: { normal: staticAppearance("actor.png") },
+    movementSpeed: 60,
+    noun: defineNoun({
+      labels: [{ text: "Actor" }],
+      preferredVerbs: [{ verb: "look-at" }],
+      cases: [{
+        verb: "look-at",
+        line: { character: "actor", animation: "missing", text: "Hello." },
+      }],
+    }),
+  });
+  const action = defineSequence({
+    scene: "room",
+    steps: [{
+      type: "direct",
+      directions: [{
+        type: "camera",
+        mode: "follow",
+        subject: { kind: "character", character: "actor" },
+        duration: 1,
+      }],
+    }],
+  });
+  const room = defineScene({ background: "room.png", walkableRegion: square });
+  const elsewhere = defineScene({
+    background: "elsewhere.png",
+    walkableRegion: square,
+    hotspots: [{
+      target: { kind: "character", character: "actor" },
+      area: square,
+      approach: { groundPoint: { x: 10, y: 10 }, facing: "front" },
+    }],
+  });
+
+  try {
+    defineGame({
+      identity: "test.line-and-subject-references",
+      version: "1",
+      logicalResolution: { width: 100, height: 100 },
+      scenes: { room, elsewhere },
+      characters: { actor },
+      sequences: { action },
+      initialScene: "room",
+      commandLexicon: defineCommandLexicon({
+        inventory: { select: "Hold {noun}", deselect: "Put back {noun}" },
+        verbs: {
+          open: "Open", "pick-up": "Pick up", push: "Push", close: "Close",
+          "look-at": "Look", pull: "Pull", give: "Give", "talk-to": "Talk", use: "Use",
+        },
+        patterns: { unary: "{verb} {noun}", give: "{verb} {first} to {second}", use: "{verb} {first} with {second}" },
+      }),
+      commandFallbacks: Object.fromEntries([
+        "open", "pick-up", "push", "close", "look-at", "pull", "give", "talk-to", "use",
+      ].map((verb) => [verb, { text: "No." }])) as never,
+    });
+    throw new Error("Expected defineGame to reject invalid references.");
+  } catch (error) {
+    expect(error).toBeInstanceOf(AuthoringError);
+    expect((error as AuthoringError).diagnostics).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        code: "reference.animation.line",
+        path: "characters.actor.noun.cases[0].line.animation",
+      }),
+      expect.objectContaining({
+        code: "reference.camera.subject-scene",
+        path: "sequences.action.steps[0].directions[0].subject",
+      }),
+    ]));
+  }
+});
+
+test("composition requires the final Scenery Motion to end at its resting position", () => {
+  const square = [
+    { x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }, { x: 0, y: 100 },
+  ];
+  const room = defineScene({
+    background: "room.png",
+    walkableRegion: square,
+    scenery: {
+      marker: {
+        baseline: 30,
+        position: { x: 60, y: 30 },
+        initialAppearance: "normal",
+        appearances: { normal: staticAppearance("marker.png") },
+      },
+    },
+  });
+  const action = defineSequence({
+    scene: "room",
+    steps: [{
+      type: "direct",
+      directions: [{
+        type: "motion",
+        subject: { kind: "scenery", scenery: "marker" },
+        path: [{ x: 20, y: 20 }, { x: 50, y: 30 }],
+        duration: 1,
+      }],
+    }],
+  });
+
+  expect(() => defineGame({
+    identity: "test.scenery-motion-rest",
+    version: "1",
+    logicalResolution: { width: 100, height: 100 },
+    scenes: { room },
+    sequences: { action },
+    initialScene: "room",
+  })).toThrow(/resting position/);
 });
 
 test("composition diagnoses a movable Player Appearance without a walking Role", () => {

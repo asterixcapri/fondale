@@ -1,4 +1,10 @@
-import type { AnimationDefinition, AnimationFrames, Point } from "../public/definitions";
+import type {
+  AnimationDefinition,
+  AnimationFrames,
+  DirectStep,
+  DirectedSubject,
+  Point,
+} from "../public/definitions";
 
 export function secondsToTicks(seconds: number): number {
   return Math.max(1, Math.ceil(seconds * 60));
@@ -9,6 +15,26 @@ export function animationDurationTicks(animation: AnimationDefinition): number {
     ? animation.frames.length
     : animation.frames.front.count;
   return secondsToTicks(count / animation.framesPerSecond);
+}
+
+export function directionStartTick(
+  step: DirectStep,
+  index: number,
+  animationFor: (subject: DirectedSubject, animation: string) => AnimationDefinition | undefined,
+): number {
+  const dependency = step.directions[index]?.startAfter;
+  if (!dependency) return 0;
+  const source = step.directions[dependency.direction];
+  if (!source || source.type !== "animation") return 0;
+  const cue = animationFor(source.subject, source.animation)?.cues?.[dependency.cue] ?? 0;
+  return directionStartTick(step, dependency.direction, animationFor) + secondsToTicks(cue);
+}
+
+export function resolveSequencePath(value: unknown, path: string): unknown {
+  return path.split("/").reduce<unknown>((current, segment) => {
+    if (current === null || typeof current !== "object") return undefined;
+    return (current as Record<string, unknown>)[segment];
+  }, value);
 }
 
 export function isImageAnimationFrames(

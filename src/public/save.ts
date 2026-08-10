@@ -1,4 +1,5 @@
 import type { GameState } from "../internal/core";
+import { resolveSequencePath } from "../internal/sequence-directions";
 import { conditionMatchesState, hotspotAvailableInState } from "../internal/state-queries";
 import { commandVerbs, type CommandVerb, type Verb } from "./commands";
 import { AuthoringError, type AuthoringDiagnostic } from "./diagnostics";
@@ -201,12 +202,12 @@ function validActivity(value: unknown, data: GameProjectData, state: GameState):
     if (
       !Array.isArray(value.pendingPaths) ||
       !value.pendingPaths.every(
-        (path) => typeof path === "string" && isSequenceStep(resolvePath(definition, path)),
+        (path) => typeof path === "string" && isSequenceStep(resolveSequencePath(definition, path)),
       )
     ) return false;
     if (value.active === null) return false;
     if (!isRecord(value.active) || typeof value.active.kind !== "string" || typeof value.active.path !== "string") return false;
-    const step = resolvePath(definition, value.active.path);
+    const step = resolveSequencePath(definition, value.active.path);
     const expectedPending = expectedPendingPaths(definition, value.active.path);
     if (value.active.kind === "line") {
       if (!hasExactKeys(value.active, ["kind", "path"], ["choiceText", "choiceCharacter"])) return false;
@@ -342,13 +343,6 @@ function isVerb(value: unknown): value is Verb {
   return value === "walk-to" || isCommandVerb(value);
 }
 
-function resolvePath(sequence: SequenceDefinition, path: string): unknown {
-  return path.split("/").reduce<unknown>((current, segment) => {
-    if (current === null || typeof current !== "object") return undefined;
-    return (current as Record<string, unknown>)[segment];
-  }, sequence);
-}
-
 function isSequenceStep(value: unknown): value is SequenceStep {
   return isRecord(value) && ["line", "narration", "operations", "choice", "branch", "direct"].includes(String(value.type));
 }
@@ -360,7 +354,7 @@ function expectedPendingPaths(sequence: SequenceDefinition, activePath: string):
     const index = Number(segments[segmentIndex]);
     if (!Number.isInteger(index) || String(index) !== segments[segmentIndex]) continue;
     const containerPath = segments.slice(0, segmentIndex).join("/");
-    const container = resolvePath(sequence, containerPath);
+    const container = resolveSequencePath(sequence, containerPath);
     if (!Array.isArray(container) || !isSequenceStep(container[index])) continue;
     ancestors.push({ containerPath, index, steps: container as readonly SequenceStep[] });
   }

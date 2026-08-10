@@ -195,11 +195,17 @@ test("Michele completes one ordinary job before the drifting boat begins the adv
   await enterRightEdgePassage(page);
   await expect(frame).toHaveAttribute("data-fondale-scene", "harbour", { timeout: 8_000 });
 
+  await clickWorld(page, 480, 210);
+  await waitForWalk(page, 1_500);
   await selectInventoryObject(page, "winchHandle");
+  const winchStart = await frame.locator("canvas").screenshot();
   await command(page, "use", 326, 190);
-  await expect(line).toContainText("può salpare", { timeout: 8_000 });
+  await page.waitForTimeout(300);
+  expect((await frame.locator("canvas").screenshot()).equals(winchStart)).toBe(false);
+  await frame.focus();
+  await page.keyboard.press("Escape");
   await expect(page.locator('[data-fondale-inventory-object="winchHandle"]')).toHaveCount(0);
-  await advance(page);
+  await expect(line).toHaveCount(0);
 
   await enterLeftEdgePassage(page);
   await expect(frame).toHaveAttribute("data-fondale-scene", "coastalFortification", {
@@ -208,8 +214,7 @@ test("Michele completes one ordinary job before the drifting boat begins the adv
   const arrivalStart = await frame.locator("canvas").screenshot();
   await page.waitForTimeout(400);
   expect((await frame.locator("canvas").screenshot()).equals(arrivalStart)).toBe(false);
-  await frame.focus();
-  await page.keyboard.press("Escape");
+  await page.waitForTimeout(3_500);
   await shoot(page, "capri-1535-fortification-lower-path");
 
   let lookout: { x: number; y: number } | undefined;

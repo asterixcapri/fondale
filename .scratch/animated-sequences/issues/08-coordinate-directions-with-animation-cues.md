@@ -4,15 +4,15 @@
 
 **Blocked by:** 05 — Coordinare Animation concorrenti e loop; 06 — Muovere Object e Scenery durante una Sequence.
 
-**Status:** ready-for-agent
+**Status:** ready-for-human
 
-- [ ] Un Author può dichiarare Animation Cue nominati in istanti validi di un'Animation.
-- [ ] Una direzione può attendere un Cue e avviare altre Animation o Motion nello stesso confine logico.
-- [ ] Più direzioni sbloccate dallo stesso Cue hanno un ordine causale deterministico e documentato.
-- [ ] Un Cue inesistente, duplicato in modo ambiguo o collocato fuori dalla durata produce un Authoring Diagnostic.
-- [ ] Un Cue non applica direttamente Game Operation e non espone callback, promise o accesso al clock.
-- [ ] Save e restore immediatamente prima e dopo un Cue non lo perdono e non lo eseguono due volte.
-- [ ] Lo stesso risultato viene prodotto con suddivisioni differenti del tempo reale.
-- [ ] Un passo continua a rispettare le regole di completamento delle proprie direzioni finite dopo l'attivazione del Cue.
-- [ ] Una fixture end-to-end coordina una performance iniziale, una reazione e un eventuale Motion usando soltanto dati dichiarativi.
-- [ ] La documentazione pubblica distingue Animation Cue da timer, frame callback e Game Operation.
+- [x] Un Author può dichiarare Animation Cue nominati in istanti validi di un'Animation.
+- [x] Una direzione può attendere un Cue e avviare altre Animation o Motion nello stesso confine logico.
+- [x] Più direzioni sbloccate dallo stesso Cue hanno un ordine causale deterministico e documentato.
+- [x] Un Cue inesistente, duplicato in modo ambiguo o collocato fuori dalla durata produce un Authoring Diagnostic.
+- [x] Un Cue non applica direttamente Game Operation e non espone callback, promise o accesso al clock.
+- [x] Save e restore immediatamente prima e dopo un Cue non lo perdono e non lo eseguono due volte.
+- [x] Lo stesso risultato viene prodotto con suddivisioni differenti del tempo reale.
+- [x] Un passo continua a rispettare le regole di completamento delle proprie direzioni finite dopo l'attivazione del Cue.
+- [x] Una fixture end-to-end coordina una performance iniziale, una reazione e un eventuale Motion usando soltanto dati dichiarativi.
+- [x] La documentazione pubblica distingue Animation Cue da timer, frame callback e Game Operation.

@@ -4,15 +4,15 @@
 
 **Blocked by:** 01 — Espandere Appearance con Animation.
 
-**Status:** ready-for-agent
+**Status:** ready-for-human
 
-- [ ] Ogni nuova Appearance usa il ruolo default come presentazione normale.
-- [ ] Una Line seleziona automaticamente il ruolo speaking del Character che parla e torna alla Default Animation quando termina.
-- [ ] Una Line può nominare un'Animation alternativa per una performance speciale.
-- [ ] Se speaking non è disponibile, la Line continua correttamente usando la Default Animation.
-- [ ] Il movimento libero di un Character seleziona walking coerentemente con orientamento e direzione e torna alla Default Animation quando termina.
-- [ ] Un Character che può muoversi in un'Appearance priva di walking produce un Authoring Diagnostic prima dell'avvio invece di scivolare silenziosamente.
-- [ ] Un override o Animation Role che riferisce un'Animation inesistente produce una diagnostica stabile e contestuale.
-- [ ] Default, speaking e walking restano selezioni semantiche dell'Engine e non convenzioni sui nomi delle Animation.
-- [ ] Test deterministici e browser verificano idle, parola, fallback, camminata e ritorno alla Default Animation attraverso l'interface pubblica.
-- [ ] Build e verifica complete rimangono verdi.
+- [x] Ogni nuova Appearance usa il ruolo default come presentazione normale.
+- [x] Una Line seleziona automaticamente il ruolo speaking del Character che parla e torna alla Default Animation quando termina.
+- [x] Una Line può nominare un'Animation alternativa per una performance speciale.
+- [x] Se speaking non è disponibile, la Line continua correttamente usando la Default Animation.
+- [x] Il movimento libero di un Character seleziona walking coerentemente con orientamento e direzione e torna alla Default Animation quando termina.
+- [x] Un Character che può muoversi in un'Appearance priva di walking produce un Authoring Diagnostic prima dell'avvio invece di scivolare silenziosamente.
+- [x] Un override o Animation Role che riferisce un'Animation inesistente produce una diagnostica stabile e contestuale.
+- [x] Default, speaking e walking restano selezioni semantiche dell'Engine e non convenzioni sui nomi delle Animation.
+- [x] Test deterministici e browser verificano idle, parola, fallback, camminata e ritorno alla Default Animation attraverso l'interface pubblica.
+- [x] Build e verifica complete rimangono verdi.

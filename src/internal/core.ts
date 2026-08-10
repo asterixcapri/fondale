@@ -26,7 +26,13 @@ import {
   type ValidatedSaveSnapshot,
 } from "../public/save";
 import { isInside, navigationPath, nearestPoint } from "./geometry";
-import { animationDurationTicks, pointAlongPath, secondsToTicks } from "./sequence-directions";
+import {
+  animationDurationTicks,
+  directionStartTick,
+  pointAlongPath,
+  resolveSequencePath,
+  secondsToTicks,
+} from "./sequence-directions";
 import { conditionMatchesState, hotspotAvailableInState } from "./state-queries";
 
 export interface CharacterState {
@@ -824,7 +830,7 @@ export function createCoreSession(
         return;
       }
       const definition = data.sequences[activity.sequence]!;
-      const stepDefinition = resolvePath(definition, path) as SequenceStep;
+      const stepDefinition = resolveSequencePath(definition, path) as SequenceStep;
       if (stepDefinition.type === "line") {
         activity.active = { kind: "line", path };
       } else if (stepDefinition.type === "narration") {
@@ -856,7 +862,7 @@ export function createCoreSession(
     const activity = state.activity;
     if (activity?.type !== "sequence" || activity.active?.kind !== "direct") return;
     const definition = data.sequences[activity.sequence]!;
-    const direct = resolvePath(definition, activity.active.path) as DirectStep;
+    const direct = resolveSequencePath(definition, activity.active.path) as DirectStep;
     activity.active.elapsedTicks += 1;
     applyDirectedMotions(direct, activity.active.elapsedTicks);
     if (!directStepComplete(direct, activity.active.elapsedTicks)) return;
@@ -870,7 +876,7 @@ export function createCoreSession(
       boundaries.push(elapsedTicks >= secondsToTicks(step.duration));
     }
     step.directions.forEach((direction, index) => {
-      const localTick = elapsedTicks - directionStartTick(step, index);
+      const localTick = elapsedTicks - directionStartTick(step, index, directedAnimation);
       if (direction.type === "animation") {
         const animation = directedAnimation(direction.subject, direction.animation);
         if (animation && !animation.loop) {
@@ -904,16 +910,6 @@ export function createCoreSession(
     return boundaries.length > 0 && boundaries.every(Boolean);
   }
 
-  function directionStartTick(step: DirectStep, index: number): number {
-    const startAfter = step.directions[index]?.startAfter;
-    if (!startAfter) return 0;
-    const source = step.directions[startAfter.direction];
-    if (!source || source.type !== "animation") return 0;
-    const animation = directedAnimation(source.subject, source.animation);
-    const cue = animation?.cues?.[startAfter.cue];
-    return directionStartTick(step, startAfter.direction) + secondsToTicks(cue ?? 0);
-  }
-
   function directedAnimation(subject: DirectedSubject, animationName: string): AnimationDefinition | undefined {
     const appearance = directedAppearance(subject);
     return appearance?.animations[animationName];
@@ -931,7 +927,7 @@ export function createCoreSession(
   function applyDirectedMotions(step: DirectStep, elapsedTicks: number): void {
     step.directions.forEach((direction, index) => {
       if (direction.type !== "motion") return;
-      const localTick = elapsedTicks - directionStartTick(step, index);
+      const localTick = elapsedTicks - directionStartTick(step, index, directedAnimation);
       if (localTick <= 0) return;
       if (direction.subject.kind === "character") {
         advanceDirectedCharacter(direction);
@@ -973,7 +969,7 @@ export function createCoreSession(
     if (activity?.type !== "sequence" || activity.active?.kind !== "choice") return;
     if (!activity.active.eligibleAlternatives.includes(alternative)) return;
     const definition = data.sequences[activity.sequence]!;
-    const stepDefinition = resolvePath(definition, activity.active.path) as Extract<SequenceStep, { type: "choice" }>;
+    const stepDefinition = resolveSequencePath(definition, activity.active.path) as Extract<SequenceStep, { type: "choice" }>;
     const container =
       alternative === -1
         ? `${activity.active.path}/fallback/steps`
@@ -1080,15 +1076,8 @@ function topLevelPaths(sequence: SequenceDefinition): string[] {
 }
 
 function pathsForContainer(sequence: SequenceDefinition, path: string): string[] {
-  const steps = resolvePath(sequence, path) as readonly SequenceStep[];
+  const steps = resolveSequencePath(sequence, path) as readonly SequenceStep[];
   return steps.map((_, index) => `${path}/${index}`);
-}
-
-function resolvePath(value: unknown, path: string): unknown {
-  return path.split("/").reduce<unknown>((current, segment) => {
-    if (current === null || typeof current !== "object") return undefined;
-    return (current as Record<string, unknown>)[segment];
-  }, value);
 }
 
 function facingAlong(dx: number, dy: number): Facing {
