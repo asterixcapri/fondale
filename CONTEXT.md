@@ -39,8 +39,11 @@ _Avoid_: Logical Resolution, Background size, world size
 
 **Camera**:
 The transient view of Scene Space presented inside the Logical Resolution. It
-is derived from the visible Player Character and never belongs to Game State.
-_Avoid_: Saved viewport, Camera state, cinematic pan
+normally follows the visible Player Character, but a Sequence may temporarily
+direct its framing immediately or over logical time, hold it, or make it follow
+another subject before it returns to following that Character. It never
+belongs independently to Game State.
+_Avoid_: Saved viewport, Camera state, Motion
 
 **Author**:
 The web developer who builds a Game Project through Fondale's public interface
@@ -149,14 +152,24 @@ Activity controls play at a time.
 _Avoid_: Animation frame, ambient rendering, unmanaged task
 
 **Sequence**:
-A named, finite progression of Lines, Narrations, Choices, conditions, and Game
-Operations that temporarily controls play as the dominant Game Activity. It is
-strictly sequential and its exact logical progress belongs to the Game State.
-_Avoid_: Cutscene, Dialogue as a separate activity model, nested sequence, scripted async function
+A named, finite progression that directs Lines, Narrations, Choices,
+conditions, Animations, Motions, the Camera, and Game Operations while
+temporarily taking direction of play away from the Player as the dominant Game
+Activity. Its steps progress sequentially, while one step may direct several
+Animations and Motions concurrently and completes when its finite directions
+finish; its exact logical progress belongs to the Game State. It remains within
+the Scene in which it started and cannot direct a Scene transition.
+_Avoid_: Cutscene, multi-Scene sequence, Choreography layer, Dialogue as a separate activity model, nested sequence, scripted async function
+
+**Skip Outcome**:
+The authored Game Operations applied when a skippable Sequence is skipped so
+its logical result remains coherent without executing its remaining steps.
+_Avoid_: Cancellation, implicit fast-forward, renderer cleanup
 
 **Line**:
 A single authored phrase spoken by a Character. Its presentation may advance
-by timing or Player input.
+by timing or Player input; while active it directs a speaking Animation from
+the Character's current Appearance, with an optional authored override.
 _Avoid_: Narration, Command Response, subtitle, dialogue node, renderer text
 
 **Narration**:
@@ -177,8 +190,11 @@ _Avoid_: Menu, disabled answer, arbitrary input prompt
 
 **Scene**:
 The explorable unit of the world that the Engine presents as one space. It may
-represent an interior or an outdoor location; it is not a controlled sequence
-of actions.
+represent an interior or an outdoor location and may declaratively start a
+Sequence when a transition arrives, subject to the current Game State and an
+optional Scene Entrance filter. An applicable Sequence takes control before
+Player control resumes. Restoring a Save Snapshot already within the Scene is
+not an arrival; a Scene is not itself a controlled sequence of actions.
 _Avoid_: Room, sequence
 
 **Scene Space**:
@@ -217,10 +233,46 @@ its own position, depth, or behavior is Scenery instead.
 _Avoid_: Scenery, visual layer
 
 **Appearance**:
-The semantic visual presentation of a Character, Object, or Scenery. Its named
-selection belongs to the Game State, while the file that depicts it has no game
-identity.
-_Avoid_: Asset, sprite, texture
+The persistent semantic visual condition of a Character, Object, or Scenery,
+such as normal, disguised, open, or repaired. Its named selection belongs to
+the Game State and owns the Animations available while selected.
+_Avoid_: Animation, asset, sprite, texture
+
+**Animation**:
+The transient visual performance of a Character, Object, or Scenery, such as
+walking, speaking, gesturing, or turning. It may accompany an Appearance
+change or depict travel, but does not itself change Game State or position in
+Scene Space. A Sequence that explicitly names an unavailable Animation is
+invalid authoring.
+_Avoid_: Appearance, Game Operation, animation frame
+
+**Motion**:
+The authored progression of a Character's or Object's Ground Point, or a
+Scenery's position, through Scene Space over logical time. A Character follows
+Scene navigation to a destination, while an Object or Scenery follows an
+authored path. A Scenery Motion ends at its authored resting position; any
+lasting change is expressed through Game Operations, such as selecting an
+Appearance, rather than by persisting an arbitrary position. Motion has no
+world identity and remains separate from Animation.
+_Avoid_: Animation, entity, teleport, sprite offset
+
+**Default Animation**:
+The required looping Animation presented for the selected Appearance whenever
+no other Animation temporarily replaces it. It may consist of one static frame.
+_Avoid_: Appearance, Character-only idle animation, Sequence step
+
+**Animation Role**:
+An Appearance-owned semantic selection through which the Engine automatically
+uses an Animation for default presentation, speaking, or walking. Speaking is
+optional and falls back to the Default Animation; walking is required whenever
+a Character moves in that Appearance.
+_Avoid_: Animation name convention, Sequence instruction, renderer state
+
+**Animation Cue**:
+A named instant within an Animation at which a Sequence may coordinate another
+Animation, Motion, or sound without relying on an authored elapsed-time delay.
+It does not itself change Game State.
+_Avoid_: Timer, frame callback, Game Operation
 
 **Ground Point**:
 The point where a Character or Object meets the walkable surface and from

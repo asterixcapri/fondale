@@ -1,0 +1,18 @@
+# 08 — Coordinare le direzioni con Animation Cue
+
+**What to build:** permettere a una Sequence di usare istanti nominati di un'Animation per avviare altre Animation o Motion con ordine deterministico, così che il contatto della manovella possa far reagire l'argano senza ritardi fragili o callback di frame.
+
+**Blocked by:** 05 — Coordinare Animation concorrenti e loop; 06 — Muovere Object e Scenery durante una Sequence.
+
+**Status:** ready-for-agent
+
+- [ ] Un Author può dichiarare Animation Cue nominati in istanti validi di un'Animation.
+- [ ] Una direzione può attendere un Cue e avviare altre Animation o Motion nello stesso confine logico.
+- [ ] Più direzioni sbloccate dallo stesso Cue hanno un ordine causale deterministico e documentato.
+- [ ] Un Cue inesistente, duplicato in modo ambiguo o collocato fuori dalla durata produce un Authoring Diagnostic.
+- [ ] Un Cue non applica direttamente Game Operation e non espone callback, promise o accesso al clock.
+- [ ] Save e restore immediatamente prima e dopo un Cue non lo perdono e non lo eseguono due volte.
+- [ ] Lo stesso risultato viene prodotto con suddivisioni differenti del tempo reale.
+- [ ] Un passo continua a rispettare le regole di completamento delle proprie direzioni finite dopo l'attivazione del Cue.
+- [ ] Una fixture end-to-end coordina una performance iniziale, una reazione e un eventuale Motion usando soltanto dati dichiarativi.
+- [ ] La documentazione pubblica distingue Animation Cue da timer, frame callback e Game Operation.
