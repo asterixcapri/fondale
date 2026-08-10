@@ -1,4 +1,4 @@
-import { test, type Locator, type Page } from "@playwright/test";
+import { test, type Page } from "@playwright/test";
 
 import { clickWorld, expect, hoverWorld, openGame, shoot } from "./harness";
 
@@ -19,14 +19,17 @@ async function command(page: Page, verb: Verb, x: number, y: number): Promise<vo
   await clickWorld(page, x, y);
 }
 
-async function selectInventoryObject(page: Page, object: string): Promise<Locator> {
+async function selectInventoryObject(page: Page, object: string): Promise<void> {
   await page.locator("[data-fondale-inventory-trigger]").click();
   const item = page.locator(`[data-fondale-inventory-object="${object}"]`);
   await expect(item).toBeVisible();
-  await item.click();
+  if (await item.getAttribute("aria-pressed") === "true") {
+    await page.locator("[data-fondale-inventory-close]").click();
+  } else {
+    await item.click();
+  }
   await expect(page.locator("[data-fondale-inventory-panel]")).toBeHidden();
   await expect(item).toHaveAttribute("aria-pressed", "true");
-  return item;
 }
 
 async function advance(page: Page): Promise<void> {
@@ -34,220 +37,188 @@ async function advance(page: Page): Promise<void> {
   await page.keyboard.press(".");
 }
 
-async function reachHarbour(page: Page, previousScene?: Uint8Array): Promise<void> {
-  await command(page, "pick-up", 118, 165);
-  const key = page.locator('[data-fondale-inventory-object="key"]');
-  await expect(key).toHaveCount(1, { timeout: 8_000 });
-  await expect(page.locator("[aria-live=polite]")).toHaveText("Prendo la chiave d'ottone.");
+async function waitForWalk(page: Page, milliseconds = 3_000): Promise<void> {
+  await page.waitForTimeout(milliseconds);
+}
 
+async function clickVisibleEdgePassage(page: Page, edge: "left" | "right"): Promise<boolean> {
   const frame = page.locator("[data-fondale-frame]");
-  await frame.locator("[data-fondale-inventory-trigger]").click();
-  const responseBounds = await frame.locator("[aria-live=polite]").boundingBox();
-  const inventoryBounds = await frame.locator("[data-fondale-inventory-panel]").boundingBox();
-  if (!responseBounds || !inventoryBounds) throw new Error("Lower text geometry is unavailable");
-  expect(responseBounds.x + responseBounds.width).toBeLessThanOrEqual(inventoryBounds.x);
-  await shoot(page, "capri-1535-command-response-with-inventory");
-  await frame.locator("[data-fondale-inventory-close]").click();
-
-  await selectInventoryObject(page, "key");
-  await command(page, "use", 210, 150);
-  await expect(page.locator("[aria-live=polite]")).toHaveText(
-    "La chiave d'ottone apre il cancello.",
-    { timeout: 8_000 },
-  );
-
-  await clickWorld(page, 210, 140);
-  await expect(page.locator("[data-fondale-frame]")).toHaveAttribute(
-    "data-fondale-scene",
-    "townSquare",
-    { timeout: 8_000 },
-  );
-  const townSquare = await page.locator("[data-fondale-frame] canvas").screenshot();
-  if (previousScene) expect(townSquare.equals(previousScene)).toBe(false);
-  await shoot(page, "capri-1535-town-square");
-
-  await clickWorld(page, 365, 120);
-  await expect(page.locator("[data-fondale-frame]")).toHaveAttribute(
-    "data-fondale-scene",
-    "harbour",
-    { timeout: 8_000 },
-  );
+  await frame.focus();
+  await page.keyboard.down("Tab");
+  const passages = page.locator("[data-fondale-revealed-passage]");
+  await expect(passages).not.toHaveCount(0);
+  const point = await passages.evaluateAll((elements, requestedEdge) => {
+    const candidates = elements.flatMap((element) => {
+      const coordinates = (element.getAttribute("points") ?? "").split(" ").map((pair) => {
+        const [x, y] = pair.split(",").map(Number);
+        return { x: x ?? 0, y: y ?? 0 };
+      });
+      const xs = coordinates.map(({ x }) => x);
+      const ys = coordinates.map(({ y }) => y);
+      const minimumX = Math.min(...xs);
+      const maximumX = Math.max(...xs);
+      if (maximumX < 0 || minimumX > 426) return [];
+      if (requestedEdge === "left" && minimumX > 80) return [];
+      if (requestedEdge === "left" && maximumX < 48) return [];
+      if (requestedEdge === "right" && maximumX < 346) return [];
+      return [{
+        x: requestedEdge === "left"
+          ? Math.max(40, Math.min(100, maximumX - 8))
+          : Math.min(418, maximumX - Math.min(24, maximumX - minimumX)),
+        y: Math.max(8, Math.min(232, (Math.min(...ys) + Math.max(...ys)) / 2)),
+      }];
+    });
+    return candidates.sort((a, b) => requestedEdge === "left" ? a.x - b.x : b.x - a.x)[0];
+  }, edge);
+  await page.keyboard.up("Tab");
+  if (!point) return false;
+  await clickWorld(page, point.x, point.y);
+  return true;
 }
 
-async function meetRaffaele(
-  page: Page,
-  choice: "Quanto mi dai per sistemarlo?" | "Dipende: il mare paga meglio di te?",
-  restoreAtChoice = false,
-): Promise<void> {
-  await command(page, "talk-to", 322, 150);
-  const line = page.locator("[data-fondale-line]");
-  await expect(line).toContainText("guardare il mare", { timeout: 8_000 });
-  await shoot(page, "capri-1535-character-line");
-  await advance(page);
-  const choices = page.locator("[data-fondale-choice]");
-  await expect(choices.getByRole("button")).toHaveCount(2);
-  await shoot(page, "capri-1535-dialogue-choice");
+async function visibleHotspotPoint(page: Page, label: string): Promise<{ x: number; y: number } | undefined> {
+  const frame = page.locator("[data-fondale-frame]");
+  await frame.focus();
+  await page.keyboard.down("Tab");
+  const point = await page.locator("[data-fondale-revealed-hotspot]").evaluateAll(
+    (elements, requestedLabel) => {
+      const element = elements.find((candidate) =>
+        candidate.querySelector("title")?.textContent === requestedLabel
+      );
+      if (!element) return undefined;
+      const coordinates = (element.getAttribute("points") ?? "").split(" ").map((pair) => {
+        const [x, y] = pair.split(",").map(Number);
+        return { x: x ?? 0, y: y ?? 0 };
+      });
+      const xs = coordinates.map(({ x }) => x);
+      const ys = coordinates.map(({ y }) => y);
+      const minimumX = Math.min(...xs);
+      const maximumX = Math.max(...xs);
+      const minimumY = Math.min(...ys);
+      const maximumY = Math.max(...ys);
+      if (maximumX < 0 || minimumX > 426 || maximumY < 0 || minimumY > 240) return undefined;
+      return {
+        x: Math.max(40, Math.min(418, (minimumX + maximumX) / 2)),
+        y: Math.max(8, Math.min(232, (minimumY + maximumY) / 2)),
+      };
+    },
+    label,
+  );
+  await page.keyboard.up("Tab");
+  return point;
+}
 
-  if (restoreAtChoice) {
-    await page.locator("#restore").click();
-    await expect(choices).toBeVisible({ timeout: 8_000 });
+async function enterRightEdgePassage(page: Page): Promise<void> {
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    if (await clickVisibleEdgePassage(page, "right")) return;
+    await clickWorld(page, 400, 228);
+    await waitForWalk(page);
   }
-
-  await page.getByRole("button", { name: choice, exact: false }).click();
-  await expect(line).toHaveText(choice);
-  await advance(page);
-  // The sequence deliberately repeats Michele's answer before Raffaele replies.
-  await expect(line).toHaveText(choice);
-  await advance(page);
-  await expect(line).toContainText("argano");
-  await advance(page);
-  await expect(line).toContainText("olio e la manovella");
-  await advance(page);
-  await expect(line).toHaveCount(0);
+  throw new Error("No visible right Passage after panning");
 }
 
-async function repairWinch(page: Page): Promise<void> {
-  await command(page, "pick-up", 375, 160);
-  const handle = page.locator('[data-fondale-inventory-object="winchHandle"]');
-  await expect(handle).toHaveCount(1, { timeout: 8_000 });
-
-  await command(page, "pick-up", 409, 160);
-  const oil = page.locator('[data-fondale-inventory-object="oilFlask"]');
-  await expect(oil).toHaveCount(1, { timeout: 8_000 });
-
-  await selectInventoryObject(page, "oilFlask");
-  await command(page, "use", 250, 160);
-  await expect(page.locator("[aria-live=polite]")).toHaveText(
-    "L'olio libera lentamente gli ingranaggi.",
-    { timeout: 8_000 },
-  );
-  await expect(oil).toHaveCount(0);
-
-  await selectInventoryObject(page, "winchHandle");
-  await command(page, "use", 250, 160);
-  await expect(page.locator("[aria-live=polite]")).toHaveText(
-    "La manovella entra al suo posto. Il gozzo può partire.",
-    { timeout: 8_000 },
-  );
-  await expect(handle).toHaveCount(0);
+async function enterLeftEdgePassage(page: Page): Promise<void> {
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    if (await clickVisibleEdgePassage(page, "left")) return;
+    await clickWorld(page, 100, 228);
+    await waitForWalk(page);
+  }
+  throw new Error("No visible left Passage after panning");
 }
 
-async function sailToMonteSolaroAndReadConclusion(page: Page, expected: string): Promise<void> {
-  await clickWorld(page, 115, 145);
-  await expect(page.locator("[data-fondale-frame]")).toHaveAttribute("data-fondale-scene", "grotto", {
-    timeout: 8_000,
-  });
-  await shoot(page, "capri-1535-grotto");
-  await clickWorld(page, 230, 95);
-  await expect(page.locator("[data-fondale-frame]")).toHaveAttribute(
-    "data-fondale-scene",
-    "monteSolaro",
-    { timeout: 8_000 },
-  );
-  await command(page, "look-at", 215, 120);
-  const narration = page.locator("[data-fondale-narration]");
-  await expect(narration).toContainText("Da Monte Solaro", { timeout: 8_000 });
-  await shoot(page, "capri-1535-monte-solaro-narration");
-  await advance(page);
-  const line = page.locator("[data-fondale-line]");
-  await expect(line).toContainText(expected);
-  await advance(page);
-  await expect(line).toHaveCount(0);
-}
-
-test("the packaged Example completes the harbour puzzle through the command interface", async ({
+test("the packaged Example opens in the new panoramic town square and reaches the cloister", async ({
   page,
 }) => {
   const { errors } = await openGame(page);
+  const frame = page.locator("[data-fondale-frame]");
   const canvas = page.locator("[data-fondale-frame] canvas");
   const opening = await canvas.screenshot();
 
-  await reachHarbour(page, opening);
-  const harbour = await canvas.screenshot();
-  await shoot(page, "capri-1535-harbour-new");
-
-  await meetRaffaele(page, "Quanto mi dai per sistemarlo?", true);
-  await command(page, "talk-to", 322, 150);
-  await expect(page.locator("[data-fondale-line]")).toContainText("L'olio è vicino alle botti");
-  await expect(page.locator("[aria-live=polite]")).toHaveText("");
-  await advance(page);
-  await expect(page.locator("[data-fondale-line]")).toHaveCount(0);
-  await repairWinch(page);
-  await shoot(page, "capri-1535-harbour-repaired");
-
-  await page.locator("#restore").click();
-  await expect(page.locator('[data-fondale-inventory-object="oilFlask"]')).toHaveCount(0);
-  await expect(page.locator('[data-fondale-inventory-object="winchHandle"]')).toHaveCount(0);
-
-  await sailToMonteSolaroAndReadConclusion(page, "Raffaele dovrà ammettere");
-  await page.locator("#restore").click();
-  await command(page, "look-at", 215, 120);
-  await expect(page.locator("[aria-live=polite]")).toHaveText(
-    "Il mare continua a fingere di essere innocente.",
-    { timeout: 8_000 },
+  await expect(frame).toHaveAttribute("data-fondale-scene", "townSquare");
+  await command(page, "look-at", 390, 110);
+  await expect(page.locator("[aria-live=polite]")).toContainText(
+    "campanile divide la piazza dal mare",
   );
-  const monteSolaro = await canvas.screenshot();
-  expect(monteSolaro.equals(harbour)).toBe(false);
-  await shoot(page, "capri-1535-monte-solaro");
-
-  await clickWorld(page, 70, 100);
-  await expect(page.locator("[data-fondale-frame]")).toHaveAttribute("data-fondale-scene", "grotto", {
+  await clickWorld(page, 180, 142);
+  await expect(frame).toHaveAttribute("data-fondale-scene", "cloister", {
     timeout: 8_000,
   });
-  await clickWorld(page, 40, 160);
-  await expect(page.locator("[data-fondale-frame]")).toHaveAttribute("data-fondale-scene", "harbour", {
-    timeout: 8_000,
-  });
+  expect((await canvas.screenshot()).equals(opening)).toBe(false);
+  await shoot(page, "capri-1535-cloister");
   expect(errors).toEqual([]);
 });
 
-test("the ironic answer reaches its distinct Monte Solaro conclusion", async ({ page }) => {
+test("Michele completes one ordinary job before the drifting boat begins the adventure", async ({
+  page,
+}) => {
   const { errors } = await openGame(page);
-  await reachHarbour(page);
-  await meetRaffaele(page, "Dipende: il mare paga meglio di te?");
-  await repairWinch(page);
-  await sailToMonteSolaroAndReadConclusion(page, "Raffaele detrarrà");
-  expect(errors).toEqual([]);
-});
+  const frame = page.locator("[data-fondale-frame]");
 
-test("the tavern is optional, bidirectional, and gives the host a short dialogue", async ({ page }) => {
-  const { errors } = await openGame(page);
-  await reachHarbour(page);
-  await clickWorld(page, 315, 110);
-  await expect(page.locator("[data-fondale-frame]")).toHaveAttribute("data-fondale-scene", "tavern", {
-    timeout: 8_000,
-  });
-
-  await command(page, "look-at", 82, 110);
-  await expect(page.locator("[aria-live=polite]")).toContainText("porta a sinistra");
-  await command(page, "talk-to", 285, 135);
+  await enterRightEdgePassage(page);
+  await expect(frame).toHaveAttribute("data-fondale-scene", "harbour", { timeout: 8_000 });
+  await command(page, "talk-to", 216, 180);
   const line = page.locator("[data-fondale-line]");
-  await expect(line).toContainText("Benvenuto", { timeout: 8_000 });
+  await expect(line).toContainText("monete", { timeout: 8_000 });
   await advance(page);
   await expect(page.locator("[data-fondale-choice] button")).toHaveCount(2);
-  await page.keyboard.press("1");
-  await expect(line).toContainText("Cosa si dice");
+  await page.getByRole("button", { name: "Quanto vale il lavoro?" }).click();
+  await expect(line).toContainText("Quanto vale il lavoro?");
   await advance(page);
-  await expect(line).toContainText("Raffaele lo cura meno");
+  await expect(line).toContainText("manovella");
+  await advance(page);
+  await expect(line).toContainText("ampolla");
   await advance(page);
   await expect(line).toHaveCount(0);
 
-  await clickWorld(page, 210, 110);
-  await expect(page.locator("[data-fondale-frame]")).toHaveAttribute("data-fondale-scene", "harbour", {
+  await command(page, "pick-up", 286, 202);
+  await expect(page.locator('[data-fondale-inventory-object="oilFlask"]')).toHaveCount(1);
+
+  await clickWorld(page, 400, 120);
+  await expect(frame).toHaveAttribute("data-fondale-scene", "townSquare", { timeout: 8_000 });
+  await clickWorld(page, 88, 132);
+  await expect(frame).toHaveAttribute("data-fondale-scene", "cloister", { timeout: 8_000 });
+
+  await clickWorld(page, 400, 228);
+  await waitForWalk(page);
+  await selectInventoryObject(page, "oilFlask");
+  await command(page, "use", 390, 188);
+  await expect(page.locator("[aria-live=polite]")).toContainText("carrucola");
+  await command(page, "pick-up", 365, 198);
+  await expect(page.locator('[data-fondale-inventory-object="winchHandle"]')).toHaveCount(1);
+
+  await enterLeftEdgePassage(page);
+  await expect(frame).toHaveAttribute("data-fondale-scene", "townSquare", { timeout: 8_000 });
+  await enterRightEdgePassage(page);
+  await expect(frame).toHaveAttribute("data-fondale-scene", "harbour", { timeout: 8_000 });
+
+  await selectInventoryObject(page, "winchHandle");
+  await command(page, "use", 326, 190);
+  await expect(page.locator("[aria-live=polite]")).toContainText("può salpare");
+  await expect(page.locator('[data-fondale-inventory-object="winchHandle"]')).toHaveCount(0);
+
+  await enterLeftEdgePassage(page);
+  await expect(frame).toHaveAttribute("data-fondale-scene", "coastalFortification", {
     timeout: 8_000,
   });
-  await clickWorld(page, 370, 120);
-  await expect(page.locator("[data-fondale-frame]")).toHaveAttribute("data-fondale-scene", "townSquare", {
-    timeout: 8_000,
-  });
-  await clickWorld(page, 25, 120);
-  await expect(page.locator("[data-fondale-frame]")).toHaveAttribute("data-fondale-scene", "alley", {
-    timeout: 8_000,
-  });
-  await clickWorld(page, 210, 140);
-  await expect(page.locator("[data-fondale-frame]")).toHaveAttribute("data-fondale-scene", "townSquare", {
-    timeout: 8_000,
-  });
+  await shoot(page, "capri-1535-fortification-lower-path");
+
+  let lookout: { x: number; y: number } | undefined;
+  for (let step = 0; step < 14; step += 1) {
+    lookout = await visibleHotspotPoint(page, "Mare dalla torre");
+    if (lookout) break;
+    await clickWorld(page, 330, 24);
+    await waitForWalk(page, 1_000);
+    if (step === 6) await shoot(page, "capri-1535-fortification-ascent");
+  }
+  if (!lookout) throw new Error("The tower lookout did not enter the Camera viewport");
+  await command(page, "look-at", lookout.x, lookout.y);
+  await expect(page.locator("[data-fondale-narration]")).toContainText(
+    "una piccola barca alla deriva",
+    { timeout: 8_000 },
+  );
+  await advance(page);
+  await expect(line).toContainText("non dovrebbe essere qui");
+  await shoot(page, "capri-1535-prologue-ending");
   expect(errors).toEqual([]);
 });
 
@@ -268,7 +239,8 @@ test("pixel scaling and the Engine overlay remain usable in a smaller letterboxe
 
   await frame.focus();
   await page.keyboard.down("Tab");
-  await expect(frame.locator("[data-fondale-revealed-hotspot]")).toHaveCount(3);
+  await expect(frame.locator("[data-fondale-revealed-hotspot]")).toHaveCount(1);
+  await expect(frame.locator("[data-fondale-revealed-passage]")).toHaveCount(2);
   await page.keyboard.up("Tab");
   await shoot(page, "capri-1535-letterbox-contextual-overlay");
   expect(errors).toEqual([]);
@@ -280,7 +252,7 @@ test("the contextual overlay preserves the full Scene and keeps prompts in frame
   const frame = page.locator("[data-fondale-frame]");
   const canvas = frame.locator("canvas");
   const canvasBounds = await canvas.boundingBox();
-  await hoverWorld(page, 118, 165);
+  await hoverWorld(page, 390, 110);
   const promptBounds = await frame.locator("[data-fondale-command-preview]").boundingBox();
   const triggerBounds = await frame.locator("[data-fondale-inventory-trigger]").boundingBox();
   if (!canvasBounds || !promptBounds || !triggerBounds) throw new Error("Overlay geometry is unavailable");
@@ -326,7 +298,7 @@ test("packaged text presentations remain legible across Aiano and Boffe", async 
   }
 });
 
-test("a Capri Project Version 3 Save remains visible and incompatible", async ({ page }) => {
+test("a Capri Project Version 4 Save remains visible and incompatible", async ({ page }) => {
   await openGame(page);
   const frame = page.locator("[data-fondale-frame]");
   await frame.focus();
@@ -338,7 +310,7 @@ test("a Capri Project Version 3 Save remains visible and incompatible", async ({
     const slots = JSON.parse(localStorage.getItem("fondale.save-slots") ?? "[]") as Array<{
       snapshot: { projectVersion: string };
     }>;
-    slots[0]!.snapshot.projectVersion = "3";
+    slots[0]!.snapshot.projectVersion = "4";
     localStorage.setItem("fondale.save-slots", JSON.stringify(slots));
   });
   await frame.focus();

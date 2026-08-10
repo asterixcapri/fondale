@@ -1,12 +1,13 @@
-import wrongSizeUrl from "./invalid-inventory.png";
+import wrongSizeUrl from "./background.png";
 import { AuthoringError, defineGame, defineScene, startGame } from "../../src/index";
 
 declare global {
-  interface Window { __invalidAsset?: { code: string; children: number } }
+  interface Window { __invalidAsset?: { code: string; message: string; children: number } }
 }
 
 const scene = defineScene({
   background: wrongSizeUrl,
+  size: { width: 640, height: 360 },
   walkableRegion: [
     { x: 0, y: 0 },
     { x: 426, y: 0 },
@@ -27,6 +28,7 @@ try {
 } catch (error) {
   window.__invalidAsset = {
     code: error instanceof AuthoringError ? error.diagnostics[0]!.code : String(error),
+    message: error instanceof AuthoringError ? error.diagnostics[0]!.message : String(error),
     children: target.childElementCount,
   };
 }

@@ -1,6 +1,6 @@
 # Fondale — Scrolling Camera
 
-Status: ready-for-agent
+Status: resolved
 
 ## Problem Statement
 

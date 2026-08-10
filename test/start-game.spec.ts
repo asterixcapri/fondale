@@ -34,6 +34,7 @@ test("asset dimension failure is diagnostic and leaves no partial mount", async 
   await page.waitForFunction(() => window.__invalidAsset !== undefined);
   expect(await page.evaluate(() => window.__invalidAsset)).toEqual({
     code: "asset.background.dimensions",
+    message: "Background is 426×240; expected 640×360.",
     children: 0,
   });
 });

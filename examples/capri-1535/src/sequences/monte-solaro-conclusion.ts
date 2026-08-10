@@ -1,15 +1,15 @@
 import { defineSequence } from "@asterixcapri/fondale";
 
-export const monteSolaroConclusion = defineSequence({
+export const prologueConclusion = defineSequence({
   steps: [{
-    type: "narration", text: "Da Monte Solaro, il mare sembra una strada che non ha ancora scelto dove portarlo.",
+    type: "narration",
+    text: "Sotto la torre, oltre gli scogli, una piccola barca alla deriva avanza senza vela e senza timoniere.",
   }, {
-    type: "branch",
-    cases: [{ when: { variable: "raffaeleImpressed", equals: true }, steps: [{
-      type: "line", character: "michele", text: "Raffaele dovrà ammettere che quelle monete me le sono guadagnate.",
-    }] }],
-    fallback: [{
-      type: "line", character: "michele", text: "Raffaele detrarrà il prezzo della mia battuta dalle monete.",
-    }],
+    type: "line",
+    character: "michele",
+    text: "Quella barca non dovrebbe essere qui.",
+  }, {
+    type: "operations",
+    operations: [{ type: "set-variable", variable: "driftingBoatSeen", value: true }],
   }],
 });

@@ -36,14 +36,19 @@ frozen Game Project. See the compiled [first Scene recipe](recipes/first-scene.t
 
 ## Define Scene space and navigation
 
-`defineScene` owns the Background, Walkable Region, optional Perspective Scale,
-Scenery, Hotspots, Entrances, and Scene Passages. Coordinates use the shared
-Logical Resolution. Character and Object Ground Points must remain in the
-Walkable Region; Scenery uses its Baseline and optional position for depth.
+`defineScene` owns the Background, optional Scene Size, Walkable Region,
+optional Perspective Scale, Scenery, Hotspots, Entrances, and Scene Passages.
+Logical Resolution is the fixed viewport. Scene Size is the complete Scene
+Space extent and defaults to Logical Resolution; each declared axis must be a
+positive integer no smaller than the corresponding viewport axis. Every Scene
+coordinate and the Background's exact pixel dimensions use the resolved Scene
+Size. Character and Object Ground Points must remain in the Walkable Region;
+Scenery uses its Baseline and optional position for depth.
 
 ```ts
 const harbour = defineScene({
   background: new URL("./harbour.png", import.meta.url),
+  size: { width: 640, height: 360 },
   walkableRegion: harbourFloor,
   perspectiveScale: [{ y: 120, scale: 0.7 }, { y: 180, scale: 1 }],
   entrances: {
@@ -62,6 +67,13 @@ const harbour = defineScene({
   }],
 });
 ```
+
+When `size` is omitted, a 320×180 project expects a 320×180 Background and
+keeps the fixed view at origin. In the panoramic example above, Fondale expects
+a 640×360 Background, follows the Player Character automatically, clamps the
+Camera at the Scene edges, and keeps Camera position out of Save Snapshots.
+The first capability does not expose Camera coordinates, cinematic pans, zoom,
+alternative follow targets, edge scrolling, or Author-controlled easing.
 
 A Scene Passage owns its Noun and direction because it is itself the semantic
 navigation target. Holding Tab reveals available Hotspots and Passages.
@@ -277,6 +289,6 @@ const hudTheme = defineHUDTheme({
 ```
 
 The complete form is compiled in the [HUD Theme recipe](recipes/hud-theme.ts).
-Input, browser, layout, Inventory, speech, Save/Load, and exclusion commitments
+Input, Camera projection, browser, layout, Inventory, speech, Save/Load, and exclusion commitments
 are listed in the [Support Baseline](support-baseline.md). See the executable
 [Save Snapshot recipe](recipes/save-snapshot.ts) for restoration handling.

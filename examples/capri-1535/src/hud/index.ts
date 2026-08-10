@@ -61,6 +61,6 @@ export const capriHudTheme = defineHUDTheme({
   speechColors: {
     michele: "#f4dfb4",
     raffaele: "#f2ad62",
-    host: "#58d6d2",
+    brotherElia: "#58d6d2",
   },
 });

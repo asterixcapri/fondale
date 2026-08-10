@@ -37,8 +37,8 @@ controls or structure.
 
 ## Definitions
 
-`defineScene` validates and freezes a `SceneDefinition`. A Scene has a full-size
-PNG `background`, finite simple `walkableRegion`, optional `perspectiveScale`,
+`defineScene` validates and freezes a `SceneDefinition`. A Scene has a PNG
+`background`, optional `size`, finite simple `walkableRegion`, optional `perspectiveScale`,
 named Scenery, ordered Hotspots, named Entrances, and ordered Passages.
 Omission means scale `1`. A Hotspot requires `target`, polygon `area`,
 `approach`, and optional `when`. The target discriminates ownership: a
@@ -46,7 +46,12 @@ Background Hotspot requires a local `noun`; Character, Object, and Scenery
 Hotspots reject `noun` and resolve the target owner's Noun at use time. A
 Passage additionally requires its own Noun,
 `PassageDirection`, and a destination Scene/Entrance. The Scene has no region
-reserved for the HUD; authored geometry may use the complete Logical Resolution.
+reserved for the HUD; authored geometry may use the complete Scene Size.
+Scene Size has positive-integer width and height. During `defineGame`, omission
+defaults Scene Size to Logical Resolution and every declared axis must be at
+least as large as the corresponding viewport axis. The Background must exactly
+match the resolved Scene Size; its startup diagnostic reports actual and
+expected dimensions.
 
 `defineCharacter` validates a persistent Character with initial Scene, Ground
 Point, Facing, Appearance, positive `movementSpeed`, optional Noun, and static
@@ -98,7 +103,13 @@ unowned `target` and optional validated snapshot. `GameSession` exposes
 `SaveSnapshot` records format/project identity/project version and canonical
 state, including an incomplete Command. Only the branded
 `ValidatedSaveSnapshot` from successful validation may restore a session.
-Hover, pointer position and Player Preferences are not saved.
+Camera position, hover, pointer position and Player Preferences are not saved.
+On oversized Scenes the internal Camera follows only the visible Player
+Character, eases ordinary walking, snaps on startup, restoration and Scene
+entry, clamps independently on both axes, and translates the world on whole
+logical pixels. This presentation does not delay Core activity or expose a
+public Camera interface. World pointer input, Character speech, and revealed
+Hotspots are projected; Engine-owned HUD controls remain in viewport space.
 
 `AuthoringError` contains stably ordered `AuthoringDiagnostic` values. Each has
 stable `code`, `family`, `path`, `message`, optional `suggestion`, and optional
@@ -110,7 +121,8 @@ asset, or environment.
 | Structure | Purpose | Allowed values | Defaults and invariants | Errors | Executed example |
 | --- | --- | --- | --- | --- | --- |
 | `Point` | Scene/image coordinate | finite numeric x and y | field-specific coordinate space | finite and bounds diagnostics | [Scene](recipes/first-scene.ts) |
-| `LogicalResolution` | fixed frame dimensions | positive integer width and height | shared by every Scene | positive-integer diagnostic | [Scene](recipes/first-scene.ts) |
+| `LogicalResolution` | fixed viewport dimensions | positive integer width and height | shared by output canvas and HUD | positive-integer diagnostic | [Scene](recipes/first-scene.ts) |
+| `SceneSize` | complete Scene Space extent | positive integer width and height | omission defaults to Logical Resolution; neither axis may be smaller | Scene-size diagnostics | [Scene](recipes/first-scene.ts) |
 | `Facing` | authored orientation | front, back, left, right | required where present | type and reference validation | [Character](recipes/character-walking.ts) |
 | `StaticAppearance` | single PNG visual | static kind, image, optional anchor | anchor defaults bottom-centre | asset and anchor diagnostics | [Inventory](recipes/inventory.ts) |
 | `WalkStrip` | directional strip | image and positive frame count | frame zero is idle | walking frame diagnostics | [Character](recipes/character-walking.ts) |
@@ -129,8 +141,8 @@ asset, or environment.
 | `SceneryDefinition` | depth-sorted visual | baseline, appearances, position, noun | initial Appearance required | Scenery diagnostics | [Scene](recipes/first-scene.ts) |
 | `SceneEntrance` | named arrival | Ground Point and Facing | point must be walkable | entrance diagnostics | [Scene](recipes/first-scene.ts) |
 | `ScenePassage` | directional transition | area, approach, noun, direction, destination | transition is atomic | passage diagnostics | [Scene](recipes/first-scene.ts) |
-| `PerspectiveScaleStop` | depth-scale sample | in-frame y and positive scale | stops interpolate linearly | perspective diagnostic | [Scene](recipes/first-scene.ts) |
-| `SceneInput` | Scene helper input | Background, region and optional structures | optional collections are empty | helper diagnostics | [Scene](recipes/first-scene.ts) |
+| `PerspectiveScaleStop` | depth-scale sample | Scene Space y and positive scale | stops interpolate linearly | perspective diagnostic | [Scene](recipes/first-scene.ts) |
+| `SceneInput` | Scene helper input | Background, optional size, region and optional structures | size defaults to Logical Resolution; optional collections are empty | helper and composition diagnostics | [Scene](recipes/first-scene.ts) |
 | `SceneDefinition` | frozen local Scene | same values as SceneInput | registry key supplies identity | project adds references | [Scene](recipes/first-scene.ts) |
 | `Line` | Character-spoken phrase | text, Character and optional audio | Character is always explicit | Line/Character diagnostics | [Command](recipes/command-case.ts) |
 | `LineStep` | modal Character speech | line type plus Line fields | waits for advance and audio duration | Line/Character/asset diagnostics | [Sequence](recipes/sequence.ts) |
@@ -172,7 +184,7 @@ Exact reachable fields also include `x`, `y`, `width`, `height`, `kind`,
 `opacity`, `maxSpeechWidth`, `cursors`, `speechColors`, `equals`, `hasObject`,
 `type`, `variable`, `value`, `target`, `character`, `object`, `scenery`, `scene`,
 `appearance`, `sequence`, `groundPoint`, `baseline`, `position`, `approach`,
-`when`, `direction`, `destination`, `entrance`, `scale`, `background`,
+`when`, `direction`, `destination`, `entrance`, `scale`, `background`, `size`,
 `walkableRegion`, `perspectiveScale`, `hotspots`, `entrances`, `passages`,
 `alternatives`, `fallback`, `steps`, `cases`, `skippable`, `identity`, `version`,
 `logicalResolution`, `scenes`, `characters`, `playerCharacter`, `objects`,
@@ -203,6 +215,8 @@ Definition codes: `definition.approach.bounds`,
 `definition.hud-theme.opacity`, `definition.hud-theme.speech-color`,
 `definition.hud-theme.speech-width`, `definition.inventory-appearance-size`,
 `definition.logical-resolution.positive-integer`,
+`definition.scene-size.positive-integer`,
+`definition.scene-size.viewport-minimum`,
 `definition.noun-label.text`, `definition.operation.collect-target`,
 `definition.operation.ground-point`, `definition.perspective-scale.stop`,
 `definition.point.finite`, `definition.polygon.degenerate`,

@@ -4,7 +4,7 @@ import idleUrl from "./idle.png";
 
 export const raffaele = defineCharacter({
   initialScene: "harbour",
-  initialGroundPoint: { x: 322, y: 170 },
+  initialGroundPoint: { x: 430, y: 205 },
   initialFacing: "left",
   initialAppearance: "working",
   appearances: {
@@ -21,15 +21,15 @@ export const raffaele = defineCharacter({
         verb: "talk-to",
         when: { variable: "boatReady", equals: true },
         line: {
-          text: "L'argano tiene. Attraversa la grotta e porta il pacco a Monte Solaro.",
+          text: "L'argano tiene. Sali alla torre e controlla il segnale: al ritorno ti pago.",
           character: "raffaele",
         },
       },
       {
         verb: "talk-to",
-        when: { variable: "raffaeleMet", equals: true },
+        when: { variable: "jobAccepted", equals: true },
         line: {
-          text: "L'olio è vicino alle botti; la manovella era fra le reti.",
+          text: "L'ampolla è accanto alle reti. La manovella è ancora nel chiostro.",
           character: "raffaele",
         },
       },

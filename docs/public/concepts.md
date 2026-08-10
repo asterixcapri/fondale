@@ -11,9 +11,13 @@ loaded textures, screen coordinates, and animation frames are derived and do
 not become canonical state. A **Game Activity** is the single dominant piece
 of progress: a replaceable Player Intent, a direct Line, or a modal Sequence.
 
-A **Scene** fills the fixed Logical Resolution. Its **Scene Space** has its
-origin at the top-left. A Character's **Ground Point**, a Scenery **Baseline**,
-and optional **Perspective Scale** determine composition. A Walkable Region
+A **Logical Resolution** is the fixed visible frame and HUD canvas. A
+**Scene** has a **Scene Size** that defaults to that frame and may be wider,
+taller, or both; its **Scene Space** has its origin at the top-left and spans
+the complete Background. The derived **Camera** follows the visible Player
+Character through an oversized Scene without becoming Game State. A
+Character's **Ground Point**, a Scenery **Baseline**, and optional
+**Perspective Scale** determine composition in Scene Space. A Walkable Region
 governs movement; a Hotspot adds an Approach Point and identifies what is
 interactive. A Character, Object, or Scenery owns its optional **Noun
 Definition**, and every Hotspot that targets it resolves that same Noun. A
@@ -29,7 +33,9 @@ of Character-bound Lines, explicit Narrations, Choices, branches, and operation
 groups. A direct Line or neutral Command Response may also conclude one Command
 without introducing a one-step Sequence.
 
-The Engine owns the semantic HUD: pointer-following Contextual Actions, the
+The Camera projects world input, Character speech and revealed Hotspots between
+Scene Space and the viewport. The Engine owns the semantic HUD:
+pointer-following Contextual Actions, the
 Inventory trigger and drawer, Choices, Options, Help and Save/Load. A Noun's
 Preferred Verb supplies the primary action, while optional Secondary and
 Selected Object Verbs control the right mouse button and Object-first Commands.

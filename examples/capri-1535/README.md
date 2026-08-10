@@ -26,10 +26,13 @@ modules. The `art/` directory contains only source masters and their prompt or
 provenance notes; tools write processed game assets directly beside their owning
 modules under `src/`.
 
-The bidirectional route is
-`alley ↔ town square ↔ harbour ↔ grotto ↔ Monte Solaro`, with the optional
-`harbour ↔ tavern` detour. The harbour puzzle unlocks the boat; every Scene uses
-Fondale 0.2 target-owned Nouns, Commands, directional Passages, and persistent state.
-Its conversations exercise Character-bound Lines, explicit Narrations, direct
-Command Lines, neutral Command Responses, and mouse- and keyboard-selected
-Choices through the packaged public API.
+The prologue uses exactly four panoramic Scenes:
+`town square ↔ cloister` and `town square ↔ harbour ↔ coastal fortification`.
+Michele accepts one ordinary paid job, retrieves the harbour winch handle from
+the cloister well, and climbs to the lookout. The drifting boat seen from the
+tower is the inciting incident; the larger mystery remains outside the demo.
+
+The route exercises horizontal and vertical Camera scrolling, target-owned
+Nouns, Commands, directional Passages, persistent puzzle state, Character-bound
+Lines, explicit Narrations, and mouse- and keyboard-selected Choices through
+the packaged public API.

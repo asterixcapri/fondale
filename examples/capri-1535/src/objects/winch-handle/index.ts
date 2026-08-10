@@ -5,8 +5,8 @@ import inventoryUrl from "./inventory.png";
 import sceneUrl from "./scene.png";
 
 export const winchHandle = defineObject({
-  initialScene: "harbour",
-  initialGroundPoint: { x: 375, y: 174 },
+  initialScene: "cloister",
+  initialGroundPoint: { x: 575, y: 211 },
   initialAppearance: "loose",
   appearances: {
     loose: { kind: "static", image: sceneUrl },
@@ -20,12 +20,17 @@ export const winchHandle = defineObject({
     cases: [
       {
         verb: "pick-up",
-        response: { text: "Libero la manovella dalle reti." },
+        when: { variable: "wellFreed", equals: true },
+        response: { text: "Ora posso restituire la manovella a Raffaele." },
         operations: [{ type: "collect-target-object" }],
       },
       {
+        verb: "pick-up",
+        response: { text: "La carrucola è bloccata: togliendola adesso lascerei il secchio nel pozzo." },
+      },
+      {
         verb: "look-at",
-        response: { text: "Una manovella robusta, fatta proprio per l'argano del porto." },
+        response: { text: "La manovella dell'argano, promossa temporaneamente a manovella del pozzo." },
       },
     ],
   }),

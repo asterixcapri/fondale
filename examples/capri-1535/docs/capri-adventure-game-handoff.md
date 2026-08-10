@@ -812,14 +812,16 @@ Questo permette una forte sensazione di profondità senza utilizzare 3D.
 
 ## 24. Risoluzione
 
-Risoluzione logica decisa:
+Risoluzione logica del viewport:
 
 426x240, 16:9.
 
-L'immagine viene scalata alla massima scala intera disponibile tramite
-nearest-neighbour, con letterbox sullo spazio residuo. I sorgenti dei fondali
-sono generati ad alta risoluzione e portati a 426x240 dalla pipeline descritta
-in `docs/background-art-spec.md`.
+Il viewport viene scalato alla massima scala intera disponibile tramite
+nearest-neighbour, con letterbox sullo spazio residuo. Una scena può avere una
+Scene Size più grande del viewport e viene esplorata dalla Camera che segue
+Michele. I sorgenti dei fondali sono generati ad alta risoluzione e portati
+alla rispettiva Scene Size dalla pipeline descritta in
+`docs/background-art-spec.md`.
 
 ---
 

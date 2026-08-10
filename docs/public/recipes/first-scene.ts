@@ -46,6 +46,18 @@ export const firstScene = defineScene({
   }],
 });
 
+// A Scene may instead extend beyond the 320×180 viewport on either axis.
+// Its Background PNG must be exactly 640×360 and all geometry remains in
+// that complete Scene Space.
+export const panoramicScene = defineScene({
+  background: new URL("./panorama.png", import.meta.url),
+  size: { width: 640, height: 360 },
+  walkableRegion: [
+    { x: 0, y: 180 }, { x: 640, y: 180 },
+    { x: 640, y: 360 }, { x: 0, y: 360 },
+  ],
+});
+
 export const englishCommandLexicon = defineCommandLexicon({
   inventory: { select: "Hold {noun}", deselect: "Put back {noun}" },
   verbs: {

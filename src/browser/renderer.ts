@@ -27,6 +27,7 @@ import type { Verb } from "../public/commands";
 import type { AuthoringDiagnostic } from "../public/diagnostics";
 import type { SaveSnapshot } from "../public/save";
 import { assetUrl, type LoadedAssets } from "./assets";
+import { Camera } from "./camera";
 
 interface CharacterView {
   readonly container: Container;
@@ -62,6 +63,9 @@ export class BrowserRenderer {
   private readonly world = new Container();
   private readonly overlay: EngineOverlay;
   private readonly characterViews = new Map<string, CharacterView>();
+  private readonly camera = new Camera();
+  private cameraOrigin: Point = { x: 0, y: 0 };
+  private currentScene = "";
   private sceneSignature = "";
 
   constructor(
@@ -80,6 +84,7 @@ export class BrowserRenderer {
       core,
       controls,
       (character) => this.characterViews.get(character)?.container.getBounds().minY,
+      (point) => this.sceneToViewport(point),
     );
     application.stage.addChild(this.world);
     application.canvas.setAttribute("aria-label", "Fondale game world");
@@ -103,6 +108,19 @@ export class BrowserRenderer {
     }
     this.updateCharacters(state);
     this.world.sortChildren();
+    const scene = this.data.scenes[state.currentScene]!;
+    const player = this.data.playerCharacter
+      ? state.characters[this.data.playerCharacter]
+      : undefined;
+    const sceneChanged = state.currentScene !== this.currentScene;
+    this.currentScene = state.currentScene;
+    this.cameraOrigin = this.camera.update({
+      viewport: this.data.logicalResolution,
+      scene: scene.size,
+      ...(player?.scene === state.currentScene ? { follow: player.groundPoint } : {}),
+      continuous: !sceneChanged,
+    });
+    this.world.position.set(-this.cameraOrigin.x, -this.cameraOrigin.y);
     this.overlay.render(state, effects);
     this.application.renderer.render(this.application.stage);
   }
@@ -253,7 +271,7 @@ export class BrowserRenderer {
     }
     if (event.button !== 0) return;
     this.frame.focus({ preventScroll: true });
-    const point = this.scenePoint(event);
+    const { scene: point } = this.pointerPoints(event);
     if (["line", "sequence"].includes(this.core.snapshot().activity?.type ?? "")) return;
     const target = this.core.hitTest(point);
     if (target?.kind === "hotspot") {
@@ -272,7 +290,7 @@ export class BrowserRenderer {
       this.overlay.blocksWorldInput() ||
       ["line", "sequence"].includes(this.core.snapshot().activity?.type ?? "")
     ) return;
-    const point = this.scenePoint(event);
+    const { scene: point } = this.pointerPoints(event);
     const target = this.core.hitTest(point);
     if (target?.kind === "hotspot") {
       const hotspot = this.core.availableHotspots().find(({ index }) => index === target.index);
@@ -292,7 +310,7 @@ export class BrowserRenderer {
       this.overlay.blocksWorldInput() ||
       ["line", "sequence"].includes(this.core.snapshot().activity?.type ?? "")
     ) return;
-    const point = this.scenePoint(event);
+    const { scene: point } = this.pointerPoints(event);
     const target = this.core.hitTest(point);
     if (target?.kind === "passage") {
       this.core.input({ type: "activate-passage", passage: target.index, fast: true, forceWalk: true });
@@ -309,7 +327,8 @@ export class BrowserRenderer {
       this.overlay.showAction(undefined);
       return;
     }
-    const point = this.scenePoint(event);
+    const points = this.pointerPoints(event);
+    const point = points.scene;
     const target = this.core.hitTest(point);
     const hotspot = target?.kind === "hotspot"
       ? this.core.availableHotspots().find(({ index }) => index === target.index)
@@ -327,7 +346,7 @@ export class BrowserRenderer {
         ? `url(${JSON.stringify(assetUrl(themedCursor))}) 8 8, ${cursors[passage.direction]}`
         : cursors[passage.direction]
       : "pointer";
-    this.overlay.showCursor(point);
+    this.overlay.showCursor(points.viewport);
   };
 
   private readonly onPointerLeave = (): void => {
@@ -335,11 +354,28 @@ export class BrowserRenderer {
     this.overlay.hideCursor();
   };
 
-  private scenePoint(event: Pick<MouseEvent, "clientX" | "clientY">): Point {
+  private pointerPoints(event: Pick<MouseEvent, "clientX" | "clientY">): {
+    viewport: Point;
+    scene: Point;
+  } {
     const bounds = this.application.canvas.getBoundingClientRect();
-    return {
+    const viewport = {
       x: ((event.clientX - bounds.left) / bounds.width) * this.data.logicalResolution.width,
       y: ((event.clientY - bounds.top) / bounds.height) * this.data.logicalResolution.height,
+    };
+    return {
+      viewport,
+      scene: {
+        x: viewport.x + this.cameraOrigin.x,
+        y: viewport.y + this.cameraOrigin.y,
+      },
+    };
+  }
+
+  private sceneToViewport(point: Point): Point {
+    return {
+      x: point.x - this.cameraOrigin.x,
+      y: point.y - this.cameraOrigin.y,
     };
   }
 }
@@ -384,6 +420,7 @@ class EngineOverlay {
     private readonly core: CoreSession,
     private readonly controls: BrowserSessionControls,
     private readonly characterSilhouetteTop: (character: string) => number | undefined,
+    private readonly sceneToViewport: (point: Point) => Point,
   ) {
     this.preferences = readPreferences(data.identity);
     this.root.dataset.fondaleOverlay = "";
@@ -637,6 +674,9 @@ class EngineOverlay {
       this.dismissResponse();
     }
     this.renderActivity(state);
+    const line = this.activity.querySelector<HTMLElement>("[data-fondale-line]");
+    const speaker = line?.dataset.fondaleSpeaker;
+    if (line && speaker) this.positionSpeech(line, state, speaker);
     const choosing = state.activity?.type === "sequence" && state.activity.active?.kind === "choice";
     this.inventoryTrigger.style.visibility = choosing ? "hidden" : "visible";
     if (choosing && this.inventoryOpen) this.setInventoryOpen(false);
@@ -1059,9 +1099,10 @@ class EngineOverlay {
       `display:${this.preferences.speechText ? "block" : "none"}`,
     ].join(";");
     const width = this.data.hudTheme?.maxSpeechWidth ?? 150;
-    element.style.left = `${Math.max(2, Math.min(this.data.logicalResolution.width - width - 2, character.groundPoint.x - width / 2))}px`;
+    const projectedGroundPoint = this.sceneToViewport(character.groundPoint);
+    element.style.left = `${Math.max(2, Math.min(this.data.logicalResolution.width - width - 2, projectedGroundPoint.x - width / 2))}px`;
     const height = element.offsetHeight;
-    const silhouetteTop = this.characterSilhouetteTop(speaker) ?? character.groundPoint.y;
+    const silhouetteTop = this.characterSilhouetteTop(speaker) ?? projectedGroundPoint.y;
     element.style.top = `${Math.max(4, Math.min(safeBottom - height, silhouetteTop - height - 2))}px`;
   }
 
@@ -1106,28 +1147,30 @@ class EngineOverlay {
     this.revealedHotspots.replaceChildren();
     if (!this.hotspotsRevealed) return;
     for (const hotspot of this.core.availableHotspots()) {
+      const area = hotspot.area.map(this.sceneToViewport);
       const polygon = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
       polygon.dataset.fondaleRevealedHotspot = String(hotspot.index);
-      polygon.setAttribute("points", hotspot.area.map(({ x, y }) => `${x},${y}`).join(" "));
+      polygon.setAttribute("points", area.map(({ x, y }) => `${x},${y}`).join(" "));
       polygon.setAttribute("fill", "rgba(53,167,255,.22)");
       polygon.setAttribute("stroke", "#ffffff");
       polygon.setAttribute("stroke-width", "1");
       const title = document.createElementNS("http://www.w3.org/2000/svg", "title");
       title.textContent = hotspot.label;
       polygon.append(title);
-      this.revealedHotspots.append(polygon, revealLabel(hotspot.area, hotspot.label, "hotspot"));
+      this.revealedHotspots.append(polygon, revealLabel(area, hotspot.label, "hotspot"));
     }
     for (const passage of this.core.availablePassages()) {
+      const area = passage.area.map(this.sceneToViewport);
       const polygon = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
       polygon.dataset.fondaleRevealedPassage = String(passage.index);
-      polygon.setAttribute("points", passage.area.map(({ x, y }) => `${x},${y}`).join(" "));
+      polygon.setAttribute("points", area.map(({ x, y }) => `${x},${y}`).join(" "));
       polygon.setAttribute("fill", "rgba(242,173,98,.18)");
       polygon.setAttribute("stroke", "#f2ad62");
       polygon.setAttribute("stroke-width", "1");
       const title = document.createElementNS("http://www.w3.org/2000/svg", "title");
       title.textContent = passage.label;
       polygon.append(title);
-      this.revealedHotspots.append(polygon, revealLabel(passage.area, passage.label, "passage"));
+      this.revealedHotspots.append(polygon, revealLabel(area, passage.label, "passage"));
     }
   }
 

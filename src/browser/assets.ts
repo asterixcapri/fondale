@@ -105,15 +105,15 @@ export async function loadProjectAssets(data: GameProjectData): Promise<LoadedAs
     const background = textures.get(assetUrl(scene.background));
     if (
       background &&
-      (background.width !== data.logicalResolution.width ||
-        background.height !== data.logicalResolution.height)
+      (background.width !== scene.size.width ||
+        background.height !== scene.size.height)
     ) {
       diagnostics.push({
         code: "asset.background.dimensions",
         family: "asset",
         path: `scenes.${sceneId}.background`,
-        message: `Background is ${background.width}×${background.height}; expected ${data.logicalResolution.width}×${data.logicalResolution.height}.`,
-        suggestion: "Export the PNG at the project's exact Logical Resolution.",
+        message: `Background is ${background.width}×${background.height}; expected ${scene.size.width}×${scene.size.height}.`,
+        suggestion: "Export the PNG at the Scene's exact Scene Size.",
       });
     }
   }

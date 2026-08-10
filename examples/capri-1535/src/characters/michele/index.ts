@@ -5,9 +5,9 @@ import walkFrontUrl from "./walk-front.png";
 import walkSideUrl from "./walk-side.png";
 
 export const michele = defineCharacter({
-  initialScene: "alley",
-  initialGroundPoint: { x: 190, y: 175 },
-  initialFacing: "back",
+  initialScene: "townSquare",
+  initialGroundPoint: { x: 92, y: 210 },
+  initialFacing: "right",
   initialAppearance: "travelling",
   appearances: {
     travelling: {
@@ -25,5 +25,5 @@ export const michele = defineCharacter({
       framesPerSecond: 12,
     },
   },
-  movementSpeed: 90,
+  movementSpeed: 150,
 });

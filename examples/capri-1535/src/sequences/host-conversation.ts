@@ -1,13 +1,21 @@
 import { defineSequence } from "@asterixcapri/fondale";
 
-export const hostConversation = defineSequence({
-  steps: [{ type: "line", character: "host", text: "Benvenuto. Qui il mare entra soltanto nei racconti." }, {
+export const brotherEliaConversation = defineSequence({
+  steps: [{
+    type: "line",
+    character: "brotherElia",
+    text: "Raffaele rivuole la sua manovella. Il pozzo, invece, sostiene di averne ancora bisogno.",
+  }, {
     type: "choice",
-    alternatives: [{ text: "Cosa si dice dell'argano del porto?", steps: [{
-      type: "line", character: "host", text: "Che Raffaele lo cura meno del proprio orgoglio. Olio e pazienza, ragazzo.",
-    }] }, { text: "Cerco soltanto un momento al caldo.", steps: [{
-      type: "line", character: "host", text: "Allora siediti con gli occhi. Le sedie vere sono tutte occupate.",
+    alternatives: [{ text: "Posso riprendermela?", steps: [{
+      type: "line",
+      character: "brotherElia",
+      text: "Appena la carrucola gira. Ho fede nei miracoli, ma per il ferro preferisco l'olio.",
+    }] }, { text: "Da quanto è bloccato il pozzo?", steps: [{
+      type: "line",
+      character: "brotherElia",
+      text: "Da stamattina. Secondo frate Nicola, quindi, da almeno tre settimane.",
     }] }],
-    fallback: { text: "Devo andare.", spoken: false, steps: [] },
+    fallback: { text: "Provo a sistemarlo.", steps: [] },
   }],
 });

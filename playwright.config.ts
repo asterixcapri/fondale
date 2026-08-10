@@ -1,5 +1,9 @@
 import { defineConfig } from "@playwright/test";
 
+const testPort = (globalThis as {
+  process?: { env: Record<string, string | undefined> };
+}).process?.env.FONDALE_TEST_PORT ?? "5173";
+
 /**
  * The harness that makes the agent's work verifiable without a human.
  *
@@ -14,7 +18,7 @@ export default defineConfig({
   fullyParallel: false,
   reporter: [["list"]],
   use: {
-    baseURL: "http://localhost:5173",
+    baseURL: `http://localhost:${testPort}`,
     // Let Playwright discover the system Chrome installation. An absolute
     // executable path tied the harness to one container image and broke as
     // soon as that image changed.
@@ -24,8 +28,8 @@ export default defineConfig({
     viewport: { width: 1280, height: 720 },
   },
   webServer: {
-    command: "npm run dev",
-    url: "http://localhost:5173",
+    command: `npm run dev -- --port ${testPort}`,
+    url: `http://localhost:${testPort}`,
     reuseExistingServer: true,
     timeout: 60_000,
   },

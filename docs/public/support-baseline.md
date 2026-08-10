@@ -18,7 +18,13 @@ WebGL. A regression there is a Fondale bug.
 - Keyboard focus uses the browser indicator; the selected first Noun also uses
   an outline, check mark, and pressed-state label, not colour alone.
 - Character speech uses a strong text edge above its speaker. Narration uses a
-  backed lower lane. Both stay inside the Logical Resolution.
+  backed lower lane. Both stay inside the Logical Resolution. Speech follows
+  its projected Character while narration remains fixed in the viewport.
+- Oversized Scenes follow the Player Character horizontally and vertically,
+  clamp at Scene edges, draw the translated world on whole logical pixels, and
+  project mouse actions and revealed world geometry through the same Camera.
+  Inventory, Choices, Command Responses, Narrations, Options, Help, Save and
+  Load remain fixed in the Logical Resolution.
 - The logical frame is uniformly fitted and letterboxed. Pixel scaling uses
   the largest fitting integer factor, or a uniform nearest-neighbour reduction
   when the target is smaller than the Logical Resolution.

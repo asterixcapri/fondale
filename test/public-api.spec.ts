@@ -163,6 +163,171 @@ test("an Author defines an immutable one-Scene Game Project through the root API
   expect(Object.isFrozen(opening)).toBe(true);
 });
 
+test("defineScene accepts and freezes a Scene Size independently of the viewport", () => {
+  const panoramic = defineScene({
+    background: "panoramic.png",
+    size: { width: 640, height: 360 },
+    walkableRegion: [
+      { x: 0, y: 0 },
+      { x: 640, y: 0 },
+      { x: 640, y: 360 },
+      { x: 0, y: 360 },
+    ],
+  });
+
+  expect(panoramic.size).toEqual({ width: 640, height: 360 });
+  expect(Object.isFrozen(panoramic.size)).toBe(true);
+  expect(() => defineGame({
+    identity: "example.panoramic",
+    version: "1",
+    logicalResolution: { width: 320, height: 180 },
+    scenes: { panoramic },
+    initialScene: "panoramic",
+  })).not.toThrow();
+});
+
+test("defineScene rejects Scene Size dimensions that are not positive integers", () => {
+  for (const size of [
+    { width: 0, height: 180 },
+    { width: 320.5, height: 180 },
+    { width: 320, height: Number.POSITIVE_INFINITY },
+    { width: 320 } as never,
+  ]) {
+    expect(() => defineScene({
+      background: "invalid.png",
+      size,
+      walkableRegion: [
+        { x: 0, y: 0 },
+        { x: 10, y: 0 },
+        { x: 0, y: 10 },
+      ],
+    })).toThrow(AuthoringError);
+  }
+});
+
+test("defineGame rejects a Scene Size axis smaller than its Logical Resolution", () => {
+  const tooNarrow = defineScene({
+    background: "narrow.png",
+    size: { width: 319, height: 240 },
+    walkableRegion: [
+      { x: 0, y: 0 },
+      { x: 319, y: 0 },
+      { x: 0, y: 240 },
+    ],
+  });
+
+  try {
+    defineGame({
+      identity: "example.too-narrow",
+      version: "1",
+      logicalResolution: { width: 320, height: 180 },
+      scenes: { tooNarrow },
+      initialScene: "tooNarrow",
+    });
+    throw new Error("expected the Scene Size to be rejected");
+  } catch (error) {
+    expect(error).toBeInstanceOf(AuthoringError);
+    expect((error as AuthoringError).diagnostics).toContainEqual(expect.objectContaining({
+      code: "definition.scene-size.viewport-minimum",
+      path: "scenes.tooNarrow.size.width",
+    }));
+  }
+});
+
+test("defineGame validates every Scene geometry family against Scene Size", () => {
+  const square = [
+    { x: 0, y: 0 }, { x: 200, y: 0 }, { x: 200, y: 200 }, { x: 0, y: 200 },
+  ];
+  const noun = defineNoun({
+    labels: [{ text: "Far landmark" }],
+    preferredVerbs: [{ verb: "walk-to" }],
+    cases: [{
+      verb: "use",
+      response: { text: "Placed in the panoramic Scene." },
+      operations: [{ type: "place-selected-object", groundPoint: { x: 180, y: 180 } }],
+    }],
+  });
+  const panoramic = defineScene({
+    background: "panoramic.png",
+    size: { width: 200, height: 200 },
+    walkableRegion: square,
+    perspectiveScale: [{ y: 150, scale: 0.8 }],
+    scenery: {
+      tower: {
+        baseline: 180,
+        position: { x: 170, y: 180 },
+        initialAppearance: "visible",
+        appearances: {
+          visible: {
+            kind: "background-region",
+            area: [{ x: 140, y: 140 }, { x: 190, y: 140 }, { x: 190, y: 190 }],
+          },
+        },
+      },
+    },
+    hotspots: [{
+      target: { kind: "background" },
+      area: [{ x: 140, y: 140 }, { x: 190, y: 140 }, { x: 190, y: 190 }],
+      approach: { groundPoint: { x: 160, y: 170 }, facing: "back" },
+      noun,
+    }],
+    entrances: { far: { groundPoint: { x: 180, y: 180 }, facing: "left" } },
+    passages: [{
+      area: [{ x: 150, y: 150 }, { x: 200, y: 150 }, { x: 200, y: 200 }],
+      approach: { groundPoint: { x: 175, y: 175 }, facing: "right" },
+      noun,
+      direction: "right",
+      destination: { scene: "fixed", entrance: "fromPanoramic" },
+    }],
+  });
+  const fixed = defineScene({
+    background: "fixed.png",
+    walkableRegion: [
+      { x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }, { x: 0, y: 100 },
+    ],
+    entrances: { fromPanoramic: { groundPoint: { x: 50, y: 50 }, facing: "left" } },
+  });
+  const player = defineCharacter({
+    initialScene: "panoramic",
+    initialGroundPoint: { x: 180, y: 180 },
+    initialFacing: "front",
+    initialAppearance: "idle",
+    appearances: { idle: { kind: "static", image: "player.png" } },
+    movementSpeed: 60,
+  });
+  const object = defineObject({
+    initialScene: "panoramic",
+    initialGroundPoint: { x: 175, y: 175 },
+    initialAppearance: "present",
+    appearances: { present: { kind: "static", image: "object.png" } },
+    inventoryAppearance: "object-inventory.png",
+  });
+
+  expect(() => defineGame({
+    identity: "example.scene-size-geometry",
+    version: "1",
+    logicalResolution: { width: 100, height: 100 },
+    scenes: { panoramic, fixed },
+    characters: { player },
+    playerCharacter: "player",
+    objects: { object },
+    commandLexicon: defineCommandLexicon({
+      inventory: { select: "Hold {noun}", deselect: "Put away {noun}" },
+      verbs: {
+        open: "Open", "pick-up": "Pick up", push: "Push", close: "Close",
+        "look-at": "Look at", pull: "Pull", give: "Give", "talk-to": "Talk to", use: "Use",
+      },
+      patterns: {
+        unary: "{verb} {noun}", give: "{verb} {first} to {second}", use: "{verb} {first} with {second}",
+      },
+    }),
+    commandFallbacks: Object.fromEntries([
+      "open", "pick-up", "push", "close", "look-at", "pull", "give", "talk-to", "use",
+    ].map((verb) => [verb, { text: "Nothing happens." }])) as never,
+    initialScene: "panoramic",
+  })).not.toThrow();
+});
+
 test("an Author defines immutable Noun and Command Lexicon definitions through the root API", () => {
   const noun = defineNoun({
     labels: [

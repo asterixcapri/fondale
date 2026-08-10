@@ -14,8 +14,14 @@ export interface Point {
   readonly y: number;
 }
 
-/** The fixed dimensions shared by every Scene and Engine-owned overlay. */
+/** The fixed dimensions of the logical viewport and Engine-owned overlay. */
 export interface LogicalResolution {
+  readonly width: number;
+  readonly height: number;
+}
+
+/** The complete two-dimensional extent of one Scene Space. */
+export interface SceneSize {
   readonly width: number;
   readonly height: number;
 }
@@ -270,6 +276,7 @@ export interface PerspectiveScaleStop {
 /** The minimal input accepted by {@link defineScene}. */
 export interface SceneInput {
   readonly background: URL | string;
+  readonly size?: SceneSize;
   readonly walkableRegion: readonly Point[];
   readonly perspectiveScale?: readonly PerspectiveScaleStop[];
   readonly scenery?: Readonly<Record<string, SceneryDefinition>>;
@@ -284,6 +291,18 @@ export interface SceneDefinition extends SceneInput {}
 /** Creates and freezes one Scene after validating its local geometry. */
 export function defineScene(input: SceneInput): SceneDefinition {
   const diagnostics: AuthoringDiagnostic[] = [];
+
+  for (const axis of ["width", "height"] as const) {
+    const value = input.size?.[axis];
+    if (input.size && (!Number.isInteger(value) || value! <= 0)) {
+      diagnostics.push({
+        code: "definition.scene-size.positive-integer",
+        family: "definition",
+        path: `size.${axis}`,
+        message: "Scene Size dimensions must be positive integers.",
+      });
+    }
+  }
 
   input.walkableRegion.forEach((point, index) => {
     if (!Number.isFinite(point.x) || !Number.isFinite(point.y)) {
@@ -365,6 +384,7 @@ export function defineScene(input: SceneInput): SceneDefinition {
   return deepFreeze({
     ...input,
     background: input.background instanceof URL ? new URL(input.background.href) : input.background,
+    ...(input.size ? { size: { ...input.size } } : {}),
     walkableRegion: input.walkableRegion.map((point) => ({ ...point })),
     scenery: { ...(input.scenery ?? {}) },
     hotspots: [...(input.hotspots ?? [])],
@@ -565,12 +585,18 @@ export interface GameProject {
 
 /** @internal Fully expanded representation kept behind the opaque project boundary. */
 export interface GameProjectData
-  extends Omit<GameInput, "characters" | "objects" | "sequences" | "variables"> {
+  extends Omit<GameInput, "scenes" | "characters" | "objects" | "sequences" | "variables"> {
+  readonly scenes: Readonly<Record<string, ResolvedSceneDefinition>>;
   readonly letterboxColor: string;
   readonly characters: Readonly<Record<string, CharacterDefinition>>;
   readonly objects: Readonly<Record<string, ObjectDefinition>>;
   readonly sequences: Readonly<Record<string, SequenceDefinition>>;
   readonly variables: Readonly<Record<string, boolean>>;
+}
+
+/** @internal A Scene whose default Size has been resolved during composition. */
+export interface ResolvedSceneDefinition extends Omit<SceneDefinition, "size"> {
+  readonly size: SceneSize;
 }
 
 const projectData = new WeakMap<GameProject, GameProjectData>();
@@ -654,12 +680,29 @@ export function defineGame(input: GameInput): GameProject {
       });
     }
   }
+  for (const [sceneId, scene] of Object.entries(input.scenes)) {
+    const size = scene.size ?? input.logicalResolution;
+    for (const axis of ["width", "height"] as const) {
+      if (size[axis] < input.logicalResolution[axis]) {
+        diagnostics.push({
+          code: "definition.scene-size.viewport-minimum",
+          family: "definition",
+          path: `scenes.${sceneId}.size.${axis}`,
+          message: `Scene Size ${axis} must be at least the Logical Resolution ${axis}.`,
+        });
+      }
+    }
+  }
   if (diagnostics.length > 0) throw new AuthoringError(diagnostics);
 
+  const scenes = Object.fromEntries(Object.entries(input.scenes).map(([sceneId, scene]) => [
+    sceneId,
+    { ...scene, size: { ...(scene.size ?? input.logicalResolution) } },
+  ])) as Readonly<Record<string, ResolvedSceneDefinition>>;
   const data = deepFreeze({
     ...input,
     logicalResolution: { ...input.logicalResolution },
-    scenes: { ...input.scenes },
+    scenes,
     characters: { ...characters },
     objects: { ...objects },
     sequences: { ...sequences },
@@ -694,11 +737,15 @@ function validateProjectDefinitions(
   variables: Readonly<Record<string, boolean>>,
   diagnostics: AuthoringDiagnostic[],
 ): void {
-  const { width, height } = input.logicalResolution;
   const missingOwnerNounPaths = new Set<string>();
-  const pointInFrame = (point: Point) =>
+  const sceneSize = (scene: SceneDefinition): SceneSize => scene.size ?? input.logicalResolution;
+  const pointInScene = (scene: SceneDefinition, point: Point) => {
+    const { width, height } = sceneSize(scene);
+    return (
     Number.isFinite(point.x) && Number.isFinite(point.y) &&
-    point.x >= 0 && point.y >= 0 && point.x <= width && point.y <= height;
+    point.x >= 0 && point.y >= 0 && point.x <= width && point.y <= height
+    );
+  };
   const condition = (value: InteractionCondition | undefined, path: string) => {
     if (!value) return;
     if ("variable" in value && !(value.variable in variables)) {
@@ -711,7 +758,7 @@ function validateProjectDefinitions(
   const operations = (
     values: readonly GameOperation[],
     path: string,
-    context: { target?: HotspotTarget; sequence?: boolean } = {},
+    context: { target?: HotspotTarget; sequence?: boolean; scene?: string } = {},
   ) => {
     values.forEach((operation, index) => {
       const operationPath = `${path}[${index}]`;
@@ -749,12 +796,17 @@ function validateProjectDefinitions(
         } else if (!(operation.appearance in appearances)) {
           diagnostics.push(referenceDiagnostic("reference.appearance", operationPath, `Appearance '${operation.appearance}' does not exist on the target.`));
         }
-      } else if (operation.type === "place-selected-object" && !pointInFrame(operation.groundPoint)) {
+      } else if (operation.type === "place-selected-object" && (
+        !Number.isFinite(operation.groundPoint.x) ||
+        !Number.isFinite(operation.groundPoint.y) ||
+        context.scene !== undefined &&
+        !pointInScene(input.scenes[context.scene]!, operation.groundPoint)
+      )) {
         diagnostics.push({
           code: "definition.operation.ground-point",
           family: "definition",
           path: `${operationPath}.groundPoint`,
-          message: "A placed Object Ground Point must be finite and inside the Logical Resolution.",
+          message: "A placed Object Ground Point must be finite and inside the destination Scene Size.",
         });
       }
     });
@@ -769,7 +821,12 @@ function validateProjectDefinitions(
       ));
     }
   };
-  const noun = (value: NounDefinition | undefined, path: string, target?: HotspotTarget) => {
+  const noun = (
+    value: NounDefinition | undefined,
+    path: string,
+    target?: HotspotTarget,
+    scene?: string,
+  ) => {
     if (!value) return;
     value.labels.forEach((label, index) => condition(label.when, `${path}.labels[${index}].when`));
     value.preferredVerbs.forEach((preferred, index) =>
@@ -800,7 +857,7 @@ function validateProjectDefinitions(
       }
       validateCommandResponse(candidate.response, `${candidatePath}.response`, diagnostics);
       line(candidate.line, `${candidatePath}.line`);
-      operations(candidate.operations ?? [], `${candidatePath}.operations`, { target });
+      operations(candidate.operations ?? [], `${candidatePath}.operations`, { target, scene });
     });
     for (const verb of commandVerbs) {
       const fallback = value.fallbacks?.[verb];
@@ -815,7 +872,7 @@ function validateProjectDefinitions(
       }
       if (fallback) {
         validateCommandResponse(fallback.response, `${path}.fallbacks.${verb}.response`, diagnostics);
-        operations(fallback.operations ?? [], `${path}.fallbacks.${verb}.operations`, { target });
+        operations(fallback.operations ?? [], `${path}.fallbacks.${verb}.operations`, { target, scene });
         if (fallback.sequence !== undefined && !(fallback.sequence in sequences)) {
           diagnostics.push(referenceDiagnostic(
             "reference.sequence",
@@ -832,13 +889,15 @@ function validateProjectDefinitions(
   }
 
   for (const [sceneId, scene] of Object.entries(input.scenes)) {
+    const { height } = sceneSize(scene);
+    const inScene = (point: Point) => pointInScene(scene, point);
     scene.walkableRegion.forEach((point, index) => {
-      if (!pointInFrame(point)) {
+      if (!inScene(point)) {
         diagnostics.push({
           code: "definition.scene-space.bounds",
           family: "definition",
           path: `scenes.${sceneId}.walkableRegion[${index}]`,
-          message: "Scene geometry must remain inside the Logical Resolution.",
+          message: "Scene geometry must remain inside the Scene Size.",
         });
       }
     });
@@ -857,22 +916,31 @@ function validateProjectDefinitions(
         scenery.noun,
         `scenes.${sceneId}.scenery.${sceneryId}.noun`,
         { kind: "scenery", scenery: sceneryId },
+        sceneId,
       );
       if (!(scenery.initialAppearance in scenery.appearances)) {
         diagnostics.push(referenceDiagnostic("reference.appearance.initial", `scenes.${sceneId}.scenery.${sceneryId}.initialAppearance`, "Initial Scenery Appearance does not exist."));
       }
-      if (scenery.position && !pointInFrame(scenery.position)) {
-        diagnostics.push({ code: "definition.scene-space.bounds", family: "definition", path: `scenes.${sceneId}.scenery.${sceneryId}.position`, message: "Scenery positions must remain inside the Logical Resolution." });
+      if (scenery.baseline < 0 || scenery.baseline > height) {
+        diagnostics.push({
+          code: "definition.scene-space.bounds",
+          family: "definition",
+          path: `scenes.${sceneId}.scenery.${sceneryId}.baseline`,
+          message: "A Scenery Baseline must remain inside the Scene Size.",
+        });
+      }
+      if (scenery.position && !inScene(scenery.position)) {
+        diagnostics.push({ code: "definition.scene-space.bounds", family: "definition", path: `scenes.${sceneId}.scenery.${sceneryId}.position`, message: "Scenery positions must remain inside the Scene Size." });
       }
       for (const [appearanceId, appearance] of Object.entries(scenery.appearances)) {
         if (appearance.kind === "background-region") {
-          validatePolygonBounds(appearance.area, `scenes.${sceneId}.scenery.${sceneryId}.appearances.${appearanceId}.area`, pointInFrame, diagnostics);
+          validatePolygonBounds(appearance.area, `scenes.${sceneId}.scenery.${sceneryId}.appearances.${appearanceId}.area`, inScene, diagnostics);
         }
       }
     }
     for (const [entranceId, entrance] of Object.entries(scene.entrances ?? {})) {
-      if (!pointInFrame(entrance.groundPoint)) {
-        diagnostics.push({ code: "definition.scene-space.bounds", family: "definition", path: `scenes.${sceneId}.entrances.${entranceId}.groundPoint`, message: "Scene Entrance Ground Points must remain inside the Logical Resolution." });
+      if (!inScene(entrance.groundPoint)) {
+        diagnostics.push({ code: "definition.scene-space.bounds", family: "definition", path: `scenes.${sceneId}.entrances.${entranceId}.groundPoint`, message: "Scene Entrance Ground Points must remain inside the Scene Size." });
       } else if (!pointInPolygonOrBoundary(scene.walkableRegion, entrance.groundPoint)) {
         diagnostics.push({ code: "definition.entrance.walkable", family: "definition", path: `scenes.${sceneId}.entrances.${entranceId}.groundPoint`, message: "A Scene Entrance Ground Point must lie in the Walkable Region." });
       }
@@ -880,10 +948,10 @@ function validateProjectDefinitions(
     scene.hotspots?.forEach((hotspot, hotspotIndex) => {
       const base = `scenes.${sceneId}.hotspots[${hotspotIndex}]`;
       if (hotspot.target.kind === "background") {
-        noun(hotspot.noun, `${base}.noun`, hotspot.target);
+        noun(hotspot.noun, `${base}.noun`, hotspot.target, sceneId);
       }
-      validatePolygonBounds(hotspot.area, `${base}.area`, pointInFrame, diagnostics);
-      if (!pointInFrame(hotspot.approach.groundPoint)) {
+      validatePolygonBounds(hotspot.area, `${base}.area`, inScene, diagnostics);
+      if (!inScene(hotspot.approach.groundPoint)) {
         diagnostics.push({ code: "definition.approach.bounds", family: "definition", path: `${base}.approach`, message: "Approach Point must be inside Scene Space." });
       } else if (!pointInPolygonOrBoundary(scene.walkableRegion, hotspot.approach.groundPoint)) {
         diagnostics.push({ code: "definition.approach.walkable", family: "definition", path: `${base}.approach`, message: "An Approach Point must lie in the Walkable Region." });
@@ -922,9 +990,9 @@ function validateProjectDefinitions(
     });
     scene.passages?.forEach((passage, passageIndex) => {
       const base = `scenes.${sceneId}.passages[${passageIndex}]`;
-      noun(passage.noun, `${base}.noun`);
-      validatePolygonBounds(passage.area, `${base}.area`, pointInFrame, diagnostics);
-      if (!pointInFrame(passage.approach.groundPoint)) {
+      noun(passage.noun, `${base}.noun`, undefined, sceneId);
+      validatePolygonBounds(passage.area, `${base}.area`, inScene, diagnostics);
+      if (!inScene(passage.approach.groundPoint)) {
         diagnostics.push({ code: "definition.approach.bounds", family: "definition", path: `${base}.approach`, message: "Approach Point must be inside Scene Space." });
       } else if (!pointInPolygonOrBoundary(scene.walkableRegion, passage.approach.groundPoint)) {
         diagnostics.push({ code: "definition.approach.walkable", family: "definition", path: `${base}.approach`, message: "An Approach Point must lie in the Walkable Region." });
@@ -944,16 +1012,17 @@ function validateProjectDefinitions(
     const scene = input.scenes[character.initialScene];
     if (!scene) continue;
     const path = `characters.${characterId}.initialGroundPoint`;
-    if (!pointInFrame(character.initialGroundPoint)) {
-      diagnostics.push({ code: "definition.scene-space.bounds", family: "definition", path, message: "Character Ground Points must remain inside the Logical Resolution." });
+    if (!pointInScene(scene, character.initialGroundPoint)) {
+      diagnostics.push({ code: "definition.scene-space.bounds", family: "definition", path, message: "Character Ground Points must remain inside the Scene Size." });
     } else if (!pointInPolygonOrBoundary(scene.walkableRegion, character.initialGroundPoint)) {
       diagnostics.push({ code: "definition.character.walkable", family: "definition", path, message: "A Character Ground Point must lie in the Scene Walkable Region." });
     }
   }
   for (const [objectId, object] of Object.entries(objects)) {
     noun(object.noun, `objects.${objectId}.noun`, { kind: "object", object: objectId });
-    if (input.scenes[object.initialScene] && !pointInFrame(object.initialGroundPoint)) {
-      diagnostics.push({ code: "definition.scene-space.bounds", family: "definition", path: `objects.${objectId}.initialGroundPoint`, message: "Object Ground Points must remain inside the Logical Resolution." });
+    const scene = input.scenes[object.initialScene];
+    if (scene && !pointInScene(scene, object.initialGroundPoint)) {
+      diagnostics.push({ code: "definition.scene-space.bounds", family: "definition", path: `objects.${objectId}.initialGroundPoint`, message: "Object Ground Points must remain inside the Scene Size." });
     }
   }
 

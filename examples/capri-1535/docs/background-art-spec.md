@@ -7,19 +7,22 @@ gioco.
 
 ## Formato di consegna
 
-- **Sorgente:** PNG opaco, RGB, orizzontale, preferibilmente **2048x1152
-  (16:9)**. Non generare direttamente alla risoluzione logica del gioco.
-- **Destinazione:** PNG RGB a **426x240**, 64 colori per scena, senza dithering
-  aggiunto in quantizzazione.
+- **Sorgente:** PNG opaco, RGB, abbastanza grande per la composizione prevista.
+  Le panoramiche orizzontali correnti usano 2048x768; la fortificazione usa un
+  master verticale. Non generare direttamente alla risoluzione del viewport.
+- **Destinazione:** PNG RGB alla Scene Size dichiarata, 64 colori per scena,
+  senza dithering aggiunto in quantizzazione. Le panoramiche correnti sono
+  640x240; la fortificazione è 640x1137.
 - **Percorsi:** il master va in `art/scenes/<scene>/background.png`; il file
   elaborato viene scritto in `src/scenes/<scene>/background.png`, accanto al
   modulo che lo usa.
 - **Contenuto escluso:** nessun personaggio, testo, logo, cursore, interfaccia o
   cornice nell'immagine.
 
-Il formato corrente 426x240 e l'aspect ratio 16:9 sostituiscono le ipotesi
-provvisorie 320x200 e 16:10 del documento iniziale. L'interfaccia è sovrapposta
-e non sottrae spazio alla scena.
+Il viewport logico resta 426x240 e 16:9. La Scene Size può essere più grande in
+una o entrambe le direzioni; la Camera segue Michele senza modificare le
+coordinate di gioco. L'interfaccia è sovrapposta e non sottrae spazio al
+viewport.
 
 ## Identità visiva
 
@@ -80,10 +83,12 @@ Un bel panorama non è ancora una stanza giocabile. Ogni fondale deve contenere:
 6. spazio libero attorno ai punti d'interazione, senza barriere puramente
    decorative che rendano ambiguo l'avvicinamento.
 
-La camera è fissa, a tre quarti e leggermente rialzata. Evitare grandangoli
-estremi, profondità di campo, sfocature, prospettive fotografiche deformate e
+Il punto di vista è a tre quarti e leggermente rialzato; la Camera può scorrere
+dentro una composizione più grande del viewport. Evitare grandangoli estremi,
+profondità di campo, sfocature, prospettive fotografiche deformate e
 inquadrature cinematografiche che nascondono il suolo. Porte, archi, sentieri e
-scale devono avere una destinazione spaziale comprensibile.
+scale devono avere una destinazione spaziale comprensibile lungo l'intero
+scorrimento.
 
 Non incorporare personaggi o oggetti mobili nel fondale: vengono prodotti come
 asset separati. Gli elementi statici che devono coprire Michele non richiedono
@@ -101,7 +106,8 @@ LUOGO E FUNZIONE
 [Descrizione del luogo, momento narrativo e funzione giocabile della scena.]
 
 COMPOSIZIONE
-Inquadratura fissa a tre quarti, leggermente rialzata, orizzontale 16:9. Mostra
+Punto di vista a tre quarti, leggermente rialzato. Usa [orientamento e aspect
+ratio della Scene Size]. Mostra
 un piano di calpestio continuo da [ingresso] a [uscita], abbastanza largo per un
 personaggio. Disponi [hotspot] in modo leggibile e inserisci [elemento di primo
 piano] dietro cui il personaggio possa passare. Mantieni liberi i punti di
@@ -110,7 +116,7 @@ avvicinamento. Tre piani di profondità chiaramente separati.
 STILE
 Fondale dipinto a mano per un'avventura VGA dei primi anni Novanta: forme
 semplificate, silhouette leggibili, gradienti airbrush, dithering pittorico
-sottile, dettagli pensati per sopravvivere alla riduzione a 426x240. Pietra
+sottile, dettagli pensati per sopravvivere alla riduzione alla Scene Size. Pietra
 calcarea calda, intonaco bianco, mare blu intenso, ombre viola e luce
 mediterranea dorata. Usa le immagini allegate come riferimento di palette,
 trattamento e densità del dettaglio, senza copiarne la composizione.
@@ -121,7 +127,7 @@ credibile e geograficamente riconoscibile. Nessun elemento moderno, turistico,
 ottocentesco, fantasy o da pirati caraibici.
 
 OUTPUT
-PNG opaco, 2048x1152, senza personaggi, testo, logo, interfaccia, cursori o
+PNG opaco, [dimensioni del master], senza personaggi, testo, logo, interfaccia, cursori o
 cornici. Non aggiungere bordi decorativi. Non sfocare alcun piano.
 ```
 
@@ -142,7 +148,7 @@ cornici. Non aggiungere bordi decorativi. Non sfocare alcun piano.
 
 6. Guardare `src/scenes/<scene>/background.png` sia a 1x sia ingrandito con
    nearest-neighbour. L'approvazione del sorgente non sostituisce quella del
-   risultato a 426x240.
+   risultato alla Scene Size dichiarata.
 7. Allestire area camminabile, maschere, hotspot e uscite; validarli con
    `?debug` nel browser.
 
@@ -155,7 +161,7 @@ cornici. Non aggiungere bordi decorativi. Non sfocare alcun piano.
 - Gli hotspot si distinguono senza contorni artificiali o testo.
 - Il primo piano crea profondità senza nascondere il percorso principale.
 - Non ci sono personaggi, oggetti mobili o UI incorporati nel fondale.
-- Il PNG finale è 426x240 e la verifica browser non mostra errori o zone
+- Il PNG finale corrisponde esattamente alla Scene Size e la verifica browser non mostra errori o zone
   interattive fuori registro.
 
 ## Asset da produrre separatamente

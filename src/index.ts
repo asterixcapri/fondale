@@ -41,6 +41,7 @@ export {
   type ObjectDefinition,
   type Point,
   type SceneDefinition,
+  type SceneSize,
   type SequenceDefinition,
   type StaticAppearance,
 } from "./public/definitions";

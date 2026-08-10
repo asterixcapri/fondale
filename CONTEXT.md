@@ -32,6 +32,16 @@ composes every Scene and Engine-owned overlay before the whole frame is fitted
 to its display target through uniform scaling and, when required, letterboxing.
 _Avoid_: Window size, renderer resolution, per-Scene resolution
 
+**Scene Size**:
+The positive-integer width and height of one Scene's complete Scene Space. It
+defaults to the Logical Resolution but may extend beyond the visible frame.
+_Avoid_: Logical Resolution, Background size, world size
+
+**Camera**:
+The transient view of Scene Space presented inside the Logical Resolution. It
+is derived from the visible Player Character and never belongs to Game State.
+_Avoid_: Saved viewport, Camera state, cinematic pan
+
 **Author**:
 The web developer who builds a Game Project through Fondale's public interface
 without depending on the engine's internals.

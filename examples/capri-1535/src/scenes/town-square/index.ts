@@ -5,50 +5,51 @@ import backgroundUrl from "./background.png";
 
 export const townSquare = defineScene({
   background: backgroundUrl,
-  walkableRegion: rectangle(8, 126, 418, 180),
-  perspectiveScale: [{ y: 126, scale: 0.72 }, { y: 180, scale: 0.9 }],
+  size: { width: 640, height: 240 },
+  walkableRegion: rectangle(8, 160, 632, 230),
+  perspectiveScale: [{ y: 160, scale: 0.72 }, { y: 230, scale: 0.96 }],
   hotspots: [{
-    target: { kind: "background" }, area: rectangle(242, 66, 286, 142),
-    approach: { groundPoint: { x: 264, y: 148 }, facing: "back" },
+    target: { kind: "background" },
+    area: rectangle(360, 42, 424, 178),
+    approach: { groundPoint: { x: 375, y: 194 }, facing: "back" },
     noun: defineNoun({
-      labels: [{ text: "Chiesa" }],
+      labels: [{ text: "Campanile" }],
       preferredVerbs: [{ verb: "look-at" }],
       cases: [{
         verb: "look-at",
-        response: { text: "La chiesa domina la piazza; da dentro arriva odore d'incenso e cera." },
-      }],
-    }),
-  }, {
-    target: { kind: "background" }, area: rectangle(389, 129, 425, 178),
-    approach: { groundPoint: { x: 374, y: 174 }, facing: "right" },
-    noun: defineNoun({
-      labels: [{ text: "Carretto" }],
-      preferredVerbs: [{ verb: "look-at" }],
-      cases: [{
-        verb: "look-at",
-        response: { text: "Il carretto aspetta un carico che nessuno ha fretta di consegnare." },
+        response: {
+          text: "Il campanile divide la piazza dal mare. Anche quando tace, tutti sembrano ascoltarlo.",
+        },
       }],
     }),
   }],
   entrances: {
-    fromAlley: { groundPoint: { x: 78, y: 174 }, facing: "right" },
-    fromHarbour: { groundPoint: { x: 334, y: 166 }, facing: "left" },
+    fromCloister: { groundPoint: { x: 300, y: 205 }, facing: "front" },
+    fromHarbour: { groundPoint: { x: 594, y: 207 }, facing: "left" },
   },
   passages: [{
-    area: rectangle(0, 82, 52, 178), approach: { groundPoint: { x: 67, y: 174 }, facing: "left" },
+    area: rectangle(252, 82, 342, 178),
+    approach: { groundPoint: { x: 300, y: 192 }, facing: "back" },
     noun: defineNoun({
-      labels: [{ text: "Verso il vicolo" }],
+      labels: [{ text: "Ingresso del chiostro" }],
       preferredVerbs: [{ verb: "walk-to" }],
-      cases: [],
+      secondaryVerbs: [{ verb: "look-at" }],
+      cases: [{
+        verb: "look-at",
+        response: { text: "Dietro la chiesa, il chiostro offre ombra, silenzio e molti pareri non richiesti." },
+      }],
     }),
-    direction: "left", destination: { scene: "alley", entrance: "fromTownSquare" },
+    direction: "enter",
+    destination: { scene: "cloister", entrance: "fromTownSquare" },
   }, {
-    area: rectangle(337, 71, 397, 172), approach: { groundPoint: { x: 334, y: 166 }, facing: "right" },
+    area: rectangle(590, 105, 640, 226),
+    approach: { groundPoint: { x: 604, y: 208 }, facing: "right" },
     noun: defineNoun({
-      labels: [{ text: "Verso il porto" }],
+      labels: [{ text: "Discesa verso il porto" }],
       preferredVerbs: [{ verb: "walk-to" }],
       cases: [],
     }),
-    direction: "right", destination: { scene: "harbour", entrance: "fromTownSquare" },
+    direction: "right",
+    destination: { scene: "harbour", entrance: "fromTownSquare" },
   }],
 });

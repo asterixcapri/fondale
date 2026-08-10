@@ -36,8 +36,11 @@ const session = await startGame(project, {
 session.stop();
 ```
 
-The Background must be a decodable PNG exactly matching the Logical
-Resolution. `startGame` also requires current desktop Chrome with WebGL and a
+The Background must be a decodable PNG exactly matching the Scene's resolved
+Scene Size. Omitted `size` defaults to the Logical Resolution, preserving a
+fixed Scene; a larger `size` enables automatic Player-following Camera
+scrolling without adding Camera data to Save Snapshots. `startGame` also
+requires current desktop Chrome with WebGL and a
 target not owned by another Game Session. Failures are reported as aggregated
 `AuthoringError` diagnostics and leave the target clean.
 

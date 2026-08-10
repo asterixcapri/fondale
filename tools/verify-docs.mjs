@@ -77,11 +77,25 @@ for (const invariant of [
   "Registry keys are identities",
   "either commit together or",
   "latest committed Game State",
+  "omission defaults to Logical Resolution",
+  "Camera position, hover, pointer position and Player Preferences are not saved",
 ]) {
   if (!reference.includes(invariant)) throw new Error(`Missing documented default/invariant: ${invariant}`);
 }
 
 const docs = [join(repository, "README.md"), ...markdownFiles(join(repository, "docs/public"))];
+for (const obsoleteFixedSceneClaim of [
+  "A Scene fills the fixed Logical Resolution",
+  "Coordinates use the shared Logical Resolution",
+  "Background must be a decodable PNG exactly matching the Logical Resolution",
+]) {
+  for (const file of docs) {
+    if (readFileSync(file, "utf8").includes(obsoleteFixedSceneClaim)) {
+      throw new Error(`${file}: obsolete fixed-size Scene claim: ${obsoleteFixedSceneClaim}`);
+    }
+  }
+}
+
 for (const file of docs) {
   const markdown = readFileSync(file, "utf8");
   for (const match of markdown.matchAll(/\[[^\]]+\]\(([^)]+)\)/g)) {
