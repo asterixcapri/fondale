@@ -6,8 +6,9 @@ const project = resolve(import.meta.dirname, "..");
 const packageJson = JSON.parse(readFileSync(join(project, "package.json"), "utf8"));
 const lock = readFileSync(join(project, "package-lock.json"), "utf8");
 const viteConfig = readFileSync(join(project, "vite.config.ts"), "utf8");
-const tarball = "vendor/asterixcapri-fondale-1.1.0.tgz";
+const tarball = "vendor/asterixcapri-fondale-0.2.0.tgz";
 const retiredArtDirectories = ["concept", "example", "rooms", "sprites"];
+const retiredSourceFiles = ["src/nouns.ts"];
 
 function findTypeScriptFiles(directory) {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
@@ -29,6 +30,11 @@ if (!existsSync(join(project, tarball))) {
 for (const directory of retiredArtDirectories) {
   if (existsSync(join(project, "art", directory))) {
     throw new Error(`The art library contains retired non-master directory '${directory}'.`);
+  }
+}
+for (const file of retiredSourceFiles) {
+  if (existsSync(join(project, file))) {
+    throw new Error(`The Example still contains retired source file '${file}'.`);
   }
 }
 if (!lock.includes(`file:${tarball}`)) {

@@ -32,7 +32,7 @@ leggibilità e hit area vengono validate con un prototipo senza ritagliare o
 rielaborare i master delle Scene.
 
 Il modello contestuale non rimane come Game Setting alternativo: la modifica è
-incompatibile, introduce Fondale 1.1 e richiede la migrazione dei Game Project.
+incompatibile, introduce Fondale 0.1 e richiede la migrazione dei Game Project.
 Character Switching e Inventory separati per Character non appartengono a
 questa decisione e richiederanno una futura Engine Capability motivata da un
 Game Project concreto.

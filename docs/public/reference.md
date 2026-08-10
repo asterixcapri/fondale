@@ -1,7 +1,9 @@
 # Public reference
 
 Every public symbol is imported from `@asterixcapri/fondale`; deep imports are
-not supported. This is the normative Fondale 1.1 contract.
+not supported. This is the normative Fondale 0.2 alpha contract. The npm
+package version is `0.2.0`; it is independent from an Author's Project Version
+and from Fondale's Save Snapshot format version.
 
 ## Commands and HUD
 
@@ -38,8 +40,11 @@ controls or structure.
 `defineScene` validates and freezes a `SceneDefinition`. A Scene has a full-size
 PNG `background`, finite simple `walkableRegion`, optional `perspectiveScale`,
 named Scenery, ordered Hotspots, named Entrances, and ordered Passages.
-Omission means scale `1`. A Hotspot requires `target`, polygon `area`, `approach`, one
-Noun and optional `when`. A Passage additionally requires one Noun,
+Omission means scale `1`. A Hotspot requires `target`, polygon `area`,
+`approach`, and optional `when`. The target discriminates ownership: a
+Background Hotspot requires a local `noun`; Character, Object, and Scenery
+Hotspots reject `noun` and resolve the target owner's Noun at use time. A
+Passage additionally requires its own Noun,
 `PassageDirection`, and a destination Scene/Entrance. The Scene has no region
 reserved for the HUD; authored geometry may use the complete Logical Resolution.
 
@@ -50,7 +55,8 @@ positive frame counts and rate; the side strip is mirrored for left movement.
 
 `defineObject` validates an Object with initial Scene, Ground Point, Appearance,
 named static Appearances, square `inventoryAppearance`, and optional Noun. An
-Object is in one Scene, in Inventory, or consumed.
+Object is in one Scene, in Inventory, or consumed. Its one Noun governs both
+world and Inventory interactions.
 
 `defineSequence` validates a finite `SequenceDefinition`. `SequenceStep` is a
 Character-bound Line, explicit Narration, Choice, Branch, or atomic Operations
@@ -66,6 +72,12 @@ initial Scene. Optional registries default empty; letterbox has default
 `#000000` (that is, default `#000000`). Registry keys are identities. Cross-references, geometry,
 conditions, operation targets, Nouns, fallbacks and assets are validated before
 play.
+
+A Character, Object, or Scenery may omit its Noun when it is not interactive.
+If a Hotspot references such an owner, `defineGame` reports one
+`definition.hotspot.target-noun.required` diagnostic at the owner path (for
+example `objects.key.noun`), even when several Hotspots reference it. A missing
+target remains the distinct `reference.hotspot.target` failure.
 
 `InteractionCondition` reads a boolean Variable or held Object. `GameOperation`
 can set a Variable or Appearance, start a Sequence, collect the target Object,
@@ -113,7 +125,7 @@ asset, or environment.
 | `GameOperation` | atomic state change | six declared operation variants | order matters; group atomic | operation/reference diagnostics | [Inventory](recipes/inventory.ts) |
 | `HotspotTarget` | interaction subject | Background, Character, Object, Scenery | target is required | target reference diagnostic | [Interaction](recipes/interaction.ts) |
 | `ApproachPoint` | interaction destination | groundPoint and facing | must be walkable and HUD-safe | approach diagnostics | [Interaction](recipes/interaction.ts) |
-| `HotspotDefinition` | Scene interaction surface | target, area, approach, noun, condition | later overlap wins hit-test | geometry/reference diagnostics | [Interaction](recipes/interaction.ts) |
+| `HotspotDefinition` | Scene interaction surface | target, area, approach, condition; local noun only for Background | target kind discriminates Noun ownership; later overlap wins hit-test | geometry, target and owner-Noun diagnostics | [Interaction](recipes/interaction.ts) |
 | `SceneryDefinition` | depth-sorted visual | baseline, appearances, position, noun | initial Appearance required | Scenery diagnostics | [Scene](recipes/first-scene.ts) |
 | `SceneEntrance` | named arrival | Ground Point and Facing | point must be walkable | entrance diagnostics | [Scene](recipes/first-scene.ts) |
 | `ScenePassage` | directional transition | area, approach, noun, direction, destination | transition is atomic | passage diagnostics | [Scene](recipes/first-scene.ts) |
@@ -142,7 +154,7 @@ asset, or environment.
 | `CommandVerb` | semantic Verb union | nine commandVerbs values | fixed Engine vocabulary | compile-time restriction | [Interaction](recipes/interaction.ts) |
 | `Verb` | complete Verb union | CommandVerb or walk-to | walk-to is implicit | compile-time restriction | [Scene](recipes/first-scene.ts) |
 | `PassageDirection` | Passage cursor direction | left, right, up, down, enter | every Passage declares one | cursor/reference diagnostics | [Scene](recipes/first-scene.ts) |
-| `HUDTheme` | project visual language | font, colours, opacity, width, cursors, speech colours | complete local asset set | theme/asset diagnostics | [migration](migration-1.1.md) |
+| `HUDTheme` | project visual language | font, colours, opacity, width, cursors, speech colours | complete local asset set | theme/asset diagnostics | [authoring](game-authoring.md) |
 | `AuthoringDiagnosticFamily` | rejecting layer | six stable category strings | category is always present | no independent failure | [Scene](recipes/first-scene.ts) |
 | `AuthoringDiagnostic` | one author-facing issue | code, family, path, message, suggestion, cause | stable code/path ordering | describes owning failure | [Scene](recipes/first-scene.ts) |
 | `AuthoringError` | aggregate failure | read-only diagnostics | one error per validation layer | thrown by helpers/startup | [Scene](recipes/first-scene.ts) |
@@ -183,6 +195,7 @@ Definition codes: `definition.approach.bounds`,
 `definition.command-lexicon.label`, `definition.command-lexicon.pattern`,
 `definition.command-lexicon.required`, `definition.command-response.text`,
 `definition.command-response.semantic`, `definition.line.character`,
+`definition.hotspot.target-noun.required`,
 `definition.line.text`, `definition.narration.text`,
 `definition.command.silent`, `definition.conditional-fallback`,
 `definition.entrance.walkable`, `definition.hud-theme.color`,
@@ -219,5 +232,5 @@ Runtime, save, asset and environment codes: `state.operation.invalid`,
 `environment.start.failed`, `environment.target.occupied`, and
 `environment.webgl.unavailable`.
 
-See the [quick start](quick-start.md), [migration guide](migration-1.1.md),
+See the [quick start](quick-start.md), [Game Project authoring guide](game-authoring.md),
 [Support Baseline](support-baseline.md), and compiled [recipes](recipes/README.md).

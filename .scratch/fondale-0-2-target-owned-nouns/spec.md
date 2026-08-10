@@ -1,6 +1,6 @@
 # Fondale 0.2 — Target-owned Nouns
 
-Status: ready-for-agent
+Status: ready-for-human
 
 ## Problem Statement
 
@@ -66,8 +66,9 @@ removes the global unary-Noun and Passage helper wrappers.
 The existing alpha baseline is reidentified as Fondale 0.1 and this change is
 released as Fondale 0.2.0. All current product-facing version references,
 package metadata, vendored artifacts, verification tools, and normative docs
-adopt the `0.x` numbering. A migration guide explains the incompatible 0.1 to
-0.2 authoring change. The future Fondale 1.0 release remains governed by the
+adopt the `0.x` numbering. Current documentation explains every supported
+Game Project capability with package-root examples; no public migration guide
+is required while Fondale versions remain internal. The future Fondale 1.0 release remains governed by the
 separate readiness roadmap described by ADR-0005.
 
 ## User Stories
@@ -104,7 +105,7 @@ separate readiness roadmap described by ADR-0005.
 30. As a Player, I want Scenery Commands to resolve through the Scenery's Noun, so that stateful world interactions remain unchanged.
 31. As a Player, I want background-region Commands to continue using their locally authored Noun, so that painted or non-entity targets remain interactive.
 32. As a Player, I want Scene Passages to retain their authored labels and contextual actions, so that navigation remains recognizable.
-33. As a Player, I want Capri 1535's key, gate, harbour repair, conversations, Inventory, and navigation to keep working, so that the migration introduces no gameplay regression.
+33. As a Player, I want Capri 1535's key, gate, harbour repair, conversations, Inventory, and navigation to keep working, so that the authoring refactor introduces no gameplay regression.
 34. As a Player, I want Save and Load to preserve the same Game State and pending Commands, so that the authoring refactor does not invalidate snapshots by itself.
 35. As a Maintainer, I want the Core to resolve Hotspot Nouns from declarative target identifiers at use time, so that Nouns follow the same reference rule as Scenes, Characters, Objects, Sequences, and Passages.
 36. As a Maintainer, I want `defineGame` to validate references without replacing them with embedded definitions, so that the Game Project retains one declarative graph shape.
@@ -112,7 +113,7 @@ separate readiness roadmap described by ADR-0005.
 38. As a Maintainer, I want tests to cross the public Game Project interface rather than test the internal resolver directly, so that implementation can change without rewriting behavior tests.
 39. As a Maintainer, I want Capri 1535 to have no global Noun data library, so that deleting the old module improves locality instead of spreading hidden dependencies.
 40. As a Maintainer, I want the example to avoid shallow Noun factory wrappers, so that it teaches the actual public authoring interface.
-41. As an Author upgrading from Fondale 0.1, I want a focused migration guide, so that I can move each Noun to its owner and delete redundant Hotspot fields safely.
+41. As an Author building a Game Project, I want a complete current authoring guide with examples, so that I can use every supported Engine Capability without reconstructing the contract from source.
 42. As an Author reading the public recipes, I want every recipe to compile against the 0.2 interface, so that copied examples use the supported model.
 43. As a Maintainer, I want package metadata and vendored example artifacts to agree on version 0.2.0, so that local verification exercises the intended release.
 44. As a prospective user, I want Fondale releases to use `0.x` while the Engine remains alpha, so that the version communicates that incompatible authoring changes remain possible.
@@ -168,8 +169,8 @@ separate readiness roadmap described by ADR-0005.
   example favors explicit `defineNoun` authoring over a second example-specific
   abstraction.
 - Public documentation defines target-owned Nouns as the normative 0.2 model
-  and includes migration examples for Object, Character, Scenery, background
-  region, and Scene Passage authoring.
+  and includes current examples for Object, Character, Scenery, background
+  region, Scene Passage, Commands, Sequences, presentation, runtime and persistence.
 - The previously named 1.1 alpha baseline is reidentified as Fondale 0.1 in
   current product-facing documentation. Git history may retain its historical
   wording, but shipped and normative artifacts use the coherent 0.x line.
@@ -214,7 +215,7 @@ separate readiness roadmap described by ADR-0005.
   Scene Passage traversal, and Save Snapshot restoration.
 - Browser acceptance tests exercise Capri 1535 through the rendered Engine.
   Existing key/gate and harbour-repair paths must remain playable after the
-  example migration, including Inventory, Character interaction, Scenery,
+  example authoring refactor, including Inventory, Character interaction, Scenery,
   conditional labels, and Passage navigation.
 - The example verification must prove that the global Noun module and its
   shallow helper wrappers are absent rather than merely unused.
@@ -248,8 +249,7 @@ separate readiness roadmap described by ADR-0005.
 - Introducing global Noun registries, example-specific Noun libraries, or
   shared wrappers around simple `defineNoun` calls.
 - Publishing Fondale to npm as part of this work.
-- Promising compatibility across alpha `0.x` releases beyond the documented
-  0.1 to 0.2 migration.
+- Promising compatibility across internal alpha `0.x` releases.
 
 ## Further Notes
 

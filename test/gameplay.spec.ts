@@ -31,6 +31,33 @@ function projectFixture(consumeSelectedObject = false) {
           closed: { kind: "background-region", area: square },
           open: { kind: "background-region", area: square },
         },
+        noun: defineNoun({
+          labels: [{ text: "Gate" }],
+          preferredVerbs: [{ verb: "look-at" }],
+          cases: [{
+            verb: "look-at",
+            response: { text: "A locked gate." },
+          }, {
+            verb: "use",
+            firstNoun: "key",
+            response: { text: "The lock opens." },
+            operations: [
+              { type: "set-variable", variable: "gateOpen", value: true },
+              {
+                type: "set-appearance",
+                target: { kind: "scenery", scene: "opening", scenery: "gate" },
+                appearance: "open",
+              },
+              ...(consumeSelectedObject
+                ? [{ type: "consume-selected-object" } as const]
+                : [{
+                    type: "place-selected-object",
+                    groundPoint: { x: 75, y: 75 },
+                    appearance: "used",
+                  } as const]),
+            ],
+          }],
+        }),
       },
     },
     hotspots: [
@@ -38,69 +65,16 @@ function projectFixture(consumeSelectedObject = false) {
         target: { kind: "character", character: "player" },
         area: square,
         approach: { groundPoint: { x: 20, y: 20 }, facing: "front" },
-        noun: defineNoun({
-          labels: [{ text: "Player" }],
-          preferredVerbs: [{ verb: "talk-to" }],
-          cases: [{
-            verb: "talk-to",
-            when: { variable: "gateOpen", equals: true },
-            line: { character: "player", text: "The way is open." },
-            operations: [{ type: "set-variable", variable: "behaviorRan", value: true }],
-          }, {
-            verb: "talk-to",
-            sequence: "conversation",
-          }],
-        }),
       },
       {
         target: { kind: "object", object: "key" },
         area: square,
         approach: { groundPoint: { x: 40, y: 40 }, facing: "right" },
-        noun: defineNoun({
-          labels: [{ text: "Key" }],
-          preferredVerbs: [{ verb: "pick-up" }],
-          secondaryVerbs: [{ verb: "look-at" }],
-          cases: [{
-            verb: "pick-up",
-            response: { text: "You take the key." },
-            operations: [{ type: "collect-target-object" }],
-          }, {
-            verb: "look-at",
-            response: { text: "A small key." },
-          }],
-        }),
       },
       {
         target: { kind: "scenery", scenery: "gate" },
         area: square,
         approach: { groundPoint: { x: 70, y: 70 }, facing: "back" },
-        noun: defineNoun({
-          labels: [{ text: "Gate" }],
-          preferredVerbs: [{ verb: "look-at" }],
-          cases: [{
-              verb: "look-at",
-              response: { text: "A locked gate." },
-            }, {
-              verb: "use",
-              firstNoun: "key",
-              response: { text: "The lock opens." },
-              operations: [
-                { type: "set-variable", variable: "gateOpen", value: true },
-                {
-                  type: "set-appearance",
-                  target: { kind: "scenery", scene: "opening", scenery: "gate" },
-                  appearance: "open",
-                },
-                ...(consumeSelectedObject
-                  ? [{ type: "consume-selected-object" } as const]
-                  : [{
-                      type: "place-selected-object",
-                      groundPoint: { x: 75, y: 75 },
-                      appearance: "used",
-                    } as const]),
-              ],
-            }],
-        }),
       },
     ],
     entrances: { start: { groundPoint: { x: 10, y: 10 }, facing: "front" } },
@@ -134,6 +108,19 @@ function projectFixture(consumeSelectedObject = false) {
       happy: { kind: "static", image: "happy.png" },
     },
     movementSpeed: 600,
+    noun: defineNoun({
+      labels: [{ text: "Player" }],
+      preferredVerbs: [{ verb: "talk-to" }],
+      cases: [{
+        verb: "talk-to",
+        when: { variable: "gateOpen", equals: true },
+        line: { character: "player", text: "The way is open." },
+        operations: [{ type: "set-variable", variable: "behaviorRan", value: true }],
+      }, {
+        verb: "talk-to",
+        sequence: "conversation",
+      }],
+    }),
   });
   const key = defineObject({
     initialScene: "opening",
@@ -145,10 +132,24 @@ function projectFixture(consumeSelectedObject = false) {
     },
     inventoryAppearance: "key-inventory.png",
     noun: defineNoun({
-      labels: [{ text: "Key" }],
-      preferredVerbs: [{ verb: "use" }],
+      labels: [
+        { when: { variable: "keyCleaned", equals: true }, text: "Clean key" },
+        { text: "Dirty key" },
+      ],
+      preferredVerbs: [
+        { when: { hasObject: "key" }, verb: "use" },
+        { verb: "pick-up" },
+      ],
       secondaryVerbs: [{ verb: "look-at" }],
-      cases: [{ verb: "look-at", response: { text: "A small key." } }],
+      cases: [{
+        verb: "pick-up",
+        response: { text: "You take the key." },
+        operations: [{ type: "collect-target-object" }],
+      }, {
+        verb: "look-at",
+        response: { text: "A small key." },
+        operations: [{ type: "set-variable", variable: "keyCleaned", value: true }],
+      }],
     }),
   });
   const conversation = defineSequence({
@@ -194,7 +195,7 @@ function projectFixture(consumeSelectedObject = false) {
     playerCharacter: "player",
     objects: { key },
     sequences: { conversation },
-    variables: { met: false, gateOpen: false, behaviorRan: false },
+    variables: { met: false, gateOpen: false, behaviorRan: false, keyCleaned: false },
     commandLexicon: defineCommandLexicon({
       inventory: { select: "Hold {noun}", deselect: "Put back {noun}" },
       verbs: {
@@ -463,6 +464,28 @@ test("Inventory contextual input selects an Object or executes its secondary Ver
     verb: "use",
     firstNoun: { kind: "object", object: "key" },
   });
+});
+
+test("one Object Noun updates its conditional label in the world and Inventory", () => {
+  const session = createTestSession(projectFixture());
+  expect(session.availableHotspots().find(({ index }) => index === 1)?.label).toBe("Dirty key");
+
+  interact(session, 1);
+  expect(session.availableInventory()).toContainEqual(expect.objectContaining({
+    object: "key",
+    label: "Dirty key",
+  }));
+
+  session.input({ type: "contextual-object", object: "key", action: "secondary" });
+  session.steps();
+  expect(session.snapshot().variables.keyCleaned).toBe(true);
+  expect(session.availableInventory()).toContainEqual(expect.objectContaining({
+    object: "key",
+    label: "Clean key",
+  }));
+
+  useKeyOn(session, 2);
+  expect(session.availableHotspots().find(({ index }) => index === 1)?.label).toBe("Clean key");
 });
 
 test("a declarative Command commits operations and an enabled passage transitions atomically", () => {

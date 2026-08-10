@@ -200,12 +200,10 @@ const project = defineGame({
         target: { kind: "object", object: "key" },
         area: [{ x: 100, y: 125 }, { x: 140, y: 125 }, { x: 140, y: 165 }, { x: 100, y: 165 }],
         approach: { groundPoint: { x: 120, y: 150 }, facing: "front" },
-        noun: keyNoun,
       }, {
         target: { kind: "character", character: "host" },
         area: [{ x: 290, y: 110 }, { x: 340, y: 110 }, { x: 340, y: 165 }, { x: 290, y: 165 }],
         approach: { groundPoint: { x: 285, y: 150 }, facing: "right" },
-        noun: hostNoun,
       }, ...extraNouns.map((noun, index) => ({
         target: { kind: "object" as const, object: `item${index + 1}` },
         area: [
@@ -215,7 +213,6 @@ const project = defineGame({
           { x: 10 + index * 22, y: 120 },
         ],
         approach: { groundPoint: { x: 20 + index * 22, y: 130 }, facing: "back" as const },
-        noun,
       }))],
     }),
     hall: defineScene({

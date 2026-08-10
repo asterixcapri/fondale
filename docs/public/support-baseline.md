@@ -1,6 +1,6 @@
 # Support Baseline
 
-Fondale 1.1 is verified against the latest stable Google Chrome desktop with
+Fondale 0.2 alpha is verified against the latest stable Google Chrome desktop with
 WebGL. A regression there is a Fondale bug.
 
 - The mouse controls world Nouns, Inventory, Lines, Narrations, Command
@@ -23,7 +23,8 @@ WebGL. A regression there is a Fondale bug.
   the largest fitting integer factor, or a uniform nearest-neighbour reduction
   when the target is smaller than the Logical Resolution.
 
-Version 1.1 makes no compatibility promise for old Chrome versions, other
+Alpha versions make no compatibility promise for earlier internal Game Project
+authoring contracts, old Chrome versions, other
 browsers, touch, gamepads, keyboard-only world navigation, screen readers, or
 general WCAG conformance. Those exclusions are boundaries, not claims that the
 product cannot work in an unverified environment.

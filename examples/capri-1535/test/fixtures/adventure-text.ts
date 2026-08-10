@@ -78,7 +78,6 @@ const project = defineGame({
         target: { kind: "character", character: "guide" },
         area: [{ x: 300, y: 85 }, { x: 365, y: 85 }, { x: 365, y: 190 }, { x: 300, y: 190 }],
         approach: { groundPoint: { x: 285, y: 170 }, facing: "right" },
-        noun: guideNoun,
       }],
     }),
   },

@@ -34,6 +34,7 @@ export {
   type GameProject,
   type LogicalResolution,
   type GameOperation,
+  type HotspotDefinition,
   type InteractionCondition,
   type Line,
   type NarrationStep,

@@ -222,10 +222,11 @@ export function createCoreSession(
       const scene = data.scenes[state.currentScene]!;
       return (scene.hotspots ?? []).flatMap((hotspot, index) => {
         if (!hotspotAvailable(hotspot)) return [];
-        const label = conditionalValue(hotspot.noun.labels).text;
-        const preferredVerb = conditionalValue(hotspot.noun.preferredVerbs).verb;
-        const secondaryVerb = conditionalOptionalValue(hotspot.noun.secondaryVerbs)?.verb;
-        const objectVerb = conditionalOptionalValue(hotspot.noun.objectVerbs)?.verb;
+        const noun = hotspotNoun(state.currentScene, hotspot);
+        const label = conditionalValue(noun.labels).text;
+        const preferredVerb = conditionalValue(noun.preferredVerbs).verb;
+        const secondaryVerb = conditionalOptionalValue(noun.secondaryVerbs)?.verb;
+        const objectVerb = conditionalOptionalValue(noun.objectVerbs)?.verb;
         return [{
           index,
           area: hotspot.area.map((point) => ({ ...point })),
@@ -317,6 +318,7 @@ export function createCoreSession(
       const scene = data.scenes[state.currentScene]!;
       const hotspot = scene.hotspots?.[input.hotspot];
       if (hotspot && hotspotAvailable(hotspot)) {
+        const noun = hotspotNoun(state.currentScene, hotspot);
         if (
           input.type === "activate-hotspot" &&
           state.command.verb === "give" &&
@@ -327,13 +329,13 @@ export function createCoreSession(
           return;
         }
         const quickVerb = input.type === "quick-hotspot"
-          ? input.verb ?? conditionalValue(hotspot.noun.preferredVerbs).verb
+          ? input.verb ?? conditionalValue(noun.preferredVerbs).verb
           : input.type === "contextual-hotspot"
-            ? contextualVerb(hotspot.noun, input.action)
+            ? contextualVerb(noun, input.action)
             : undefined;
         if (input.type === "contextual-hotspot" && !quickVerb) return;
         const commandFirstNoun = quickVerb
-          ? preferredFirstNoun(hotspot.noun, quickVerb)
+          ? preferredFirstNoun(noun, quickVerb)
           : state.command.firstNoun?.object;
         if (quickVerb === "walk-to") {
           beginIntent({ kind: "move" }, hotspot.approach.groundPoint, hotspot.approach.facing);
@@ -546,7 +548,7 @@ export function createCoreSession(
 
     if (intent.command) {
       resolveCommand(
-        hotspot.noun,
+        hotspotNoun(intent.scene, hotspot),
         intent.command.verb,
         hotspot.target,
         intent.command.preserveState ?? false,
@@ -555,6 +557,17 @@ export function createCoreSession(
       return;
     }
 
+  }
+
+  function hotspotNoun(sceneId: string, hotspot: HotspotDefinition): NounDefinition {
+    if (hotspot.target.kind === "background") return hotspot.noun!;
+    if (hotspot.target.kind === "character") {
+      return data.characters[hotspot.target.character]!.noun!;
+    }
+    if (hotspot.target.kind === "object") {
+      return data.objects[hotspot.target.object]!.noun!;
+    }
+    return data.scenes[sceneId]!.scenery![hotspot.target.scenery]!.noun!;
   }
 
   function resolveCommand(

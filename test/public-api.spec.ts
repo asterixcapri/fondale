@@ -7,9 +7,138 @@ import {
   defineGame,
   defineHUDTheme,
   defineNoun,
+  defineObject,
   defineScene,
   defineSequence,
+  type HotspotDefinition,
 } from "../src/index";
+
+function assertHotspotTypeContract(noun: ReturnType<typeof defineNoun>) {
+  const area = [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 0, y: 10 }];
+  const approach = { groundPoint: { x: 5, y: 5 }, facing: "front" as const };
+
+  // @ts-expect-error Background Hotspots own and require a Noun Definition.
+  const backgroundWithoutNoun: HotspotDefinition = {
+    target: { kind: "background" }, area, approach,
+  };
+  const objectWithNoun: HotspotDefinition = {
+    // @ts-expect-error Object Hotspots resolve their Noun from the Object.
+    target: { kind: "object", object: "key" }, area, approach, noun,
+  };
+  const characterWithNoun: HotspotDefinition = {
+    // @ts-expect-error Character Hotspots resolve their Noun from the Character.
+    target: { kind: "character", character: "host" }, area, approach, noun,
+  };
+  const sceneryWithNoun: HotspotDefinition = {
+    // @ts-expect-error Scenery Hotspots resolve their Noun from the owning Scene.
+    target: { kind: "scenery", scenery: "gate" }, area, approach, noun,
+  };
+
+  return { backgroundWithoutNoun, objectWithNoun, characterWithNoun, sceneryWithNoun };
+}
+
+void assertHotspotTypeContract;
+
+test("defineGame reports one owner Noun diagnostic for repeated Object Hotspots", () => {
+  const object = defineObject({
+    initialScene: "opening",
+    initialGroundPoint: { x: 20, y: 20 },
+    initialAppearance: "present",
+    appearances: { present: { kind: "static", image: "object.png" } },
+    inventoryAppearance: "object-inventory.png",
+  });
+  const hotspot = {
+    target: { kind: "object", object: "key" } as const,
+    area: [{ x: 10, y: 10 }, { x: 30, y: 10 }, { x: 20, y: 30 }],
+    approach: { groundPoint: { x: 20, y: 20 }, facing: "front" as const },
+  };
+  const opening = defineScene({
+    background: "opening.png",
+    walkableRegion: [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 0, y: 100 }],
+    hotspots: [hotspot, hotspot] as never,
+  });
+
+  try {
+    defineGame({
+      identity: "missing.owner-noun",
+      version: "1",
+      logicalResolution: { width: 100, height: 100 },
+      scenes: { opening },
+      objects: { key: object },
+      initialScene: "opening",
+    });
+    throw new Error("expected defineGame to reject the missing owner Noun");
+  } catch (error) {
+    expect(error).toBeInstanceOf(AuthoringError);
+    expect((error as AuthoringError).diagnostics).toEqual([
+      expect.objectContaining({
+        code: "definition.hotspot.target-noun.required",
+        path: "objects.key.noun",
+      }),
+    ]);
+  }
+});
+
+test("defineGame aggregates missing Character, Object, and Scenery owner Nouns", () => {
+  const area = [{ x: 10, y: 10 }, { x: 30, y: 10 }, { x: 20, y: 30 }];
+  const approach = { groundPoint: { x: 20, y: 20 }, facing: "front" as const };
+  const opening = defineScene({
+    background: "opening.png",
+    walkableRegion: [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 0, y: 100 }],
+    scenery: {
+      gate: {
+        baseline: 30,
+        initialAppearance: "closed",
+        appearances: { closed: { kind: "background-region", area } },
+      },
+    },
+    hotspots: [
+      { target: { kind: "character", character: "host" }, area, approach },
+      { target: { kind: "object", object: "key" }, area, approach },
+      {
+        target: { kind: "scenery", scenery: "gate" }, area, approach,
+        when: { variable: "missing", equals: true },
+      },
+    ],
+  });
+  const host = defineCharacter({
+    initialScene: "opening",
+    initialGroundPoint: { x: 20, y: 20 },
+    initialFacing: "front",
+    initialAppearance: "idle",
+    appearances: { idle: { kind: "static", image: "host.png" } },
+    movementSpeed: 60,
+  });
+  const key = defineObject({
+    initialScene: "opening",
+    initialGroundPoint: { x: 20, y: 20 },
+    initialAppearance: "present",
+    appearances: { present: { kind: "static", image: "key.png" } },
+    inventoryAppearance: "key-inventory.png",
+  });
+
+  try {
+    defineGame({
+      identity: "missing.owner-nouns",
+      version: "1",
+      logicalResolution: { width: 100, height: 100 },
+      scenes: { opening },
+      characters: { host },
+      objects: { key },
+      initialScene: "opening",
+    });
+    throw new Error("expected defineGame to reject missing owner Nouns");
+  } catch (error) {
+    expect(error).toBeInstanceOf(AuthoringError);
+    expect((error as AuthoringError).diagnostics).toEqual(expect.arrayContaining([
+      expect.objectContaining({ path: "characters.host.noun" }),
+      expect.objectContaining({ path: "objects.key.noun" }),
+      expect.objectContaining({ path: "scenes.opening.scenery.gate.noun" }),
+      expect.objectContaining({ code: "reference.variable" }),
+    ]));
+    expect((error as AuthoringError).diagnostics).toHaveLength(4);
+  }
+});
 
 test("an Author defines an immutable one-Scene Game Project through the root API", () => {
   const opening = defineScene({
@@ -461,11 +590,6 @@ test("defineGame aggregates independent cross-definition reference failures", ()
         ],
         approach: { groundPoint: { x: 120, y: 120 }, facing: "front" },
         when: { variable: "missing", equals: true },
-        noun: defineNoun({
-          labels: [{ text: "Missing" }],
-          preferredVerbs: [{ verb: "talk-to" }],
-          cases: [{ verb: "talk-to", sequence: "missing" }],
-        }),
       },
     ],
     passages: [
@@ -504,7 +628,6 @@ test("defineGame aggregates independent cross-definition reference failures", ()
       "definition.scene-space.bounds",
       "reference.hotspot.target",
       "reference.passage.scene",
-      "reference.sequence",
       "reference.variable",
     ]));
   }

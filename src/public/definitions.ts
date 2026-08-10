@@ -177,7 +177,7 @@ export type InteractionCondition =
   | { readonly variable: string; readonly equals: boolean }
   | { readonly hasObject: string };
 
-/** The finite set of declarative state transitions authored in Fondale 1.1. */
+/** The finite set of declarative state transitions authored in Fondale 0.2. */
 export type GameOperation =
   | { readonly type: "set-variable"; readonly variable: string; readonly value: boolean }
   | {
@@ -208,13 +208,37 @@ export interface ApproachPoint {
   readonly facing: Facing;
 }
 
-export interface HotspotDefinition {
-  readonly target: HotspotTarget;
+interface HotspotDefinitionBase {
   readonly area: readonly Point[];
   readonly approach: ApproachPoint;
   readonly when?: InteractionCondition;
+}
+
+interface BackgroundHotspotDefinition extends HotspotDefinitionBase {
+  readonly target: { readonly kind: "background" };
   readonly noun: NounDefinition;
 }
+
+interface CharacterHotspotDefinition extends HotspotDefinitionBase {
+  readonly target: Extract<HotspotTarget, { readonly kind: "character" }>;
+  readonly noun?: never;
+}
+
+interface ObjectHotspotDefinition extends HotspotDefinitionBase {
+  readonly target: Extract<HotspotTarget, { readonly kind: "object" }>;
+  readonly noun?: never;
+}
+
+interface SceneryHotspotDefinition extends HotspotDefinitionBase {
+  readonly target: Extract<HotspotTarget, { readonly kind: "scenery" }>;
+  readonly noun?: never;
+}
+
+export type HotspotDefinition =
+  | BackgroundHotspotDefinition
+  | CharacterHotspotDefinition
+  | ObjectHotspotDefinition
+  | SceneryHotspotDefinition;
 
 export interface SceneryDefinition {
   readonly baseline: number;
@@ -671,6 +695,7 @@ function validateProjectDefinitions(
   diagnostics: AuthoringDiagnostic[],
 ): void {
   const { width, height } = input.logicalResolution;
+  const missingOwnerNounPaths = new Set<string>();
   const pointInFrame = (point: Point) =>
     Number.isFinite(point.x) && Number.isFinite(point.y) &&
     point.x >= 0 && point.y >= 0 && point.x <= width && point.y <= height;
@@ -854,7 +879,9 @@ function validateProjectDefinitions(
     }
     scene.hotspots?.forEach((hotspot, hotspotIndex) => {
       const base = `scenes.${sceneId}.hotspots[${hotspotIndex}]`;
-      noun(hotspot.noun, `${base}.noun`, hotspot.target);
+      if (hotspot.target.kind === "background") {
+        noun(hotspot.noun, `${base}.noun`, hotspot.target);
+      }
       validatePolygonBounds(hotspot.area, `${base}.area`, pointInFrame, diagnostics);
       if (!pointInFrame(hotspot.approach.groundPoint)) {
         diagnostics.push({ code: "definition.approach.bounds", family: "definition", path: `${base}.approach`, message: "Approach Point must be inside Scene Space." });
@@ -866,7 +893,31 @@ function validateProjectDefinitions(
         (hotspot.target.kind === "character" && hotspot.target.character in characters) ||
         (hotspot.target.kind === "object" && hotspot.target.object in objects) ||
         (hotspot.target.kind === "scenery" && hotspot.target.scenery in (scene.scenery ?? {}));
-      if (!targetExists) diagnostics.push(referenceDiagnostic("reference.hotspot.target", `${base}.target`, "Hotspot target does not exist."));
+      if (!targetExists) {
+        diagnostics.push(referenceDiagnostic("reference.hotspot.target", `${base}.target`, "Hotspot target does not exist."));
+      } else if (hotspot.target.kind !== "background") {
+        const owner = hotspot.target.kind === "character"
+          ? characters[hotspot.target.character]
+          : hotspot.target.kind === "object"
+            ? objects[hotspot.target.object]
+            : scene.scenery?.[hotspot.target.scenery];
+        if (!owner?.noun) {
+          const ownerPath = hotspot.target.kind === "character"
+            ? `characters.${hotspot.target.character}.noun`
+            : hotspot.target.kind === "object"
+              ? `objects.${hotspot.target.object}.noun`
+              : `scenes.${sceneId}.scenery.${hotspot.target.scenery}.noun`;
+          if (!missingOwnerNounPaths.has(ownerPath)) {
+            missingOwnerNounPaths.add(ownerPath);
+            diagnostics.push({
+              code: "definition.hotspot.target-noun.required",
+              family: "definition",
+              path: ownerPath,
+              message: "A target referenced by a Hotspot must own a Noun Definition.",
+            });
+          }
+        }
+      }
       condition(hotspot.when, `${base}.when`);
     });
     scene.passages?.forEach((passage, passageIndex) => {

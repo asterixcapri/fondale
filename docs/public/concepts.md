@@ -14,7 +14,11 @@ of progress: a replaceable Player Intent, a direct Line, or a modal Sequence.
 A **Scene** fills the fixed Logical Resolution. Its **Scene Space** has its
 origin at the top-left. A Character's **Ground Point**, a Scenery **Baseline**,
 and optional **Perspective Scale** determine composition. A Walkable Region
-governs movement; a Hotspot adds an Approach Point and one **Noun Definition**.
+governs movement; a Hotspot adds an Approach Point and identifies what is
+interactive. A Character, Object, or Scenery owns its optional **Noun
+Definition**, and every Hotspot that targets it resolves that same Noun. A
+background region has no registry owner, so its Hotspot owns the Noun locally;
+a Scene Passage also owns its own Noun.
 
 An **Object** exists in exactly one place: a Scene, the acquisition-ordered
 **Inventory**, or terminal consumption. A Command combines one semantic
@@ -42,6 +46,6 @@ Definitions fail at helpers or `defineGame`; external save data returns an
 explicit result; environment, visual asset and Line audio checks happen
 asynchronously at startup.
 
-Projects written for Fondale 1.0 must follow the [1.1 migration guide](migration-1.1.md).
-See the [reference](reference.md) for precise fields and the
+See the [Game Project authoring guide](game-authoring.md) for complete current
+examples, the [reference](reference.md) for precise fields, and the
 [Support Baseline](support-baseline.md) for browser and input commitments.

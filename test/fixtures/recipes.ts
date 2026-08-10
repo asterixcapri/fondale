@@ -13,7 +13,7 @@ import {
   englishCommandFallbacks,
   englishCommandLexicon,
 } from "../../docs/public/recipes/first-scene";
-import { key, keyNoun, successfulUse } from "../../docs/public/recipes/inventory";
+import { key, successfulUse } from "../../docs/public/recipes/inventory";
 import { greeting } from "../../docs/public/recipes/sequence";
 
 const sceneUrl = new URL("../../docs/public/recipes/scene.png", import.meta.url);
@@ -60,7 +60,6 @@ const sequenceInventoryScene = defineScene({
       target: { kind: "object", object: "key" },
       area: [{ x: 30, y: 20 }, { x: 50, y: 20 }, { x: 50, y: 38 }, { x: 30, y: 38 }],
       approach: { groundPoint: { x: 40, y: 35 }, facing: "front" },
-      noun: keyNoun,
     },
     {
       target: { kind: "background" },

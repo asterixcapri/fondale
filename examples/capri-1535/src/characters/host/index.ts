@@ -1,6 +1,5 @@
-import { defineCharacter } from "@asterixcapri/fondale";
+import { defineCharacter, defineNoun } from "@asterixcapri/fondale";
 
-import { tavernNouns } from "../../nouns";
 import idleUrl from "./idle.png";
 
 export const host = defineCharacter({
@@ -10,5 +9,11 @@ export const host = defineCharacter({
   initialAppearance: "welcoming",
   appearances: { welcoming: { kind: "static", image: idleUrl } },
   movementSpeed: 60,
-  noun: tavernNouns.host,
+  noun: defineNoun({
+    labels: [{ text: "Oste" }],
+    preferredVerbs: [{ verb: "talk-to" }],
+    secondaryVerbs: [{ verb: "look-at" }],
+    objectVerbs: [{ verb: "give" }],
+    cases: [{ verb: "talk-to", sequence: "hostConversation" }],
+  }),
 });

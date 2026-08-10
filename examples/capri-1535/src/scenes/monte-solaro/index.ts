@@ -1,7 +1,6 @@
-import { defineScene } from "@asterixcapri/fondale";
+import { defineNoun, defineScene } from "@asterixcapri/fondale";
 
 import { rectangle } from "../../geometry";
-import { monteSolaroNouns } from "../../nouns";
 import backgroundUrl from "./background.png";
 
 export const monteSolaro = defineScene({
@@ -10,14 +9,40 @@ export const monteSolaro = defineScene({
   perspectiveScale: [{ y: 120, scale: 0.72 }, { y: 180, scale: 0.9 }],
   hotspots: [{
     target: { kind: "background" }, area: rectangle(116, 91, 285, 137),
-    approach: { groundPoint: { x: 215, y: 145 }, facing: "back" }, noun: monteSolaroNouns.horizon,
+    approach: { groundPoint: { x: 215, y: 145 }, facing: "back" },
+    noun: defineNoun({
+      labels: [{ text: "Orizzonte" }],
+      preferredVerbs: [{ verb: "look-at" }],
+      cases: [{
+        verb: "look-at",
+        when: { variable: "monteSolaroObserved", equals: true },
+        response: { text: "Il mare continua a fingere di essere innocente." },
+      }, {
+        verb: "look-at",
+        operations: [{ type: "set-variable", variable: "monteSolaroObserved", value: true }],
+        sequence: "monteSolaroConclusion",
+      }],
+    }),
   }, {
     target: { kind: "background" }, area: rectangle(260, 43, 320, 154),
-    approach: { groundPoint: { x: 260, y: 145 }, facing: "right" }, noun: monteSolaroNouns.door,
+    approach: { groundPoint: { x: 260, y: 145 }, facing: "right" },
+    noun: defineNoun({
+      labels: [{ text: "Porta del posto di guardia" }],
+      preferredVerbs: [{ verb: "look-at" }],
+      cases: [{
+        verb: "look-at",
+        response: { text: "La porta è chiusa dall'interno." },
+      }],
+    }),
   }],
   entrances: { fromGrotto: { groundPoint: { x: 108, y: 145 }, facing: "right" } },
   passages: [{
     area: rectangle(31, 43, 104, 154), approach: { groundPoint: { x: 108, y: 145 }, facing: "left" },
-    noun: monteSolaroNouns.toGrotto, direction: "left", destination: { scene: "grotto", entrance: "fromMonteSolaro" },
+    noun: defineNoun({
+      labels: [{ text: "Scalinata per la grotta" }],
+      preferredVerbs: [{ verb: "walk-to" }],
+      cases: [],
+    }),
+    direction: "left", destination: { scene: "grotto", entrance: "fromMonteSolaro" },
   }],
 });
