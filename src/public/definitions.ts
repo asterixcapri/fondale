@@ -4,6 +4,7 @@ import {
   type CommandLexicon,
   type CommandResponse,
   type NounDefinition,
+  validateCommandResponse,
 } from "./commands";
 import type { HUDTheme, PassageDirection } from "./hud-theme";
 
@@ -733,25 +734,6 @@ function validateProjectDefinitions(
       }
     });
   };
-  const response = (value: CommandResponse | undefined, path: string) => {
-    if (!value) return;
-    if (!value.text.trim()) {
-      diagnostics.push({
-        code: "definition.command-response.text",
-        family: "definition",
-        path: `${path}.text`,
-        message: "A Command Response cannot be empty.",
-      });
-    }
-    if ("speaker" in value || "presentation" in value) {
-      diagnostics.push({
-        code: "definition.command-response.semantic",
-        family: "definition",
-        path,
-        message: "A Command Response cannot declare a speaker or presentation.",
-      });
-    }
-  };
   const line = (value: Line | undefined, path: string) => {
     if (!value) return;
     if (!(value.character in characters)) {
@@ -791,7 +773,7 @@ function validateProjectDefinitions(
           `Sequence '${candidate.sequence}' does not exist.`,
         ));
       }
-      response(candidate.response, `${candidatePath}.response`);
+      validateCommandResponse(candidate.response, `${candidatePath}.response`, diagnostics);
       line(candidate.line, `${candidatePath}.line`);
       operations(candidate.operations ?? [], `${candidatePath}.operations`, { target });
     });
@@ -807,7 +789,7 @@ function validateProjectDefinitions(
         });
       }
       if (fallback) {
-        response(fallback.response, `${path}.fallbacks.${verb}.response`);
+        validateCommandResponse(fallback.response, `${path}.fallbacks.${verb}.response`, diagnostics);
         operations(fallback.operations ?? [], `${path}.fallbacks.${verb}.operations`, { target });
         if (fallback.sequence !== undefined && !(fallback.sequence in sequences)) {
           diagnostics.push(referenceDiagnostic(
@@ -821,7 +803,7 @@ function validateProjectDefinitions(
   };
 
   for (const [verb, fallback] of Object.entries(input.commandFallbacks ?? {})) {
-    response(fallback, `commandFallbacks.${verb}`);
+    validateCommandResponse(fallback, `commandFallbacks.${verb}`, diagnostics);
   }
 
   for (const [sceneId, scene] of Object.entries(input.scenes)) {
@@ -933,9 +915,25 @@ function validateProjectDefinitions(
         operations(step.operations, `${base}.operations`, { sequence: true });
       } else if (step.type === "choice") {
         step.alternatives.forEach((alternative, alternativeIndex) => {
+          if (alternative.spoken !== false && !input.playerCharacter) {
+            diagnostics.push({
+              code: "definition.choice.player-character",
+              family: "definition",
+              path: `${base}.alternatives[${alternativeIndex}].spoken`,
+              message: "A spoken Choice requires a Player Character.",
+            });
+          }
           condition(alternative.when, `${base}.alternatives[${alternativeIndex}].when`);
           visitSteps(alternative.steps, `${base}.alternatives[${alternativeIndex}].steps`);
         });
+        if (step.fallback.spoken !== false && !input.playerCharacter) {
+          diagnostics.push({
+            code: "definition.choice.player-character",
+            family: "definition",
+            path: `${base}.fallback.spoken`,
+            message: "A spoken Choice requires a Player Character.",
+          });
+        }
         visitSteps(step.fallback.steps, `${base}.fallback.steps`);
       } else if (step.type === "branch") {
         step.cases.forEach((branch, branchIndex) => {

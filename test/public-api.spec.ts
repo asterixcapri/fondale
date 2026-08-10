@@ -262,6 +262,39 @@ test("a Command Case exposes one semantic textual outcome", () => {
       sequence: "inspection",
     }],
   })).toThrow(/one textual outcome/i);
+
+  expect(() => defineNoun({
+    labels: [{ text: "Door" }],
+    preferredVerbs: [{ verb: "look-at" }],
+    cases: [{
+      verb: "look-at",
+      line: { character: "host", text: "Welcome." },
+      operations: [{ type: "start-sequence", sequence: "inspection" }],
+    }],
+  })).toThrow(/one textual outcome/i);
+});
+
+test("a spoken Choice requires a Player Character", () => {
+  const opening = defineScene({
+    background: "opening.png",
+    walkableRegion: [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 0, y: 100 }],
+  });
+  const spokenChoice = defineSequence({
+    steps: [{
+      type: "choice",
+      alternatives: [{ text: "Speak", steps: [] }],
+      fallback: { text: "Leave", spoken: false, steps: [] },
+    }],
+  });
+
+  expect(() => defineGame({
+    identity: "choice.without-player",
+    version: "1",
+    logicalResolution: { width: 100, height: 100 },
+    scenes: { opening },
+    sequences: { spokenChoice },
+    initialScene: "opening",
+  })).toThrow(/spoken Choice requires a Player Character/i);
 });
 
 test("an Object-moving Command Case must provide player feedback", () => {

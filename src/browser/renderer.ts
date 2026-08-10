@@ -907,20 +907,13 @@ class EngineOverlay {
     }
     this.textActivityWasActive = true;
     if (activity.type === "line") {
-      const speaker = activity.line.character;
-      if (state.characters[speaker]?.scene !== state.currentScene) return;
-      const line = document.createElement("div");
-      line.dataset.fondaleLine = "";
-      line.setAttribute("role", "status");
-      line.textContent = activity.line.text;
-      this.activity.append(line);
-      this.positionSpeech(line, state, speaker);
-      this.frame.focus({ preventScroll: true });
-      const audioDuration = activity.line.audio ? this.playLineAudio(activity.line.audio) : 0;
-      this.lineTimer = window.setTimeout(() => {
-        this.lineTimer = undefined;
-        if (!this.modalKind) this.core.input({ type: "advance-line" });
-      }, Math.max(this.speechDuration(activity.line.text), audioDuration));
+      this.presentLine(
+        state,
+        activity.line.text,
+        activity.line.character,
+        activity.line.audio,
+        () => this.core.input({ type: "advance-line" }),
+      );
       return;
     }
     const sequence = activity;
@@ -932,23 +925,15 @@ class EngineOverlay {
       const isChoiceSpeech = active.choiceText !== undefined;
       const authoredLine = step.type === "line" ? step : undefined;
       if (!isChoiceSpeech && !authoredLine) return;
-      const line = document.createElement("div");
-      line.dataset.fondaleLine = "";
-      line.setAttribute("role", "status");
-      line.textContent = isChoiceSpeech ? active.choiceText! : authoredLine!.text;
       const speaker = isChoiceSpeech ? active.choiceCharacter : authoredLine?.character;
-      if (!speaker || state.characters[speaker]?.scene !== state.currentScene) return;
-      this.activity.append(line);
-      this.positionSpeech(line, state, speaker);
-      this.frame.focus({ preventScroll: true });
-      const duration = this.speechDuration(line.textContent ?? "");
-      const audioDuration = !isChoiceSpeech && authoredLine?.audio
-        ? this.playLineAudio(authoredLine.audio)
-        : 0;
-      this.lineTimer = window.setTimeout(() => {
-        this.lineTimer = undefined;
-        if (!this.modalKind) this.core.input({ type: "advance-sequence" });
-      }, Math.max(duration, audioDuration));
+      if (!speaker) return;
+      this.presentLine(
+        state,
+        isChoiceSpeech ? active.choiceText! : authoredLine!.text,
+        speaker,
+        isChoiceSpeech ? undefined : authoredLine?.audio,
+        () => this.core.input({ type: "advance-sequence" }),
+      );
     } else if (active.kind === "narration" && step.type === "narration") {
       const narration = document.createElement("div");
       narration.dataset.fondaleNarration = "";
@@ -1021,14 +1006,34 @@ class EngineOverlay {
     }
   }
 
+  private presentLine(
+    state: GameState,
+    text: string,
+    speaker: string,
+    audio: URL | string | undefined,
+    advance: () => void,
+  ): void {
+    if (state.characters[speaker]?.scene !== state.currentScene) return;
+    const line = document.createElement("div");
+    line.dataset.fondaleLine = "";
+    line.setAttribute("role", "status");
+    line.textContent = text;
+    this.activity.append(line);
+    this.positionSpeech(line, state, speaker);
+    this.frame.focus({ preventScroll: true });
+    const audioDuration = audio ? this.playLineAudio(audio) : 0;
+    this.lineTimer = window.setTimeout(() => {
+      this.lineTimer = undefined;
+      if (!this.modalKind) advance();
+    }, Math.max(this.speechDuration(text), audioDuration));
+  }
+
   private positionSpeech(
     element: HTMLElement,
     state: GameState,
     speaker: string,
   ): void {
-    const character = state.characters[speaker];
-    const visible = character?.scene === state.currentScene;
-    const characterSpeech = visible && character;
+    const character = state.characters[speaker]!;
     const safeBottom = this.data.logicalResolution.height - 4;
     element.dataset.fondalePresentation = "speech";
     element.dataset.fondaleSpeaker = speaker;
@@ -1044,18 +1049,15 @@ class EngineOverlay {
       `font-size:${speechFontSize}`,
       `color:${this.data.hudTheme?.speechColors[speaker] || this.data.hudTheme?.colors.text || "#f4dfb4"}`,
       "box-sizing:border-box",
-      `padding:${characterSpeech ? "2px 4px" : "4px 7px"}`,
-      `background:${characterSpeech ? "transparent" : colorWithAlpha(this.data.hudTheme?.colors.backing ?? "#071016", 0.88)}`,
-      `border:${characterSpeech ? "0" : `1px solid ${this.data.hudTheme?.colors.border ?? "#5c7182"}`}`,
-      `border-radius:${characterSpeech ? "0" : "4px"}`,
-      `box-shadow:${characterSpeech ? "none" : "0 2px 8px rgba(0,0,0,.72)"}`,
-      `text-shadow:${characterSpeech
-        ? speechTextShadow
-        : "1px 1px #000,-1px -1px #000"}`,
+      "padding:2px 4px",
+      "background:transparent",
+      "border:0",
+      "border-radius:0",
+      "box-shadow:none",
+      `text-shadow:${speechTextShadow}`,
       "pointer-events:none",
       `display:${this.preferences.speechText ? "block" : "none"}`,
     ].join(";");
-    if (!characterSpeech) return;
     const width = this.data.hudTheme?.maxSpeechWidth ?? 150;
     element.style.left = `${Math.max(2, Math.min(this.data.logicalResolution.width - width - 2, character.groundPoint.x - width / 2))}px`;
     const height = element.offsetHeight;

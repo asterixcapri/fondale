@@ -120,8 +120,10 @@ export function defineNoun(input: NounDefinition): NounDefinition {
         message: `The '${candidate.verb}' Verb is unary and cannot declare a first Noun.`,
       });
     }
-    const outcomeCount = [candidate.line, candidate.response, candidate.sequence]
-      .filter((outcome) => outcome !== undefined).length;
+    const sequenceOutcomes = (candidate.sequence ? 1 : 0) +
+      (candidate.operations?.filter(({ type }) => type === "start-sequence").length ?? 0);
+    const outcomeCount = Number(candidate.line !== undefined) +
+      Number(candidate.response !== undefined) + sequenceOutcomes;
     if (outcomeCount > 1) {
       diagnostics.push({
         code: "definition.command-case.textual-outcome",
@@ -195,7 +197,8 @@ export function defineNoun(input: NounDefinition): NounDefinition {
   });
 }
 
-function validateCommandResponse(
+/** @internal Collects semantic Command Response diagnostics for composed definitions. */
+export function validateCommandResponse(
   response: CommandResponse | undefined,
   path: string,
   diagnostics: AuthoringDiagnostic[],

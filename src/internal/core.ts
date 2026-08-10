@@ -789,12 +789,12 @@ export function createCoreSession(
         : `${activity.active.path}/alternatives/${alternative}/steps`;
     activity.pendingPaths.unshift(...pathsForContainer(definition, container));
     const choice = alternative === -1 ? stepDefinition.fallback : stepDefinition.alternatives[alternative]!;
-    if (choice.spoken !== false) {
+    if (choice.spoken !== false && data.playerCharacter) {
       activity.active = {
         kind: "line",
         path: activity.active.path,
         choiceText: choice.text,
-        ...(data.playerCharacter ? { choiceCharacter: data.playerCharacter } : {}),
+        choiceCharacter: data.playerCharacter,
       };
       emitted.push({ type: "sequence-changed" });
     } else {

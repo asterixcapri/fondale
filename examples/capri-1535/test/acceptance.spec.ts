@@ -297,6 +297,35 @@ test("the contextual overlay preserves the full Scene and keeps prompts in frame
   expect.soft(promptBounds.y + promptBounds.height).toBeLessThanOrEqual(canvasBounds.y + canvasBounds.height);
 });
 
+test("packaged text presentations remain legible across Aiano and Boffe", async ({ page }) => {
+  for (const [scene, viewport] of [
+    ["aiano", { width: 1280, height: 720 }],
+    ["boffe", { width: 900, height: 700 }],
+  ] as const) {
+    await page.setViewportSize(viewport);
+    const { errors } = await openGame(page, `/test/fixtures/adventure-text.html?scene=${scene}`);
+
+    await command(page, "look-at", 70, 110);
+    await expect(page.locator("[aria-live=polite]")).toContainText("La luce cambia");
+    await shoot(page, `capri-1535-${scene}-command-response`);
+    await advance(page);
+
+    await command(page, "talk-to", 334, 135);
+    await expect(page.locator("[data-fondale-line]")).toContainText("sopra chi la pronuncia");
+    await shoot(page, `capri-1535-${scene}-character-line`);
+    await advance(page);
+    await expect(page.locator("[data-fondale-line]")).toHaveCount(0);
+
+    await command(page, "look-at", 210, 110);
+    await expect(page.locator("[data-fondale-narration]")).toContainText("Il vento porta il sale");
+    await shoot(page, `capri-1535-${scene}-narration`);
+    await advance(page);
+    await expect(page.locator("[data-fondale-choice] button")).toHaveCount(2);
+    await shoot(page, `capri-1535-${scene}-choice`);
+    expect(errors).toEqual([]);
+  }
+});
+
 test("a Capri Project Version 3 Save remains visible and incompatible", async ({ page }) => {
   await openGame(page);
   const frame = page.locator("[data-fondale-frame]");
