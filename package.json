@@ -20,6 +20,7 @@
     "dev": "npm run build:package && vite --force",
     "prototype:capri-hud": "npm --prefix examples/capri-1535 run prototype:hud",
     "prototype:capri-verb-coin": "npm --prefix examples/capri-1535 run prototype:hud",
+    "prototype:capri-return-style": "npm --prefix examples/capri-1535 run prototype:hud",
     "typecheck": "tsc --noEmit",
     "build:package": "vite build --config vite.lib.config.ts && tsc -p tsconfig.declarations.json",
     "build": "npm run build:package && npm run typecheck && npm run verify:docs",

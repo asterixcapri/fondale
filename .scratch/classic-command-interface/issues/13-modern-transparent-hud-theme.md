@@ -39,3 +39,21 @@ Il prototipo avviabile con `npm run prototype:capri-verb-coin` e l'URL `http://l
 - C mostra sempre le nove azioni, attenuando quelle che produrranno soltanto un fallback.
 
 Il prototipo espone Preferred Verb, casi contestuali, azioni visibili e fallback nello state inspector. Nessuna variante è ancora approvata.
+
+### 10 agosto 2026 — prova Return-style
+
+La variante B del verb coin è stata scartata perché mantiene troppo evidente la
+scelta dei Verb. Il prototipo avviabile con
+`npm run prototype:capri-return-style` e l'URL
+`http://localhost:5174/?focus=return-style` prova invece un'interazione ispirata
+a *Return to Monkey Island*: la scena resta libera a riposo, mentre l'hover su
+un Noun mostra soltanto azione primaria e secondaria. Il click sinistro esegue
+l'azione primaria, il click destro quella secondaria e `I` apre l'Inventory
+sopra la scena. Selezionare un Object rende contestuale l'azione primaria;
+`Escape` chiude l'Inventory o deseleziona l'Object.
+
+La prova è isolata nel mode `prototype` e non cambia il runtime di produzione.
+Sostituisce nel prototipo l'ipotesi precedente del click destro per aprire
+l'Inventory, ma non costituisce ancora un nuovo verdetto di produzione.
+Il selettore dell'inspector ripete la stessa interazione su Porto, Aiano e
+Boffe, con Noun e azioni propri di ciascuna scena.

@@ -13,7 +13,10 @@ const errorOutput = document.querySelector<HTMLOutputElement>("#error")!;
 if (import.meta.env.MODE === "prototype") {
   restore.hidden = true;
   const focus = new URLSearchParams(window.location.search).get("focus");
-  if (focus === "verb-coin") {
+  if (focus === "return-style") {
+    const { startReturnStylePrototype } = await import("./prototypes/return-style-prototype");
+    startReturnStylePrototype(target);
+  } else if (focus === "verb-coin") {
     const { startVerbCoinPrototype } = await import("./prototypes/verb-coin-prototype");
     startVerbCoinPrototype(target);
   } else {
