@@ -1,10 +1,13 @@
 import type {
+  Appearance,
   AnimationDefinition,
   AnimationFrames,
   DirectStep,
   DirectedSubject,
+  GameProjectData,
   Point,
 } from "../public/definitions";
+import type { GameState } from "./core";
 
 export function secondsToTicks(seconds: number): number {
   return Math.max(1, Math.ceil(seconds * 60));
@@ -35,6 +38,21 @@ export function resolveSequencePath(value: unknown, path: string): unknown {
     if (current === null || typeof current !== "object") return undefined;
     return (current as Record<string, unknown>)[segment];
   }, value);
+}
+
+export function appearanceForSubject(
+  data: GameProjectData,
+  state: GameState,
+  subject: DirectedSubject,
+): Appearance | undefined {
+  const appearance = subject.kind === "character"
+    ? data.characters[subject.character]?.appearances[state.characters[subject.character]?.appearance ?? ""]
+    : subject.kind === "object"
+      ? data.objects[subject.object]?.appearances[state.objects[subject.object]?.appearance ?? ""]
+      : data.scenes[state.currentScene]?.scenery?.[subject.scenery]?.appearances[
+        state.scenery[state.currentScene]?.[subject.scenery] ?? ""
+      ];
+  return appearance && "animations" in appearance ? appearance : undefined;
 }
 
 export function isImageAnimationFrames(

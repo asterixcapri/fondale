@@ -203,8 +203,19 @@ test("Michele completes one ordinary job before the drifting boat begins the adv
   await page.waitForTimeout(300);
   expect((await frame.locator("canvas").screenshot()).equals(winchStart)).toBe(false);
   await frame.focus();
+  await page.keyboard.press("Control+s");
+  const winchSave = frame.locator('[data-fondale-modal="save"]');
+  await winchSave.locator("[data-fondale-save-name]").fill("Argano in movimento");
+  await winchSave.locator("[data-fondale-save-confirm]").click();
+  await frame.focus();
   await page.keyboard.press("Escape");
   await expect(page.locator('[data-fondale-inventory-object="winchHandle"]')).toHaveCount(0);
+  await expect(line).toHaveCount(0);
+  await frame.focus();
+  await page.keyboard.press("Control+l");
+  await frame.locator('[data-fondale-load-slot="0"]').click();
+  await expect(line).toContainText("può salpare", { timeout: 8_000 });
+  await advance(page);
   await expect(line).toHaveCount(0);
 
   await enterLeftEdgePassage(page);
@@ -214,6 +225,16 @@ test("Michele completes one ordinary job before the drifting boat begins the adv
   const arrivalStart = await frame.locator("canvas").screenshot();
   await page.waitForTimeout(400);
   expect((await frame.locator("canvas").screenshot()).equals(arrivalStart)).toBe(false);
+  await frame.focus();
+  await page.keyboard.press("Control+s");
+  const arrivalSave = frame.locator('[data-fondale-modal="save"]');
+  await arrivalSave.locator("[data-fondale-save-name]").fill("Approdo in corso");
+  await arrivalSave.locator("[data-fondale-save-confirm]").click();
+  await frame.focus();
+  await page.keyboard.press("Escape");
+  await frame.focus();
+  await page.keyboard.press("Control+l");
+  await frame.locator('[data-fondale-load-slot="1"]').click();
   await page.waitForTimeout(3_500);
   await shoot(page, "capri-1535-fortification-lower-path");
 

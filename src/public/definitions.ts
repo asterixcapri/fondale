@@ -1244,7 +1244,7 @@ function validateProjectDefinitions(
     step: DirectStep,
     path: string,
     sceneId?: string,
-    hasLaterSceneryMotion: (scenery: string) => boolean = () => false,
+    continuesSceneryMotion: (scenery: string, destination: Point) => boolean = () => false,
   ) => {
     let hasFiniteBoundary = step.duration !== undefined;
     step.directions.forEach((direction, directionIndex) => {
@@ -1297,7 +1297,7 @@ function validateProjectDefinitions(
             if (
               direction.subject.kind === "scenery" &&
               scene &&
-              !hasLaterSceneryMotion(direction.subject.scenery)
+              !continuesSceneryMotion(direction.subject.scenery, direction.path.at(-1)!)
             ) {
               const rest = scene.scenery?.[direction.subject.scenery]?.position;
               const destination = direction.path.at(-1);
@@ -1356,26 +1356,6 @@ function validateProjectDefinitions(
     if (!hasFiniteBoundary) diagnostics.push({ code: "definition.sequence.direct.unbounded", family: "definition", path, message: "A directed step containing only loops needs a finite completion boundary." });
   };
 
-  const stepContainsSceneryMotion = (step: SequenceStep, scenery: string): boolean => {
-    if (step.type === "direct") {
-      return step.directions.some((direction) =>
-        direction.type === "motion" &&
-        direction.subject.kind === "scenery" &&
-        direction.subject.scenery === scenery,
-      );
-    }
-    if (step.type === "choice") {
-      return step.alternatives.some((alternative) =>
-        alternative.steps.some((child) => stepContainsSceneryMotion(child, scenery)),
-      ) || step.fallback.steps.some((child) => stepContainsSceneryMotion(child, scenery));
-    }
-    if (step.type === "branch") {
-      return step.cases.some((branch) =>
-        branch.steps.some((child) => stepContainsSceneryMotion(child, scenery)),
-      ) || step.fallback.some((child) => stepContainsSceneryMotion(child, scenery));
-    }
-    return false;
-  };
   const visitSteps = (steps: readonly SequenceStep[], path: string, sceneId?: string) => {
     steps.forEach((step, index) => {
       const base = `${path}[${index}]`;
@@ -1393,7 +1373,20 @@ function validateProjectDefinitions(
           step,
           base,
           sceneId,
-          (scenery) => steps.slice(index + 1).some((later) => stepContainsSceneryMotion(later, scenery)),
+          (scenery, destination) => {
+            const next = steps[index + 1];
+            if (next?.type !== "direct") return false;
+            return next.directions.some((direction) =>
+              direction.type === "motion" &&
+              direction.subject.kind === "scenery" &&
+              direction.subject.scenery === scenery &&
+              direction.path[0] !== undefined &&
+              Math.hypot(
+                direction.path[0].x - destination.x,
+                direction.path[0].y - destination.y,
+              ) <= 1e-8,
+            );
+          },
         );
       } else if (step.type === "choice") {
         step.alternatives.forEach((alternative, alternativeIndex) => {
@@ -1660,7 +1653,7 @@ function subjectBelongsToScene(
   if (subject.kind === "character") {
     return subject.character === playerCharacter || characters[subject.character]?.initialScene === sceneId;
   }
-  if (subject.kind === "object") return objects[subject.object]?.initialScene === sceneId;
+  if (subject.kind === "object") return subject.object in objects;
   return subject.scenery in (scenes[sceneId]?.scenery ?? {});
 }
 

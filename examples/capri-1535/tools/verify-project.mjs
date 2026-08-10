@@ -6,7 +6,7 @@ const project = resolve(import.meta.dirname, "..");
 const packageJson = JSON.parse(readFileSync(join(project, "package.json"), "utf8"));
 const lock = readFileSync(join(project, "package-lock.json"), "utf8");
 const viteConfig = readFileSync(join(project, "vite.config.ts"), "utf8");
-const tarball = "vendor/asterixcapri-fondale-0.2.0.tgz";
+const tarball = "vendor/asterixcapri-fondale-0.3.0.tgz";
 const retiredArtDirectories = ["concept", "example", "rooms", "sprites"];
 const retiredSourceFiles = ["src/nouns.ts"];
 

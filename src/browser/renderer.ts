@@ -18,6 +18,7 @@ import type {
 } from "../internal/core";
 import {
   animationDurationTicks,
+  appearanceForSubject,
   directionStartTick,
   isImageAnimationFrames,
   pointAlongPath,
@@ -384,17 +385,8 @@ export class BrowserRenderer {
     return directionStartTick(
       step,
       index,
-      (subject, animation) => this.appearanceFor(state, subject)?.animations[animation],
+      (subject, animation) => appearanceForSubject(this.data, state, subject)?.animations[animation],
     );
-  }
-
-  private appearanceFor(state: GameState, subject: DirectedSubject): Appearance | undefined {
-    const appearance = subject.kind === "character"
-      ? this.data.characters[subject.character]?.appearances[state.characters[subject.character]?.appearance ?? ""]
-      : subject.kind === "object"
-        ? this.data.objects[subject.object]?.appearances[state.objects[subject.object]?.appearance ?? ""]
-        : this.data.scenes[state.currentScene]?.scenery?.[subject.scenery]?.appearances[state.scenery[state.currentScene]?.[subject.scenery] ?? ""];
-    return appearance && "animations" in appearance ? appearance : undefined;
   }
 
   private directedSceneryPoint(state: GameState, scenery: string): Point | undefined {

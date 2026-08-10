@@ -1,6 +1,6 @@
 {
   "name": "@asterixcapri/fondale",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "A web-native, TypeScript-first point-and-click adventure engine.",
   "license": "MIT",
   "type": "module",

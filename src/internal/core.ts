@@ -11,7 +11,6 @@ import {
   type InteractionCondition,
   type Line,
   type Point,
-  type Appearance,
   type AnimationDefinition,
   type DirectStep,
   type DirectedSubject,
@@ -28,6 +27,7 @@ import {
 import { isInside, navigationPath, nearestPoint } from "./geometry";
 import {
   animationDurationTicks,
+  appearanceForSubject,
   directionStartTick,
   pointAlongPath,
   resolveSequencePath,
@@ -852,6 +852,10 @@ export function createCoreSession(
       } else if (stepDefinition.type === "operations") {
         if (!applyOperations(stepDefinition.operations, { kind: "background" })) return;
       } else if (stepDefinition.type === "direct") {
+        if (!directedSubjectsAreAvailable(stepDefinition)) {
+          failOperation("A directed subject is not available in the Sequence Scene.");
+          return;
+        }
         activity.active = { kind: "direct", path, elapsedTicks: 0 };
       }
       emitted.push({ type: "sequence-changed" });
@@ -868,6 +872,21 @@ export function createCoreSession(
     if (!directStepComplete(direct, activity.active.elapsedTicks)) return;
     activity.active = null;
     advanceSequence();
+  }
+
+  function directedSubjectsAreAvailable(step: DirectStep): boolean {
+    return step.directions.every((direction) => {
+      if (direction.type === "camera" && direction.mode !== "follow") return true;
+      const subject = direction.subject;
+      if (subject.kind === "character") {
+        return state.characters[subject.character]?.scene === state.currentScene;
+      }
+      if (subject.kind === "object") {
+        const location = state.objects[subject.object]?.location;
+        return location?.kind === "scene" && location.scene === state.currentScene;
+      }
+      return subject.scenery in (data.scenes[state.currentScene]?.scenery ?? {});
+    });
   }
 
   function directStepComplete(step: DirectStep, elapsedTicks: number): boolean {
@@ -911,17 +930,8 @@ export function createCoreSession(
   }
 
   function directedAnimation(subject: DirectedSubject, animationName: string): AnimationDefinition | undefined {
-    const appearance = directedAppearance(subject);
+    const appearance = appearanceForSubject(data, state, subject);
     return appearance?.animations[animationName];
-  }
-
-  function directedAppearance(subject: DirectedSubject): Appearance | undefined {
-    const appearance = subject.kind === "character"
-      ? data.characters[subject.character]?.appearances[state.characters[subject.character]?.appearance ?? ""]
-      : subject.kind === "object"
-        ? data.objects[subject.object]?.appearances[state.objects[subject.object]?.appearance ?? ""]
-        : data.scenes[state.currentScene]?.scenery?.[subject.scenery]?.appearances[state.scenery[state.currentScene]?.[subject.scenery] ?? ""];
-    return appearance && "animations" in appearance ? appearance : undefined;
   }
 
   function applyDirectedMotions(step: DirectStep, elapsedTicks: number): void {

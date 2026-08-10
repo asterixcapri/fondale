@@ -2,7 +2,7 @@
 
 Every public symbol is imported from `@asterixcapri/fondale`; deep imports are
 not supported. This is the normative Fondale 0.2 alpha contract. The npm
-package version is `0.2.0`; it is independent from an Author's Project Version
+package version is `0.3.0`; it is independent from an Author's Project Version
 and from Fondale's Save Snapshot format version.
 
 ## Commands and HUD

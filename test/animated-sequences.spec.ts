@@ -222,6 +222,73 @@ test("composition requires the final Scenery Motion to end at its resting positi
     sequences: { action },
     initialScene: "room",
   })).toThrow(/resting position/);
+
+  const interrupted = defineSequence({
+    scene: "room",
+    steps: [action.steps[0]!, { type: "narration", text: "A visible pause." }, {
+      type: "direct",
+      directions: [{
+        type: "motion",
+        subject: { kind: "scenery", scenery: "marker" },
+        path: [{ x: 50, y: 30 }, { x: 60, y: 30 }],
+        duration: 1,
+      }],
+    }],
+  });
+  expect(() => defineGame({
+    identity: "test.interrupted-scenery-motion",
+    version: "1",
+    logicalResolution: { width: 100, height: 100 },
+    scenes: { room },
+    sequences: { interrupted },
+    initialScene: "room",
+  })).toThrow(/resting position/);
+});
+
+test("an Object placed earlier in a Sequence may be directed in its owning Scene", () => {
+  const square = [
+    { x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }, { x: 0, y: 100 },
+  ];
+  const prop = defineObject({
+    initialScene: "elsewhere",
+    initialGroundPoint: { x: 10, y: 10 },
+    initialAppearance: "normal",
+    appearances: { normal: staticAppearance("prop.png") },
+    inventoryAppearance: "prop-inventory.png",
+  });
+  const action = defineSequence({
+    scene: "room",
+    steps: [{
+      type: "operations",
+      operations: [{
+        type: "place-object",
+        object: "prop",
+        scene: "room",
+        groundPoint: { x: 20, y: 20 },
+      }],
+    }, {
+      type: "direct",
+      directions: [{
+        type: "motion",
+        subject: { kind: "object", object: "prop" },
+        path: [{ x: 20, y: 20 }, { x: 30, y: 20 }],
+        duration: 1,
+      }],
+    }],
+  });
+
+  expect(defineGame({
+    identity: "test.placed-directed-object",
+    version: "1",
+    logicalResolution: { width: 100, height: 100 },
+    scenes: {
+      room: defineScene({ background: "room.png", walkableRegion: square }),
+      elsewhere: defineScene({ background: "elsewhere.png", walkableRegion: square }),
+    },
+    objects: { prop },
+    sequences: { action },
+    initialScene: "room",
+  })).toBeDefined();
 });
 
 test("composition diagnoses a movable Player Appearance without a walking Role", () => {
