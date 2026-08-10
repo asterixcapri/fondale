@@ -26,7 +26,7 @@ CHARACTERS_DIR = Path("src/characters")
 # The character's height at full scale, i.e. standing at the very front of a
 # room. Everything further back is scaled down from this, never up: enlarging
 # pixel art past its drawn size is the one operation that always looks cheap.
-NATIVE_HEIGHT = 100
+NATIVE_HEIGHT = 82
 COLOURS = 32
 
 

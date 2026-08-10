@@ -71,7 +71,7 @@ da ciò che è ricostruzione plausibile.
 Un bel panorama non è ancora una stanza giocabile. Ogni fondale deve contenere:
 
 1. un piano di calpestio continuo e inequivocabile, abbastanza largo per uno
-   sprite alto fino a 100 pixel in primo piano;
+   sprite alto fino a 82 pixel in primo piano;
 2. almeno un ingresso vicino a un bordo e un'uscita visivamente leggibile;
 3. una variazione di profondità sufficiente a scalare Michele dal 100% in primo
    piano a circa il 55% sul fondo;
