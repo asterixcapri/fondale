@@ -10,8 +10,8 @@ import {
 } from "../docs/public/recipes/first-scene";
 import { openWhenReady } from "../docs/public/recipes/command-case";
 import {
-  interactionCharacter,
-  interactionObject,
+  interactionHost,
+  interactionKey,
   interactionScene,
 } from "../docs/public/recipes/interaction";
 import { exampleHUDTheme } from "../docs/public/recipes/hud-theme";
@@ -65,8 +65,8 @@ test("the Interaction, Sequence, and Inventory recipes compose as validated proj
       version: "1",
       logicalResolution: { width: 100, height: 100 },
       scenes: { opening: interactionScene },
-      characters: { host: interactionCharacter },
-      objects: { coin: interactionObject },
+      characters: { host: interactionHost },
+      objects: { key: interactionKey },
       variables: { doorOpen: false },
       hudTheme: exampleHUDTheme,
       commandLexicon: englishCommandLexicon,

@@ -9,8 +9,8 @@ import {
 } from "@asterixcapri/fondale";
 
 import {
-  interactionCharacter,
-  interactionObject,
+  interactionHost,
+  interactionKey,
   interactionScene,
 } from "../../docs/public/recipes/interaction";
 import {
@@ -35,9 +35,9 @@ const interactionProject = defineGame({
   version: "1",
   logicalResolution: { width: 100, height: 100 },
   scenes: { opening: interactionScene },
-  characters: { player, host: interactionCharacter },
+  characters: { player, host: interactionHost },
   playerCharacter: "player",
-  objects: { coin: interactionObject },
+  objects: { key: interactionKey },
   variables: { doorOpen: false },
   commandLexicon: englishCommandLexicon,
   commandFallbacks: englishCommandFallbacks,

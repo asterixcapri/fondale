@@ -7,7 +7,7 @@ import {
 
 const doorArea = [{ x: 10, y: 10 }, { x: 30, y: 10 }, { x: 30, y: 30 }];
 
-export const interactionCharacter = defineCharacter({
+export const interactionHost = defineCharacter({
   initialScene: "opening",
   initialGroundPoint: { x: 65, y: 35 },
   initialFacing: "left",
@@ -23,7 +23,7 @@ export const interactionCharacter = defineCharacter({
   }),
 });
 
-export const interactionObject = defineObject({
+export const interactionKey = defineObject({
   initialScene: "opening",
   initialGroundPoint: { x: 85, y: 35 },
   initialAppearance: "present",
@@ -32,11 +32,11 @@ export const interactionObject = defineObject({
   },
   inventoryAppearance: new URL("./key-inventory-32.png", import.meta.url),
   noun: defineNoun({
-    labels: [{ text: "Coin" }],
+    labels: [{ text: "Key" }],
     preferredVerbs: [{ verb: "pick-up" }],
     cases: [{
       verb: "pick-up",
-      response: { text: "The coin enters the Inventory." },
+      response: { text: "The key enters the Inventory." },
       operations: [{ type: "collect-target-object" }],
     }],
   }),
@@ -83,7 +83,7 @@ export const interactionScene = defineScene({
       approach: { groundPoint: { x: 50, y: 35 }, facing: "right" },
     },
     {
-      target: { kind: "object", object: "coin" },
+      target: { kind: "object", object: "key" },
       area: [{ x: 78, y: 25 }, { x: 92, y: 25 }, { x: 92, y: 38 }],
       approach: { groundPoint: { x: 75, y: 35 }, facing: "right" },
     },
