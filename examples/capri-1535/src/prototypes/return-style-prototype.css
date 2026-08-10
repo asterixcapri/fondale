@@ -148,6 +148,102 @@
 
 .return-feedback.is-visible { transform: translate(-50%, 0); opacity: 1; }
 
+.return-inventory-trigger {
+  position: absolute;
+  z-index: 25;
+  left: 2.2%;
+  bottom: 3%;
+  width: 4.2cqw;
+  height: 4.2cqw;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  color: #fff;
+  background: rgb(4 10 14 / 84%);
+  border: 1px solid #789690;
+  border-radius: 50%;
+  box-shadow: 0 0.4em 1.1em #000b;
+  cursor: pointer;
+}
+
+.return-inventory-trigger:hover,
+.return-inventory-trigger:focus-visible,
+.return-inventory-trigger.is-open {
+  background: rgb(4 10 14 / 96%);
+  border-color: #efca6f;
+  outline: 0;
+}
+
+.return-inventory-trigger.is-open { z-index: 32; }
+
+.return-bag {
+  position: relative;
+  width: 2.15cqw;
+  height: 1.6cqw;
+  margin-top: 0.45cqw;
+  background: #efca6f;
+  border: 0.13cqw solid #fff1ad;
+  border-radius: 0.25cqw 0.25cqw 0.5cqw 0.5cqw;
+  filter: drop-shadow(0 0.12cqw 0 #000);
+}
+
+.return-bag::before {
+  content: "";
+  position: absolute;
+  left: 0.52cqw;
+  top: -0.72cqw;
+  width: 0.85cqw;
+  height: 0.65cqw;
+  box-sizing: border-box;
+  border: 0.2cqw solid #efca6f;
+  border-bottom: 0;
+  border-radius: 0.55cqw 0.55cqw 0 0;
+}
+
+.return-bag::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 42%;
+  height: 0.16cqw;
+  background: #6e4d16;
+}
+
+.return-inventory-trigger > kbd {
+  position: absolute;
+  right: -0.28cqw;
+  bottom: -0.16cqw;
+  min-width: 1.35cqw;
+  padding: 0.22cqw 0.28cqw;
+  box-sizing: border-box;
+  color: #182621;
+  background: #fff;
+  border: 1px solid #182621;
+  border-radius: 0.3cqw;
+  font: 800 0.75cqw/1 system-ui, sans-serif;
+}
+
+.return-inventory-label {
+  position: absolute;
+  left: calc(100% + 0.65cqw);
+  padding: 0.42cqw 0.6cqw;
+  color: #fff;
+  background: rgb(4 10 14 / 94%);
+  border-radius: 0.4cqw;
+  font: 700 1cqw/1 system-ui, sans-serif;
+  opacity: 0;
+  transform: translateX(-0.25cqw);
+  transition: opacity 100ms ease, transform 100ms ease;
+  pointer-events: none;
+}
+
+.return-inventory-trigger:hover .return-inventory-label,
+.return-inventory-trigger:focus-visible .return-inventory-label {
+  opacity: 1;
+  transform: translateX(0);
+}
+
 .inventory-hint {
   position: absolute;
   z-index: 25;

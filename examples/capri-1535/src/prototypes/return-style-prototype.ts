@@ -20,8 +20,8 @@ interface HotspotDefinition {
   key: HotspotKey;
   label: string;
   main: string;
-  secondary: string;
-  response: { main: string; secondary: string };
+  secondary?: string;
+  response: { main: string; secondary?: string };
   bounds: { x: number; y: number; width: number; height: number };
 }
 
@@ -91,10 +91,8 @@ const scenes: Readonly<Record<SceneKey, SceneDefinition>> = {
     key: "passage",
     label: "Verso la piazza",
     main: "Vai",
-    secondary: "Guarda",
     response: {
       main: "Michele si avvia verso la piazza.",
-      secondary: "La strada sale fra le case del porto.",
     },
     bounds: { x: 86, y: 27, width: 12, height: 36 },
   }],
@@ -107,10 +105,8 @@ const scenes: Readonly<Record<SceneKey, SceneDefinition>> = {
       key: "arch",
       label: "Arco",
       main: "Vai",
-      secondary: "Guarda",
       response: {
         main: "Michele attraversa l'arco.",
-        secondary: "L'arco conduce all'interno della casa.",
       },
       bounds: { x: 3, y: 17, width: 17, height: 56 },
     }, {
@@ -137,10 +133,8 @@ const scenes: Readonly<Record<SceneKey, SceneDefinition>> = {
       key: "garden-path",
       label: "Sentiero",
       main: "Vai",
-      secondary: "Guarda",
       response: {
         main: "Michele scende lungo il sentiero.",
-        secondary: "Il sentiero sparisce fra i muri del giardino.",
       },
       bounds: { x: 63, y: 58, width: 10, height: 31 },
     }],
@@ -163,10 +157,8 @@ const scenes: Readonly<Record<SceneKey, SceneDefinition>> = {
       key: "alley",
       label: "Vicolo",
       main: "Vai",
-      secondary: "Guarda",
       response: {
         main: "Michele si inoltra nel vicolo.",
-        secondary: "Il vicolo sale fra le case bianche.",
       },
       bounds: { x: 25, y: 34, width: 14, height: 30 },
     }, {
@@ -209,7 +201,7 @@ function hotspotFor(state: PrototypeState, hotspotKey: HotspotKey): HotspotDefin
   return hotspot;
 }
 
-function actionsFor(state: PrototypeState, hotspotKey: HotspotKey): { main: string; secondary: string } {
+function actionsFor(state: PrototypeState, hotspotKey: HotspotKey): { main: string; secondary?: string } {
   const hotspot = hotspotFor(state, hotspotKey);
   const item = selectedItem(state);
   if (!item) return { main: hotspot.main, secondary: hotspot.secondary };
@@ -232,7 +224,7 @@ const commandTargets: Readonly<Record<HotspotKey, string>> = {
   "right-door": "il portone",
 };
 
-function actionPhrase(state: PrototypeState, hotspotKey: HotspotKey, action: "main" | "secondary"): string {
+function actionPhrase(state: PrototypeState, hotspotKey: HotspotKey, action: "main" | "secondary"): string | undefined {
   const item = selectedItem(state);
   if (item && action === "main") {
     return hotspotKey === "raffaele"
@@ -241,6 +233,7 @@ function actionPhrase(state: PrototypeState, hotspotKey: HotspotKey, action: "ma
   }
 
   const verb = actionsFor(state, hotspotKey)[action];
+  if (!verb) return undefined;
   if (verb === "Parla") return `Parla con ${commandTargets[hotspotKey]}`;
   if (verb === "Siediti") return "Siediti sulla panca";
   if (verb === "Vai" && hotspotKey === "garden-path") return "Prendi il sentiero";
@@ -250,7 +243,7 @@ function actionPhrase(state: PrototypeState, hotspotKey: HotspotKey, action: "ma
 function responseFor(state: PrototypeState, hotspotKey: HotspotKey, action: "main" | "secondary"): string {
   const hotspot = hotspotFor(state, hotspotKey);
   const item = selectedItem(state);
-  if (!item) return hotspot.response[action];
+  if (!item) return hotspot.response[action] ?? hotspot.response.main;
   if (action === "secondary") return hotspot.response.main;
   if (hotspotKey === "winch" && item.key === "oil") return "L'olio penetra negli ingranaggi dell'argano.";
   if (hotspotKey === "winch" && item.key === "handle") return "La manovella non entra finché gli ingranaggi sono bloccati.";
@@ -259,9 +252,10 @@ function responseFor(state: PrototypeState, hotspotKey: HotspotKey, action: "mai
 }
 
 function renderPrompt(state: PrototypeState, hotspotKey: HotspotKey): string {
-  return `<span class="return-prompt" aria-hidden="true">
+  const secondary = actionPhrase(state, hotspotKey, "secondary");
+  return `<span class="return-prompt ${secondary ? "has-secondary" : "is-single"}" aria-hidden="true">
     <span class="return-action is-main"><span class="return-input is-left"></span><span>${actionPhrase(state, hotspotKey, "main")}</span></span>
-    <span class="return-action is-secondary"><span class="return-input is-right"></span><span>${actionPhrase(state, hotspotKey, "secondary")}</span></span>
+    ${secondary ? `<span class="return-action is-secondary"><span class="return-input is-right"></span><span>${secondary}</span></span>` : ""}
     <span class="return-leader"></span>
   </span>`;
 }
@@ -305,14 +299,14 @@ function renderInspector(state: PrototypeState): string {
   return `<aside class="prototype-inspector return-inspector">
     <p class="eyebrow">PROTOTIPO USA-E-GETTA</p>
     <h1>Interazione Return-style</h1>
-    <p class="summary">Passa sopra gli elementi della scena. Il prompt mostra soltanto azione principale e secondaria.</p>
+    <p class="summary">Passa sopra gli elementi della scena. Il prompt mostra una o due azioni contestuali.</p>
     <nav class="return-scene-switcher" aria-label="Scena del prototipo">
       ${(Object.entries(scenes) as [SceneKey, SceneDefinition][]).map(([key, scene]) => `<button type="button" data-scene="${key}" class="${state.scene === key ? "is-active" : ""}">${scene.label}</button>`).join("")}
     </nav>
     <dl class="return-controls">
       <div><dt>Click sinistro</dt><dd>Azione principale</dd></div>
-      <div><dt>Click destro</dt><dd>Azione secondaria</dd></div>
-      <div><dt>I</dt><dd>Apri/chiudi Inventory</dd></div>
+      <div><dt>Click destro</dt><dd>Secondaria, se presente</dd></div>
+      <div><dt>Sacchetto / I</dt><dd>Apri/chiudi Inventory</dd></div>
       <div><dt>Escape</dt><dd>Chiudi o deseleziona</dd></div>
     </dl>
     <div class="return-demo-buttons">
@@ -333,8 +327,11 @@ function renderPrototype(target: HTMLElement, state: PrototypeState): void {
         <div class="scene-layer"><img class="scene-background" src="${scene.image}" alt="${scene.alt}" />${scene.actor ? `<img class="prototype-actor" src="${scene.actor}" alt="Raffaele" />` : ""}</div>
         ${renderHotspots(state)}
         ${item ? `<div class="selected-object-cursor"><img src="${item.image}" alt="" /><span>${item.label}</span></div>` : ""}
+        <button type="button" class="return-inventory-trigger ${state.inventoryOpen ? "is-open" : ""}" data-toggle-inventory aria-label="${state.inventoryOpen ? "Chiudi" : "Apri"} inventario">
+          <span class="return-bag" aria-hidden="true"></span><kbd>I</kbd><span class="return-inventory-label">Inventory</span>
+        </button>
         <div class="return-feedback" role="status"></div>
-        ${state.hintVisible ? '<div class="inventory-hint"><kbd>I</kbd><span>Apri l’Inventory</span><button type="button" data-dismiss-hint aria-label="Chiudi suggerimento">×</button></div>' : ""}
+        ${state.hintVisible ? '<div class="inventory-hint"><kbd>I</kbd><span>Clicca il sacchetto o premi I</span><button type="button" data-dismiss-hint aria-label="Chiudi suggerimento">×</button></div>' : ""}
         ${renderInventory(state)}
       </div>
     </section>
@@ -409,6 +406,12 @@ export function startReturnStylePrototype(target: HTMLElement): void {
 
   target.addEventListener("click", (event) => {
     const element = event.target as Element;
+    if (element.closest("[data-toggle-inventory]")) {
+      state.inventoryOpen = !state.inventoryOpen;
+      state.hintVisible = false;
+      rerender();
+      return;
+    }
     const sceneButton = element.closest<HTMLButtonElement>("[data-scene]");
     if (sceneButton) {
       state.scene = sceneButton.dataset.scene as SceneKey;
@@ -464,7 +467,9 @@ export function startReturnStylePrototype(target: HTMLElement): void {
     const hotspot = (event.target as Element).closest<HTMLElement>("[data-hotspot]");
     if (!hotspot) return;
     event.preventDefault();
-    showFeedback(responseFor(state, hotspot.dataset.hotspot as HotspotKey, "secondary"));
+    const key = hotspot.dataset.hotspot as HotspotKey;
+    if (!actionsFor(state, key).secondary) return;
+    showFeedback(responseFor(state, key, "secondary"));
   });
 
   window.addEventListener("keydown", (event) => {

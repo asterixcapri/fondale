@@ -82,3 +82,15 @@ con l'argano».
 
 La resa è disponibile sullo stesso URL e va valutata su Porto, Aiano e Boffe.
 Non è ancora promossa nel contratto di produzione.
+
+### 10 agosto 2026 — accesso mouse e Secondary Action opzionale
+
+Il prototipo espone ora una piccola borsa Inventory nell'angolo inferiore
+sinistro: il click la apre e la richiude, mentre `I` resta la scorciatoia. Non
+viene reintrodotta alcuna fascia permanente.
+
+La Secondary Action compare soltanto quando aggiunge un'interazione distinta.
+Passage come Verso la piazza, Arco, Sentiero e Vicolo mostrano quindi la sola
+azione principale; Noun come Argano, Raffaele, Panca e Macina continuano a
+esporre click sinistro e destro. Con un Object selezionato, il suo uso diventa
+la primaria e l'azione principale del Noun resta disponibile come secondaria.
