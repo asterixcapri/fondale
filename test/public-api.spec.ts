@@ -866,3 +866,66 @@ test("defineGame bounds a Character-owned placement operation to its Scene Size"
     initialScene: "opening",
   })).toThrow(/placed Object Ground Point/i);
 });
+
+test("defineGame bounds portable Object and Sequence placements to every possible destination Scene", () => {
+  const portableNoun = defineNoun({
+    labels: [{ text: "Portable object" }],
+    preferredVerbs: [{ verb: "use" }],
+    cases: [{
+      verb: "use",
+      response: { text: "Placed." },
+      operations: [{ type: "place-selected-object", groundPoint: { x: 150, y: 20 } }],
+    }],
+  });
+  const portableObject = defineObject({
+    initialScene: "large",
+    initialGroundPoint: { x: 150, y: 20 },
+    initialAppearance: "idle",
+    appearances: { idle: { kind: "static", image: "object.png" } },
+    inventoryAppearance: "inventory.png",
+    noun: portableNoun,
+  });
+  const small = defineScene({
+    background: "small.png",
+    size: { width: 100, height: 100 },
+    walkableRegion: [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 0, y: 100 }],
+  });
+  const large = defineScene({
+    background: "large.png",
+    size: { width: 200, height: 100 },
+    walkableRegion: [{ x: 0, y: 0 }, { x: 200, y: 0 }, { x: 0, y: 100 }],
+  });
+
+  const placementCodes = (define: () => unknown) => {
+    try {
+      define();
+      throw new Error("expected defineGame to reject the placement");
+    } catch (error) {
+      expect(error).toBeInstanceOf(AuthoringError);
+      return (error as AuthoringError).diagnostics.map(({ code }) => code);
+    }
+  };
+  expect(placementCodes(() => defineGame({
+    identity: "invalid.portable-object-placement",
+    version: "1",
+    logicalResolution: { width: 100, height: 100 },
+    scenes: { small, large },
+    objects: { portableObject },
+    initialScene: "small",
+  }))).toContain("definition.operation.ground-point");
+
+  const placement = defineSequence({
+    steps: [{
+      type: "operations",
+      operations: [{ type: "place-selected-object", groundPoint: { x: 150, y: 20 } }],
+    }],
+  });
+  expect(placementCodes(() => defineGame({
+    identity: "invalid.sequence-placement",
+    version: "1",
+    logicalResolution: { width: 100, height: 100 },
+    scenes: { small, large },
+    sequences: { placement },
+    initialScene: "small",
+  }))).toContain("definition.operation.ground-point");
+});

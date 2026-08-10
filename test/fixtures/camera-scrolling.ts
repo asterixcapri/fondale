@@ -1,4 +1,5 @@
 import cameraScrollingUrl from "./camera-scrolling.png";
+import cameraScrollingHorizontalUrl from "./camera-scrolling-horizontal.png";
 import playerUrl from "./invalid-inventory.png";
 import {
   commandVerbs,
@@ -22,24 +23,30 @@ declare global {
   }
 }
 
+const parameters = new URLSearchParams(window.location.search);
+const horizontal = parameters.has("horizontal");
+const sceneId = horizontal ? "horizontal" : "fortification";
+const sceneHeight = horizontal ? 240 : 992;
+const hotspotTop = horizontal ? 100 : 760;
+const hotspotBottom = horizontal ? 160 : 820;
 const scene = defineScene({
-  background: cameraScrollingUrl,
-  size: { width: 1586, height: 992 },
+  background: horizontal ? cameraScrollingHorizontalUrl : cameraScrollingUrl,
+  size: { width: 1586, height: sceneHeight },
   walkableRegion: [
     { x: 0, y: 0 },
     { x: 1586, y: 0 },
-    { x: 1586, y: 992 },
-    { x: 0, y: 992 },
+    { x: 1586, y: sceneHeight },
+    { x: 0, y: sceneHeight },
   ],
   hotspots: [{
     target: { kind: "background" },
     area: [
-      { x: 480, y: 760 },
-      { x: 560, y: 760 },
-      { x: 560, y: 820 },
-      { x: 480, y: 820 },
+      { x: 480, y: hotspotTop },
+      { x: 560, y: hotspotTop },
+      { x: 560, y: hotspotBottom },
+      { x: 480, y: hotspotBottom },
     ],
-    approach: { groundPoint: { x: 520, y: 820 }, facing: "back" },
+    approach: { groundPoint: { x: 520, y: hotspotBottom }, facing: "back" },
     noun: defineNoun({
       labels: [{ text: "Fortification marker" }],
       preferredVerbs: [{ verb: "look-at" }],
@@ -55,8 +62,8 @@ const scene = defineScene({
   }],
 });
 const player = defineCharacter({
-  initialScene: "fortification",
-  initialGroundPoint: { x: 213, y: 850 },
+  initialScene: sceneId,
+  initialGroundPoint: { x: 213, y: horizontal ? 180 : 850 },
   initialFacing: "front",
   initialAppearance: "idle",
   appearances: {
@@ -65,8 +72,8 @@ const player = defineCharacter({
   movementSpeed: 240,
 });
 const guide = defineCharacter({
-  initialScene: "fortification",
-  initialGroundPoint: { x: 520, y: 790 },
+  initialScene: sceneId,
+  initialGroundPoint: { x: 520, y: horizontal ? 130 : 790 },
   initialFacing: "front",
   initialAppearance: "idle",
   appearances: {
@@ -74,12 +81,12 @@ const guide = defineCharacter({
   },
   movementSpeed: 60,
 });
-const noPlayer = new URLSearchParams(window.location.search).has("noPlayer");
+const noPlayer = parameters.has("noPlayer");
 const project = defineGame({
   identity: "test.camera-scrolling",
   version: "1",
   logicalResolution: { width: 426, height: 240 },
-  scenes: { fortification: scene },
+  scenes: { [sceneId]: scene },
   characters: noPlayer ? { guide } : { player, guide },
   ...(noPlayer ? {} : { playerCharacter: "player" }),
   commandLexicon: defineCommandLexicon({
@@ -95,7 +102,7 @@ const project = defineGame({
   commandFallbacks: Object.fromEntries(
     commandVerbs.map((verb) => [verb, { text: "Nothing happens." }]),
   ) as never,
-  initialScene: "fortification",
+  initialScene: sceneId,
 });
 
 try {

@@ -42,8 +42,13 @@ Logical Resolution is the fixed viewport. Scene Size is the complete Scene
 Space extent and defaults to Logical Resolution; each declared axis must be a
 positive integer no smaller than the corresponding viewport axis. Every Scene
 coordinate and the Background's exact pixel dimensions use the resolved Scene
-Size. Character and Object Ground Points must remain in the Walkable Region;
-Scenery uses its Baseline and optional position for depth.
+Size. Character Ground Points must remain in the Walkable Region, while Object
+Ground Points must remain inside the Scene Size. Scenery uses its Baseline and
+optional position for depth.
+An Object placement authored on a portable Object, the Player Character, or a
+Sequence must fit every registered Scene Size because it can execute in any
+current Scene. Scene-local Nouns validate placements only against their owning
+Scene.
 
 ```ts
 const harbour = defineScene({

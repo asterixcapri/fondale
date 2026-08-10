@@ -738,6 +738,7 @@ function validateProjectDefinitions(
   diagnostics: AuthoringDiagnostic[],
 ): void {
   const missingOwnerNounPaths = new Set<string>();
+  const allSceneIds = Object.keys(input.scenes);
   const sceneSize = (scene: SceneDefinition): SceneSize => scene.size ?? input.logicalResolution;
   const pointInScene = (scene: SceneDefinition, point: Point) => {
     const { width, height } = sceneSize(scene);
@@ -758,7 +759,7 @@ function validateProjectDefinitions(
   const operations = (
     values: readonly GameOperation[],
     path: string,
-    context: { target?: HotspotTarget; sequence?: boolean; scene?: string } = {},
+    context: { target?: HotspotTarget; sequence?: boolean; scenes?: readonly string[] } = {},
   ) => {
     values.forEach((operation, index) => {
       const operationPath = `${path}[${index}]`;
@@ -799,8 +800,10 @@ function validateProjectDefinitions(
       } else if (operation.type === "place-selected-object" && (
         !Number.isFinite(operation.groundPoint.x) ||
         !Number.isFinite(operation.groundPoint.y) ||
-        context.scene !== undefined &&
-        !pointInScene(input.scenes[context.scene]!, operation.groundPoint)
+        (context.scenes ?? allSceneIds).some((sceneId) => {
+          const scene = input.scenes[sceneId];
+          return scene !== undefined && !pointInScene(scene, operation.groundPoint);
+        })
       )) {
         diagnostics.push({
           code: "definition.operation.ground-point",
@@ -825,7 +828,7 @@ function validateProjectDefinitions(
     value: NounDefinition | undefined,
     path: string,
     target?: HotspotTarget,
-    scene?: string,
+    destinationScenes?: readonly string[],
   ) => {
     if (!value) return;
     value.labels.forEach((label, index) => condition(label.when, `${path}.labels[${index}].when`));
@@ -857,7 +860,10 @@ function validateProjectDefinitions(
       }
       validateCommandResponse(candidate.response, `${candidatePath}.response`, diagnostics);
       line(candidate.line, `${candidatePath}.line`);
-      operations(candidate.operations ?? [], `${candidatePath}.operations`, { target, scene });
+      operations(candidate.operations ?? [], `${candidatePath}.operations`, {
+        target,
+        scenes: destinationScenes,
+      });
     });
     for (const verb of commandVerbs) {
       const fallback = value.fallbacks?.[verb];
@@ -872,7 +878,10 @@ function validateProjectDefinitions(
       }
       if (fallback) {
         validateCommandResponse(fallback.response, `${path}.fallbacks.${verb}.response`, diagnostics);
-        operations(fallback.operations ?? [], `${path}.fallbacks.${verb}.operations`, { target, scene });
+        operations(fallback.operations ?? [], `${path}.fallbacks.${verb}.operations`, {
+          target,
+          scenes: destinationScenes,
+        });
         if (fallback.sequence !== undefined && !(fallback.sequence in sequences)) {
           diagnostics.push(referenceDiagnostic(
             "reference.sequence",
@@ -916,7 +925,7 @@ function validateProjectDefinitions(
         scenery.noun,
         `scenes.${sceneId}.scenery.${sceneryId}.noun`,
         { kind: "scenery", scenery: sceneryId },
-        sceneId,
+        [sceneId],
       );
       if (!(scenery.initialAppearance in scenery.appearances)) {
         diagnostics.push(referenceDiagnostic("reference.appearance.initial", `scenes.${sceneId}.scenery.${sceneryId}.initialAppearance`, "Initial Scenery Appearance does not exist."));
@@ -948,7 +957,7 @@ function validateProjectDefinitions(
     scene.hotspots?.forEach((hotspot, hotspotIndex) => {
       const base = `scenes.${sceneId}.hotspots[${hotspotIndex}]`;
       if (hotspot.target.kind === "background") {
-        noun(hotspot.noun, `${base}.noun`, hotspot.target, sceneId);
+        noun(hotspot.noun, `${base}.noun`, hotspot.target, [sceneId]);
       }
       validatePolygonBounds(hotspot.area, `${base}.area`, inScene, diagnostics);
       if (!inScene(hotspot.approach.groundPoint)) {
@@ -990,7 +999,7 @@ function validateProjectDefinitions(
     });
     scene.passages?.forEach((passage, passageIndex) => {
       const base = `scenes.${sceneId}.passages[${passageIndex}]`;
-      noun(passage.noun, `${base}.noun`, undefined, sceneId);
+      noun(passage.noun, `${base}.noun`, undefined, [sceneId]);
       validatePolygonBounds(passage.area, `${base}.area`, inScene, diagnostics);
       if (!inScene(passage.approach.groundPoint)) {
         diagnostics.push({ code: "definition.approach.bounds", family: "definition", path: `${base}.approach`, message: "Approach Point must be inside Scene Space." });
@@ -1012,7 +1021,7 @@ function validateProjectDefinitions(
       character.noun,
       `characters.${characterId}.noun`,
       { kind: "character", character: characterId },
-      character.initialScene,
+      characterId === input.playerCharacter ? allSceneIds : [character.initialScene],
     );
     const scene = input.scenes[character.initialScene];
     if (!scene) continue;
@@ -1028,7 +1037,7 @@ function validateProjectDefinitions(
       object.noun,
       `objects.${objectId}.noun`,
       { kind: "object", object: objectId },
-      object.initialScene,
+      allSceneIds,
     );
     const scene = input.scenes[object.initialScene];
     if (scene && !pointInScene(scene, object.initialGroundPoint)) {

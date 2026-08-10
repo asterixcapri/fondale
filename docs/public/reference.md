@@ -61,7 +61,10 @@ positive frame counts and rate; the side strip is mirrored for left movement.
 `defineObject` validates an Object with initial Scene, Ground Point, Appearance,
 named static Appearances, square `inventoryAppearance`, and optional Noun. An
 Object is in one Scene, in Inventory, or consumed. Its one Noun governs both
-world and Inventory interactions.
+world and Inventory interactions. A `place-selected-object` Ground Point must
+fit every Scene in which its owning Noun or Sequence can execute; portable
+Objects, Player Character Nouns, and Sequences are therefore checked against
+every registered Scene Size.
 
 `defineSequence` validates a finite `SequenceDefinition`. `SequenceStep` is a
 Character-bound Line, explicit Narration, Choice, Branch, or atomic Operations

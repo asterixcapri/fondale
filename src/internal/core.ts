@@ -736,6 +736,15 @@ export function createCoreSession(
       const selected = firstNounObject;
       if (!selected || !draft.inventory.objects.includes(selected)) throw new Error("No Object is selected.");
       const object = draft.objects[selected]!;
+      const destination = data.scenes[draft.currentScene]!;
+      if (
+        operation.groundPoint.x < 0 ||
+        operation.groundPoint.y < 0 ||
+        operation.groundPoint.x > destination.size.width ||
+        operation.groundPoint.y > destination.size.height
+      ) {
+        throw new Error("The placed Object Ground Point is outside the destination Scene Size.");
+      }
       if (operation.appearance !== undefined && !(operation.appearance in data.objects[selected]!.appearances)) {
         throw new Error(`Unknown Object Appearance '${operation.appearance}'.`);
       }

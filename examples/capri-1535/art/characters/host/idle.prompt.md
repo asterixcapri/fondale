@@ -7,5 +7,5 @@ Style: original warm Mediterranean pixel-art-inspired adventure illustration.
 Production ground: flat chroma green, no shadow, no text, no watermark.
 
 Generated with the built-in image generation tool and processed by
-`tools/build_sprite.py` into the original Runtime Asset under `src/characters/host/`;
-the prologue currently reuses the processed sprite for Brother Elia.
+`tools/build_sprite.py`; the prologue reuses the processed sprite for Brother Elia
+under `src/characters/brother-elia/`.

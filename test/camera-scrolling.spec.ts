@@ -34,6 +34,31 @@ async function waitForIdle(page: Page): Promise<void> {
   )).toBeNull();
 }
 
+async function renderedPixel(page: Page, x: number, y: number) {
+  const screenshot = await page.locator("[data-fondale-frame] canvas").screenshot();
+  return page.evaluate(async ({ dataUrl, x, y }) => {
+    const image = new Image();
+    image.src = dataUrl;
+    await image.decode();
+    const copy = document.createElement("canvas");
+    copy.width = image.width;
+    copy.height = image.height;
+    const context = copy.getContext("2d", { willReadFrequently: true });
+    if (!context) throw new Error("A 2D canvas is required to inspect the rendered pixel.");
+    context.drawImage(image, 0, 0);
+    return [...context.getImageData(
+      Math.round((x / 426) * image.width),
+      Math.round((y / 240) * image.height),
+      1,
+      1,
+    ).data];
+  }, {
+    dataUrl: `data:image/png;base64,${screenshot.toString("base64")}`,
+    x,
+    y,
+  });
+}
+
 async function moveViewport(page: Page, x: number, y: number): Promise<void> {
   const before = await playerPoint(page);
   await clickViewport(page, x, y);
@@ -129,6 +154,24 @@ test("an oversized Scene without a Player Character remains at origin", async ({
   expect((await canvas.screenshot()).equals(initial)).toBe(true);
 });
 
+test("a wide Scene with viewport-height keeps vertical borders fixed while following horizontally", async ({
+  page,
+}) => {
+  await page.goto("/test/fixtures/camera-scrolling.html?horizontal");
+  await waitForCameraFixture(page);
+  const canvas = page.locator("[data-fondale-frame] canvas");
+  const initial = await canvas.screenshot();
+  expect(await renderedPixel(page, 213, 1)).toEqual([226, 64, 176, 255]);
+  expect(await renderedPixel(page, 213, 238)).toEqual([242, 207, 69, 255]);
+
+  await clickViewport(page, 380, 120);
+  await expect.poll(async () => (await playerPoint(page)).x).toBeGreaterThan(370);
+  await page.waitForTimeout(700);
+  expect((await canvas.screenshot()).equals(initial)).toBe(false);
+  expect(await renderedPixel(page, 213, 1)).toEqual([226, 64, 176, 255]);
+  expect(await renderedPixel(page, 213, 238)).toEqual([242, 207, 69, 255]);
+});
+
 test("revealed world geometry and contextual input share the scrolled projection", async ({
   page,
 }) => {
@@ -205,6 +248,19 @@ test("Camera clamps both Scene Size axes and restoration snaps before presentati
   await page.waitForTimeout(300);
   const settled = await canvas.screenshot();
   expect(settled.equals(restored)).toBe(true);
+
+  await page.evaluate(() => window.__cameraTest!.restart({ x: 0, y: 0 }));
+  await expect.poll(async () => playerPoint(page)).toEqual({ x: 0, y: 0 });
+  const topLeft = await canvas.screenshot();
+  expect(await renderedPixel(page, 213, 1)).toEqual([226, 64, 176, 255]);
+  expect(await renderedPixel(page, 1, 120)).toEqual([50, 199, 217, 255]);
+
+  await page.evaluate(() => window.__cameraTest!.restart({ x: 1586, y: 992 }));
+  await expect.poll(async () => playerPoint(page)).toEqual({ x: 1586, y: 992 });
+  const bottomRight = await canvas.screenshot();
+  expect(bottomRight.equals(topLeft)).toBe(false);
+  expect(await renderedPixel(page, 424, 120)).toEqual([79, 209, 116, 255]);
+  expect(await renderedPixel(page, 213, 238)).toEqual([242, 207, 69, 255]);
 });
 
 test("speech stays with a visible non-player speaker without taking Camera control", async ({
