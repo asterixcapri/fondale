@@ -903,6 +903,17 @@ function validateProjectDefinitions(
   ) => {
     values.forEach((operation, index) => {
       const operationPath = `${path}[${index}]`;
+      if (
+        context.sequence &&
+        (operation.type === "place-selected-object" || operation.type === "consume-selected-object")
+      ) {
+        diagnostics.push({
+          code: "definition.sequence.selected-object-operation",
+          family: "definition",
+          path: operationPath,
+          message: "A Sequence cannot use a selected-Object operation because it has no Command selection context.",
+        });
+      }
       if (operation.type === "set-variable" && !(operation.variable in variables)) {
         diagnostics.push(referenceDiagnostic("reference.variable", operationPath, `Game Variable '${operation.variable}' does not exist.`));
       } else if (operation.type === "start-sequence") {
@@ -1244,6 +1255,7 @@ function validateProjectDefinitions(
     step: DirectStep,
     path: string,
     sceneId?: string,
+    availableObjects: ReadonlySet<string> = new Set(),
     continuesSceneryMotion: (scenery: string, destination: Point) => boolean = () => false,
   ) => {
     let hasFiniteBoundary = step.duration !== undefined;
@@ -1254,7 +1266,7 @@ function validateProjectDefinitions(
         if (appearances.length === 0) {
           diagnostics.push(referenceDiagnostic("reference.sequence.subject", `${directionPath}.subject`, "Directed subject does not exist or has no animated Appearance."));
         }
-        if (sceneId && !subjectBelongsToScene(direction.subject, sceneId, input.playerCharacter, characters, objects, input.scenes)) {
+        if (sceneId && !subjectBelongsToScene(direction.subject, sceneId, input.playerCharacter, characters, objects, input.scenes, availableObjects)) {
           diagnostics.push(referenceDiagnostic(
             "reference.sequence.subject-scene",
             `${directionPath}.subject`,
@@ -1326,7 +1338,7 @@ function validateProjectDefinitions(
               ? direction.subject.object in objects
               : sceneId !== undefined && sceneryId! in (input.scenes[sceneId]?.scenery ?? {});
           if (!exists) diagnostics.push(referenceDiagnostic("reference.camera.subject", `${directionPath}.subject`, "Camera follow subject does not exist."));
-          else if (sceneId && !subjectBelongsToScene(direction.subject, sceneId, input.playerCharacter, characters, objects, input.scenes)) {
+          else if (sceneId && !subjectBelongsToScene(direction.subject, sceneId, input.playerCharacter, characters, objects, input.scenes, availableObjects)) {
             diagnostics.push(referenceDiagnostic(
               "reference.camera.subject-scene",
               `${directionPath}.subject`,
@@ -1356,7 +1368,13 @@ function validateProjectDefinitions(
     if (!hasFiniteBoundary) diagnostics.push({ code: "definition.sequence.direct.unbounded", family: "definition", path, message: "A directed step containing only loops needs a finite completion boundary." });
   };
 
-  const visitSteps = (steps: readonly SequenceStep[], path: string, sceneId?: string) => {
+  const visitSteps = (
+    steps: readonly SequenceStep[],
+    path: string,
+    sceneId?: string,
+    availableObjects: ReadonlySet<string> = new Set(),
+  ): Set<string> => {
+    let objectsInScene = new Set(availableObjects);
     steps.forEach((step, index) => {
       const base = `${path}[${index}]`;
       if (step.type === "line" && step.character !== undefined && !(step.character in characters)) {
@@ -1368,16 +1386,23 @@ function validateProjectDefinitions(
         }
       } else if (step.type === "operations") {
         operations(step.operations, `${base}.operations`, { sequence: true });
+        for (const operation of step.operations) {
+          if (operation.type !== "place-object") continue;
+          if (operation.scene === sceneId) objectsInScene.add(operation.object);
+          else objectsInScene.delete(operation.object);
+        }
       } else if (step.type === "direct") {
         validateDirections(
           step,
           base,
           sceneId,
+          objectsInScene,
           (scenery, destination) => {
             const next = steps[index + 1];
             if (next?.type !== "direct") return false;
             return next.directions.some((direction) =>
               direction.type === "motion" &&
+              direction.startAfter === undefined &&
               direction.subject.kind === "scenery" &&
               direction.subject.scenery === scenery &&
               direction.path[0] !== undefined &&
@@ -1389,6 +1414,7 @@ function validateProjectDefinitions(
           },
         );
       } else if (step.type === "choice") {
+        const branchObjects: Set<string>[] = [];
         step.alternatives.forEach((alternative, alternativeIndex) => {
           if (alternative.spoken !== false && !input.playerCharacter) {
             diagnostics.push({
@@ -1399,7 +1425,12 @@ function validateProjectDefinitions(
             });
           }
           condition(alternative.when, `${base}.alternatives[${alternativeIndex}].when`);
-          visitSteps(alternative.steps, `${base}.alternatives[${alternativeIndex}].steps`, sceneId);
+          branchObjects.push(visitSteps(
+            alternative.steps,
+            `${base}.alternatives[${alternativeIndex}].steps`,
+            sceneId,
+            objectsInScene,
+          ));
         });
         if (step.fallback.spoken !== false && !input.playerCharacter) {
           diagnostics.push({
@@ -1409,15 +1440,24 @@ function validateProjectDefinitions(
             message: "A spoken Choice requires a Player Character.",
           });
         }
-        visitSteps(step.fallback.steps, `${base}.fallback.steps`, sceneId);
+        branchObjects.push(visitSteps(step.fallback.steps, `${base}.fallback.steps`, sceneId, objectsInScene));
+        objectsInScene = intersectSets(branchObjects);
       } else if (step.type === "branch") {
+        const branchObjects: Set<string>[] = [];
         step.cases.forEach((branch, branchIndex) => {
           condition(branch.when, `${base}.cases[${branchIndex}].when`);
-          visitSteps(branch.steps, `${base}.cases[${branchIndex}].steps`, sceneId);
+          branchObjects.push(visitSteps(
+            branch.steps,
+            `${base}.cases[${branchIndex}].steps`,
+            sceneId,
+            objectsInScene,
+          ));
         });
-        visitSteps(step.fallback, `${base}.fallback`, sceneId);
+        branchObjects.push(visitSteps(step.fallback, `${base}.fallback`, sceneId, objectsInScene));
+        objectsInScene = intersectSets(branchObjects);
       }
     });
+    return objectsInScene;
   };
   const hasDirectedStep = (steps: readonly SequenceStep[]): boolean => steps.some((step) =>
     step.type === "direct" ||
@@ -1435,7 +1475,10 @@ function validateProjectDefinitions(
     if (directs && (!sequence.scene || !(sequence.scene in input.scenes))) {
       diagnostics.push(referenceDiagnostic("reference.sequence.scene", `sequences.${sequenceId}.scene`, "A directed Sequence must name its owning Scene."));
     }
-    visitSteps(sequence.steps, `sequences.${sequenceId}.steps`, sequence.scene);
+    const initiallyAvailableObjects = new Set(Object.entries(objects)
+      .filter(([, object]) => object.initialScene === sequence.scene)
+      .map(([objectId]) => objectId));
+    visitSteps(sequence.steps, `sequences.${sequenceId}.steps`, sequence.scene, initiallyAvailableObjects);
     operations(sequence.skipOutcome ?? [], `sequences.${sequenceId}.skipOutcome`, { sequence: true });
   }
   for (const character of Object.keys(input.hudTheme?.speechColors ?? {})) {
@@ -1649,12 +1692,18 @@ function subjectBelongsToScene(
   characters: Readonly<Record<string, CharacterDefinition>>,
   objects: Readonly<Record<string, ObjectDefinition>>,
   scenes: Readonly<Record<string, SceneDefinition>>,
+  availableObjects: ReadonlySet<string> = new Set(),
 ): boolean {
   if (subject.kind === "character") {
     return subject.character === playerCharacter || characters[subject.character]?.initialScene === sceneId;
   }
-  if (subject.kind === "object") return subject.object in objects;
+  if (subject.kind === "object") return subject.object in objects && availableObjects.has(subject.object);
   return subject.scenery in (scenes[sceneId]?.scenery ?? {});
+}
+
+function intersectSets(values: readonly ReadonlySet<string>[]): Set<string> {
+  const [first, ...rest] = values;
+  return new Set([...(first ?? [])].filter((value) => rest.every((candidate) => candidate.has(value))));
 }
 
 function isAnimationImageFrames(frames: AnimationFrames): frames is readonly (URL | string)[] {

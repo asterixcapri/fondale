@@ -2,6 +2,7 @@ import { defineNoun, defineScene } from "@asterixcapri/fondale";
 
 import { rectangle } from "../../geometry";
 import alleyBackgroundUrl from "./background.png";
+import lockedGateUrl from "./gate-locked.png";
 import unlockedMarkerUrl from "./gate-unlocked.png";
 
 export const alley = defineScene({
@@ -14,7 +15,11 @@ export const alley = defineScene({
       position: { x: 209, y: 143 },
       initialAppearance: "locked",
       appearances: {
-        locked: { kind: "background-region", area: rectangle(186, 118, 232, 150) },
+        locked: {
+          animations: { idle: { frames: [lockedGateUrl], framesPerSecond: 1, loop: true } },
+          roles: { default: "idle" },
+          visualAnchor: { x: 23, y: 25 },
+        },
         unlocked: { animations: { idle: { frames: [unlockedMarkerUrl], framesPerSecond: 1, loop: true } }, roles: { default: "idle" } },
       },
       noun: defineNoun({

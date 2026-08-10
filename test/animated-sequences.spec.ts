@@ -197,7 +197,19 @@ test("composition requires the final Scenery Motion to end at its resting positi
         baseline: 30,
         position: { x: 60, y: 30 },
         initialAppearance: "normal",
-        appearances: { normal: staticAppearance("marker.png") },
+        appearances: {
+          normal: {
+            animations: {
+              idle: {
+                frames: ["marker.png", "marker.png"],
+                framesPerSecond: 1,
+                loop: true,
+                cues: { later: 1 },
+              },
+            },
+            roles: { default: "idle" },
+          },
+        },
       },
     },
   });
@@ -241,6 +253,32 @@ test("composition requires the final Scenery Motion to end at its resting positi
     logicalResolution: { width: 100, height: 100 },
     scenes: { room },
     sequences: { interrupted },
+    initialScene: "room",
+  })).toThrow(/resting position/);
+
+  const delayedContinuation = defineSequence({
+    scene: "room",
+    steps: [action.steps[0]!, {
+      type: "direct",
+      directions: [{
+        type: "animation",
+        subject: { kind: "scenery", scenery: "marker" },
+        animation: "idle",
+      }, {
+        type: "motion",
+        subject: { kind: "scenery", scenery: "marker" },
+        path: [{ x: 50, y: 30 }, { x: 60, y: 30 }],
+        duration: 1,
+        startAfter: { direction: 0, cue: "later" },
+      }],
+    }],
+  });
+  expect(() => defineGame({
+    identity: "test.delayed-scenery-motion",
+    version: "1",
+    logicalResolution: { width: 100, height: 100 },
+    scenes: { room },
+    sequences: { delayedContinuation },
     initialScene: "room",
   })).toThrow(/resting position/);
 });
@@ -289,6 +327,61 @@ test("an Object placed earlier in a Sequence may be directed in its owning Scene
     sequences: { action },
     initialScene: "room",
   })).toBeDefined();
+
+  const unavailable = defineSequence({
+    scene: "room",
+    steps: action.steps.slice(1),
+  });
+  try {
+    defineGame({
+      identity: "test.unavailable-directed-object",
+      version: "1",
+      logicalResolution: { width: 100, height: 100 },
+      scenes: {
+        room: defineScene({ background: "room.png", walkableRegion: square }),
+        elsewhere: defineScene({ background: "elsewhere.png", walkableRegion: square }),
+      },
+      objects: { prop },
+      sequences: { unavailable },
+      initialScene: "room",
+    });
+    throw new Error("Expected defineGame to reject the unavailable Object.");
+  } catch (error) {
+    expect(error).toBeInstanceOf(AuthoringError);
+    expect((error as AuthoringError).diagnostics).toContainEqual(expect.objectContaining({
+      code: "reference.sequence.subject-scene",
+      path: "sequences.unavailable.steps[0].directions[0].subject",
+    }));
+  }
+});
+
+test("composition rejects selected-Object operations from Sequence outcomes", () => {
+  const square = [
+    { x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }, { x: 0, y: 100 },
+  ];
+  const invalidOutcome = defineSequence({
+    skippable: true,
+    skipOutcome: [{ type: "consume-selected-object" }],
+    steps: [{ type: "narration", text: "Done." }],
+  });
+
+  try {
+    defineGame({
+      identity: "test.sequence-selected-object-outcome",
+      version: "1",
+      logicalResolution: { width: 100, height: 100 },
+      scenes: { room: defineScene({ background: "room.png", walkableRegion: square }) },
+      sequences: { invalidOutcome },
+      initialScene: "room",
+    });
+    throw new Error("Expected defineGame to reject the Skip Outcome.");
+  } catch (error) {
+    expect(error).toBeInstanceOf(AuthoringError);
+    expect((error as AuthoringError).diagnostics).toContainEqual(expect.objectContaining({
+      code: "definition.sequence.selected-object-operation",
+      path: "sequences.invalidOutcome.skipOutcome[0]",
+    }));
+  }
 });
 
 test("composition diagnoses a movable Player Appearance without a walking Role", () => {
