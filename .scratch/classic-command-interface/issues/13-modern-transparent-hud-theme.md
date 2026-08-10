@@ -70,3 +70,15 @@ fondali di Porto, Aiano e Boffe. La ricerca comparativa documenta che *Return to
 Monkey Island* separa le azioni in frasi autonome, protegge quella focalizzata
 con una capsula scura ad alto contrasto e collega i callout al target. Questa
 resa va provata separatamente prima di aggiornare il contratto di produzione.
+
+### 10 agosto 2026 — callout leggibili in prova
+
+Il prototipo Return-style ora sostituisce il titolo del Noun e le due
+micro-colonne con due frasi d'azione autonome. La primaria usa testo bianco
+grande su una capsula nera quasi opaca; la secondaria resta separata, con bordo
+scuro, e una linea collega i callout all'hotspot. Anche il Command Case con un
+Object selezionato forma una frase completa, per esempio «Usa Ampolla d'olio
+con l'argano».
+
+La resa è disponibile sullo stesso URL e va valutata su Porto, Aiano e Boffe.
+Non è ancora promossa nel contratto di produzione.

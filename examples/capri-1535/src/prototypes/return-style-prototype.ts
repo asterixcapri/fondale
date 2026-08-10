@@ -217,6 +217,36 @@ function actionsFor(state: PrototypeState, hotspotKey: HotspotKey): { main: stri
   return { main: `Usa ${item.label}`, secondary: hotspot.main };
 }
 
+const commandTargets: Readonly<Record<HotspotKey, string>> = {
+  winch: "l'argano",
+  raffaele: "Raffaele",
+  boat: "il gozzo",
+  passage: "verso la piazza",
+  arch: "l'arco",
+  vine: "il pergolato",
+  bench: "la panca",
+  "garden-path": "il sentiero",
+  "left-door": "la porta",
+  alley: "il vicolo",
+  millstone: "la macina",
+  "right-door": "il portone",
+};
+
+function actionPhrase(state: PrototypeState, hotspotKey: HotspotKey, action: "main" | "secondary"): string {
+  const item = selectedItem(state);
+  if (item && action === "main") {
+    return hotspotKey === "raffaele"
+      ? `Dai ${item.label} a Raffaele`
+      : `Usa ${item.label} con ${commandTargets[hotspotKey]}`;
+  }
+
+  const verb = actionsFor(state, hotspotKey)[action];
+  if (verb === "Parla") return `Parla con ${commandTargets[hotspotKey]}`;
+  if (verb === "Siediti") return "Siediti sulla panca";
+  if (verb === "Vai" && hotspotKey === "garden-path") return "Prendi il sentiero";
+  return `${verb} ${commandTargets[hotspotKey]}`;
+}
+
 function responseFor(state: PrototypeState, hotspotKey: HotspotKey, action: "main" | "secondary"): string {
   const hotspot = hotspotFor(state, hotspotKey);
   const item = selectedItem(state);
@@ -229,12 +259,10 @@ function responseFor(state: PrototypeState, hotspotKey: HotspotKey, action: "mai
 }
 
 function renderPrompt(state: PrototypeState, hotspotKey: HotspotKey): string {
-  const hotspot = hotspotFor(state, hotspotKey);
-  const actions = actionsFor(state, hotspotKey);
   return `<span class="return-prompt" aria-hidden="true">
-    <strong>${hotspot.label}</strong>
-    <span class="return-action is-main"><kbd>L</kbd>${actions.main}</span>
-    <span class="return-action"><kbd>R</kbd>${actions.secondary}</span>
+    <span class="return-action is-main"><span class="return-input is-left"></span><span>${actionPhrase(state, hotspotKey, "main")}</span></span>
+    <span class="return-action is-secondary"><span class="return-input is-right"></span><span>${actionPhrase(state, hotspotKey, "secondary")}</span></span>
+    <span class="return-leader"></span>
   </span>`;
 }
 
