@@ -8,7 +8,11 @@ import {
   type GameSession,
 } from "@asterixcapri/fondale";
 
-import { interactionScene } from "../../docs/public/recipes/interaction";
+import {
+  interactionCharacter,
+  interactionObject,
+  interactionScene,
+} from "../../docs/public/recipes/interaction";
 import {
   englishCommandFallbacks,
   englishCommandLexicon,
@@ -31,8 +35,9 @@ const interactionProject = defineGame({
   version: "1",
   logicalResolution: { width: 100, height: 100 },
   scenes: { opening: interactionScene },
-  characters: { player },
+  characters: { player, host: interactionCharacter },
   playerCharacter: "player",
+  objects: { coin: interactionObject },
   variables: { doorOpen: false },
   commandLexicon: englishCommandLexicon,
   commandFallbacks: englishCommandFallbacks,

@@ -1,6 +1,46 @@
-import { defineNoun, defineScene } from "@asterixcapri/fondale";
+import {
+  defineCharacter,
+  defineNoun,
+  defineObject,
+  defineScene,
+} from "@asterixcapri/fondale";
 
 const doorArea = [{ x: 10, y: 10 }, { x: 30, y: 10 }, { x: 30, y: 30 }];
+
+export const interactionCharacter = defineCharacter({
+  initialScene: "opening",
+  initialGroundPoint: { x: 65, y: 35 },
+  initialFacing: "left",
+  initialAppearance: "idle",
+  appearances: {
+    idle: { kind: "static", image: new URL("./key.png", import.meta.url) },
+  },
+  movementSpeed: 60,
+  noun: defineNoun({
+    labels: [{ text: "Host" }],
+    preferredVerbs: [{ verb: "talk-to" }],
+    cases: [{ verb: "talk-to", response: { text: "Welcome." } }],
+  }),
+});
+
+export const interactionObject = defineObject({
+  initialScene: "opening",
+  initialGroundPoint: { x: 85, y: 35 },
+  initialAppearance: "present",
+  appearances: {
+    present: { kind: "static", image: new URL("./key.png", import.meta.url) },
+  },
+  inventoryAppearance: new URL("./key-inventory-32.png", import.meta.url),
+  noun: defineNoun({
+    labels: [{ text: "Coin" }],
+    preferredVerbs: [{ verb: "pick-up" }],
+    cases: [{
+      verb: "pick-up",
+      response: { text: "The coin enters the Inventory." },
+      operations: [{ type: "collect-target-object" }],
+    }],
+  }),
+});
 
 export const interactionScene = defineScene({
   background: new URL("./scene.png", import.meta.url),
@@ -31,9 +71,31 @@ export const interactionScene = defineScene({
       }),
     },
   },
-  hotspots: [{
-    target: { kind: "scenery", scenery: "door" },
-    area: doorArea,
-    approach: { groundPoint: { x: 40, y: 35 }, facing: "back" },
-  }],
+  hotspots: [
+    {
+      target: { kind: "scenery", scenery: "door" },
+      area: doorArea,
+      approach: { groundPoint: { x: 40, y: 35 }, facing: "back" },
+    },
+    {
+      target: { kind: "character", character: "host" },
+      area: [{ x: 55, y: 10 }, { x: 70, y: 10 }, { x: 70, y: 35 }],
+      approach: { groundPoint: { x: 50, y: 35 }, facing: "right" },
+    },
+    {
+      target: { kind: "object", object: "coin" },
+      area: [{ x: 78, y: 25 }, { x: 92, y: 25 }, { x: 92, y: 38 }],
+      approach: { groundPoint: { x: 75, y: 35 }, facing: "right" },
+    },
+    {
+      target: { kind: "background" },
+      area: [{ x: 35, y: 5 }, { x: 50, y: 5 }, { x: 50, y: 20 }],
+      approach: { groundPoint: { x: 45, y: 35 }, facing: "back" },
+      noun: defineNoun({
+        labels: [{ text: "Mural" }],
+        preferredVerbs: [{ verb: "look-at" }],
+        cases: [{ verb: "look-at", response: { text: "Faded paint." } }],
+      }),
+    },
+  ],
 });

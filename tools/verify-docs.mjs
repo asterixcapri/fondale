@@ -100,6 +100,7 @@ const requiredRecipes = [
   "inventory.ts",
   "save-snapshot.ts",
   "command-case.ts",
+  "hud-theme.ts",
 ];
 for (const recipe of requiredRecipes) {
   if (!existsSync(join(repository, "docs/public/recipes", recipe))) {

@@ -9,5 +9,6 @@ These focused TypeScript sources compile against the distributable package:
 - [Object and Inventory](inventory.ts)
 - [Save Snapshot validation and restoration](save-snapshot.ts)
 - [Declarative Command Case](command-case.ts)
+- [HUD Theme](hud-theme.ts)
 
 Each file demonstrates one Engine Capability through the public package.

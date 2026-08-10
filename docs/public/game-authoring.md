@@ -71,6 +71,9 @@ navigation target. Holding Tab reveals available Hotspots and Passages.
 A Character, Object, or Scenery owns at most one Noun Definition. Every
 Hotspot that identifies that target uses the owner's labels, contextual Verbs,
 Command Cases, responses, Lines, Sequences, and Game Operations.
+The complete compiled [Interaction recipe](recipes/interaction.ts) defines one
+Character, Object, Scenery, and Background Hotspot together and composes their
+required owners through `defineGame` in the recipe tests.
 
 An Object Noun drives both its world Hotspot and Inventory entry:
 
@@ -147,6 +150,19 @@ A background region has no registry owner, so its Hotspot requires a local
 Noun. Character, Object, and Scenery Hotspots reject a local Noun. An owner may
 omit its Noun while non-interactive; if a Hotspot references it, `defineGame`
 reports `definition.hotspot.target-noun.required` at the owner's `noun` path.
+
+```ts
+const muralHotspot: HotspotDefinition = {
+  target: { kind: "background" },
+  area: [{ x: 35, y: 5 }, { x: 50, y: 5 }, { x: 50, y: 20 }],
+  approach: { groundPoint: { x: 45, y: 35 }, facing: "back" },
+  noun: defineNoun({
+    labels: [{ text: "Mural" }],
+    preferredVerbs: [{ verb: "look-at" }],
+    cases: [{ verb: "look-at", response: { text: "Faded paint." } }],
+  }),
+};
+```
 
 ## Resolve Commands declaratively
 
@@ -241,7 +257,26 @@ if (result.ok) {
 ```
 
 `defineHUDTheme` optionally supplies the local font, palette, opacity, speech
-width and colours, and directional cursors used by the Engine-owned HUD. Input,
-browser, layout, Inventory, speech, Save/Load, and exclusion commitments are
-listed in the [Support Baseline](support-baseline.md). See the executable
+width and colours, and directional cursors used by the Engine-owned HUD:
+
+```ts
+const hudTheme = defineHUDTheme({
+  font: { family: "Example Serif", source: "./example-serif.woff2" },
+  colors: {
+    text: "#f4dfb4", preferred: "#f2ad62", selected: "#58d6d2",
+    backing: "#0c1626", border: "#5c7182", inventoryWell: "#152536",
+  },
+  opacity: 0.9,
+  maxSpeechWidth: 160,
+  cursors: {
+    left: "./cursor-left.svg", right: "./cursor-right.svg",
+    up: "./cursor-up.svg", down: "./cursor-down.svg", enter: "./cursor-enter.svg",
+  },
+  speechColors: { host: "#f2ad62" },
+});
+```
+
+The complete form is compiled in the [HUD Theme recipe](recipes/hud-theme.ts).
+Input, browser, layout, Inventory, speech, Save/Load, and exclusion commitments
+are listed in the [Support Baseline](support-baseline.md). See the executable
 [Save Snapshot recipe](recipes/save-snapshot.ts) for restoration handling.
