@@ -16,9 +16,16 @@ reads become `when` clauses.
 
 Objects used from Inventory need their own Noun Definition. Every Scene Passage
 also needs a Noun, a `direction`, and its existing destination and Approach
-Point. Add a complete `CommandLexicon` and either local Noun fallbacks or
+Point. Add a complete `CommandLexicon`, including localized Inventory
+`select`/`deselect` phrases, and either local Noun fallbacks or
 response-only `commandFallbacks` for all semantic Command verbs. A complete Command
 must never resolve silently.
+
+Migrate every Sequence phrase to its explicit meaning: use `line` with a
+required `character` for speech and `narration` for narrator prose. A Command
+Case may declare one direct `line`, one neutral `response`, or one `sequence`,
+never more than one of them. Remove the former `speaker` and `presentation`
+fields from Command Responses.
 
 Finally, define an optional local `HUDTheme`. Scene geometry may use the entire
 Logical Resolution because the contextual overlay reserves no lower band.

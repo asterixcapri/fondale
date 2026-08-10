@@ -35,6 +35,8 @@ export {
   type LogicalResolution,
   type GameOperation,
   type InteractionCondition,
+  type Line,
+  type NarrationStep,
   type ObjectDefinition,
   type Point,
   type SceneDefinition,

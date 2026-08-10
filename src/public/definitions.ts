@@ -348,11 +348,19 @@ export function defineScene(input: SceneInput): SceneDefinition {
   });
 }
 
-export interface LineStep {
-  readonly type: "line";
+export interface Line {
   readonly text: string;
-  readonly character?: string;
+  readonly character: string;
   readonly audio?: URL | string;
+}
+
+export interface LineStep extends Line {
+  readonly type: "line";
+}
+
+export interface NarrationStep {
+  readonly type: "narration";
+  readonly text: string;
 }
 
 export interface OperationsStep {
@@ -383,7 +391,7 @@ export interface BranchStep {
   readonly fallback: readonly SequenceStep[];
 }
 
-export type SequenceStep = LineStep | OperationsStep | ChoiceStep | BranchStep;
+export type SequenceStep = LineStep | NarrationStep | OperationsStep | ChoiceStep | BranchStep;
 
 /** A finite, root-level Sequence definition. */
 export interface SequenceDefinition {
@@ -391,7 +399,7 @@ export interface SequenceDefinition {
   readonly skippable?: boolean;
 }
 
-/** Creates and freezes a finite Sequence of Lines, Choices, branches and operations. */
+/** Creates and freezes a finite Sequence of Lines, Narrations, Choices, branches and operations. */
 export function defineSequence(input: SequenceDefinition): SequenceDefinition {
   const diagnostics: AuthoringDiagnostic[] = [];
   const visiting = new WeakSet<object>();
@@ -407,7 +415,31 @@ export function defineSequence(input: SequenceDefinition): SequenceDefinition {
     }
     visiting.add(steps);
     steps.forEach((step, index) => {
-      if (step.type === "choice") {
+      if (step.type === "line") {
+        if (!step.character?.trim()) {
+          diagnostics.push({
+            code: "definition.line.character",
+            family: "definition",
+            path: `${path}[${index}].character`,
+            message: "A Line requires a Character.",
+          });
+        }
+        if (!step.text.trim()) {
+          diagnostics.push({
+            code: "definition.line.text",
+            family: "definition",
+            path: `${path}[${index}].text`,
+            message: "A Line cannot be empty.",
+          });
+        }
+      } else if (step.type === "narration" && !step.text.trim()) {
+        diagnostics.push({
+          code: "definition.narration.text",
+          family: "definition",
+          path: `${path}[${index}].text`,
+          message: "Narration cannot be empty.",
+        });
+      } else if (step.type === "choice") {
         if (maximumEligibleAlternatives(step.alternatives) > 6) {
           diagnostics.push({
             code: "definition.choice.limit",
@@ -442,7 +474,7 @@ function cloneSequenceSteps(steps: readonly SequenceStep[]): SequenceStep[] {
         ...(step.audio instanceof URL ? { audio: new URL(step.audio.href) } : {}),
       };
     }
-    if (step.type === "operations") return structuredClone(step);
+    if (step.type === "narration" || step.type === "operations") return structuredClone(step);
     if (step.type === "choice") {
       return {
         ...step,
@@ -711,11 +743,22 @@ function validateProjectDefinitions(
         message: "A Command Response cannot be empty.",
       });
     }
-    if (value.speaker !== undefined && !(value.speaker in characters)) {
+    if ("speaker" in value || "presentation" in value) {
+      diagnostics.push({
+        code: "definition.command-response.semantic",
+        family: "definition",
+        path,
+        message: "A Command Response cannot declare a speaker or presentation.",
+      });
+    }
+  };
+  const line = (value: Line | undefined, path: string) => {
+    if (!value) return;
+    if (!(value.character in characters)) {
       diagnostics.push(referenceDiagnostic(
         "reference.character",
-        `${path}.speaker`,
-        `Character '${value.speaker}' does not exist.`,
+        `${path}.character`,
+        `Character '${value.character}' does not exist.`,
       ));
     }
   };
@@ -749,6 +792,7 @@ function validateProjectDefinitions(
         ));
       }
       response(candidate.response, `${candidatePath}.response`);
+      line(candidate.line, `${candidatePath}.line`);
       operations(candidate.operations ?? [], `${candidatePath}.operations`, { target });
     });
     for (const verb of commandVerbs) {

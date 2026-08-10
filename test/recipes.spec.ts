@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { defineGame, defineNoun, defineScene } from "@asterixcapri/fondale";
+import { defineCharacter, defineGame, defineNoun, defineScene } from "@asterixcapri/fondale";
 
 import { player } from "../docs/public/recipes/character-walking";
 import {
@@ -13,6 +13,15 @@ import { interactionScene } from "../docs/public/recipes/interaction";
 import { key, successfulUse } from "../docs/public/recipes/inventory";
 import { restoreStoredProject } from "../docs/public/recipes/save-snapshot";
 import { greeting } from "../docs/public/recipes/sequence";
+
+const sequencePlayer = defineCharacter({
+  initialScene: "opening",
+  initialGroundPoint: { x: 10, y: 10 },
+  initialFacing: "front",
+  initialAppearance: "idle",
+  movementSpeed: 60,
+  appearances: { idle: { kind: "static", image: "player.png" } },
+});
 
 test("every public recipe executes against the built package root", () => {
   expect(Object.isFrozen(firstScene)).toBe(true);
@@ -60,6 +69,8 @@ test("the Interaction, Sequence, and Inventory recipes compose as validated proj
       version: "1",
       logicalResolution: { width: 100, height: 100 },
       scenes: { opening: plainScene },
+      characters: { player: sequencePlayer },
+      playerCharacter: "player",
       sequences: { greeting },
       variables: { ready: true },
       objects: { key },

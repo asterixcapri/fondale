@@ -44,11 +44,10 @@ function projectFixture(consumeSelectedObject = false) {
           cases: [{
             verb: "talk-to",
             when: { variable: "gateOpen", equals: true },
-            response: { text: "The way is open." },
+            line: { character: "player", text: "The way is open." },
             operations: [{ type: "set-variable", variable: "behaviorRan", value: true }],
           }, {
             verb: "talk-to",
-            response: { text: "A conversation begins." },
             sequence: "conversation",
           }],
         }),
@@ -60,10 +59,14 @@ function projectFixture(consumeSelectedObject = false) {
         noun: defineNoun({
           labels: [{ text: "Key" }],
           preferredVerbs: [{ verb: "pick-up" }],
+          secondaryVerbs: [{ verb: "look-at" }],
           cases: [{
             verb: "pick-up",
             response: { text: "You take the key." },
             operations: [{ type: "collect-target-object" }],
+          }, {
+            verb: "look-at",
+            response: { text: "A small key." },
           }],
         }),
       },
@@ -144,10 +147,12 @@ function projectFixture(consumeSelectedObject = false) {
     noun: defineNoun({
       labels: [{ text: "Key" }],
       preferredVerbs: [{ verb: "use" }],
-      cases: [],
+      secondaryVerbs: [{ verb: "look-at" }],
+      cases: [{ verb: "look-at", response: { text: "A small key." } }],
     }),
   });
   const conversation = defineSequence({
+    skippable: true,
     steps: [
       { type: "line", character: "player", text: "Can you help me?" },
       {
@@ -168,14 +173,14 @@ function projectFixture(consumeSelectedObject = false) {
                   },
                 ],
               },
-              { type: "line", text: "The committed branch continues." },
+              { type: "narration", text: "The committed branch continues." },
             ],
           },
         ],
         fallback: { text: "Again", steps: [] },
       },
-      { type: "line", text: "The road still waits." },
-      { type: "line", text: "The conversation ends." },
+      { type: "narration", text: "The road still waits." },
+      { type: "line", character: "player", text: "The conversation ends." },
     ],
   });
 
@@ -191,6 +196,7 @@ function projectFixture(consumeSelectedObject = false) {
     sequences: { conversation },
     variables: { met: false, gateOpen: false, behaviorRan: false },
     commandLexicon: defineCommandLexicon({
+      inventory: { select: "Hold {noun}", deselect: "Put back {noun}" },
       verbs: {
         open: "Open", "pick-up": "Pick up", push: "Push", close: "Close",
         "look-at": "Look at", pull: "Pull", give: "Give", "talk-to": "Talk to", use: "Use",
@@ -242,12 +248,22 @@ test("a modal Sequence exposes a resumable Line and Choice, then commits its bra
   expect(session.snapshot().variables.met).toBe(false);
   session.input({ type: "advance-sequence" });
   session.steps();
-  expect(session.snapshot().activity).toMatchObject({ type: "sequence", active: { kind: "line" } });
+  expect(session.snapshot().activity).toMatchObject({ type: "sequence", active: { kind: "narration" } });
   expect(session.snapshot().variables.met).toBe(true);
   expect(session.snapshot().characters.player!.appearance).toBe("happy");
+
+  const validation = validateSaveSnapshot(
+    projectFixture(),
+    JSON.parse(JSON.stringify(session.createSaveSnapshot())) as unknown,
+  );
+  expect(validation.ok).toBe(true);
+  if (!validation.ok) return;
+  expect(createTestSession(projectFixture(), validation.snapshot).snapshot().activity)
+    .toMatchObject({ type: "sequence", active: { kind: "narration" } });
+
   session.input({ type: "advance-sequence" });
   session.steps();
-  expect(session.snapshot().activity).toMatchObject({ type: "sequence", active: { kind: "line" } });
+  expect(session.snapshot().activity).toMatchObject({ type: "sequence", active: { kind: "narration" } });
   session.input({ type: "advance-sequence" });
   session.steps();
   expect(session.snapshot().activity).toMatchObject({ type: "sequence", active: { kind: "line" } });
@@ -275,6 +291,25 @@ test("Save Snapshot validation restores the exact active Choice", () => {
     session.steps();
   }
   expect(restored.snapshot()).toEqual(uninterrupted.snapshot());
+});
+
+test("a skippable Sequence can dismiss active Narration", () => {
+  const session = createTestSession(projectFixture());
+  interact(session, 0);
+  session.input({ type: "advance-sequence" });
+  session.steps();
+  session.input({ type: "choose", alternative: 0 });
+  session.steps();
+  session.input({ type: "advance-sequence" });
+  session.steps();
+  expect(session.snapshot().activity).toMatchObject({
+    type: "sequence",
+    active: { kind: "narration" },
+  });
+
+  session.input({ type: "skip-sequence" });
+  session.steps();
+  expect(session.snapshot().activity).toBeNull();
 });
 
 test("Save Snapshot validation restores a Command while it approaches its Noun", () => {
@@ -409,12 +444,45 @@ test("contextual input resolves an Object selection queued in the same step", ()
   expect(session.snapshot().command).toEqual({ verb: "walk-to", firstNoun: null });
 });
 
+test("Inventory contextual input selects an Object or executes its secondary Verb", () => {
+  const session = createTestSession(projectFixture());
+  interact(session, 1);
+
+  session.input({ type: "contextual-object", object: "key", action: "secondary" });
+  session.steps();
+  expect(session.takeEffects()).toContainEqual({
+    type: "interaction-response",
+    text: "A small key.",
+    response: { text: "A small key." },
+  });
+  expect(session.snapshot().command).toEqual({ verb: "walk-to", firstNoun: null });
+
+  session.input({ type: "contextual-object", object: "key", action: "primary" });
+  session.steps();
+  expect(session.snapshot().command).toEqual({
+    verb: "use",
+    firstNoun: { kind: "object", object: "key" },
+  });
+});
+
 test("a declarative Command commits operations and an enabled passage transitions atomically", () => {
   const session = createTestSession(projectFixture());
   interact(session, 1);
   useKeyOn(session, 2);
   interact(session, 0);
   expect(session.snapshot().variables.behaviorRan).toBe(true);
+  expect(session.snapshot().activity).toEqual({
+    type: "line",
+    line: { character: "player", text: "The way is open." },
+  });
+  const lineSave = validateSaveSnapshot(
+    projectFixture(),
+    JSON.parse(JSON.stringify(session.createSaveSnapshot())) as unknown,
+  );
+  expect(lineSave.ok).toBe(true);
+  session.input({ type: "advance-line" });
+  session.steps();
+  expect(session.snapshot().activity).toBeNull();
 
   session.input({ type: "activate-passage", passage: 0 });
   session.steps(20);

@@ -147,6 +147,13 @@ function validStateShape(value: unknown, data: GameProjectData): value is GameSt
 function validActivity(value: unknown, data: GameProjectData, state: GameState): boolean {
   if (value === null) return true;
   if (!isRecord(value) || typeof value.type !== "string") return false;
+  if (value.type === "line") {
+    if (!hasExactKeys(value, ["type", "line"]) || !isRecord(value.line)) return false;
+    if (!hasExactKeys(value.line, ["character", "text"], ["audio"])) return false;
+    return typeof value.line.character === "string" && value.line.character in data.characters &&
+      typeof value.line.text === "string" && value.line.text.trim().length > 0 &&
+      (value.line.audio === undefined || typeof value.line.audio === "string");
+  }
   if (value.type === "player-intent") {
     if (!hasExactKeys(value, ["type", "destination", "intent"], ["finalFacing", "fast"])) return false;
     if (!validPoint(value.destination) || !validOptionalFacing(value.finalFacing)) return false;
@@ -211,6 +218,12 @@ function validActivity(value: unknown, data: GameProjectData, state: GameState):
       return expectedPending !== null &&
         sameOrderedStrings(value.pendingPaths as string[], expectedPending) &&
         isSequenceStep(step) && step.type === "line";
+    }
+    if (value.active.kind === "narration") {
+      return hasExactKeys(value.active, ["kind", "path"]) &&
+        expectedPending !== null &&
+        sameOrderedStrings(value.pendingPaths as string[], expectedPending) &&
+        isSequenceStep(step) && step.type === "narration";
     }
     if (expectedPending === null || !sameOrderedStrings(value.pendingPaths as string[], expectedPending)) return false;
     if (
@@ -328,7 +341,7 @@ function resolvePath(sequence: SequenceDefinition, path: string): unknown {
 }
 
 function isSequenceStep(value: unknown): value is SequenceStep {
-  return isRecord(value) && ["line", "operations", "choice", "branch"].includes(String(value.type));
+  return isRecord(value) && ["line", "narration", "operations", "choice", "branch"].includes(String(value.type));
 }
 
 function expectedPendingPaths(sequence: SequenceDefinition, activePath: string): string[] | null {

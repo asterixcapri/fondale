@@ -2,7 +2,7 @@ import { defineSequence } from "@asterixcapri/fondale";
 
 export const conversation = defineSequence({
   steps: [
-    { type: "line", text: "La vecchia serratura sbarra la strada verso il porto." },
+    { type: "narration", text: "La vecchia serratura sbarra la strada verso il porto." },
     {
       type: "choice",
       alternatives: [

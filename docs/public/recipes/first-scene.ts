@@ -47,6 +47,7 @@ export const firstScene = defineScene({
 });
 
 export const englishCommandLexicon = defineCommandLexicon({
+  inventory: { select: "Hold {noun}", deselect: "Put back {noun}" },
   verbs: {
     open: "Open", "pick-up": "Pick up", push: "Push", close: "Close",
     "look-at": "Look at", pull: "Pull", give: "Give", "talk-to": "Talk to", use: "Use",

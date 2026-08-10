@@ -6,3 +6,8 @@ export const openWhenReady: CommandCase = {
   response: { text: "The mechanism opens." },
   operations: [{ type: "set-variable", variable: "doorOpen", value: true }],
 };
+
+export const greetDirectly: CommandCase = {
+  verb: "talk-to",
+  line: { character: "guide", text: "Welcome aboard." },
+};

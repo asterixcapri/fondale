@@ -25,6 +25,7 @@ async function selectInventoryObject(page: Page, object: string): Promise<Locato
   await expect(item).toBeVisible();
   await item.click();
   await expect(page.locator("[data-fondale-inventory-panel]")).toBeHidden();
+  await expect(item).toHaveAttribute("aria-pressed", "true");
   return item;
 }
 
@@ -38,6 +39,15 @@ async function reachHarbour(page: Page, previousScene?: Uint8Array): Promise<voi
   const key = page.locator('[data-fondale-inventory-object="key"]');
   await expect(key).toHaveCount(1, { timeout: 8_000 });
   await expect(page.locator("[aria-live=polite]")).toHaveText("Prendo la chiave d'ottone.");
+
+  const frame = page.locator("[data-fondale-frame]");
+  await frame.locator("[data-fondale-inventory-trigger]").click();
+  const responseBounds = await frame.locator("[aria-live=polite]").boundingBox();
+  const inventoryBounds = await frame.locator("[data-fondale-inventory-panel]").boundingBox();
+  if (!responseBounds || !inventoryBounds) throw new Error("Lower text geometry is unavailable");
+  expect(responseBounds.x + responseBounds.width).toBeLessThanOrEqual(inventoryBounds.x);
+  await shoot(page, "capri-1535-command-response-with-inventory");
+  await frame.locator("[data-fondale-inventory-close]").click();
 
   await selectInventoryObject(page, "key");
   await command(page, "use", 210, 150);
@@ -72,16 +82,18 @@ async function meetRaffaele(
   await command(page, "talk-to", 322, 150);
   const line = page.locator("[data-fondale-line]");
   await expect(line).toContainText("guardare il mare", { timeout: 8_000 });
+  await shoot(page, "capri-1535-character-line");
   await advance(page);
   const choices = page.locator("[data-fondale-choice]");
   await expect(choices.getByRole("button")).toHaveCount(2);
+  await shoot(page, "capri-1535-dialogue-choice");
 
   if (restoreAtChoice) {
     await page.locator("#restore").click();
     await expect(choices).toBeVisible({ timeout: 8_000 });
   }
 
-  await page.getByRole("button", { name: choice, exact: true }).click();
+  await page.getByRole("button", { name: choice, exact: false }).click();
   await expect(line).toHaveText(choice);
   await advance(page);
   // The sequence deliberately repeats Michele's answer before Raffaele replies.
@@ -133,9 +145,11 @@ async function sailToMonteSolaroAndReadConclusion(page: Page, expected: string):
     { timeout: 8_000 },
   );
   await command(page, "look-at", 215, 120);
-  const line = page.locator("[data-fondale-line]");
-  await expect(line).toContainText("Da Monte Solaro", { timeout: 8_000 });
+  const narration = page.locator("[data-fondale-narration]");
+  await expect(narration).toContainText("Da Monte Solaro", { timeout: 8_000 });
+  await shoot(page, "capri-1535-monte-solaro-narration");
   await advance(page);
+  const line = page.locator("[data-fondale-line]");
   await expect(line).toContainText(expected);
   await advance(page);
   await expect(line).toHaveCount(0);
@@ -153,6 +167,11 @@ test("the packaged Example completes the harbour puzzle through the command inte
   await shoot(page, "capri-1535-harbour-new");
 
   await meetRaffaele(page, "Quanto mi dai per sistemarlo?", true);
+  await command(page, "talk-to", 322, 150);
+  await expect(page.locator("[data-fondale-line]")).toContainText("L'olio è vicino alle botti");
+  await expect(page.locator("[aria-live=polite]")).toHaveText("");
+  await advance(page);
+  await expect(page.locator("[data-fondale-line]")).toHaveCount(0);
   await repairWinch(page);
   await shoot(page, "capri-1535-harbour-repaired");
 

@@ -2,7 +2,7 @@ import { defineSequence } from "@asterixcapri/fondale";
 
 export const monteSolaroConclusion = defineSequence({
   steps: [{
-    type: "line", text: "Da Monte Solaro, il mare sembra una strada che non ha ancora scelto dove portarlo.",
+    type: "narration", text: "Da Monte Solaro, il mare sembra una strada che non ha ancora scelto dove portarlo.",
   }, {
     type: "branch",
     cases: [{ when: { variable: "raffaeleImpressed", equals: true }, steps: [{

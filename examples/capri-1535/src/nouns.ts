@@ -17,7 +17,10 @@ export const alleyNouns = {
   key: defineNoun({
     labels: [{ text: "Chiave d'ottone" }], preferredVerbs: [{ verb: "pick-up" }],
     secondaryVerbs: [{ verb: "look-at" }],
-    cases: [{ verb: "pick-up", response: { text: "Prendo la chiave d'ottone." }, operations: [{ type: "collect-target-object" }] }],
+    cases: [
+      { verb: "pick-up", response: { text: "Prendo la chiave d'ottone." }, operations: [{ type: "collect-target-object" }] },
+      { verb: "look-at", response: { text: "Ottone pesante, denti consumati e ancora un po' di sale nella scanalatura." } },
+    ],
   }),
   gate: defineNoun({
     labels: [{ when: { variable: "gateOpen", equals: true }, text: "Cancello aperto" }, { text: "Cancello chiuso" }],
@@ -49,20 +52,26 @@ export const harbourNouns = {
     secondaryVerbs: [{ verb: "look-at" }],
     objectVerbs: [{ verb: "give" }],
     cases: [
-      { verb: "talk-to", when: { variable: "boatReady", equals: true }, response: { text: "L'argano tiene. Attraversa la grotta e porta il pacco a Monte Solaro.", speaker: "raffaele" } },
-      { verb: "talk-to", when: { variable: "raffaeleMet", equals: true }, response: { text: "L'olio è vicino alle botti; la manovella era fra le reti.", speaker: "raffaele" } },
+      { verb: "talk-to", when: { variable: "boatReady", equals: true }, line: { text: "L'argano tiene. Attraversa la grotta e porta il pacco a Monte Solaro.", character: "raffaele" } },
+      { verb: "talk-to", when: { variable: "raffaeleMet", equals: true }, line: { text: "L'olio è vicino alle botti; la manovella era fra le reti.", character: "raffaele" } },
       { verb: "talk-to", sequence: "raffaeleConversation" },
     ],
   }),
   oilFlask: defineNoun({
     labels: [{ text: "Ampolla d'olio" }], preferredVerbs: [{ verb: "pick-up" }],
     secondaryVerbs: [{ verb: "look-at" }],
-    cases: [{ verb: "pick-up", response: { text: "Prendo la piccola ampolla d'olio." }, operations: [{ type: "collect-target-object" }] }],
+    cases: [
+      { verb: "pick-up", response: { text: "Prendo la piccola ampolla d'olio." }, operations: [{ type: "collect-target-object" }] },
+      { verb: "look-at", response: { text: "Poco olio, ma abbastanza per convincere un ingranaggio ostinato." } },
+    ],
   }),
   winchHandle: defineNoun({
     labels: [{ text: "Manovella" }], preferredVerbs: [{ verb: "pick-up" }],
     secondaryVerbs: [{ verb: "look-at" }],
-    cases: [{ verb: "pick-up", response: { text: "Libero la manovella dalle reti." }, operations: [{ type: "collect-target-object" }] }],
+    cases: [
+      { verb: "pick-up", response: { text: "Libero la manovella dalle reti." }, operations: [{ type: "collect-target-object" }] },
+      { verb: "look-at", response: { text: "Una manovella robusta, fatta proprio per l'argano del porto." } },
+    ],
   }),
   winch: defineNoun({
     labels: [{ text: "Argano" }], preferredVerbs: [{ verb: "look-at" }],
@@ -98,7 +107,7 @@ export const monteSolaroNouns = {
   horizon: defineNoun({
     labels: [{ text: "Orizzonte" }], preferredVerbs: [{ verb: "look-at" }],
     cases: [{ verb: "look-at", when: { variable: "monteSolaroObserved", equals: true }, response: { text: "Il mare continua a fingere di essere innocente." } }, {
-      verb: "look-at", response: { text: "Michele si avvicina al parapetto." }, operations: [{ type: "set-variable", variable: "monteSolaroObserved", value: true }], sequence: "monteSolaroConclusion",
+      verb: "look-at", operations: [{ type: "set-variable", variable: "monteSolaroObserved", value: true }], sequence: "monteSolaroConclusion",
     }],
   }),
   door: defineUnaryNoun("Porta del posto di guardia", "look-at", "La porta è chiusa dall'interno."),

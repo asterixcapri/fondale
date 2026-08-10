@@ -1,4 +1,4 @@
-import type { GameOperation, InteractionCondition } from "./definitions";
+import type { GameOperation, InteractionCondition, Line } from "./definitions";
 import { AuthoringError, type AuthoringDiagnostic } from "./diagnostics";
 
 /** The semantic actions available to authored Commands. */
@@ -35,18 +35,17 @@ export interface SelectedObjectVerbCase {
   readonly when?: InteractionCondition;
 }
 
-/** Player-perceivable text produced by a resolved Command. */
+/** Neutral explanatory text produced by a resolved Command. */
 export interface CommandResponse {
   readonly text: string;
-  readonly presentation?: "speech" | "narration";
-  readonly speaker?: string;
 }
 
-/** An ordered specific resolution for a Command addressed to this Noun. */
+/** An ordered specific resolution with at most one textual outcome. */
 export interface CommandCase {
   readonly verb: CommandVerb;
   readonly firstNoun?: string;
   readonly when?: InteractionCondition;
+  readonly line?: Line;
   readonly response?: CommandResponse;
   readonly operations?: readonly GameOperation[];
   readonly sequence?: string;
@@ -121,15 +120,26 @@ export function defineNoun(input: NounDefinition): NounDefinition {
         message: `The '${candidate.verb}' Verb is unary and cannot declare a first Noun.`,
       });
     }
-    if (!candidate.response && !(candidate.operations?.length) && !candidate.sequence) {
+    const outcomeCount = [candidate.line, candidate.response, candidate.sequence]
+      .filter((outcome) => outcome !== undefined).length;
+    if (outcomeCount > 1) {
+      diagnostics.push({
+        code: "definition.command-case.textual-outcome",
+        family: "definition",
+        path: `cases[${index}]`,
+        message: "A Command Case can declare only one textual outcome: Line, Command Response, or Sequence.",
+      });
+    }
+    if (!candidate.line && !candidate.response && !(candidate.operations?.length) && !candidate.sequence) {
       diagnostics.push({
         code: "definition.command-case.empty",
         family: "definition",
         path: `cases[${index}]`,
-        message: "A Command Case must produce a Command Response, Game Operation, or Sequence.",
+        message: "A Command Case must produce a Line, Command Response, Game Operation, or Sequence.",
       });
     }
     if (
+      !candidate.line &&
       !candidate.response &&
       !candidate.sequence &&
       candidate.operations?.some(({ type }) =>
@@ -142,16 +152,79 @@ export function defineNoun(input: NounDefinition): NounDefinition {
         code: "definition.command-case.object-feedback",
         family: "definition",
         path: `cases[${index}]`,
-        message: "A Command Case that moves or consumes an Object must provide a Command Response or Sequence.",
+        message: "A Command Case that moves or consumes an Object must provide a Line, Command Response, or Sequence.",
       });
     }
+    if (candidate.line && !candidate.line.character.trim()) {
+      diagnostics.push({
+        code: "definition.line.character",
+        family: "definition",
+        path: `cases[${index}].line.character`,
+        message: "A Line requires a Character.",
+      });
+    }
+    if (candidate.line && !candidate.line.text.trim()) {
+      diagnostics.push({
+        code: "definition.line.text",
+        family: "definition",
+        path: `cases[${index}].line.text`,
+        message: "A Line cannot be empty.",
+      });
+    }
+    validateCommandResponse(candidate.response, `cases[${index}].response`, diagnostics);
   });
+  for (const [verb, fallback] of Object.entries(input.fallbacks ?? {})) {
+    validateCommandResponse(fallback.response, `fallbacks.${verb}.response`, diagnostics);
+  }
   if (diagnostics.length > 0) throw new AuthoringError(diagnostics);
-  return deepFreeze(structuredClone(input));
+  const cloned = structuredClone(input);
+  return deepFreeze({
+    ...cloned,
+    cases: cloned.cases.map((candidate, index) => {
+      const sourceLine = input.cases[index]?.line;
+      return sourceLine
+        ? {
+            ...candidate,
+            line: {
+              ...sourceLine,
+              ...(sourceLine.audio instanceof URL ? { audio: new URL(sourceLine.audio.href) } : {}),
+            },
+          }
+        : candidate;
+    }),
+  });
+}
+
+function validateCommandResponse(
+  response: CommandResponse | undefined,
+  path: string,
+  diagnostics: AuthoringDiagnostic[],
+): void {
+  if (!response) return;
+  if (!response.text.trim()) {
+    diagnostics.push({
+      code: "definition.command-response.text",
+      family: "definition",
+      path: `${path}.text`,
+      message: "A Command Response cannot be empty.",
+    });
+  }
+  if ("speaker" in response || "presentation" in response) {
+    diagnostics.push({
+      code: "definition.command-response.semantic",
+      family: "definition",
+      path,
+      message: "A Command Response cannot declare a speaker or presentation.",
+    });
+  }
 }
 
 export interface CommandLexicon {
   readonly verbs: Readonly<Record<CommandVerb, string>>;
+  readonly inventory: {
+    readonly select: string;
+    readonly deselect: string;
+  };
   readonly patterns: {
     readonly unary: string;
     readonly give: string;
@@ -172,6 +245,8 @@ export function defineCommandLexicon(input: CommandLexicon): CommandLexicon {
       });
     }
   }
+  validatePattern(input.inventory.select, ["{noun}"], "inventory.select", diagnostics);
+  validatePattern(input.inventory.deselect, ["{noun}"], "inventory.deselect", diagnostics);
   validatePattern(input.patterns.unary, ["{verb}", "{noun}"], "patterns.unary", diagnostics);
   validatePattern(input.patterns.give, ["{verb}", "{first}", "{second}"], "patterns.give", diagnostics);
   validatePattern(input.patterns.use, ["{verb}", "{first}", "{second}"], "patterns.use", diagnostics);

@@ -45,13 +45,14 @@ test("an Author defines immutable Noun and Command Lexicon definitions through t
     objectVerbs: [{ verb: "use" }],
     cases: [{
       verb: "look-at",
-      response: { text: "Una porta molto antica.", presentation: "narration" },
+      response: { text: "Una porta molto antica." },
     }],
     fallbacks: {
       open: { response: { text: "Non si apre." } },
     },
   });
   const lexicon = defineCommandLexicon({
+    inventory: { select: "Prendi {noun}", deselect: "Riponi {noun}" },
     verbs: {
       open: "Apri",
       "pick-up": "Raccogli",
@@ -75,6 +76,7 @@ test("an Author defines immutable Noun and Command Lexicon definitions through t
   expect(Object.isFrozen(noun.secondaryVerbs)).toBe(true);
   expect(Object.isFrozen(noun.objectVerbs)).toBe(true);
   expect(Object.isFrozen(lexicon.verbs)).toBe(true);
+  expect(Object.isFrozen(lexicon.inventory)).toBe(true);
   expect(lexicon.verbs["look-at"]).toBe("Guarda");
 });
 
@@ -89,6 +91,7 @@ test("Noun and Command Lexicon helpers aggregate independent local diagnostics",
 
   try {
     defineCommandLexicon({
+      inventory: { select: "Prendi", deselect: "Riponi {noun}" },
       verbs: {
         open: "",
         "pick-up": "Raccogli",
@@ -110,6 +113,7 @@ test("Noun and Command Lexicon helpers aggregate independent local diagnostics",
   } catch (error) {
     expect(error).toBeInstanceOf(AuthoringError);
     expect((error as AuthoringError).diagnostics.map(({ code }) => code)).toEqual([
+      "definition.command-lexicon.pattern",
       "definition.command-lexicon.pattern",
       "definition.command-lexicon.pattern",
       "definition.command-lexicon.pattern",
@@ -180,10 +184,36 @@ test("a Choice may declare more than six mutually exclusive alternatives", () =>
   expect(sequence.steps).toHaveLength(1);
 });
 
+test("an Author defines explicit non-empty Narration throughout a Sequence", () => {
+  const sequence = defineSequence({
+    steps: [{
+      type: "branch",
+      cases: [{
+        when: { variable: "remembered", equals: true },
+        steps: [{ type: "narration", text: "The harbour remembers." }],
+      }],
+      fallback: [{
+        type: "choice",
+        alternatives: [{
+          text: "Wait",
+          steps: [{ type: "narration", text: "Night settles over the quay." }],
+        }],
+        fallback: { text: "Leave", steps: [] },
+      }],
+    }],
+  });
+
+  expect(sequence.steps[0]).toMatchObject({ type: "branch" });
+  expect(Object.isFrozen(sequence.steps)).toBe(true);
+  expect(() => defineSequence({
+    steps: [{ type: "narration", text: "  " }],
+  })).toThrow(AuthoringError);
+});
+
 test("a Sequence preserves a URL Line audio reference immutably", () => {
   const audio = new URL("https://example.test/line.ogg");
   const sequence = defineSequence({
-    steps: [{ type: "line", text: "Listen.", audio }],
+    steps: [{ type: "line", character: "guide", text: "Listen.", audio }],
   });
   const line = sequence.steps[0];
 
@@ -195,6 +225,45 @@ test("a Sequence preserves a URL Line audio reference immutably", () => {
   expect(Object.isFrozen(line)).toBe(true);
 });
 
+test("a Line requires an explicit Character", () => {
+  expect(() => defineSequence({
+    steps: [{ type: "line", text: "Nobody says this." } as never],
+  })).toThrow(/Line requires a Character/i);
+});
+
+test("a Command Case exposes one semantic textual outcome", () => {
+  const noun = defineNoun({
+    labels: [{ text: "Host" }],
+    preferredVerbs: [{ verb: "talk-to" }],
+    cases: [{
+      verb: "talk-to",
+      line: { character: "host", text: "Welcome." },
+    }],
+  });
+
+  expect(noun.cases[0]?.line).toEqual({ character: "host", text: "Welcome." });
+  expect(Object.isFrozen(noun.cases[0]?.line)).toBe(true);
+
+  expect(() => defineNoun({
+    labels: [{ text: "Door" }],
+    preferredVerbs: [{ verb: "look-at" }],
+    cases: [{
+      verb: "look-at",
+      response: { text: "Neutral feedback.", speaker: "host" },
+    } as never],
+  })).toThrow(/Command Response cannot declare a speaker or presentation/i);
+
+  expect(() => defineNoun({
+    labels: [{ text: "Door" }],
+    preferredVerbs: [{ verb: "look-at" }],
+    cases: [{
+      verb: "look-at",
+      response: { text: "Neutral feedback." },
+      sequence: "inspection",
+    }],
+  })).toThrow(/one textual outcome/i);
+});
+
 test("an Object-moving Command Case must provide player feedback", () => {
   expect(() => defineNoun({
     labels: [{ text: "Key" }],
@@ -203,7 +272,7 @@ test("an Object-moving Command Case must provide player feedback", () => {
       verb: "pick-up",
       operations: [{ type: "collect-target-object" }],
     }],
-  })).toThrow(/must provide a Command Response or Sequence/i);
+  })).toThrow(/must provide a Line, Command Response, or Sequence/i);
 });
 
 test("defineGame composes Command authoring and aggregates Noun reference failures", () => {
@@ -214,7 +283,9 @@ test("defineGame composes Command authoring and aggregates Noun reference failur
       verb: "use",
       firstNoun: "missingObject",
       sequence: "missingSequence",
-      response: { text: "Non succede nulla.", speaker: "missingCharacter" },
+    }, {
+      verb: "look-at",
+      line: { text: "Non succede nulla.", character: "missingCharacter" },
     }],
   });
   const scene = defineScene({
@@ -236,6 +307,7 @@ test("defineGame composes Command authoring and aggregates Noun reference failur
       scenes: { opening: scene },
       initialScene: "opening",
       commandLexicon: defineCommandLexicon({
+        inventory: { select: "Prendi {noun}", deselect: "Riponi {noun}" },
         verbs: {
           open: "Apri", "pick-up": "Raccogli", push: "Spingi",
           close: "Chiudi", "look-at": "Guarda", pull: "Tira",
@@ -359,7 +431,7 @@ test("defineGame aggregates independent cross-definition reference failures", ()
         noun: defineNoun({
           labels: [{ text: "Missing" }],
           preferredVerbs: [{ verb: "talk-to" }],
-          cases: [{ verb: "talk-to", sequence: "missing", response: { text: "Response" } }],
+          cases: [{ verb: "talk-to", sequence: "missing" }],
         }),
       },
     ],

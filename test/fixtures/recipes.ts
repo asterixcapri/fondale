@@ -53,7 +53,7 @@ const sequenceInventoryScene = defineScene({
       noun: defineNoun({
         labels: [{ text: "Greeting" }],
         preferredVerbs: [{ verb: "talk-to" }],
-        cases: [{ verb: "talk-to", response: { text: "The greeting begins." }, sequence: "greeting" }],
+        cases: [{ verb: "talk-to", sequence: "greeting" }],
       }),
     },
     {

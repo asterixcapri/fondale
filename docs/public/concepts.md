@@ -9,7 +9,7 @@ Every committed fact belongs to the session's canonical **Game State**.
 Fondale evolves it through validated, atomic **Game Operations**. Rendering,
 loaded textures, screen coordinates, and animation frames are derived and do
 not become canonical state. A **Game Activity** is the single dominant piece
-of progress: either a replaceable Player Intent or a modal Sequence.
+of progress: a replaceable Player Intent, a direct Line, or a modal Sequence.
 
 A **Scene** fills the fixed Logical Resolution. Its **Scene Space** has its
 origin at the top-left. A Character's **Ground Point**, a Scenery **Baseline**,
@@ -21,7 +21,9 @@ An **Object** exists in exactly one place: a Scene, the acquisition-ordered
 **Verb** with one or two Nouns; **Walk To** remains implicit. Ordered
 **Command Case** values resolve specific outcomes, then local and global
 fallbacks guarantee visible feedback. A **Sequence** is a finite, modal path
-of Lines, Choices, branches, and operation groups.
+of Character-bound Lines, explicit Narrations, Choices, branches, and operation
+groups. A direct Line or neutral Command Response may also conclude one Command
+without introducing a one-step Sequence.
 
 The Engine owns the semantic HUD: pointer-following Contextual Actions, the
 Inventory trigger and drawer, Choices, Options, Help and Save/Load. A Noun's

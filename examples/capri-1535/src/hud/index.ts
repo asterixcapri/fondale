@@ -8,6 +8,7 @@ import cursorRightUrl from "./cursors/right.svg";
 import cursorUpUrl from "./cursors/up.svg";
 
 export const italianCommandLexicon = defineCommandLexicon({
+  inventory: { select: "Prendi {noun}", deselect: "Riponi {noun}" },
   verbs: {
     open: "Apri",
     "pick-up": "Raccogli",

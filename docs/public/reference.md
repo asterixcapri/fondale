@@ -16,11 +16,12 @@ the same conditional contract. They advertise the right-button action at rest
 and the primary action when an Inventory Object is selected, respectively;
 Selected Object Verb defaults to Use. `cases` are ordered `CommandCase` values. Give is
 binary, Use may be unary or binary, and all other visible verbs are unary. A
-case may provide a `CommandResponse`, `GameOperation` values, a `sequence`, or
-a combination. `fallbacks` map a Verb to a local `CommandFallback`.
+case may provide exactly one textual outcome: a direct Character `line`, a
+neutral `CommandResponse`, or a `sequence`. Allowed `GameOperation` values may
+accompany that outcome. `fallbacks` map a Verb to a local `CommandFallback`.
 
 `defineCommandLexicon` validates and freezes a `CommandLexicon`: all nine semantic Verb
-labels plus explicit `unary`, `give`, and `use` sentence patterns. The required
+labels, localized `inventory` `select`/`deselect` phrases, plus explicit `unary`, `give`, and `use` sentence patterns. The required
 placeholders are `{verb}`, `{noun}`, `{first}`, and `{second}` as appropriate.
 `defineGame` rejects Nouns without a lexicon and rejects any complete Command
 that lacks a specific case, local fallback, or response-only global fallback.
@@ -52,8 +53,10 @@ named static Appearances, square `inventoryAppearance`, and optional Noun. An
 Object is in one Scene, in Inventory, or consumed.
 
 `defineSequence` validates a finite `SequenceDefinition`. `SequenceStep` is a
-Line, Choice, Branch, or atomic Operations group. A Line may declare an audio
-asset; its playback duration participates in automatic advancement. A `ChoiceAlternative` has
+Character-bound Line, explicit Narration, Choice, Branch, or atomic Operations
+group. A Line may declare an audio asset; its playback duration participates in
+automatic advancement. Narration contains narrator prose and never identifies
+a Character. A `ChoiceAlternative` has
 text, optional condition, optional `spoken` (default true), and steps. At most
 six alternatives are allowed. A Sequence may be `skippable`.
 
@@ -117,23 +120,25 @@ asset, or environment.
 | `PerspectiveScaleStop` | depth-scale sample | in-frame y and positive scale | stops interpolate linearly | perspective diagnostic | [Scene](recipes/first-scene.ts) |
 | `SceneInput` | Scene helper input | Background, region and optional structures | optional collections are empty | helper diagnostics | [Scene](recipes/first-scene.ts) |
 | `SceneDefinition` | frozen local Scene | same values as SceneInput | registry key supplies identity | project adds references | [Scene](recipes/first-scene.ts) |
-| `LineStep` | modal spoken/narrated text | line type, text, optional Character and audio | waits for advance and audio duration | Character/asset diagnostics | [Sequence](recipes/sequence.ts) |
+| `Line` | Character-spoken phrase | text, Character and optional audio | Character is always explicit | Line/Character diagnostics | [Command](recipes/command-case.ts) |
+| `LineStep` | modal Character speech | line type plus Line fields | waits for advance and audio duration | Line/Character/asset diagnostics | [Sequence](recipes/sequence.ts) |
+| `NarrationStep` | narrator prose | narration type and non-empty text | lower warm presentation | Narration diagnostics | [Sequence](recipes/sequence.ts) |
 | `OperationsStep` | Sequence state commit | operations type and operation group | commits before continuation | nested/operation diagnostics | [Sequence](recipes/sequence.ts) |
 | `ChoiceAlternative` | eligible answer | text, condition, spoken, steps | spoken defaults true | condition/cycle diagnostics | [Sequence](recipes/sequence.ts) |
 | `ChoiceStep` | modal answer set | alternatives and fallback | maximum six alternatives | choice-limit diagnostic | [Sequence](recipes/sequence.ts) |
 | `BranchStep` | automatic branch | ordered cases and fallback | first eligible case wins | condition/cycle diagnostics | [Sequence](recipes/sequence.ts) |
-| `SequenceStep` | finite step union | Line, Choice, Branch, Operations | nested starts forbidden | Sequence diagnostics | [Sequence](recipes/sequence.ts) |
+| `SequenceStep` | finite step union | Line, Narration, Choice, Branch, Operations | nested starts forbidden | Sequence diagnostics | [Sequence](recipes/sequence.ts) |
 | `SequenceDefinition` | root modal flow | finite steps and skippable flag | registry key is identity | cycle/reference diagnostics | [Sequence](recipes/sequence.ts) |
 | `GameInput` | project composition | identity, version, resolution, registries, commands, theme | empty registries; black letterbox | aggregated diagnostics | [Scene](recipes/first-scene.ts) |
 | `GameProject` | validated opaque project | only returned by defineGame | immutable and fieldless | forged project rejected | [Scene](recipes/first-scene.ts) |
 | `NounLabel` | conditional visible name | text and optional condition | one final unconditional label | conditional/text diagnostics | [Interaction](recipes/interaction.ts) |
 | `PreferredVerbCase` | conditional contextual action | Verb and optional condition | one final unconditional Verb per declared set | conditional diagnostic | [Interaction](recipes/interaction.ts) |
 | `SelectedObjectVerbCase` | Object-first contextual action | Give or Use and optional condition | one final unconditional Verb when declared | conditional diagnostic | [Inventory](recipes/inventory.ts) |
-| `CommandResponse` | perceivable outcome | text, speech/narration, speaker | speech uses Player by default | text/speaker diagnostics | [Interaction](recipes/interaction.ts) |
-| `CommandCase` | specific resolution | Verb, firstNoun, condition, response, operations, sequence | ordered; arity is fixed | arity/reference diagnostics | [Command](recipes/command-case.ts) |
+| `CommandResponse` | neutral Command outcome | non-empty explanatory text | never speech or Narration | response diagnostics | [Interaction](recipes/interaction.ts) |
+| `CommandCase` | specific resolution | Verb, firstNoun, condition, line/response/sequence, operations | one textual outcome; arity is fixed | outcome/arity/reference diagnostics | [Command](recipes/command-case.ts) |
 | `CommandFallback` | local final resolution | response, operations, sequence | used after specific cases | response/reference diagnostics | [Interaction](recipes/interaction.ts) |
 | `NounDefinition` | common interaction model | labels, Preferred, Secondary and Selected Object Verbs, cases, fallbacks | secondary/object sets optional; immutable | Noun/Command diagnostics | [Interaction](recipes/interaction.ts) |
-| `CommandLexicon` | localized Command grammar | nine labels and three patterns | Engine never infers grammar | lexicon diagnostics | [Scene](recipes/first-scene.ts) |
+| `CommandLexicon` | localized Command and Inventory-action grammar | nine Verb labels, select/deselect phrases and three Command patterns | Engine never infers grammar | lexicon diagnostics | [Scene](recipes/first-scene.ts) |
 | `CommandVerb` | semantic Verb union | nine commandVerbs values | fixed Engine vocabulary | compile-time restriction | [Interaction](recipes/interaction.ts) |
 | `Verb` | complete Verb union | CommandVerb or walk-to | walk-to is implicit | compile-time restriction | [Scene](recipes/first-scene.ts) |
 | `PassageDirection` | Passage cursor direction | left, right, up, down, enter | every Passage declares one | cursor/reference diagnostics | [Scene](recipes/first-scene.ts) |
@@ -161,7 +166,7 @@ Exact reachable fields also include `x`, `y`, `width`, `height`, `kind`,
 `logicalResolution`, `scenes`, `characters`, `playerCharacter`, `objects`,
 `sequences`, `variables`, `inventoryAppearanceSize`, `initialScene`,
 `letterboxColor`, `commandLexicon`, `commandFallbacks`, `hudTheme`, `verb`,
-`presentation`, `speaker`, `audio`, `firstNoun`, `response`, `operations`, `fallbacks`,
+`line`, `audio`, `firstNoun`, `response`, `operations`, `fallbacks`,
 `labels`, `preferredVerbs`, `verbs`, `patterns`, `unary`, `give`, `use`, `code`,
 `path`, `message`, `suggestion`, `cause`, `formatVersion`, `projectIdentity`,
 `projectVersion`, `state`, `ok`, `snapshot`, `diagnostics`, and `target`.
@@ -173,8 +178,11 @@ Definition codes: `definition.approach.bounds`,
 `definition.character.walkable`, `definition.choice.limit`,
 `definition.command-case.arity`, `definition.command-case.empty`,
 `definition.command-case.object-feedback`,
+`definition.command-case.textual-outcome`,
 `definition.command-lexicon.label`, `definition.command-lexicon.pattern`,
 `definition.command-lexicon.required`, `definition.command-response.text`,
+`definition.command-response.semantic`, `definition.line.character`,
+`definition.line.text`, `definition.narration.text`,
 `definition.command.silent`, `definition.conditional-fallback`,
 `definition.entrance.walkable`, `definition.hud-theme.color`,
 `definition.hud-theme.cursor`, `definition.hud-theme.font`,

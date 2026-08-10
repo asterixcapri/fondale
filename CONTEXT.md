@@ -139,18 +139,20 @@ Activity controls play at a time.
 _Avoid_: Animation frame, ambient rendering, unmanaged task
 
 **Sequence**:
-A named, finite progression of Lines, Choices, conditions, and Game Operations
-that temporarily controls play as the dominant Game Activity. It is strictly
-sequential and its exact logical progress belongs to the Game State.
+A named, finite progression of Lines, Narrations, Choices, conditions, and Game
+Operations that temporarily controls play as the dominant Game Activity. It is
+strictly sequential and its exact logical progress belongs to the Game State.
 _Avoid_: Cutscene, Dialogue as a separate activity model, nested sequence, scripted async function
 
 **Line**:
-A single authored unit of speech or narration within a Sequence. Speech
-identifies its Character and is presented above that Character; narration omits
-the Character and is presented centrally. Character speech remains inside the
-Logical Resolution, uses a readable backing, and wraps within the configured
-maximum width. Its presentation may advance by timing or Player input.
-_Avoid_: Subtitle, dialogue node, renderer text
+A single authored phrase spoken by a Character. Its presentation may advance
+by timing or Player input.
+_Avoid_: Narration, Command Response, subtitle, dialogue node, renderer text
+
+**Narration**:
+A single authored phrase delivered by the narrator rather than a Character. It
+describes or frames the story instead of explaining the outcome of a Command.
+_Avoid_: Line without a Character, Command Response, system message
 
 **Choice**:
 A point in a Sequence where the Player selects one of the authored alternatives
@@ -273,6 +275,11 @@ and presented in an Engine-owned drawer opened from a persistent trigger or
 keyboard shortcut.
 _Avoid_: Container, equipment, item stack
 
+**Inventory Selection**:
+The transient choice of one carried Object as the first Noun of the Player's
+next Command. It prepares an interaction but does not itself execute Use.
+_Avoid_: Use Command, Inventory activation, equipped Object
+
 **Inventory Appearance**:
 The visual presentation of an Object within the Inventory and while it
 participates in a Command, distinct from its Appearance in a Scene.
@@ -349,7 +356,7 @@ _Avoid_: Interaction Response, dialogue text, generic tooltip, Sentence Line
 **Command Case**:
 An authored conditional alternative for resolving a Verb against one or two
 Nouns; eligible cases are considered in their declared order and may produce a
-Command Response, Game Operations, or a Sequence.
+Line, Command Response, Game Operations, or a Sequence.
 _Avoid_: Handler, event listener, priority rule
 
 **Command Fallback**:
@@ -363,9 +370,10 @@ Interaction Case is eligible; common conditions remain declarative.
 _Avoid_: Validation rule, mutable state check
 
 **Command Response**:
-The player-perceivable speech or narration produced when a Command resolves,
-possibly accompanied by immediate world changes.
-_Avoid_: Line, event handler, silent no-op, renderer effect
+The player-perceivable, transient explanation of what happened when a Command
+resolved, possibly accompanied by immediate world changes. It is not spoken by
+a Character.
+_Avoid_: Line, Narration, event handler, silent no-op, renderer effect
 
 **Player Intent**:
 The execution of a complete Command, including any required movement and

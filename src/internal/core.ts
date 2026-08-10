@@ -9,6 +9,7 @@ import {
   type HotspotDefinition,
   type HotspotTarget,
   type InteractionCondition,
+  type Line,
   type Point,
   type SequenceDefinition,
   type SequenceStep,
@@ -63,6 +64,7 @@ export interface PlayerIntentState {
 
 export type SequenceActiveState =
   | { kind: "line"; path: string; choiceText?: string; choiceCharacter?: string }
+  | { kind: "narration"; path: string }
   | { kind: "choice"; path: string; eligibleAlternatives: number[] };
 
 export interface SequenceActivityState {
@@ -72,7 +74,12 @@ export interface SequenceActivityState {
   active: SequenceActiveState | null;
 }
 
-export type GameActivityState = PlayerIntentState | SequenceActivityState;
+export interface LineActivityState {
+  type: "line";
+  line: Omit<Line, "audio"> & { audio?: string };
+}
+
+export type GameActivityState = PlayerIntentState | SequenceActivityState | LineActivityState;
 
 export interface GameState {
   currentScene: string;
@@ -97,8 +104,10 @@ export type CoreInput =
   | { readonly type: "contextual-passage"; readonly passage: number; readonly action: "primary" | "secondary" }
   | { readonly type: "activate-object"; readonly object: string }
   | { readonly type: "select-object"; readonly object: string }
+  | { readonly type: "contextual-object"; readonly object: string; readonly action: "primary" | "secondary" }
   | { readonly type: "escape" }
   | { readonly type: "advance-sequence" }
+  | { readonly type: "advance-line" }
   | { readonly type: "skip-sequence" }
   | { readonly type: "choose"; readonly alternative: number };
 
@@ -275,8 +284,15 @@ export function createCoreSession(
   }
 
   function handleInput(input: CoreInput): void {
+    if (state.activity?.type === "line") {
+      if (input.type === "advance-line") state.activity = null;
+      return;
+    }
     if (state.activity?.type === "sequence") {
-      if (input.type === "advance-sequence" && state.activity.active?.kind === "line") {
+      if (
+        input.type === "advance-sequence" &&
+        (state.activity.active?.kind === "line" || state.activity.active?.kind === "narration")
+      ) {
         state.activity.active = null;
         advanceSequence();
       } else if (input.type === "choose" && state.activity.active?.kind === "choice") {
@@ -391,6 +407,20 @@ export function createCoreSession(
       state.command = state.command.firstNoun?.object === input.object
         ? { verb: "walk-to", firstNoun: null }
         : { verb: "use", firstNoun: { kind: "object", object: input.object } };
+    } else if (input.type === "contextual-object") {
+      if (!state.inventory.objects.includes(input.object)) return;
+      const noun = data.objects[input.object]?.noun;
+      if (!noun) return;
+      if (input.action === "primary") {
+        state.activity = null;
+        state.command = state.command.firstNoun?.object === input.object
+          ? { verb: "walk-to", firstNoun: null }
+          : { verb: "use", firstNoun: { kind: "object", object: input.object } };
+        return;
+      }
+      const verb = conditionalOptionalValue(noun.secondaryVerbs)?.verb;
+      if (!verb || verb === "walk-to") return;
+      resolveCommand(noun, verb, { kind: "object", object: input.object }, true);
     } else if (input.type === "activate-object") {
       if (!state.inventory.objects.includes(input.object)) return;
       const noun = data.objects[input.object]?.noun;
@@ -563,6 +593,15 @@ export function createCoreSession(
         text: resolution.response.text,
         response: resolution.response,
       });
+    } else if ("line" in resolution && resolution.line) {
+      const { audio, ...line } = resolution.line;
+      state.activity = {
+        type: "line",
+        line: {
+          ...line,
+          ...(audio ? { audio: audio instanceof URL ? audio.href : audio } : {}),
+        },
+      };
     }
   }
 
@@ -715,6 +754,8 @@ export function createCoreSession(
       const stepDefinition = resolvePath(definition, path) as SequenceStep;
       if (stepDefinition.type === "line") {
         activity.active = { kind: "line", path };
+      } else if (stepDefinition.type === "narration") {
+        activity.active = { kind: "narration", path };
       } else if (stepDefinition.type === "choice") {
         const eligible = stepDefinition.alternatives
           .map((alternative, index) => (conditionMatches(alternative.when) ? index : -1))

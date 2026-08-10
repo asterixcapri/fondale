@@ -22,8 +22,10 @@ test("Command recipes execute through the installed public package", async ({ pa
   await expect(interaction).toContainText("Open Door");
 
   await clickLogical(page, sequenceInventory, 20, 20);
-  await expect(sequenceInventory.locator("[data-fondale-line]")).toContainText("finite conversation");
+  await expect(sequenceInventory.locator("[data-fondale-line]")).toContainText("tide is turning");
   await sequenceInventory.locator("[data-fondale-frame]").focus();
+  await page.keyboard.press(".");
+  await expect(sequenceInventory.locator("[data-fondale-narration]")).toContainText("finite conversation");
   await page.keyboard.press(".");
   await expect(sequenceInventory.locator("[data-fondale-choice]")).toBeVisible();
   await page.locator("#restore-choice").click();
@@ -32,9 +34,9 @@ test("Command recipes execute through the installed public package", async ({ pa
   await page.keyboard.press("1");
   await expect(sequenceInventory.locator("[data-fondale-line]")).toHaveText("Continue");
   await page.keyboard.press(".");
-  await expect(sequenceInventory.locator("[data-fondale-line]")).toContainText("eligible branch");
+  await expect(sequenceInventory.locator("[data-fondale-narration]")).toContainText("eligible branch");
   await page.keyboard.press(".");
-  await expect(sequenceInventory.locator("[data-fondale-line]")).toHaveCount(0);
+  await expect(sequenceInventory.locator("[data-fondale-narration]")).toHaveCount(0);
 
   await clickLogical(page, sequenceInventory, 40, 25);
   await sequenceInventory.locator("[data-fondale-inventory-trigger]").click();

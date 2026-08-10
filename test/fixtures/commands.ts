@@ -20,13 +20,12 @@ const door = defineNoun({
   secondaryVerbs: [{ verb: "talk-to" }],
   cases: [{
     verb: "look-at",
-    response: { text: "Un vecchio portone.", presentation: "narration" },
+    response: { text: "Un vecchio portone." },
   }, {
     verb: "talk-to",
-    response: {
+    line: {
       text: "Il vecchio portone non risponde, anche se continuo a rivolgergli una domanda molto lunga e inutilmente cerimoniosa.",
-      presentation: "speech",
-      speaker: "host",
+      character: "host",
     },
   }, {
     verb: "use",
@@ -42,6 +41,9 @@ const keyNoun = defineNoun({
     verb: "pick-up",
     response: { text: "Raccolgo la chiave." },
     operations: [{ type: "collect-target-object" }],
+  }, {
+    verb: "look-at",
+    response: { text: "Una piccola chiave da inventario." },
   }],
 });
 const extraNouns = Array.from({ length: 8 }, (_, index) => defineNoun({
@@ -133,16 +135,21 @@ const project = defineGame({
   sequences: {
     hostGreeting: defineSequence({
       skippable: true,
-      steps: [{ type: "line", character: "host", text: "Benvenuto.", audio: silenceAudio }, {
+      steps: [
+        { type: "line", character: "host", text: "Benvenuto.", audio: silenceAudio },
+        { type: "narration", text: "La sera scende lentamente sul porto." },
+        {
         type: "choice",
         alternatives: [{ text: "Grazie!", steps: [{ type: "line", character: "host", text: "A te." }] }, {
           text: "Non ora.", spoken: false, steps: [{ type: "line", character: "host", text: "Come vuoi." }],
         }],
         fallback: { text: "Arrivederci.", spoken: false, steps: [] },
-      }],
+        },
+      ],
     }),
   },
   commandLexicon: defineCommandLexicon({
+    inventory: { select: "Prendi {noun}", deselect: "Riponi {noun}" },
     verbs: {
       open: "Apri", "pick-up": "Raccogli", push: "Spingi",
       close: "Chiudi", "look-at": "Guarda", pull: "Tira",

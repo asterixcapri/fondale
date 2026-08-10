@@ -10,6 +10,7 @@ import {
 
 import type {
   AvailableHotspot,
+  AvailableInventoryNoun,
   AvailablePassage,
   CoreEffect,
   CoreSession,
@@ -33,6 +34,11 @@ interface CharacterView {
   readonly appearance: EntityAppearance;
   direction?: "side" | "front" | "back";
 }
+
+const commandPreviewFontSize = "6px";
+const commandResponseFontSize = "8px";
+const speechFontSize = "9px";
+const speechTextShadow = "-2px -2px #000,0 -2px #000,2px -2px #000,-2px 0 #000,2px 0 #000,-2px 2px #000,0 2px #000,2px 2px #000,-1px -1px #000,1px -1px #000,-1px 1px #000,1px 1px #000,3px 3px #000";
 
 export interface BrowserSaveSlot {
   readonly name: string;
@@ -67,7 +73,14 @@ export class BrowserRenderer {
     private readonly controls: BrowserSessionControls,
   ) {
     this.world.sortableChildren = true;
-    this.overlay = new EngineOverlay(frame, data, assets, core, controls);
+    this.overlay = new EngineOverlay(
+      frame,
+      data,
+      assets,
+      core,
+      controls,
+      (character) => this.characterViews.get(character)?.container.getBounds().minY,
+    );
     application.stage.addChild(this.world);
     application.canvas.setAttribute("aria-label", "Fondale game world");
     application.canvas.addEventListener("pointerup", this.onPointerUp);
@@ -223,40 +236,62 @@ export class BrowserRenderer {
   private readonly onPointerUp = (event: PointerEvent): void => {
     if (this.overlay.blocksWorldInput()) return;
     const activity = this.core.snapshot().activity;
-    if (event.button === 1 && activity?.type === "sequence" && activity.active?.kind === "line") {
-      event.preventDefault();
-      this.core.input({ type: "advance-sequence" });
+    if (event.button === 1) {
+      if (activity?.type === "line") {
+        event.preventDefault();
+        this.core.input({ type: "advance-line" });
+      } else if (
+        activity?.type === "sequence" &&
+        (activity.active?.kind === "line" || activity.active?.kind === "narration")
+      ) {
+        event.preventDefault();
+        this.core.input({ type: "advance-sequence" });
+      } else if (this.overlay.dismissResponse()) {
+        event.preventDefault();
+      }
       return;
     }
     if (event.button !== 0) return;
-    this.overlay.showNextIntroHint();
     this.frame.focus({ preventScroll: true });
     const point = this.scenePoint(event);
-    if (this.core.snapshot().activity?.type === "sequence") return;
+    if (["line", "sequence"].includes(this.core.snapshot().activity?.type ?? "")) return;
     const target = this.core.hitTest(point);
     if (target?.kind === "hotspot") {
+      this.overlay.dismissAction();
       this.core.input({ type: "contextual-hotspot", hotspot: target.index, action: "primary" });
     } else if (target?.kind === "passage") {
+      this.overlay.dismissAction();
       this.core.input({ type: "contextual-passage", passage: target.index, action: "primary" });
     } else this.core.input({ type: "move", point, fast: event.detail >= 2 });
   };
 
   private readonly onContextMenu = (event: MouseEvent): void => {
     event.preventDefault();
-    this.overlay.showNextIntroHint();
     this.frame.focus({ preventScroll: true });
-    if (this.overlay.blocksWorldInput() || this.core.snapshot().activity?.type === "sequence") return;
+    if (
+      this.overlay.blocksWorldInput() ||
+      ["line", "sequence"].includes(this.core.snapshot().activity?.type ?? "")
+    ) return;
     const point = this.scenePoint(event);
     const target = this.core.hitTest(point);
     if (target?.kind === "hotspot") {
+      const hotspot = this.core.availableHotspots().find(({ index }) => index === target.index);
+      if (!this.core.snapshot().command.firstNoun && !hotspot?.secondaryVerb) return;
+      this.overlay.dismissAction();
       this.core.input({ type: "contextual-hotspot", hotspot: target.index, action: "secondary" });
     } else if (target?.kind === "passage") {
+      const passage = this.core.availablePassages().find(({ index }) => index === target.index);
+      if (!this.core.snapshot().command.firstNoun && !passage?.secondaryVerb) return;
+      this.overlay.dismissAction();
       this.core.input({ type: "contextual-passage", passage: target.index, action: "secondary" });
     }
   };
 
   private readonly onDoubleClick = (event: MouseEvent): void => {
-    if (this.overlay.blocksWorldInput() || this.core.snapshot().activity?.type === "sequence") return;
+    if (
+      this.overlay.blocksWorldInput() ||
+      ["line", "sequence"].includes(this.core.snapshot().activity?.type ?? "")
+    ) return;
     const point = this.scenePoint(event);
     const target = this.core.hitTest(point);
     if (target?.kind === "passage") {
@@ -267,7 +302,10 @@ export class BrowserRenderer {
   };
 
   private readonly onPointerMove = (event: PointerEvent): void => {
-    if (this.overlay.blocksWorldInput()) {
+    if (
+      this.overlay.blocksWorldInput() ||
+      ["line", "sequence"].includes(this.core.snapshot().activity?.type ?? "")
+    ) {
       this.overlay.showAction(undefined);
       return;
     }
@@ -318,24 +356,26 @@ class EngineOverlay {
   private readonly inventoryTrigger = document.createElement("button");
   private readonly inventoryPanel = document.createElement("aside");
   private readonly inventoryScrim = document.createElement("button");
-  private readonly hint = document.createElement("div");
   private readonly activity = document.createElement("div");
   private readonly modal = document.createElement("section");
   private readonly reveal = document.createElement("button");
   private readonly revealedHotspots = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   private inventorySignature = "";
   private activitySignature = "";
-  private focusBeforeSequence: HTMLElement | null = null;
-  private sequenceWasActive = false;
+  private focusBeforeTextActivity: HTMLElement | null = null;
+  private textActivityWasActive = false;
   private hotspotsRevealed = false;
   private hoveredHotspot: AvailableHotspot | AvailablePassage | null = null;
+  private inventoryActionObject: string | null = null;
   private modalKind: "options" | "help" | "save" | "load" | null = null;
   private preferences: PlayerPreferences;
   private inventoryPage = 0;
   private inventoryOpen = false;
   private previousInventoryCount = 0;
   private lineTimer: number | undefined;
+  private responseTimer: number | undefined;
   private activeAudio: HTMLAudioElement | undefined;
+  private dismissedActionSignature: string | null = null;
 
   constructor(
     private readonly frame: HTMLElement,
@@ -343,6 +383,7 @@ class EngineOverlay {
     private readonly assets: LoadedAssets,
     private readonly core: CoreSession,
     private readonly controls: BrowserSessionControls,
+    private readonly characterSilhouetteTop: (character: string) => number | undefined,
   ) {
     this.preferences = readPreferences(data.identity);
     this.root.dataset.fondaleOverlay = "";
@@ -381,11 +422,11 @@ class EngineOverlay {
         "box-sizing:border-box",
         "padding:3px 6px",
         "color:#ffffff",
-        `background:${colorWithAlpha(data.hudTheme?.colors.backing ?? "#071016", 0.94)}`,
+        `background:${colorWithAlpha(data.hudTheme?.colors.backing ?? "#071016", 0.82)}`,
         `border:1px solid ${data.hudTheme?.colors.border ?? "#789690"}`,
         "border-radius:4px",
         "box-shadow:0 2px 7px rgba(0,0,0,.72)",
-        "font-size:8px",
+        `font-size:${commandPreviewFontSize}`,
         "line-height:1.25",
         "white-space:normal",
         "text-shadow:1px 1px #000,-1px -1px #000",
@@ -412,8 +453,9 @@ class EngineOverlay {
     this.response.setAttribute("aria-live", "polite");
     Object.assign(this.inventory.style, {
       display: "grid",
-      gridTemplateColumns: "repeat(2,minmax(0,1fr))",
-      gridTemplateRows: "repeat(4,minmax(0,1fr))",
+      gridTemplateColumns: "repeat(4,minmax(0,1fr))",
+      gridTemplateRows: "repeat(2,34px)",
+      alignContent: "start",
       minHeight: "0",
       gap: "3px",
     });
@@ -426,9 +468,11 @@ class EngineOverlay {
     const previous = this.modalButton("‹", () => this.changeInventoryPage(-1));
     previous.dataset.fondaleInventoryPrevious = "";
     previous.setAttribute("aria-label", "Previous Inventory page");
+    this.styleInventoryControl(previous);
     const next = this.modalButton("›", () => this.changeInventoryPage(1));
     next.dataset.fondaleInventoryNext = "";
     next.setAttribute("aria-label", "Next Inventory page");
+    this.styleInventoryControl(next);
     this.inventoryNav.append(previous, next);
     this.inventoryTrigger.type = "button";
     this.inventoryTrigger.dataset.fondaleInventoryTrigger = "";
@@ -460,11 +504,7 @@ class EngineOverlay {
     const bagBand = document.createElement("span");
     bagBand.style.cssText = "position:absolute;left:0;right:0;top:3px;height:1px;background:#6e4d16";
     bag.append(bagHandle, bagBand);
-    const key = document.createElement("span");
-    key.textContent = "I";
-    key.setAttribute("aria-hidden", "true");
-    key.style.cssText = "position:absolute;right:-3px;bottom:-2px;padding:1px 2px;color:#172925;background:#fff;border:1px solid #172925;border-radius:2px;font:700 5px/1 sans-serif";
-    this.inventoryTrigger.append(bag, key);
+    this.inventoryTrigger.append(bag);
     this.inventoryTrigger.addEventListener("click", () => this.setInventoryOpen(!this.inventoryOpen));
     this.inventoryScrim.type = "button";
     this.inventoryScrim.dataset.fondaleInventoryScrim = "";
@@ -473,16 +513,18 @@ class EngineOverlay {
     this.inventoryScrim.addEventListener("click", () => this.setInventoryOpen(false));
     this.inventoryPanel.dataset.fondaleInventoryPanel = "";
     this.inventoryPanel.setAttribute("aria-label", "Inventory");
+    this.inventoryPanel.setAttribute("role", "dialog");
+    this.inventoryPanel.setAttribute("aria-modal", "true");
+    this.inventoryPanel.tabIndex = -1;
     this.inventoryPanel.style.cssText = [
       "position:absolute",
       "display:none",
       "z-index:20",
       "top:6px",
       "right:6px",
-      "bottom:6px",
       "width:158px",
       "box-sizing:border-box",
-      "grid-template-rows:auto minmax(0,1fr) auto",
+      "grid-template-rows:auto auto auto",
       "gap:4px",
       "padding:6px",
       "pointer-events:auto",
@@ -499,12 +541,9 @@ class EngineOverlay {
     const closeInventory = this.modalButton("×", () => this.setInventoryOpen(false));
     closeInventory.dataset.fondaleInventoryClose = "";
     closeInventory.setAttribute("aria-label", "Close Inventory");
-    closeInventory.style.margin = "0";
+    this.styleInventoryControl(closeInventory);
     inventoryHeader.append(inventoryTitle, closeInventory);
     this.inventoryPanel.append(inventoryHeader, this.inventory, this.inventoryNav);
-    this.hint.dataset.fondaleHint = "";
-    this.hint.setAttribute("role", "status");
-    this.hint.style.cssText = "position:absolute;left:132px;bottom:40px;width:160px;text-align:center;color:#f2ad62;pointer-events:none";
     Object.assign(this.activity.style, {
       position: "absolute",
       inset: "0",
@@ -567,48 +606,35 @@ class EngineOverlay {
       this.inventoryTrigger,
       this.reveal,
       this.activity,
-      this.hint,
       this.modal,
     );
     this.frame.append(this.root);
     this.frame.addEventListener("keydown", this.onKeyDown);
     this.frame.addEventListener("keyup", this.onKeyUp);
     this.updatePreference({});
-    this.showNextIntroHint();
   }
 
   blocksWorldInput(): boolean {
     return this.modalKind !== null || this.inventoryOpen;
   }
 
-  showNextIntroHint(): void {
-    const next = [
-      ["left-click", "Left click executes the main action."],
-      ["right-click", "Right click executes the secondary action when shown."],
-      ["tab", "Hold Tab to reveal active Nouns."],
-      ["inventory", "Click the bag or press I to open the Inventory."],
-    ].find(([kind]) => !this.preferences.shownHints.includes(kind!));
-    if (!next) return;
-    const [kind, text] = next;
-    this.preferences = {
-      ...this.preferences,
-      shownHints: [...this.preferences.shownHints, kind!],
-    };
-    localStorage.setItem(preferencesKey(this.data.identity), JSON.stringify(this.preferences));
-    this.hint.textContent = text!;
-  }
-
   render(state: GameState, effects: readonly CoreEffect[]): void {
     const latestResponse = [...effects].reverse().find(({ type }) => type === "interaction-response");
     if (latestResponse?.type === "interaction-response") {
+      this.clearResponseTimer();
       this.response.textContent = latestResponse.text;
-      const presentation = latestResponse.response?.presentation ?? "speech";
-      const speaker = latestResponse.response?.speaker ?? this.data.playerCharacter;
-      this.positionSpeech(this.response, state, presentation, speaker);
+      this.positionLowerText(this.response, "command-response");
+      this.responseTimer = window.setTimeout(
+        () => this.dismissResponse(),
+        this.speechDuration(latestResponse.text),
+      );
     }
     this.renderInventory(state);
-    if (!this.hoveredHotspot) {
+    if (!this.hoveredHotspot && !this.inventoryActionObject) {
       this.action.style.display = "none";
+    }
+    if (state.activity?.type === "line" || state.activity?.type === "sequence") {
+      this.dismissResponse();
     }
     this.renderActivity(state);
     const choosing = state.activity?.type === "sequence" && state.activity.active?.kind === "choice";
@@ -619,11 +645,22 @@ class EngineOverlay {
 
   showAction(hotspot: AvailableHotspot | AvailablePassage | undefined): void {
     const state = this.core.snapshot();
-    this.hoveredHotspot = hotspot ?? null;
+    this.inventoryActionObject = null;
     if (!hotspot) {
+      this.hoveredHotspot = null;
+      this.dismissedActionSignature = null;
       this.action.style.display = "none";
       return;
     }
+    const signature = this.actionSignature(hotspot);
+    if (signature === this.dismissedActionSignature) {
+      this.hoveredHotspot = null;
+      this.action.style.display = "none";
+      return;
+    }
+    this.dismissedActionSignature = null;
+    this.hoveredHotspot = hotspot;
+    this.action.style.zIndex = "8";
     const firstNoun = state.command.firstNoun
       ? this.core.availableInventory().find(({ object }) => object === state.command.firstNoun?.object)
       : undefined;
@@ -638,6 +675,23 @@ class EngineOverlay {
     this.action.style.display = "block";
   }
 
+  dismissAction(): void {
+    if (this.hoveredHotspot) {
+      this.dismissedActionSignature = this.actionSignature(this.hoveredHotspot);
+    }
+    this.hoveredHotspot = null;
+    this.inventoryActionObject = null;
+    this.action.style.display = "none";
+  }
+
+  dismissResponse(): boolean {
+    if (!this.response.textContent) return false;
+    this.clearResponseTimer();
+    this.response.textContent = "";
+    this.response.style.display = "none";
+    return true;
+  }
+
   showCursor(point: Point): void {
     const actionHeight = this.secondaryAction.style.display === "none" ? 25 : 39;
     this.action.style.left = `${Math.max(3, Math.min(this.data.logicalResolution.width - 193, point.x + 7))}px`;
@@ -649,6 +703,7 @@ class EngineOverlay {
 
   destroy(): void {
     this.clearLineTimer();
+    this.clearResponseTimer();
     this.root.parentElement?.removeEventListener("keydown", this.onKeyDown);
     this.root.parentElement?.removeEventListener("keyup", this.onKeyUp);
     this.root.remove();
@@ -677,9 +732,9 @@ class EngineOverlay {
       button.style.cssText = [
         "position:relative",
         "display:grid",
-        "grid-template-columns:32px minmax(0,1fr)",
+        "place-items:center",
         "align-items:center",
-        "gap:3px",
+        "gap:0",
         "min-width:0",
         "min-height:0",
         "padding:2px",
@@ -702,10 +757,6 @@ class EngineOverlay {
       image.alt = "";
       image.src = assetUrl(this.data.objects[objectId]!.inventoryAppearance);
       button.append(image);
-      const label = document.createElement("span");
-      label.textContent = available.get(objectId)?.label ?? objectId;
-      label.style.cssText = "min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap";
-      button.append(label);
       if (selected) {
         const marker = document.createElement("span");
         marker.textContent = "✓";
@@ -714,9 +765,27 @@ class EngineOverlay {
         button.append(marker);
       }
       button.addEventListener("click", () => {
-        this.core.input({ type: "select-object", object: objectId });
+        this.dismissAction();
+        this.core.input({ type: "contextual-object", object: objectId, action: "primary" });
         this.setInventoryOpen(false);
       });
+      const inventoryNoun = available.get(objectId);
+      if (inventoryNoun) {
+        button.addEventListener("pointermove", (event) => {
+          this.showInventoryAction(inventoryNoun, button, event);
+        });
+        button.addEventListener("pointerleave", () => {
+          if (document.activeElement !== button) this.dismissAction();
+        });
+        button.addEventListener("focus", () => this.showInventoryAction(inventoryNoun, button));
+        button.addEventListener("blur", () => this.dismissAction());
+        button.addEventListener("contextmenu", (event) => {
+          event.preventDefault();
+          if (!inventoryNoun.secondaryVerb) return;
+          this.dismissAction();
+          this.core.input({ type: "contextual-object", object: objectId, action: "secondary" });
+        });
+      }
       this.inventory.append(button);
     }
     if (this.data.commandLexicon) {
@@ -730,8 +799,12 @@ class EngineOverlay {
         empty.style.cssText = `display:block;min-width:0;min-height:0;border:1px solid ${this.data.hudTheme?.colors.border ?? "rgba(255,255,255,.45)"};background:${well};opacity:.4`;
         this.inventory.append(empty);
       }
-      this.inventoryNav.querySelector<HTMLButtonElement>("[data-fondale-inventory-previous]")!.disabled = this.inventoryPage === 0;
-      this.inventoryNav.querySelector<HTMLButtonElement>("[data-fondale-inventory-next]")!.disabled = this.inventoryPage >= maximumPage;
+      const previous = this.inventoryNav.querySelector<HTMLButtonElement>("[data-fondale-inventory-previous]")!;
+      const next = this.inventoryNav.querySelector<HTMLButtonElement>("[data-fondale-inventory-next]")!;
+      previous.disabled = this.inventoryPage === 0;
+      next.disabled = this.inventoryPage >= maximumPage;
+      previous.style.opacity = previous.disabled ? "0.35" : "1";
+      next.style.opacity = next.disabled ? "0.35" : "1";
     }
   }
 
@@ -742,14 +815,49 @@ class EngineOverlay {
     this.inventoryTrigger.setAttribute("aria-expanded", String(open));
     this.inventoryTrigger.setAttribute("aria-label", open ? "Close Inventory" : "Open Inventory");
     this.inventorySignature = "";
-    this.hint.style.visibility = open ? "hidden" : "visible";
-    if (open) this.action.style.display = "none";
-    if (open) this.inventoryPanel.querySelector<HTMLButtonElement>("button")?.focus({ preventScroll: true });
+    this.dismissAction();
+    this.action.style.zIndex = "8";
+    if (this.response.textContent) this.positionLowerText(this.response, "command-response");
+    const narration = this.activity.querySelector<HTMLElement>("[data-fondale-narration]");
+    if (narration) this.positionLowerText(narration, "narration");
+    if (open) this.inventoryPanel.focus({ preventScroll: true });
     else this.frame.focus({ preventScroll: true });
   }
 
   private setActionText(element: HTMLElement, text: string): void {
     element.querySelector<HTMLElement>("[data-fondale-action-text]")!.textContent = text;
+  }
+
+  private showInventoryAction(
+    noun: AvailableInventoryNoun,
+    button: HTMLButtonElement,
+    event?: PointerEvent,
+  ): void {
+    const selected = this.core.snapshot().command.firstNoun?.object === noun.object;
+    const selectionPattern = selected
+      ? this.data.commandLexicon!.inventory.deselect
+      : this.data.commandLexicon!.inventory.select;
+    this.setActionText(this.primaryAction, selectionPattern.replace("{noun}", noun.label));
+    const secondary = noun.secondaryVerb
+      ? this.commandPhrase(noun.secondaryVerb, noun.label)
+      : "";
+    this.setActionText(this.secondaryAction, secondary);
+    this.secondaryAction.style.display = secondary ? "flex" : "none";
+    this.hoveredHotspot = null;
+    this.inventoryActionObject = noun.object;
+    this.dismissedActionSignature = null;
+    this.action.style.zIndex = "21";
+    this.action.style.display = "block";
+
+    const frameBounds = this.frame.getBoundingClientRect();
+    const buttonBounds = button.getBoundingClientRect();
+    const scale = frameBounds.width / this.data.logicalResolution.width;
+    const clientX = event?.clientX ?? buttonBounds.left + buttonBounds.width / 2;
+    const clientY = event?.clientY ?? buttonBounds.top + buttonBounds.height / 2;
+    this.showCursor({
+      x: (clientX - frameBounds.left) / scale,
+      y: (clientY - frameBounds.top) / scale,
+    });
   }
 
   private commandPhrase(verb: Verb | undefined, noun: string, firstNoun?: string): string {
@@ -774,51 +882,66 @@ class EngineOverlay {
   }
 
   private renderActivity(state: GameState): void {
-    const sequence = state.activity?.type === "sequence" ? state.activity : null;
-    const signature = JSON.stringify(sequence);
+    const activity = state.activity?.type === "sequence" || state.activity?.type === "line"
+      ? state.activity
+      : null;
+    const signature = JSON.stringify(activity);
     if (signature === this.activitySignature) return;
     this.clearLineTimer();
-    if (sequence && !this.sequenceWasActive) {
-      this.focusBeforeSequence =
+    if (activity && !this.textActivityWasActive) {
+      this.focusBeforeTextActivity =
         document.activeElement instanceof HTMLElement && document.activeElement.isConnected
           ? document.activeElement
           : this.frame;
     }
     this.activitySignature = signature;
     this.activity.replaceChildren();
-    if (!sequence?.active) {
-      if (this.sequenceWasActive) {
-        const target = this.focusBeforeSequence?.isConnected ? this.focusBeforeSequence : this.frame;
+    if (!activity || activity.type === "sequence" && !activity.active) {
+      if (this.textActivityWasActive) {
+        const target = this.focusBeforeTextActivity?.isConnected ? this.focusBeforeTextActivity : this.frame;
         target.focus({ preventScroll: true });
       }
-      this.sequenceWasActive = false;
-      this.focusBeforeSequence = null;
+      this.textActivityWasActive = false;
+      this.focusBeforeTextActivity = null;
       return;
     }
-    this.sequenceWasActive = true;
+    this.textActivityWasActive = true;
+    if (activity.type === "line") {
+      const speaker = activity.line.character;
+      if (state.characters[speaker]?.scene !== state.currentScene) return;
+      const line = document.createElement("div");
+      line.dataset.fondaleLine = "";
+      line.setAttribute("role", "status");
+      line.textContent = activity.line.text;
+      this.activity.append(line);
+      this.positionSpeech(line, state, speaker);
+      this.frame.focus({ preventScroll: true });
+      const audioDuration = activity.line.audio ? this.playLineAudio(activity.line.audio) : 0;
+      this.lineTimer = window.setTimeout(() => {
+        this.lineTimer = undefined;
+        if (!this.modalKind) this.core.input({ type: "advance-line" });
+      }, Math.max(this.speechDuration(activity.line.text), audioDuration));
+      return;
+    }
+    const sequence = activity;
+    const active = sequence.active;
+    if (!active) return;
     const definition = this.data.sequences[sequence.sequence]!;
-    const step = resolvePath(definition, sequence.active.path) as SequenceStep;
-    if (sequence.active.kind === "line") {
-      const isChoiceSpeech = sequence.active.choiceText !== undefined;
+    const step = resolvePath(definition, active.path) as SequenceStep;
+    if (active.kind === "line") {
+      const isChoiceSpeech = active.choiceText !== undefined;
       const authoredLine = step.type === "line" ? step : undefined;
       if (!isChoiceSpeech && !authoredLine) return;
       const line = document.createElement("div");
       line.dataset.fondaleLine = "";
       line.setAttribute("role", "status");
-      line.textContent = isChoiceSpeech ? sequence.active.choiceText! : authoredLine!.text;
-      const speaker = isChoiceSpeech ? sequence.active.choiceCharacter : authoredLine?.character;
+      line.textContent = isChoiceSpeech ? active.choiceText! : authoredLine!.text;
+      const speaker = isChoiceSpeech ? active.choiceCharacter : authoredLine?.character;
+      if (!speaker || state.characters[speaker]?.scene !== state.currentScene) return;
       this.activity.append(line);
-      this.positionSpeech(line, state, speaker ? "speech" : "narration", speaker);
+      this.positionSpeech(line, state, speaker);
       this.frame.focus({ preventScroll: true });
-      const millisecondsPerCharacter = {
-        slow: 130,
-        normal: 80,
-        fast: 25,
-      }[this.preferences.textSpeed];
-      const minimumDuration = { slow: 7_000, normal: 4_000, fast: 600 }[
-        this.preferences.textSpeed
-      ];
-      const duration = Math.max(minimumDuration, (line.textContent?.length ?? 0) * millisecondsPerCharacter);
+      const duration = this.speechDuration(line.textContent ?? "");
       const audioDuration = !isChoiceSpeech && authoredLine?.audio
         ? this.playLineAudio(authoredLine.audio)
         : 0;
@@ -826,20 +949,73 @@ class EngineOverlay {
         this.lineTimer = undefined;
         if (!this.modalKind) this.core.input({ type: "advance-sequence" });
       }, Math.max(duration, audioDuration));
-    } else if (sequence.active.kind === "choice" && step.type === "choice") {
+    } else if (active.kind === "narration" && step.type === "narration") {
+      const narration = document.createElement("div");
+      narration.dataset.fondaleNarration = "";
+      narration.setAttribute("role", "status");
+      narration.textContent = step.text;
+      this.activity.append(narration);
+      this.positionLowerText(narration, "narration");
+      this.frame.focus({ preventScroll: true });
+      this.lineTimer = window.setTimeout(() => {
+        this.lineTimer = undefined;
+        if (!this.modalKind) this.core.input({ type: "advance-sequence" });
+      }, this.speechDuration(step.text));
+    } else if (active.kind === "choice" && step.type === "choice") {
       const list = document.createElement("div");
       list.dataset.fondaleChoice = "";
-      list.style.cssText = "display:grid;gap:2px;pointer-events:auto";
-      for (const alternative of sequence.active.eligibleAlternatives) {
+      list.style.cssText = [
+        "display:grid",
+        "gap:2px",
+        "padding:14px 8px 4px",
+        "box-sizing:border-box",
+        "pointer-events:auto",
+        "border:0",
+        `background:linear-gradient(to top,${colorWithAlpha(this.data.hudTheme?.colors.backing ?? "#071016", 0.65)} 0%,${colorWithAlpha(this.data.hudTheme?.colors.backing ?? "#071016", 0.42)} 62%,transparent 100%)`,
+      ].join(";");
+      const playerSpeechColor = (this.data.playerCharacter
+        ? this.data.hudTheme?.speechColors[this.data.playerCharacter]
+        : undefined)
+        ?? this.data.hudTheme?.colors.text
+        ?? "#f4dfb4";
+      active.eligibleAlternatives.forEach((alternative, displayIndex) => {
         const choice = alternative === -1 ? step.fallback : step.alternatives[alternative]!;
         const button = document.createElement("button");
         button.type = "button";
         button.dataset.fondaleAlternative = String(alternative);
-        button.style.cssText = overlayButtonStyle;
-        button.textContent = choice.text;
+        button.style.cssText = [
+          "display:block",
+          "width:100%",
+          "padding:2px 0",
+          "box-sizing:border-box",
+          "background:transparent",
+          "border:0",
+          "outline:none",
+          "text-align:left",
+          "filter:brightness(1)",
+          "transition:filter 80ms linear,transform 80ms linear",
+          `color:${playerSpeechColor}`,
+          `font:${speechFontSize}/1.25 ${JSON.stringify(this.data.hudTheme?.font.family ?? "monospace")}`,
+          `text-shadow:${speechTextShadow}`,
+        ].join(";");
+        const idle = (): void => {
+          button.style.filter = "brightness(1)";
+          button.style.transform = "none";
+        };
+        const activeStyle = (): void => {
+          button.style.filter = "brightness(1.45)";
+          button.style.transform = "translateX(2px)";
+        };
+        button.addEventListener("focus", activeStyle);
+        button.addEventListener("blur", idle);
+        button.addEventListener("pointerenter", activeStyle);
+        button.addEventListener("pointerleave", () => {
+          if (document.activeElement !== button) idle();
+        });
+        button.textContent = `${displayIndex + 1}. ${choice.text}`;
         button.addEventListener("click", () => this.core.input({ type: "choose", alternative }));
         list.append(button);
-      }
+      });
       this.activity.append(list);
       list.querySelector<HTMLButtonElement>("button")?.focus();
     }
@@ -848,15 +1024,14 @@ class EngineOverlay {
   private positionSpeech(
     element: HTMLElement,
     state: GameState,
-    presentation: "speech" | "narration",
-    speaker?: string,
+    speaker: string,
   ): void {
-    const character = speaker ? state.characters[speaker] : undefined;
+    const character = state.characters[speaker];
     const visible = character?.scene === state.currentScene;
+    const characterSpeech = visible && character;
     const safeBottom = this.data.logicalResolution.height - 4;
-    element.dataset.fondalePresentation = presentation;
-    if (speaker) element.dataset.fondaleSpeaker = speaker;
-    else delete element.dataset.fondaleSpeaker;
+    element.dataset.fondalePresentation = "speech";
+    element.dataset.fondaleSpeaker = speaker;
     element.style.cssText = [
       "position:absolute",
       `width:${this.data.hudTheme?.maxSpeechWidth ?? 150}px`,
@@ -866,27 +1041,62 @@ class EngineOverlay {
       `max-height:${safeBottom - 4}px`,
       "overflow-y:auto",
       "text-align:center",
-      `color:${speaker && this.data.hudTheme?.speechColors[speaker] || this.data.hudTheme?.colors.text || "#f4dfb4"}`,
+      `font-size:${speechFontSize}`,
+      `color:${this.data.hudTheme?.speechColors[speaker] || this.data.hudTheme?.colors.text || "#f4dfb4"}`,
       "box-sizing:border-box",
-      "padding:4px 7px",
-      `background:${colorWithAlpha(this.data.hudTheme?.colors.backing ?? "#071016", 0.88)}`,
-      `border:1px solid ${this.data.hudTheme?.colors.border ?? "#5c7182"}`,
-      "border-radius:4px",
-      "box-shadow:0 2px 8px rgba(0,0,0,.72)",
-      "text-shadow:1px 1px #000,-1px -1px #000",
+      `padding:${characterSpeech ? "2px 4px" : "4px 7px"}`,
+      `background:${characterSpeech ? "transparent" : colorWithAlpha(this.data.hudTheme?.colors.backing ?? "#071016", 0.88)}`,
+      `border:${characterSpeech ? "0" : `1px solid ${this.data.hudTheme?.colors.border ?? "#5c7182"}`}`,
+      `border-radius:${characterSpeech ? "0" : "4px"}`,
+      `box-shadow:${characterSpeech ? "none" : "0 2px 8px rgba(0,0,0,.72)"}`,
+      `text-shadow:${characterSpeech
+        ? speechTextShadow
+        : "1px 1px #000,-1px -1px #000"}`,
       "pointer-events:none",
       `display:${this.preferences.speechText ? "block" : "none"}`,
     ].join(";");
-    if (presentation === "speech" && visible && character) {
-      const width = this.data.hudTheme?.maxSpeechWidth ?? 150;
-      element.style.left = `${Math.max(2, Math.min(this.data.logicalResolution.width - width - 2, character.groundPoint.x - width / 2))}px`;
-      const height = element.offsetHeight;
-      element.style.top = `${Math.max(4, Math.min(safeBottom - height, character.groundPoint.y - 45))}px`;
-    } else {
-      element.style.left = `${(this.data.logicalResolution.width - (this.data.hudTheme?.maxSpeechWidth ?? 150)) / 2}px`;
-      const height = element.offsetHeight;
-      element.style.top = `${Math.max(4, Math.min(safeBottom - height, 72))}px`;
-    }
+    if (!characterSpeech) return;
+    const width = this.data.hudTheme?.maxSpeechWidth ?? 150;
+    element.style.left = `${Math.max(2, Math.min(this.data.logicalResolution.width - width - 2, character.groundPoint.x - width / 2))}px`;
+    const height = element.offsetHeight;
+    const silhouetteTop = this.characterSilhouetteTop(speaker) ?? character.groundPoint.y;
+    element.style.top = `${Math.max(4, Math.min(safeBottom - height, silhouetteTop - height - 2))}px`;
+  }
+
+  private positionLowerText(
+    element: HTMLElement,
+    presentation: "command-response" | "narration",
+  ): void {
+    const compactWidth = this.data.hudTheme?.maxSpeechWidth ?? 150;
+    const width = presentation === "narration"
+      ? Math.min(this.data.logicalResolution.width - 40, Math.round(compactWidth * 1.6))
+      : compactWidth;
+    const drawerLeft = this.data.logicalResolution.width - 6 - 158;
+    const availableRight = this.inventoryOpen ? drawerLeft - 6 : this.data.logicalResolution.width;
+    element.dataset.fondalePresentation = presentation;
+    delete element.dataset.fondaleSpeaker;
+    element.style.position = "absolute";
+    element.style.bottom = "auto";
+    element.style.display = this.preferences.speechText ? "block" : "none";
+    element.style.boxSizing = "border-box";
+    element.style.width = `${Math.min(width, availableRight - 4)}px`;
+    element.style.maxWidth = `${width}px`;
+    element.style.whiteSpace = "normal";
+    element.style.overflowWrap = "anywhere";
+    element.style.textAlign = "center";
+    element.style.padding = "4px 7px";
+    element.style.fontSize = presentation === "narration" ? speechFontSize : commandResponseFontSize;
+    element.style.color = presentation === "narration"
+      ? this.data.hudTheme?.colors.text ?? "#f4dfb4"
+      : "#fff";
+    element.style.background = colorWithAlpha(this.data.hudTheme?.colors.backing ?? "#071016", 0.88);
+    element.style.border = `1px solid ${this.data.hudTheme?.colors.border ?? "#5c7182"}`;
+    element.style.borderRadius = "4px";
+    element.style.boxShadow = "0 2px 8px rgba(0,0,0,.72)";
+    element.style.textShadow = "1px 1px #000,-1px -1px #000";
+    element.style.left = `${Math.max(2, (availableRight - Math.min(width, availableRight - 4)) / 2)}px`;
+    element.style.top = `${Math.max(4, this.data.logicalResolution.height - element.offsetHeight - 4)}px`;
+    element.style.zIndex = this.inventoryOpen ? "21" : "7";
   }
 
   private renderRevealedHotspots(): void {
@@ -943,8 +1153,18 @@ class EngineOverlay {
       return;
     }
     const state = this.core.snapshot();
+    if (state.activity?.type === "line") {
+      if (event.key === ".") {
+        event.preventDefault();
+        this.core.input({ type: "advance-line" });
+      }
+      return;
+    }
     if (state.activity?.type === "sequence") {
-      if (event.key === "." && state.activity.active?.kind === "line") {
+      if (
+        event.key === "." &&
+        (state.activity.active?.kind === "line" || state.activity.active?.kind === "narration")
+      ) {
         event.preventDefault();
         this.core.input({ type: "advance-sequence" });
       } else if (state.activity.active?.kind === "choice") {
@@ -970,16 +1190,18 @@ class EngineOverlay {
       if (event.key === "Escape") this.core.input({ type: "skip-sequence" });
       return;
     }
+    if (event.key === "." && this.dismissResponse()) {
+      event.preventDefault();
+      return;
+    }
     if (event.key.toLowerCase() === "i" && this.data.commandLexicon) {
       event.preventDefault();
       this.setInventoryOpen(!this.inventoryOpen);
-      this.showNextIntroHint();
       return;
     }
     if (event.key === "Tab" && this.data.commandLexicon) {
       event.preventDefault();
       this.hotspotsRevealed = true;
-      this.showNextIntroHint();
       this.renderRevealedHotspots();
       return;
     }
@@ -1046,7 +1268,7 @@ class EngineOverlay {
   private renderHelp(): void {
     const text = document.createElement("p");
     text.dataset.fondaleHelp = "";
-    text.textContent = "Mouse: left main action, right secondary action when shown, middle skip Line. Bag or I opens Inventory. Tab reveals Nouns. 1–6 selects a Choice. F5 Options. Ctrl+S Save. Ctrl+L Load. Period skips a Line. Escape closes Inventory, deselects an Object, or skips a skippable Sequence.";
+    text.textContent = "Mouse: left main action, right secondary action when shown, middle skip Line or Command Response. Bag or I opens Inventory. Tab reveals Nouns. 1–6 selects a Choice. F5 Options. Ctrl+S Save. Ctrl+L Load. Period skips a Line or Command Response. Escape closes Inventory, deselects an Object, or skips a skippable Sequence.";
     this.modal.append(text, this.modalButton("Back", () => this.openModal("options")));
   }
 
@@ -1096,6 +1318,39 @@ class EngineOverlay {
     return button;
   }
 
+  private styleInventoryControl(button: HTMLButtonElement): void {
+    const idle = (): void => {
+      button.style.background = "transparent";
+      button.style.borderColor = "transparent";
+    };
+    const active = (): void => {
+      button.style.background = colorWithAlpha(this.data.hudTheme?.colors.inventoryWell ?? "#211b2d", 0.72);
+      button.style.borderColor = this.data.hudTheme?.colors.border ?? "#5c7182";
+    };
+    button.style.cssText = [
+      "display:grid",
+      "place-items:center",
+      "width:16px",
+      "height:16px",
+      "margin:0",
+      "padding:0",
+      "box-sizing:border-box",
+      "pointer-events:auto",
+      `color:${this.data.hudTheme?.colors.text ?? "#f4dfb4"}`,
+      "background:transparent",
+      "border:1px solid transparent",
+      "border-radius:3px",
+      "font:700 10px/1 sans-serif",
+      "text-shadow:1px 1px #000",
+    ].join(";");
+    button.addEventListener("pointerenter", active);
+    button.addEventListener("pointerleave", () => {
+      if (document.activeElement !== button) idle();
+    });
+    button.addEventListener("focus", active);
+    button.addEventListener("blur", idle);
+  }
+
   private updatePreference(change: Partial<PlayerPreferences>): void {
     this.preferences = { ...this.preferences, ...change };
     localStorage.setItem(preferencesKey(this.data.identity), JSON.stringify(this.preferences));
@@ -1107,6 +1362,27 @@ class EngineOverlay {
     this.lineTimer = undefined;
     this.activeAudio?.pause();
     this.activeAudio = undefined;
+  }
+
+  private clearResponseTimer(): void {
+    if (this.responseTimer !== undefined) window.clearTimeout(this.responseTimer);
+    this.responseTimer = undefined;
+  }
+
+  private speechDuration(text: string): number {
+    const millisecondsPerCharacter = {
+      slow: 130,
+      normal: 80,
+      fast: 25,
+    }[this.preferences.textSpeed];
+    const minimumDuration = { slow: 7_000, normal: 4_000, fast: 600 }[
+      this.preferences.textSpeed
+    ];
+    return Math.max(minimumDuration, text.length * millisecondsPerCharacter);
+  }
+
+  private actionSignature(hotspot: AvailableHotspot | AvailablePassage): string {
+    return `${"direction" in hotspot ? "passage" : "hotspot"}:${hotspot.index}`;
   }
 
   private playLineAudio(reference: URL | string): number {
@@ -1124,7 +1400,6 @@ interface PlayerPreferences {
   readonly textSpeed: "slow" | "normal" | "fast";
   readonly speechText: boolean;
   readonly audioVolume: number;
-  readonly shownHints: readonly string[];
 }
 
 function revealLabel(
@@ -1155,7 +1430,6 @@ const defaultPreferences: PlayerPreferences = {
   textSpeed: "normal",
   speechText: true,
   audioVolume: 1,
-  shownHints: [],
 };
 
 function preferencesKey(identity: string): string {
@@ -1169,7 +1443,6 @@ function readPreferences(identity: string): PlayerPreferences {
     return {
       ...defaultPreferences,
       ...value,
-      shownHints: Array.isArray(value.shownHints) ? value.shownHints.filter((hint): hint is string => typeof hint === "string") : [],
       audioVolume: typeof value.audioVolume === "number" && value.audioVolume >= 0 && value.audioVolume <= 1
         ? value.audioVolume
         : defaultPreferences.audioVolume,
