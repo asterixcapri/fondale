@@ -57,3 +57,16 @@ Sostituisce nel prototipo l'ipotesi precedente del click destro per aprire
 l'Inventory, ma non costituisce ancora un nuovo verdetto di produzione.
 Il selettore dell'inspector ripete la stessa interazione su Porto, Aiano e
 Boffe, con Noun e azioni propri di ciascuna scena.
+
+### 10 agosto 2026 — modello C approvato, leggibilità da correggere
+
+Il modello C contestuale provato nel prototipo Return-style è approvato. La
+scena libera a riposo, l'Inventory richiamabile e le azioni che compaiono sul
+Noun diventano quindi il nuovo verdetto visuale.
+
+Non è invece approvata la composizione testuale del prompt corrente: titolo del
+Noun e due azioni in colonne risultano troppo piccoli e poco leggibili sui
+fondali di Porto, Aiano e Boffe. La ricerca comparativa documenta che *Return to
+Monkey Island* separa le azioni in frasi autonome, protegge quella focalizzata
+con una capsula scura ad alto contrasto e collega i callout al target. Questa
+resa va provata separatamente prima di aggiornare il contratto di produzione.

@@ -152,6 +152,14 @@ Fonte immagine: screenshot fornito da Double Fine nella [pagina Steam ufficiale]
 
 Fonte immagine: screenshot fornito da Terrible Toybox/Devolver Digital nella [pagina Steam ufficiale](https://store.steampowered.com/app/2060130/).
 
+### Return to Monkey Island contextual text readability
+
+**Declared.** The official [Steam page](https://store.steampowered.com/app/2060130/) describes the controls as context-sensitive. The publisher-supplied Steam screenshots and the first-party [Xbox Wire screenshots](https://news.xbox.com/en-us/2022/11/09/eight-things-you-should-know-before-playing-return-to-monkey-island/) cover bright, dark and visually dense locations, but show the Scene at rest without contextual labels; they establish the range of backgrounds the UI must coexist with, not the label treatment itself.
+
+**Observed.** A direct PC capture reproduced in the accessibility review [*Return to Monkey Island Mobility Review*](https://caniplaythat.com/2022/10/11/return-to-monkey-island-mobility-review-can-i-play-that/) shows the interaction treatment on an exceptionally bright outdoor Scene. It does **not** use a Noun heading followed by two small command columns. Each available action is a self-contained mixed-case phrase, such as “Look at the painting” or “Take the painting”, preceded by its mouse-button icon. The focused action sits inside a nearly opaque black rounded capsule; the other remains large white text with a strong dark outline/shadow. Separate white leader lines connect both labels to the target. The review also describes the labels as text bubbles hovering over their respective mouse buttons. [Inspect the captured frame directly](https://i0.wp.com/caniplaythat.com/wp-content/uploads/2022/10/Return-To-Monkey-Island-Screenshot-2022.10.10-10.41.56.61.png?resize=1600%2C900&ssl=1).
+
+**Inference for Fondale.** Readability comes from reducing and separating information before styling it: show at most two complete action phrases, give the primary/focused action a dark high-contrast capsule, give every glyph a strong dark edge, and point each phrase back to the hotspot. Place the callouts dynamically in free space around the target and keep them inside the Scene bounds. This is materially different from keeping a three-part Sentence Line — Verb, Noun and Object — in one transparent block; copying only Return's white text would not solve the current problem.
+
 ## Hover, tasto destro e Sentence Line
 
 Le fonti mostrano che questi tre problemi possono essere separati dalla geometria del pannello:
