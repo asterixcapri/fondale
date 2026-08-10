@@ -1,4 +1,0 @@
-interface:
-  display_name: "Generate Character Animation Sprite"
-  short_description: "Create coherent game-ready character animation strips"
-  default_prompt: "Use $generate-character-animation-sprite to create and validate animation sprites for this Character."
