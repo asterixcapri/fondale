@@ -71,10 +71,10 @@ Appearance contract.
 
 | ID | Purpose / used by | Facing | Playback | Poses | Frames / fps | Master | Runtime | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `walk_front` | Player locomotion toward camera | front | loop | contact L, down L, passing L, up L, contact R, down R, passing R, up R | 8 / 10 | `walk-front-v2.png` | — | master-ready |
-| `walk_back` | Player locomotion away from camera | back | loop | contact L, down L, passing L, up L, contact R, down R, passing R, up R | 8 / 10 | `walk-back-v1.png` | — | master-ready |
-| `walk_left` | Player locomotion to screen left | left | loop | contact L, down L, passing L, up L, contact R, down R, passing R, up R | 8 / 10 | `walk-left-v1.png` | — | capability-needed |
-| `walk_right` | Player locomotion to screen right | right | loop | contact R, down R, passing R, up R, contact L, down L, passing L, up L | 8 / 10 | `walk-right-v3.png` | — | capability-needed |
+| `walk_front` | Player locomotion toward camera | front | loop | contact L, down L, passing L, up L, contact R, down R, passing R, up R | 8 / 10 | `walk-front-v2.png` | — | rejected |
+| `walk_back` | Player locomotion away from camera | back | loop | contact L, down L, passing L, up L, contact R, down R, passing R, up R | 8 / 10 | `walk-back-v1.png` | — | rejected |
+| `walk_left` | Player locomotion to screen left | left | loop | contact L, down L, passing L, up L, contact R, down R, passing R, up R | 8 / 10 | `walk-left-v1.png` | — | rejected |
+| `walk_right` | Player locomotion to screen right | right | loop | contact R, down R, passing R, up R, contact L, down L, passing L, up L | 8 / 10 | `walk-right-v3.png` | — | rejected |
 | `idle_front` | Neutral stopped pose and restrained ambient motion | front | loop | stable, breathe, blink, settle | 4 / 4 | `idle-front-v1.png` | — | master-ready |
 | `idle_back` | Neutral stopped pose away from camera | back | loop | stable, breathe, weight shift, settle | 4 / 4 | `idle-back-v1.png` | — | master-ready |
 | `idle_left` | Neutral stopped pose facing left | left | loop | stable, breathe, blink, settle | 4 / 4 | `idle-left-v1.png` | — | master-ready |
@@ -95,6 +95,10 @@ Appearance contract.
   could not be separated into independent frames.
 - `walk-right-v2.png` was rejected because the second row faced screen left.
   `walk-right-v3.png` keeps all eight figures facing screen right.
+- Human motion review on 2026-08-10 rejected all four previously selected walk
+  sheets because their loops are not fluid. Adjacent poses have irregular
+  temporal spacing and visible independent redraw drift. They remain diagnostic
+  evidence only and must not be integrated as Runtime Assets.
 - Every accepted animation has a corresponding `.chroma.png` generation source
   and `.prompt.md` generation note. Alpha-processed `.png` files are the
   canonical motion Art Masters.
@@ -109,10 +113,10 @@ are not committed as Art Masters or private Runtime Assets.
 
 | Animation | Cell | Visual Anchor | Colours | Strip validation | Motion and Scene review |
 | --- | --- | --- | --- | --- | --- |
-| `walk_front` | 45 x 100 | (22, 97) | 32 | pass, no warnings | pass at 100% and 55% |
-| `walk_back` | 40 x 100 | (19, 97) | 32 | pass, no warnings | pass at 100% and 55% |
-| `walk_left` | 45 x 100 | (24, 97) | 32 | pass, no warnings | pass at 100% and 55% |
-| `walk_right` | 57 x 100 | (28, 97) | 32 | pass, no warnings | pass at 100% and 55% |
+| `walk_front` | 45 x 100 | (22, 97) | 32 | pass, no warnings | rejected: uneven motion |
+| `walk_back` | 40 x 100 | (19, 97) | 32 | pass, no warnings | rejected: uneven motion |
+| `walk_left` | 45 x 100 | (24, 97) | 32 | pass, no warnings | rejected: uneven motion |
+| `walk_right` | 57 x 100 | (28, 97) | 32 | pass, no warnings | rejected: volume drift |
 | `idle_front` | 39 x 100 | (18, 97) | 32 | pass, no warnings | pass at 100% and 55% |
 | `idle_back` | 39 x 100 | (19, 97) | 32 | pass, no warnings | pass at 100% and 55% |
 | `idle_left` | 23 x 100 | (10, 97) | 32 | pass, no warnings | pass at 100% and 55% |
@@ -123,6 +127,16 @@ are not committed as Art Masters or private Runtime Assets.
 | `use_mid_right` | 64 x 100 | (16, 97) | 32 | pass, no warnings | pass at 100% and 55% |
 | `pick_up_left` | 55 x 100 | (35, 97) | 32 | pass, no warnings | pass at 100% and 55% |
 | `pick_up_right` | 50 x 100 | (21, 97) | 32 | pass, no warnings | pass at 100% and 55% |
+
+Static strip validation is necessary but did not detect the reported motion
+defect. A temporal silhouette diagnostic reproduced it: front and back have a
+maximum transition more than 2.2 times their median transition, the left loop
+contains one transition changing 73.8% of the union silhouette, and the right
+loop's visible silhouette area varies by 19.3%. Reordering, direct sheet
+revision, four-pose key generation, FFmpeg motion interpolation, and
+alpha-aware optical-flow interpolation were tested outside the repository. None
+passed both the temporal diagnostic and visual review; generated retries were
+discarded.
 
 ## Integration note
 
