@@ -2,7 +2,7 @@
 
 ## Git workflow
 
-Current project phase: design/pre-production.
+Current project phase: alpha design/pre-production.
 
 During this phase, commit and push all work directly to `main`, without feature
 branches or pull requests. This remains in effect until the user announces a

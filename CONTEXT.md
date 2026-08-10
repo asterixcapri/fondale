@@ -335,7 +335,8 @@ _Avoid_: Identifier, automatic discovery, rendered entity type
 **Noun Definition**:
 The declarative description of one Noun's labels, Preferred Verb, optional
 Secondary and Selected Object Verbs, Command Cases, and local fallbacks
-wherever that Noun is available to the Player.
+wherever that Noun is available to the Player. One Noun Definition belongs to
+its Character, Object, Scenery, background region, or Scene Passage.
 _Avoid_: Hotspot, entity definition, event handlers
 
 **Command**:
