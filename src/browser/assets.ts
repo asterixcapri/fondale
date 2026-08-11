@@ -1,11 +1,13 @@
 import { Assets, Rectangle, Texture } from "pixi.js";
 
 import { AuthoringError, type AuthoringDiagnostic } from "../capabilities/game-project";
+import {
+  isImageAnimationFrames,
+  type Appearance,
+} from "../capabilities/animation";
 import type {
   EntityAppearance,
   GameProjectData,
-  AnimationFrames,
-  Appearance,
   Point,
   SequenceStep,
 } from "../capabilities/game-project";
@@ -245,7 +247,7 @@ function addAnimatedAppearance(
 ): void {
   for (const [animationId, animation] of Object.entries(appearance.animations)) {
     const animationPath = `${path}.animations.${animationId}.frames`;
-    if (isImageFrames(animation.frames)) {
+    if (isImageAnimationFrames(animation.frames)) {
       animation.frames.forEach((image, index) => add(image, `${animationPath}[${index}]`));
     } else {
       for (const direction of ["side", "front", "back"] as const) {
@@ -264,7 +266,7 @@ function validateAnimatedAppearance(
 ): void {
   for (const [animationId, animation] of Object.entries(appearance.animations)) {
     const animationPath = `${path}.animations.${animationId}`;
-    if (isImageFrames(animation.frames)) {
+    if (isImageAnimationFrames(animation.frames)) {
       const animationTextures = animation.frames.flatMap((image) => {
         const texture = textures.get(assetUrl(image));
         return texture ? [texture] : [];
@@ -308,10 +310,6 @@ function validateAnimatedAppearance(
       }
     }
   }
-}
-
-function isImageFrames(frames: AnimationFrames): frames is readonly (URL | string)[] {
-  return Array.isArray(frames);
 }
 
 function validateAnchor(

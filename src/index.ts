@@ -25,17 +25,19 @@ export {
   type PassageDirection,
 } from "./capabilities/hud";
 export {
+  type AnimationDefinition,
+  type AnimationFrames,
+  type AnimationRoles,
+  type AnimationStrip,
+  type Appearance,
+} from "./capabilities/animation";
+export {
   defineGame,
   defineCharacter,
   defineScene,
   defineObject,
   defineSequence,
   type CharacterDefinition,
-  type AnimationDefinition,
-  type AnimationFrames,
-  type AnimationRoles,
-  type AnimationStrip,
-  type Appearance,
   type ArrivalSequenceRule,
   type Facing,
   type GameProject,

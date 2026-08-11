@@ -20,6 +20,23 @@ import {
   type DirectionStep,
   type DirectedSubject,
 } from "../sequence";
+import {
+  validateAppearance,
+  validateAppearanceSet,
+  validateAnimationReference,
+  type AnimationDefinition,
+  type AnimationFrames,
+  type AnimationRoles,
+  type AnimationStrip,
+  type Appearance,
+} from "../animation";
+export type {
+  AnimationDefinition,
+  AnimationFrames,
+  AnimationRoles,
+  AnimationStrip,
+  Appearance,
+} from "../animation";
 
 /** A point measured in logical Scene Space pixels. */
 export interface Point {
@@ -41,44 +58,6 @@ export interface SceneSize {
 
 /** The four authored facings used by directional Character walking. */
 export type Facing = "front" | "back" | "left" | "right";
-
-/** One horizontal image strip containing a positive number of Animation frames. */
-export interface AnimationStrip {
-  readonly image: URL | string;
-  readonly count: number;
-}
-
-/** Frames used by one Animation, either as images or directional strips. */
-export type AnimationFrames =
-  | readonly (URL | string)[]
-  | {
-      readonly side: AnimationStrip;
-      readonly front: AnimationStrip;
-      readonly back: AnimationStrip;
-    };
-
-/** A declarative transient visual performance owned by an Appearance. */
-export interface AnimationDefinition {
-  readonly frames: AnimationFrames;
-  readonly framesPerSecond: number;
-  readonly loop?: boolean;
-  /** Named logical seconds from the start of the Animation. */
-  readonly cues?: Readonly<Record<string, number>>;
-}
-
-/** Semantic Animation selections used automatically by the Engine. */
-export interface AnimationRoles {
-  readonly default: string;
-  readonly speaking?: string;
-  readonly walking?: string;
-}
-
-/** A persistent visual condition that owns all transient Animations available in it. */
-export interface Appearance {
-  readonly animations: Readonly<Record<string, AnimationDefinition>>;
-  readonly roles: AnimationRoles;
-  readonly visualAnchor?: Point;
-}
 
 /** An Appearance cut directly from the owning Scene's Background. */
 export interface BackgroundRegionAppearance {
@@ -114,14 +93,6 @@ export function defineCharacter(input: CharacterInput): CharacterDefinition {
       message: "A Character Ground Point must use finite Scene Space coordinates.",
     });
   }
-  if (!(input.initialAppearance in input.appearances)) {
-    diagnostics.push({
-      code: "reference.appearance.initial",
-      family: "reference", owner: "animation",
-      path: "initialAppearance",
-      message: `Appearance '${input.initialAppearance}' is not defined on this Character.`,
-    });
-  }
   if (!Number.isFinite(input.movementSpeed) || input.movementSpeed <= 0) {
     diagnostics.push({
       code: "definition.character.movement-speed",
@@ -130,11 +101,11 @@ export function defineCharacter(input: CharacterInput): CharacterDefinition {
       message: "Character movement speed must be a positive finite number.",
     });
   }
-  for (const [appearanceId, appearance] of Object.entries(input.appearances)) {
-    const base = `appearances.${appearanceId}`;
-    validateVisualAnchor(appearance.visualAnchor, `${base}.visualAnchor`, diagnostics);
-    validateAppearance(appearance, base, diagnostics);
-  }
+  diagnostics.push(...validateAppearanceSet(input.appearances, {
+    path: "appearances",
+    initialAppearance: input.initialAppearance,
+    subject: "Character",
+  }));
   if (diagnostics.length > 0) throw new AuthoringError(diagnostics);
   return deepFreeze({
     ...input,
@@ -156,14 +127,6 @@ export interface ObjectDefinition {
 /** Creates and freezes one Object that initially belongs to a Scene. */
 export function defineObject(input: ObjectDefinition): ObjectDefinition {
   const diagnostics: AuthoringDiagnostic[] = [];
-  if (!(input.initialAppearance in input.appearances)) {
-    diagnostics.push({
-      code: "reference.appearance.initial",
-      family: "reference", owner: "animation",
-      path: "initialAppearance",
-      message: `Appearance '${input.initialAppearance}' is not defined on this Object.`,
-    });
-  }
   if (!Number.isFinite(input.initialGroundPoint.x) || !Number.isFinite(input.initialGroundPoint.y)) {
     diagnostics.push({
       code: "definition.point.finite",
@@ -172,14 +135,11 @@ export function defineObject(input: ObjectDefinition): ObjectDefinition {
       message: "An Object Ground Point must use finite Scene Space coordinates.",
     });
   }
-  for (const [appearanceId, appearance] of Object.entries(input.appearances)) {
-    validateVisualAnchor(
-      appearance.visualAnchor,
-      `appearances.${appearanceId}.visualAnchor`,
-      diagnostics,
-    );
-    validateAppearance(appearance, `appearances.${appearanceId}`, diagnostics);
-  }
+  diagnostics.push(...validateAppearanceSet(input.appearances, {
+    path: "appearances",
+    initialAppearance: input.initialAppearance,
+    subject: "Object",
+  }));
   if (diagnostics.length > 0) throw new AuthoringError(diagnostics);
   return deepFreeze({
     ...input,
@@ -389,16 +349,10 @@ export function defineScene(input: SceneInput): SceneDefinition {
           diagnostics,
         );
       } else {
-        validateVisualAnchor(
-          appearance.visualAnchor,
-          `scenery.${sceneryId}.appearances.${appearanceId}.visualAnchor`,
-          diagnostics,
-        );
-        validateAppearance(
+        diagnostics.push(...validateAppearance(
           appearance,
           `scenery.${sceneryId}.appearances.${appearanceId}`,
-          diagnostics,
-        );
+        ));
       }
     }
   }
@@ -899,13 +853,13 @@ function validateProjectDefinitions(
       ));
     } else if (value.animation !== undefined) {
       const appearances = Object.values(characters[value.character]!.appearances);
-      if (appearances.some((appearance) => !(value.animation! in appearance.animations))) {
-        diagnostics.push(referenceDiagnostic(
-          "reference.animation.line",
-          `${path}.animation`,
-          `Line Animation '${value.animation}' is not available in every Appearance of Character '${value.character}'.`,
-        ));
-      }
+      diagnostics.push(...validateAnimationReference(
+        appearances,
+        value.animation,
+        `${path}.animation`,
+        "reference.animation.line",
+        `Line Animation '${value.animation}' is not available in every Appearance of Character '${value.character}'.`,
+      ));
     }
   };
   const noun = (
@@ -1126,19 +1080,16 @@ function validateProjectDefinitions(
       { kind: "character", character: characterId },
       characterId === input.playerCharacter ? allSceneIds : [character.initialScene],
     );
+    if (characterId === input.playerCharacter) {
+      diagnostics.push(...validateAppearanceSet(character.appearances, {
+        path: `characters.${characterId}.appearances`,
+        initialAppearance: character.initialAppearance,
+        subject: "Character",
+        requireWalking: true,
+      }));
+    }
     const scene = input.scenes[character.initialScene];
     if (!scene) continue;
-    if (characterId === input.playerCharacter) {
-      for (const [appearanceId, appearance] of Object.entries(character.appearances)) {
-        if (!appearance.roles.walking) {
-          diagnostics.push(referenceDiagnostic(
-            "reference.animation.walking-role",
-            `characters.${characterId}.appearances.${appearanceId}.roles.walking`,
-            "A Player Character Appearance requires a walking Animation Role.",
-          ));
-        }
-      }
-    }
     const path = `characters.${characterId}.initialGroundPoint`;
     if (!pointInScene(scene, character.initialGroundPoint)) {
       diagnostics.push({ code: "definition.scene-space.bounds", family: "definition", owner: "world", path, message: "Character Ground Points must remain inside the Scene Size." });
@@ -1182,9 +1133,13 @@ function validateProjectDefinitions(
         diagnostics.push(referenceDiagnostic("reference.character", `${base}.character`, `Character '${step.character}' does not exist.`));
       } else if (step.type === "line" && step.animation !== undefined) {
         const appearances = Object.values(characters[step.character]?.appearances ?? {});
-        if (appearances.length === 0 || appearances.some((appearance) => !("animations" in appearance) || !(step.animation! in appearance.animations))) {
-          diagnostics.push(referenceDiagnostic("reference.animation.line", `${base}.animation`, `Line Animation '${step.animation}' is not available in every Appearance of Character '${step.character}'.`));
-        }
+        diagnostics.push(...validateAnimationReference(
+          appearances,
+          step.animation,
+          `${base}.animation`,
+          "reference.animation.line",
+          `Line Animation '${step.animation}' is not available in every Appearance of Character '${step.character}'.`,
+        ));
       } else if (step.type === "operations") {
         operations(step.operations, `${base}.operations`, { sequence: true });
         for (const operation of step.operations) {
@@ -1391,115 +1346,8 @@ function validateLocalPolygon(
   }
 }
 
-function validateVisualAnchor(
-  anchor: Point | undefined,
-  path: string,
-  diagnostics: AuthoringDiagnostic[],
-): void {
-  if (anchor && (!Number.isFinite(anchor.x) || !Number.isFinite(anchor.y))) {
-    diagnostics.push({
-      code: "definition.point.finite",
-      family: "definition", owner: "world",
-      path,
-      message: "A Visual Anchor must use finite image-pixel coordinates.",
-    });
-  }
-}
-
 function isAnimatedAppearance(appearance: EntityAppearance | SceneryAppearance): appearance is Appearance {
   return "animations" in appearance;
-}
-
-function validateAppearance(
-  appearance: Appearance,
-  path: string,
-  diagnostics: AuthoringDiagnostic[],
-): void {
-  const animationNames = Object.keys(appearance.animations);
-  if (animationNames.length === 0) {
-    diagnostics.push({
-      code: "definition.appearance.animations",
-      family: "definition", owner: "animation",
-      path: `${path}.animations`,
-      message: "An Appearance must define at least one Animation.",
-    });
-  }
-  if (typeof appearance.roles.default !== "string" || !appearance.roles.default.trim()) {
-    diagnostics.push({
-      code: "definition.appearance.default-role",
-      family: "definition", owner: "animation",
-      path: `${path}.roles.default`,
-      message: "An Appearance must identify a Default Animation Role.",
-    });
-  }
-  for (const [role, animation] of Object.entries(appearance.roles)) {
-    if (!(animation in appearance.animations)) {
-      diagnostics.push({
-        code: "reference.animation.role",
-        family: "reference", owner: "animation",
-        path: `${path}.roles.${role}`,
-        message: `Animation Role '${role}' refers to missing Animation '${animation}'.`,
-      });
-    }
-  }
-  for (const [animationName, animation] of Object.entries(appearance.animations)) {
-    const animationPath = `${path}.animations.${animationName}`;
-    const frameCount = isAnimationImageFrames(animation.frames)
-      ? animation.frames.length
-      : animation.frames.side.count;
-    if (isAnimationImageFrames(animation.frames) && frameCount === 0) {
-      diagnostics.push({
-        code: "definition.animation.frames",
-        family: "definition", owner: "animation",
-        path: `${animationPath}.frames`,
-        message: "An Animation must contain at least one frame.",
-      });
-    }
-    if (!isAnimationImageFrames(animation.frames)) {
-      const counts = new Set<number>();
-      for (const direction of ["side", "front", "back"] as const) {
-        if (!Number.isInteger(animation.frames[direction].count) || animation.frames[direction].count <= 0) {
-          diagnostics.push({
-            code: "definition.animation.frames",
-            family: "definition", owner: "animation",
-            path: `${animationPath}.frames.${direction}.count`,
-            message: "An Animation strip must contain a positive integer number of frames.",
-          });
-        } else {
-          counts.add(animation.frames[direction].count);
-        }
-      }
-      if (counts.size > 1) {
-        diagnostics.push({
-          code: "definition.animation.directional-frame-count",
-          family: "definition", owner: "animation",
-          path: `${animationPath}.frames`,
-          message: "Directional Animation strips must contain the same number of frames.",
-        });
-      }
-    }
-    if (!Number.isFinite(animation.framesPerSecond) || animation.framesPerSecond <= 0) {
-      diagnostics.push({
-        code: "definition.animation.frames-per-second",
-        family: "definition", owner: "animation",
-        path: `${animationPath}.framesPerSecond`,
-        message: "Animation frames per second must be a positive finite number.",
-      });
-    }
-    const duration = frameCount > 0 && animation.framesPerSecond > 0
-      ? frameCount / animation.framesPerSecond
-      : 0;
-    for (const [cue, at] of Object.entries(animation.cues ?? {})) {
-      if (!cue.trim() || !Number.isFinite(at) || at < 0 || at > duration) {
-        diagnostics.push({
-          code: "definition.animation.cue",
-          family: "definition", owner: "animation",
-          path: `${animationPath}.cues.${cue}`,
-          message: "An Animation Cue must have a name and occur within the Animation duration.",
-        });
-      }
-    }
-  }
 }
 
 function subjectBelongsToScene(
@@ -1521,10 +1369,6 @@ function subjectBelongsToScene(
 function intersectSets(values: readonly ReadonlySet<string>[]): Set<string> {
   const [first, ...rest] = values;
   return new Set([...(first ?? [])].filter((value) => rest.every((candidate) => candidate.has(value))));
-}
-
-function isAnimationImageFrames(frames: AnimationFrames): frames is readonly (URL | string)[] {
-  return Array.isArray(frames);
 }
 
 function validatePolygonBounds(

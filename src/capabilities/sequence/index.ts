@@ -1,11 +1,15 @@
 import type {
-  AnimationDefinition,
-  Appearance,
   Facing,
   Point,
   AuthoringDiagnostic,
 } from "../game-project";
-import { animationDurationTicks } from "../animation";
+import {
+  animationCueTick,
+  animationDurationTicks,
+  validateAnimationReference,
+  type AnimationDefinition,
+  type Appearance,
+} from "../animation";
 
 /** A Character, Object, or current-Scene Scenery directed by a Sequence. */
 export type DirectedSubject =
@@ -145,9 +149,13 @@ export function validateDirectionStepReferences(
       }
       if (direction.type === "animation") {
         const animations = appearances.map((appearance) => appearance.animations[direction.animation]);
-        if (animations.length === 0 || animations.some((animation) => animation === undefined)) {
-          diagnostics.push({ code: "reference.animation", family: "reference", owner: "animation", path: `${directionPath}.animation`, message: `Animation '${direction.animation}' is not available in every Appearance of the subject.` });
-        }
+        diagnostics.push(...validateAnimationReference(
+          appearances,
+          direction.animation,
+          `${directionPath}.animation`,
+          "reference.animation",
+          `Animation '${direction.animation}' is not available in every Appearance of the subject.`,
+        ));
         if (animations.some((animation) => animation !== undefined && !animation.loop)) hasFiniteBoundary = true;
       } else {
         hasFiniteBoundary = true;
@@ -224,8 +232,9 @@ export function directionStartTick(
   if (!dependency) return 0;
   const source = step.directions[dependency.direction];
   if (!source || source.type !== "animation") return 0;
-  const cue = animationFor(source.subject, source.animation)?.cues?.[dependency.cue] ?? 0;
-  return directionStartTick(step, dependency.direction, animationFor) + secondsToTicks(cue);
+  const animation = animationFor(source.subject, source.animation);
+  const cueTick = animation ? animationCueTick(animation, dependency.cue) ?? 0 : 0;
+  return directionStartTick(step, dependency.direction, animationFor) + cueTick;
 }
 
 /** @internal */

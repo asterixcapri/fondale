@@ -21,7 +21,6 @@ import {
   type InteractionCondition,
   type Line,
   type Point,
-  type AnimationDefinition,
   type SequenceDefinition,
   type SequenceStep,
 } from "../game-project";
@@ -46,7 +45,7 @@ import {
   type DirectedSubject,
   type MotionDirection,
 } from "../sequence";
-import { appearanceForSubject } from "../animation";
+import { appearanceForSubject, type AnimationDefinition } from "../animation";
 import { conditionMatchesState, hotspotAvailableInState } from "../interaction";
 
 export interface CharacterState {

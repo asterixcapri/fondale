@@ -175,6 +175,7 @@ test("composition validates Command Line overrides and directed subject locality
     expect((error as AuthoringError).diagnostics).toEqual(expect.arrayContaining([
       expect.objectContaining({
         code: "reference.animation.line",
+        owner: "animation",
         path: "characters.actor.noun.cases[0].line.animation",
       }),
       expect.objectContaining({
@@ -413,6 +414,7 @@ test("composition diagnoses a movable Player Appearance without a walking Role",
     expect(error).toBeInstanceOf(AuthoringError);
     expect((error as AuthoringError).diagnostics).toContainEqual(expect.objectContaining({
       code: "reference.animation.walking-role",
+      owner: "animation",
       path: "characters.player.appearances.normal.roles.walking",
     }));
   }

@@ -17,8 +17,11 @@ import type {
   GameState,
 } from "../capabilities/game-session";
 import {
+  animationPresentationForSubject,
   appearanceForSubject,
   isImageAnimationFrames,
+  type AnimationDefinition,
+  type AnimationPresentation,
 } from "../capabilities/animation";
 import {
   interpretDirectionStep,
@@ -33,9 +36,6 @@ import {
   pointAlongPath,
 } from "../capabilities/world";
 import type {
-  EntityAppearance,
-  AnimationDefinition,
-  Appearance,
   GameProjectData,
   Point,
   SceneryAppearance,
@@ -50,15 +50,8 @@ import { Camera } from "../capabilities/camera";
 interface CharacterView {
   readonly container: Container;
   readonly sprite: Sprite | AnimatedSprite;
-  readonly appearance: EntityAppearance;
+  readonly presentation: AnimationPresentation;
   direction?: "side" | "front" | "back";
-  animationName?: string;
-}
-
-interface AnimationSelection {
-  readonly name: string;
-  readonly elapsedTicks?: number;
-  readonly loop?: true;
 }
 
 const commandPreviewFontSize = "6px";
@@ -188,7 +181,7 @@ export class BrowserRenderer {
         appearance,
         backgroundTexture,
         `scenes.${state.currentScene}.scenery.${sceneryId}.appearances.${selected}`,
-        this.animationSelection(state, { kind: "scenery", scenery: sceneryId }, appearance),
+        this.animationPresentation(state, { kind: "scenery", scenery: sceneryId }),
       );
       view.label = `scenery:${sceneryId}`;
       view.zIndex = scenery.baseline;
@@ -205,9 +198,8 @@ export class BrowserRenderer {
       const definition = this.data.objects[objectId]!;
       const appearance = definition.appearances[object.appearance]!;
       const view = this.createCharacter(
-        appearance,
+        this.animationPresentation(state, { kind: "object", object: objectId })!,
         `objects.${objectId}.appearances.${object.appearance}`,
-        this.animationSelection(state, { kind: "object", object: objectId }, appearance),
         "front",
       );
       view.container.label = `object:${objectId}`;
@@ -223,9 +215,8 @@ export class BrowserRenderer {
       const appearance = definition.appearances[character.appearance]!;
       const direction = character.facing === "left" || character.facing === "right" ? "side" : character.facing;
       const view = this.createCharacter(
-        appearance,
+        this.animationPresentation(state, { kind: "character", character: characterId })!,
         `characters.${characterId}.appearances.${character.appearance}`,
-        this.animationSelection(state, { kind: "character", character: characterId }, appearance),
         direction,
       );
       view.container.label = `character:${characterId}`;
@@ -238,11 +229,11 @@ export class BrowserRenderer {
     appearance: SceneryAppearance,
     background: Texture,
     path: string,
-    selection?: AnimationSelection,
+    presentation?: AnimationPresentation,
   ): Container {
     if ("animations" in appearance) {
       const container = new Container();
-      const sprite = this.animatedSprite(appearance, path, selection ?? { name: appearance.roles.default }, "front");
+      const sprite = this.animatedSprite(presentation!, path, "front");
       container.addChild(sprite);
       return container;
     }
@@ -259,20 +250,14 @@ export class BrowserRenderer {
   }
 
   private createCharacter(
-    appearance: EntityAppearance,
+    presentation: AnimationPresentation,
     path: string,
-    selection?: AnimationSelection,
     selectedDirection: "side" | "front" | "back" = "front",
   ): CharacterView {
     const container = new Container();
-    const sprite = this.animatedSprite(
-      appearance,
-      path,
-      selection ?? { name: appearance.roles.default },
-      selectedDirection,
-    );
+    const sprite = this.animatedSprite(presentation, path, selectedDirection);
     container.addChild(sprite);
-    return { container, sprite, appearance, direction: selectedDirection, animationName: selection?.name ?? appearance.roles.default };
+    return { container, sprite, presentation, direction: selectedDirection };
   }
 
   private updateCharacters(state: GameState): void {
@@ -287,18 +272,16 @@ export class BrowserRenderer {
       const horizontal = character.facing === "left" ? -perspective : perspective;
       view.container.scale.set(horizontal, perspective);
       if (
-        "animations" in view.appearance &&
         view.sprite instanceof AnimatedSprite &&
         view.direction !== direction &&
-        view.animationName
+        view.presentation.animationName
       ) {
         view.direction = direction;
-        const animation = view.appearance.animations[view.animationName]!;
         const appearance = state.characters[characterId]!.appearance;
         const frames = this.animationFrames(
           `characters.${characterId}.appearances.${appearance}`,
-          view.animationName,
-          animation,
+          view.presentation.animationName,
+          view.presentation.animation,
           direction,
         );
         if (frames.length > 0) view.sprite.textures = [...frames];
@@ -307,74 +290,39 @@ export class BrowserRenderer {
   }
 
   private animatedSprite(
-    appearance: Appearance,
+    presentation: AnimationPresentation,
     path: string,
-    selection: AnimationSelection,
     direction: "side" | "front" | "back",
   ): Sprite | AnimatedSprite {
-    const animation = appearance.animations[selection.name] ?? appearance.animations[appearance.roles.default]!;
-    const frames = this.animationFrames(path, selection.name, animation, direction);
-    const loops = selection.loop || animation.loop;
-    const logicalFrame = selection.elapsedTicks === undefined
-      ? undefined
-      : Math.floor(selection.elapsedTicks * animation.framesPerSecond / 60);
-    const frameIndex = logicalFrame === undefined
-      ? 0
-      : loops
-        ? logicalFrame % frames.length
-        : Math.min(frames.length - 1, logicalFrame);
-    const sprite = logicalFrame === undefined && frames.length > 1
+    const frames = this.animationFrames(
+      path,
+      presentation.animationName,
+      presentation.animation,
+      direction,
+    );
+    const sprite = presentation.autoplay && frames.length > 1
       ? new AnimatedSprite([...frames])
-      : new Sprite(frames[Math.max(0, frameIndex)]!);
-    const texture = frames[Math.max(0, frameIndex)]!;
-    setAnchor(sprite, appearance.visualAnchor, texture.width, texture.height);
+      : new Sprite(frames[presentation.frameIndex]!);
+    const texture = frames[presentation.frameIndex]!;
+    setAnchor(sprite, presentation.visualAnchor, texture.width, texture.height);
     if (sprite instanceof AnimatedSprite) {
-      sprite.animationSpeed = animation.framesPerSecond / 60;
-      sprite.loop = Boolean(loops);
+      sprite.animationSpeed = presentation.animation.framesPerSecond / 60;
+      sprite.loop = presentation.loop;
       sprite.play();
     }
     return sprite;
   }
 
-  private animationSelection(
+  private animationPresentation(
     state: GameState,
     subject: DirectedSubject,
-    appearance: EntityAppearance | SceneryAppearance,
-  ): AnimationSelection | undefined {
-    if (!("animations" in appearance)) return undefined;
-    const active = this.activeDirection(state);
-    if (active) {
-      for (let index = active.step.directions.length - 1; index >= 0; index -= 1) {
-        const direction = active.step.directions[index]!;
-        if (direction.type !== "animation" || !sameSubject(direction.subject, subject)) continue;
-        const timing = active.interpretation.directions[index]!;
-        const animation = appearance.animations[direction.animation];
-        if (!animation || !timing.active) continue;
-        if (animation.loop || timing.finite) {
-          return { name: direction.animation, elapsedTicks: timing.localTick };
-        }
-      }
-      if (subject.kind === "character" && appearance.roles.walking) {
-        for (let index = active.step.directions.length - 1; index >= 0; index -= 1) {
-          const direction = active.step.directions[index]!;
-          const timing = active.interpretation.directions[index]!;
-          if (direction.type === "motion" && sameSubject(direction.subject, subject) && timing.active) {
-            return { name: appearance.roles.walking, elapsedTicks: timing.localTick, loop: true };
-          }
-        }
-      }
-    }
+  ): AnimationPresentation | undefined {
+    const direction = this.activeDirection(state);
     const line = this.activeLine(state);
-    if (subject.kind === "character" && line?.character === subject.character) {
-      return { name: line.animation ?? appearance.roles.speaking ?? appearance.roles.default };
-    }
-    if (
-      subject.kind === "character" &&
-      subject.character === this.data.playerCharacter &&
-      state.activity?.type === "player-intent" &&
-      appearance.roles.walking
-    ) return { name: appearance.roles.walking, loop: true };
-    return { name: appearance.roles.default };
+    return animationPresentationForSubject(this.data, state, subject, {
+      ...(direction ? { direction } : {}),
+      ...(line ? { line } : {}),
+    });
   }
 
   private activeLine(state: GameState): { character: string; animation?: string } | undefined {
@@ -593,13 +541,6 @@ export class BrowserRenderer {
       y: point.y - this.cameraOrigin.y,
     };
   }
-}
-
-function sameSubject(left: DirectedSubject, right: DirectedSubject): boolean {
-  if (left.kind !== right.kind) return false;
-  if (left.kind === "character" && right.kind === "character") return left.character === right.character;
-  if (left.kind === "object" && right.kind === "object") return left.object === right.object;
-  return left.kind === "scenery" && right.kind === "scenery" && left.scenery === right.scenery;
 }
 
 class EngineOverlay {
