@@ -400,16 +400,17 @@ function activityAnimationElapsedTicks(
   kind: "line" | "player-intent",
 ): number {
   const activity = state.activity;
+  let animationStartedTick: number | undefined;
   if (kind === "player-intent" && activity?.type === "player-intent") {
-    return Math.max(0, state.tick - activity.animationStartedTick);
+    animationStartedTick = activity.animationStartedTick;
+  } else if (kind === "line" && activity?.type === "line") {
+    animationStartedTick = activity.animationStartedTick;
+  } else if (kind === "line" && activity?.type === "sequence" && activity.active?.kind === "line") {
+    animationStartedTick = activity.active.animationStartedTick;
   }
-  if (kind === "line" && activity?.type === "line") {
-    return Math.max(0, state.tick - activity.animationStartedTick);
-  }
-  if (kind === "line" && activity?.type === "sequence" && activity.active?.kind === "line") {
-    return Math.max(0, state.tick - activity.active.animationStartedTick);
-  }
-  return state.tick;
+  return animationStartedTick === undefined
+    ? state.tick
+    : Math.max(0, state.tick - animationStartedTick);
 }
 
 /** Resolves the current Appearance without exposing mutable Game State. */
