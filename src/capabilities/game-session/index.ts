@@ -67,6 +67,7 @@ export interface ObjectState {
 
 export interface PlayerIntentState {
   type: "player-intent";
+  animationStartedTick: number;
   destination: Point;
   finalFacing?: Facing;
   fast?: true;
@@ -88,7 +89,7 @@ export interface PlayerIntentState {
 }
 
 export type SequenceActiveState =
-  | { kind: "line"; path: string; choiceText?: string; choiceCharacter?: string }
+  | { kind: "line"; path: string; animationStartedTick: number; choiceText?: string; choiceCharacter?: string }
   | { kind: "narration"; path: string }
   | { kind: "choice"; path: string; eligibleAlternatives: number[] }
   | { kind: "direction"; path: string; elapsedTicks: number };
@@ -102,6 +103,7 @@ export interface SequenceActivityState {
 
 export interface LineActivityState {
   type: "line";
+  animationStartedTick: number;
   line: Omit<Line, "audio"> & { audio?: string };
 }
 
@@ -507,6 +509,7 @@ export function createCoreSession(
     const destination = nearestPoint(scene.walkableRegion, requested);
     state.activity = {
       type: "player-intent",
+      animationStartedTick: state.tick + 1,
       destination,
       intent,
       ...(finalFacing === undefined ? {} : { finalFacing }),
@@ -620,6 +623,7 @@ export function createCoreSession(
       const { audio, ...line } = resolution.line;
       state.activity = {
         type: "line",
+        animationStartedTick: state.tick + 1,
         line: {
           ...line,
           ...(audio ? { audio: audio instanceof URL ? audio.href : audio } : {}),
@@ -814,7 +818,7 @@ export function createCoreSession(
       const definition = data.sequences[activity.sequence]!;
       const stepDefinition = resolveSequencePath(definition, path) as SequenceStep;
       if (stepDefinition.type === "line") {
-        activity.active = { kind: "line", path };
+        activity.active = { kind: "line", path, animationStartedTick: state.tick + 1 };
       } else if (stepDefinition.type === "narration") {
         activity.active = { kind: "narration", path };
       } else if (stepDefinition.type === "choice") {
@@ -950,6 +954,7 @@ export function createCoreSession(
       activity.active = {
         kind: "line",
         path: activity.active.path,
+        animationStartedTick: state.tick + 1,
         choiceText: choice.text,
         choiceCharacter: data.playerCharacter,
       };

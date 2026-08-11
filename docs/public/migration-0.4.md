@@ -43,7 +43,9 @@ present, and Visual Anchor coordinates must be finite. Invalid definitions use
 the capability-owned codes `definition.animation.frame-source`,
 `definition.animation.loop`, and `definition.animation.visual-anchor`; the
 last replaces `definition.point.finite` for an invalid Visual Anchor. A Cue at
-logical second zero starts dependent directions immediately.
+logical second zero starts dependent directions immediately. Active Line and
+Player Intent state now records `animationStartedTick` so Save Snapshots restore
+their activity-local visual progress exactly.
 
 ## Authoring Diagnostic attribution
 

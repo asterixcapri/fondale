@@ -149,7 +149,7 @@ function validActivity(value: unknown, data: GameProjectData, state: GameState):
   if (value === null) return true;
   if (!isRecord(value) || typeof value.type !== "string") return false;
   if (value.type === "line") {
-    if (!hasExactKeys(value, ["type", "line"]) || !isRecord(value.line)) return false;
+    if (!hasExactKeys(value, ["type", "animationStartedTick", "line"]) || !validAnimationStartedTick(value.animationStartedTick, state.tick) || !isRecord(value.line)) return false;
     if (!hasExactKeys(value.line, ["character", "text"], ["audio", "animation"])) return false;
     return typeof value.line.character === "string" && value.line.character in data.characters &&
       typeof value.line.text === "string" && value.line.text.trim().length > 0 &&
@@ -157,7 +157,7 @@ function validActivity(value: unknown, data: GameProjectData, state: GameState):
       (value.line.animation === undefined || typeof value.line.animation === "string");
   }
   if (value.type === "player-intent") {
-    if (!hasExactKeys(value, ["type", "destination", "intent"], ["finalFacing", "fast"])) return false;
+    if (!hasExactKeys(value, ["type", "animationStartedTick", "destination", "intent"], ["finalFacing", "fast"]) || !validAnimationStartedTick(value.animationStartedTick, state.tick)) return false;
     if (!validPoint(value.destination) || !validOptionalFacing(value.finalFacing)) return false;
     if (value.fast !== undefined && value.fast !== true) return false;
     if (!isRecord(value.intent) || typeof value.intent.kind !== "string") return false;
@@ -210,7 +210,7 @@ function validActivity(value: unknown, data: GameProjectData, state: GameState):
     const step = resolveSequencePath(definition, value.active.path);
     const expectedPending = expectedPendingPaths(definition, value.active.path);
     if (value.active.kind === "line") {
-      if (!hasExactKeys(value.active, ["kind", "path"], ["choiceText", "choiceCharacter"])) return false;
+      if (!hasExactKeys(value.active, ["kind", "path", "animationStartedTick"], ["choiceText", "choiceCharacter"]) || !validAnimationStartedTick(value.active.animationStartedTick, state.tick)) return false;
       if (value.active.choiceText !== undefined) {
         if (typeof value.active.choiceText !== "string" || !isSequenceStep(step) || step.type !== "choice") return false;
         if (value.active.choiceCharacter !== undefined &&
@@ -254,6 +254,10 @@ function validActivity(value: unknown, data: GameProjectData, state: GameState):
 
 function validOptionalFacing(value: unknown): boolean {
   return value === undefined || ["front", "back", "left", "right"].includes(String(value));
+}
+
+function validAnimationStartedTick(value: unknown, currentTick: number): boolean {
+  return Number.isInteger(value) && (value as number) >= 0 && (value as number) <= currentTick + 1;
 }
 
 function invalidCommandStateDiagnostic(

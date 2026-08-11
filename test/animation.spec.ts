@@ -170,6 +170,41 @@ test("Animation derives default frame progression from the logical session tick"
   });
 });
 
+test("Animation starts Line frame progression from the activity-local tick", () => {
+  const appearance: Appearance = {
+    animations: {
+      idle: { frames: ["idle.png"], framesPerSecond: 1, loop: true },
+      speaking: { frames: ["one.png", "two.png"], framesPerSecond: 2 },
+    },
+    roles: { default: "idle", speaking: "speaking" },
+  };
+  const data = {
+    characters: { actor: { appearances: { normal: appearance } } },
+    objects: {},
+    scenes: {},
+  } as unknown as GameProjectData;
+  const state = {
+    tick: 100,
+    currentScene: "room",
+    characters: { actor: { scene: "room", appearance: "normal" } },
+    objects: {},
+    scenery: {},
+    activity: {
+      type: "line",
+      animationStartedTick: 100,
+      line: { character: "actor", text: "Hello." },
+    },
+  } as unknown as GameState;
+  const subject = { kind: "character", character: "actor" } as const;
+  const context = { line: { character: "actor" } };
+
+  expect(animationPresentationForSubject(data, state, subject, context)).toMatchObject({
+    animationName: "speaking",
+    elapsedTicks: 0,
+    frameIndex: 0,
+  });
+});
+
 test("Animation validates Appearance selection and required Roles for a subject", () => {
   const appearance: Appearance = {
     animations: { idle: { frames: ["idle.png"], framesPerSecond: 1, loop: true } },

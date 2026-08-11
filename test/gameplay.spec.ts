@@ -495,7 +495,7 @@ test("a declarative Command commits operations and an enabled passage transition
   useKeyOn(session, 2);
   interact(session, 0);
   expect(session.snapshot().variables.behaviorRan).toBe(true);
-  expect(session.snapshot().activity).toEqual({
+  expect(session.snapshot().activity).toMatchObject({
     type: "line",
     line: { character: "player", text: "The way is open." },
   });
@@ -504,6 +504,10 @@ test("a declarative Command commits operations and an enabled passage transition
     JSON.parse(JSON.stringify(session.createSaveSnapshot())) as unknown,
   );
   expect(lineSave.ok).toBe(true);
+  if (lineSave.ok) {
+    const restored = createTestSession(projectFixture(), lineSave.snapshot);
+    expect(restored.snapshot().activity).toEqual(session.snapshot().activity);
+  }
   session.input({ type: "advance-line" });
   session.steps();
   expect(session.snapshot().activity).toBeNull();

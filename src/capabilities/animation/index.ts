@@ -367,6 +367,7 @@ export function animationPresentationForSubject(
   if (!directed) {
     if (subject.kind === "character" && context.line?.character === subject.character) {
       animationName = context.line.animation ?? animationNameForRole(appearance, "speaking")!;
+      elapsedTicks = activityAnimationElapsedTicks(state, "line");
     } else if (
       subject.kind === "character" &&
       subject.character === data.playerCharacter &&
@@ -374,6 +375,7 @@ export function animationPresentationForSubject(
       appearance.roles.walking
     ) {
       animationName = appearance.roles.walking;
+      elapsedTicks = activityAnimationElapsedTicks(state, "player-intent");
       forceLoop = true;
     }
   }
@@ -393,6 +395,23 @@ export function animationPresentationForSubject(
   });
 }
 
+function activityAnimationElapsedTicks(
+  state: Readonly<GameState>,
+  kind: "line" | "player-intent",
+): number {
+  const activity = state.activity;
+  if (kind === "player-intent" && activity?.type === "player-intent") {
+    return Math.max(0, state.tick - activity.animationStartedTick);
+  }
+  if (kind === "line" && activity?.type === "line") {
+    return Math.max(0, state.tick - activity.animationStartedTick);
+  }
+  if (kind === "line" && activity?.type === "sequence" && activity.active?.kind === "line") {
+    return Math.max(0, state.tick - activity.active.animationStartedTick);
+  }
+  return state.tick;
+}
+
 /** Resolves the current Appearance without exposing mutable Game State. */
 export function appearanceForSubject(
   data: GameProjectData,
@@ -407,33 +426,30 @@ function appearanceSelectionForSubject(
   state: Readonly<GameState>,
   subject: DirectedSubject,
 ): { readonly appearanceName: string; readonly appearance: Appearance } | undefined {
-  let appearanceName: string | undefined;
-  let candidate: Appearance | { readonly kind: "background-region" } | undefined;
-  if (subject.kind === "character") {
-    appearanceName = state.characters[subject.character]?.appearance;
-    candidate = data.characters[subject.character]?.appearances[appearanceName ?? ""];
-  } else if (subject.kind === "object") {
-    appearanceName = state.objects[subject.object]?.appearance;
-    candidate = data.objects[subject.object]?.appearances[appearanceName ?? ""];
-  } else {
-    appearanceName = state.scenery[state.currentScene]?.[subject.scenery];
-    candidate = data.scenes[state.currentScene]?.scenery?.[subject.scenery]?.appearances[
-      appearanceName ?? ""
-    ];
-  }
+  const subjectId = directedSubjectId(subject);
+  const appearanceName = {
+    character: state.characters[subjectId]?.appearance,
+    object: state.objects[subjectId]?.appearance,
+    scenery: state.scenery[state.currentScene]?.[subjectId],
+  }[subject.kind];
+  const candidate = {
+    character: data.characters[subjectId]?.appearances[appearanceName ?? ""],
+    object: data.objects[subjectId]?.appearances[appearanceName ?? ""],
+    scenery: data.scenes[state.currentScene]?.scenery?.[subjectId]?.appearances[appearanceName ?? ""],
+  }[subject.kind];
   return appearanceName && candidate && "animations" in candidate
     ? { appearanceName, appearance: candidate }
     : undefined;
 }
 
 function sameSubject(left: DirectedSubject, right: DirectedSubject): boolean {
-  return directedSubjectKey(left) === directedSubjectKey(right);
+  return left.kind === right.kind && directedSubjectId(left) === directedSubjectId(right);
 }
 
-function directedSubjectKey(subject: DirectedSubject): string {
-  if (subject.kind === "character") return `character:${subject.character}`;
-  if (subject.kind === "object") return `object:${subject.object}`;
-  return `scenery:${subject.scenery}`;
+function directedSubjectId(subject: DirectedSubject): string {
+  if (subject.kind === "character") return subject.character;
+  if (subject.kind === "object") return subject.object;
+  return subject.scenery;
 }
 
 function* reverseDirectionTimings(context: NonNullable<AnimationPresentationContext["direction"]>): Generator<{
