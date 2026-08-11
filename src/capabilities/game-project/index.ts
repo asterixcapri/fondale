@@ -102,7 +102,7 @@ export function defineCharacter(input: CharacterInput): CharacterDefinition {
   if (!Number.isFinite(input.initialGroundPoint.x) || !Number.isFinite(input.initialGroundPoint.y)) {
     diagnostics.push({
       code: "definition.point.finite",
-      family: "definition", owner: "game-project",
+      family: "definition", owner: "world",
       path: "initialGroundPoint",
       message: "A Character Ground Point must use finite Scene Space coordinates.",
     });
@@ -110,7 +110,7 @@ export function defineCharacter(input: CharacterInput): CharacterDefinition {
   if (!(input.initialAppearance in input.appearances)) {
     diagnostics.push({
       code: "reference.appearance.initial",
-      family: "reference", owner: "game-project",
+      family: "reference", owner: "animation",
       path: "initialAppearance",
       message: `Appearance '${input.initialAppearance}' is not defined on this Character.`,
     });
@@ -118,7 +118,7 @@ export function defineCharacter(input: CharacterInput): CharacterDefinition {
   if (!Number.isFinite(input.movementSpeed) || input.movementSpeed <= 0) {
     diagnostics.push({
       code: "definition.character.movement-speed",
-      family: "definition", owner: "game-project",
+      family: "definition", owner: "world",
       path: "movementSpeed",
       message: "Character movement speed must be a positive finite number.",
     });
@@ -152,7 +152,7 @@ export function defineObject(input: ObjectDefinition): ObjectDefinition {
   if (!(input.initialAppearance in input.appearances)) {
     diagnostics.push({
       code: "reference.appearance.initial",
-      family: "reference", owner: "game-project",
+      family: "reference", owner: "animation",
       path: "initialAppearance",
       message: `Appearance '${input.initialAppearance}' is not defined on this Object.`,
     });
@@ -160,7 +160,7 @@ export function defineObject(input: ObjectDefinition): ObjectDefinition {
   if (!Number.isFinite(input.initialGroundPoint.x) || !Number.isFinite(input.initialGroundPoint.y)) {
     diagnostics.push({
       code: "definition.point.finite",
-      family: "definition", owner: "game-project",
+      family: "definition", owner: "world",
       path: "initialGroundPoint",
       message: "An Object Ground Point must use finite Scene Space coordinates.",
     });
@@ -315,7 +315,7 @@ export function defineScene(input: SceneInput): SceneDefinition {
     if (input.size && (!Number.isInteger(value) || value! <= 0)) {
       diagnostics.push({
         code: "definition.scene-size.positive-integer",
-        family: "definition", owner: "game-project",
+        family: "definition", owner: "world",
         path: `size.${axis}`,
         message: "Scene Size dimensions must be positive integers.",
       });
@@ -326,7 +326,7 @@ export function defineScene(input: SceneInput): SceneDefinition {
     if (!Number.isFinite(point.x) || !Number.isFinite(point.y)) {
       diagnostics.push({
         code: "definition.point.finite",
-        family: "definition", owner: "game-project",
+        family: "definition", owner: "world",
         path: `walkableRegion[${index}]`,
         message: "Scene Space coordinates must be finite numbers.",
         suggestion: "Replace NaN and infinite coordinates with finite logical pixels.",
@@ -337,7 +337,7 @@ export function defineScene(input: SceneInput): SceneDefinition {
   if (input.walkableRegion.length < 3) {
     diagnostics.push({
       code: "definition.polygon.vertices",
-      family: "definition", owner: "game-project",
+      family: "definition", owner: "world",
       path: "walkableRegion",
       message: "A Walkable Region needs at least three vertices.",
       suggestion: "Provide a non-degenerate polygon with at least three vertices.",
@@ -353,7 +353,7 @@ export function defineScene(input: SceneInput): SceneDefinition {
     if (!(scenery.initialAppearance in scenery.appearances)) {
       diagnostics.push({
         code: "reference.appearance.initial",
-        family: "reference", owner: "game-project",
+        family: "reference", owner: "animation",
         path: `scenery.${sceneryId}.initialAppearance`,
         message: `Appearance '${scenery.initialAppearance}' is not defined on this Scenery.`,
       });
@@ -361,7 +361,7 @@ export function defineScene(input: SceneInput): SceneDefinition {
     if (!Number.isFinite(scenery.baseline)) {
       diagnostics.push({
         code: "definition.scenery.baseline",
-        family: "definition", owner: "game-project",
+        family: "definition", owner: "sequence",
         path: `scenery.${sceneryId}.baseline`,
         message: "A Scenery baseline must be a finite Scene Space coordinate.",
       });
@@ -369,7 +369,7 @@ export function defineScene(input: SceneInput): SceneDefinition {
     if (scenery.position && (!Number.isFinite(scenery.position.x) || !Number.isFinite(scenery.position.y))) {
       diagnostics.push({
         code: "definition.point.finite",
-        family: "definition", owner: "game-project",
+        family: "definition", owner: "world",
         path: `scenery.${sceneryId}.position`,
         message: "A Scenery position must use finite Scene Space coordinates.",
       });
@@ -523,7 +523,7 @@ export function defineSequence(input: SequenceDefinition): SequenceDefinition {
   if (input.skippable && input.skipOutcome === undefined) {
     diagnostics.push({
       code: "definition.sequence.skip-outcome",
-      family: "definition", owner: "game-project",
+      family: "definition", owner: "sequence",
       path: "skipOutcome",
       message: "A skippable Sequence must declare its Skip Outcome.",
     });
@@ -531,7 +531,7 @@ export function defineSequence(input: SequenceDefinition): SequenceDefinition {
   if (!input.skippable && input.skipOutcome !== undefined) {
     diagnostics.push({
       code: "definition.sequence.skip-outcome.unused",
-      family: "definition", owner: "game-project",
+      family: "definition", owner: "sequence",
       path: "skipOutcome",
       message: "Only a skippable Sequence can declare a Skip Outcome.",
     });
@@ -541,7 +541,7 @@ export function defineSequence(input: SequenceDefinition): SequenceDefinition {
     if (visiting.has(steps)) {
       diagnostics.push({
         code: "definition.sequence.cycle",
-        family: "definition", owner: "game-project",
+        family: "definition", owner: "sequence",
         path,
         message: "A Sequence must be finite and cannot contain a cycle.",
       });
@@ -553,7 +553,7 @@ export function defineSequence(input: SequenceDefinition): SequenceDefinition {
         if (!step.character?.trim()) {
           diagnostics.push({
             code: "definition.line.character",
-            family: "definition", owner: "game-project",
+            family: "definition", owner: "sequence",
             path: `${path}[${index}].character`,
             message: "A Line requires a Character.",
           });
@@ -561,7 +561,7 @@ export function defineSequence(input: SequenceDefinition): SequenceDefinition {
         if (!step.text.trim()) {
           diagnostics.push({
             code: "definition.line.text",
-            family: "definition", owner: "game-project",
+            family: "definition", owner: "sequence",
             path: `${path}[${index}].text`,
             message: "A Line cannot be empty.",
           });
@@ -569,7 +569,7 @@ export function defineSequence(input: SequenceDefinition): SequenceDefinition {
       } else if (step.type === "narration" && !step.text.trim()) {
         diagnostics.push({
           code: "definition.narration.text",
-          family: "definition", owner: "game-project",
+          family: "definition", owner: "sequence",
           path: `${path}[${index}].text`,
           message: "Narration cannot be empty.",
         });
@@ -579,7 +579,7 @@ export function defineSequence(input: SequenceDefinition): SequenceDefinition {
         if (maximumEligibleAlternatives(step.alternatives) > 6) {
           diagnostics.push({
             code: "definition.choice.limit",
-            family: "definition", owner: "game-project",
+            family: "definition", owner: "sequence",
             path: `${path}[${index}].alternatives`,
             message: "A Choice can present at most six eligible alternatives.",
           });
@@ -639,48 +639,48 @@ function validateDirectionStep(
   diagnostics: AuthoringDiagnostic[],
 ): void {
   if (step.directions.length === 0) {
-    diagnostics.push({ code: "definition.sequence.direction.empty", family: "definition", owner: "game-project", path: `${path}.directions`, message: "A Direction Step needs at least one direction." });
+    diagnostics.push({ code: "definition.sequence.direction.empty", family: "definition", owner: "sequence", path: `${path}.directions`, message: "A Direction Step needs at least one direction." });
   }
   if (step.duration !== undefined && (!Number.isFinite(step.duration) || step.duration <= 0)) {
-    diagnostics.push({ code: "definition.sequence.duration", family: "definition", owner: "game-project", path: `${path}.duration`, message: "A Sequence duration must be a positive finite number of logical seconds." });
+    diagnostics.push({ code: "definition.sequence.duration", family: "definition", owner: "sequence", path: `${path}.duration`, message: "A Sequence duration must be a positive finite number of logical seconds." });
   }
   let hasFiniteBoundary = step.duration !== undefined && step.duration > 0;
   step.directions.forEach((direction, index) => {
     const directionPath = `${path}.directions[${index}]`;
     if (direction.startAfter) {
       if (!Number.isInteger(direction.startAfter.direction) || direction.startAfter.direction < 0 || direction.startAfter.direction >= index) {
-        diagnostics.push({ code: "definition.sequence.cue-order", family: "definition", owner: "game-project", path: `${directionPath}.startAfter.direction`, message: "A direction can wait only for an earlier Animation direction in the same step." });
+        diagnostics.push({ code: "definition.sequence.cue-order", family: "definition", owner: "sequence", path: `${directionPath}.startAfter.direction`, message: "A direction can wait only for an earlier Animation direction in the same step." });
       }
       if (!direction.startAfter.cue.trim()) {
-        diagnostics.push({ code: "definition.sequence.cue-name", family: "definition", owner: "game-project", path: `${directionPath}.startAfter.cue`, message: "A Cue reference cannot be empty." });
+        diagnostics.push({ code: "definition.sequence.cue-name", family: "definition", owner: "sequence", path: `${directionPath}.startAfter.cue`, message: "A Cue reference cannot be empty." });
       }
     }
     if (direction.type === "animation") return;
     if (direction.type === "motion") {
       direction.path.forEach((point, pointIndex) => {
-        if (!Number.isFinite(point.x) || !Number.isFinite(point.y)) diagnostics.push({ code: "definition.point.finite", family: "definition", owner: "game-project", path: `${directionPath}.path[${pointIndex}]`, message: "A Motion path must use finite Scene Space coordinates." });
+        if (!Number.isFinite(point.x) || !Number.isFinite(point.y)) diagnostics.push({ code: "definition.point.finite", family: "definition", owner: "world", path: `${directionPath}.path[${pointIndex}]`, message: "A Motion path must use finite Scene Space coordinates." });
       });
-      if (direction.path.length === 0) diagnostics.push({ code: "definition.motion.path", family: "definition", owner: "game-project", path: `${directionPath}.path`, message: "A Motion needs at least one destination point." });
+      if (direction.path.length === 0) diagnostics.push({ code: "definition.motion.path", family: "definition", owner: "world", path: `${directionPath}.path`, message: "A Motion needs at least one destination point." });
       if (direction.subject.kind === "character") {
-        if (direction.path.length !== 1) diagnostics.push({ code: "definition.motion.character-path", family: "definition", owner: "game-project", path: `${directionPath}.path`, message: "A Character Motion declares one navigation destination." });
-        if (direction.duration !== undefined) diagnostics.push({ code: "definition.motion.character-duration", family: "definition", owner: "game-project", path: `${directionPath}.duration`, message: "Character Motion duration is derived from navigation and movement speed." });
+        if (direction.path.length !== 1) diagnostics.push({ code: "definition.motion.character-path", family: "definition", owner: "world", path: `${directionPath}.path`, message: "A Character Motion declares one navigation destination." });
+        if (direction.duration !== undefined) diagnostics.push({ code: "definition.motion.character-duration", family: "definition", owner: "world", path: `${directionPath}.duration`, message: "Character Motion duration is derived from navigation and movement speed." });
         hasFiniteBoundary = true;
       } else if (!Number.isFinite(direction.duration) || direction.duration! <= 0) {
-        diagnostics.push({ code: "definition.motion.duration", family: "definition", owner: "game-project", path: `${directionPath}.duration`, message: "Object and Scenery Motion needs a positive finite duration." });
+        diagnostics.push({ code: "definition.motion.duration", family: "definition", owner: "world", path: `${directionPath}.duration`, message: "Object and Scenery Motion needs a positive finite duration." });
       } else hasFiniteBoundary = true;
       return;
     }
     if ("duration" in direction && direction.duration !== undefined) {
-      if (!Number.isFinite(direction.duration) || direction.duration <= 0) diagnostics.push({ code: "definition.camera.duration", family: "definition", owner: "game-project", path: `${directionPath}.duration`, message: "A Camera duration must be positive and finite." });
+      if (!Number.isFinite(direction.duration) || direction.duration <= 0) diagnostics.push({ code: "definition.camera.duration", family: "definition", owner: "camera", path: `${directionPath}.duration`, message: "A Camera duration must be positive and finite." });
       else hasFiniteBoundary = true;
     }
     for (const [pointName, point] of [["point", "point" in direction ? direction.point : undefined], ["from", "from" in direction ? direction.from : undefined], ["to", "to" in direction ? direction.to : undefined]] as const) {
-      if (point && (!Number.isFinite(point.x) || !Number.isFinite(point.y))) diagnostics.push({ code: "definition.point.finite", family: "definition", owner: "game-project", path: `${directionPath}.${pointName}`, message: "A Camera point must use finite Scene Space coordinates." });
+      if (point && (!Number.isFinite(point.x) || !Number.isFinite(point.y))) diagnostics.push({ code: "definition.point.finite", family: "definition", owner: "world", path: `${directionPath}.${pointName}`, message: "A Camera point must use finite Scene Space coordinates." });
     }
     if (direction.mode === "cut") hasFiniteBoundary = true;
   });
   if (!hasFiniteBoundary && step.directions.length > 0 && step.directions.every((direction) => direction.type !== "animation")) {
-    diagnostics.push({ code: "definition.sequence.direction.unbounded", family: "definition", owner: "game-project", path, message: "A Direction Step needs a finite completion boundary." });
+    diagnostics.push({ code: "definition.sequence.direction.unbounded", family: "definition", owner: "sequence", path, message: "A Direction Step needs a finite completion boundary." });
   }
 }
 
@@ -753,7 +753,7 @@ export function defineGame(input: GameInput): GameProject {
   if (!(input.initialScene in input.scenes)) {
     diagnostics.push({
       code: "reference.scene.initial",
-      family: "reference", owner: "game-project",
+      family: "reference", owner: "world",
       path: "initialScene",
       message: `Scene '${input.initialScene}' does not exist.`,
     });
@@ -765,7 +765,7 @@ export function defineGame(input: GameInput): GameProject {
   if (input.playerCharacter !== undefined && !(input.playerCharacter in characters)) {
     diagnostics.push({
       code: "reference.character.player",
-      family: "reference", owner: "game-project",
+      family: "reference", owner: "world",
       path: "playerCharacter",
       message: `Character '${input.playerCharacter}' does not exist.`,
     });
@@ -774,7 +774,7 @@ export function defineGame(input: GameInput): GameProject {
     if (!(character.initialScene in input.scenes)) {
       diagnostics.push({
         code: "reference.character.initial-scene",
-        family: "reference", owner: "game-project",
+        family: "reference", owner: "world",
         path: `characters.${characterId}.initialScene`,
         message: `Scene '${character.initialScene}' does not exist.`,
       });
@@ -784,7 +784,7 @@ export function defineGame(input: GameInput): GameProject {
     if (!(object.initialScene in input.scenes)) {
       diagnostics.push({
         code: "reference.object.initial-scene",
-        family: "reference", owner: "game-project",
+        family: "reference", owner: "interaction",
         path: `objects.${objectId}.initialScene`,
         message: `Scene '${object.initialScene}' does not exist.`,
       });
@@ -795,7 +795,7 @@ export function defineGame(input: GameInput): GameProject {
       (!Number.isInteger(input.inventoryAppearanceSize) || input.inventoryAppearanceSize <= 0)) {
     diagnostics.push({
       code: "definition.inventory-appearance-size",
-      family: "definition", owner: "game-project",
+      family: "definition", owner: "animation",
       path: "inventoryAppearanceSize",
       message: "Inventory Appearance Size must be a positive integer.",
     });
@@ -832,7 +832,7 @@ export function defineGame(input: GameInput): GameProject {
       if (size[axis] < input.logicalResolution[axis]) {
         diagnostics.push({
           code: "definition.scene-size.viewport-minimum",
-          family: "definition", owner: "game-project",
+          family: "definition", owner: "world",
           path: `scenes.${sceneId}.size.${axis}`,
           message: `Scene Size ${axis} must be at least the Logical Resolution ${axis}.`,
         });
@@ -915,7 +915,7 @@ function validateProjectDefinitions(
       ) {
         diagnostics.push({
           code: "definition.sequence.selected-object-operation",
-          family: "definition", owner: "game-project",
+          family: "definition", owner: "sequence",
           path: operationPath,
           message: "A Sequence cannot use a selected-Object operation because it has no Command selection context.",
         });
@@ -929,7 +929,7 @@ function validateProjectDefinitions(
         if (context.sequence) {
           diagnostics.push({
             code: "definition.sequence.nested",
-            family: "definition", owner: "game-project",
+            family: "definition", owner: "sequence",
             path: operationPath,
             message: "A Sequence cannot start another Sequence.",
           });
@@ -959,7 +959,7 @@ function validateProjectDefinitions(
         if (!(operation.scene in input.scenes)) diagnostics.push(referenceDiagnostic("reference.scene", `${operationPath}.scene`, `Scene '${operation.scene}' does not exist.`));
         if (objects[operation.object] && operation.appearance !== undefined && !(operation.appearance in objects[operation.object]!.appearances)) diagnostics.push(referenceDiagnostic("reference.appearance", `${operationPath}.appearance`, `Appearance '${operation.appearance}' does not exist on Object '${operation.object}'.`));
         const destination = input.scenes[operation.scene];
-        if (!destination || !pointInScene(destination, operation.groundPoint)) diagnostics.push({ code: "definition.operation.ground-point", family: "definition", owner: "game-project", path: `${operationPath}.groundPoint`, message: "A placed Object Ground Point must be finite and inside its destination Scene Size." });
+        if (!destination || !pointInScene(destination, operation.groundPoint)) diagnostics.push({ code: "definition.operation.ground-point", family: "definition", owner: "world", path: `${operationPath}.groundPoint`, message: "A placed Object Ground Point must be finite and inside its destination Scene Size." });
       } else if (operation.type === "place-selected-object" && (
         !Number.isFinite(operation.groundPoint.x) ||
         !Number.isFinite(operation.groundPoint.y) ||
@@ -970,7 +970,7 @@ function validateProjectDefinitions(
       )) {
         diagnostics.push({
           code: "definition.operation.ground-point",
-          family: "definition", owner: "game-project",
+          family: "definition", owner: "world",
           path: `${operationPath}.groundPoint`,
           message: "A placed Object Ground Point must be finite and inside the destination Scene Size.",
         });
@@ -1043,7 +1043,7 @@ function validateProjectDefinitions(
       if (!fallback && !globalFallback) {
         diagnostics.push({
           code: "definition.command.silent",
-          family: "definition", owner: "game-project",
+          family: "definition", owner: "interaction",
           path: `${path}.fallbacks.${verb}`,
           message: `Noun '${path}' needs a local or global '${verb}' Command Fallback.`,
         });
@@ -1076,7 +1076,7 @@ function validateProjectDefinitions(
       if (!inScene(point)) {
         diagnostics.push({
           code: "definition.scene-space.bounds",
-          family: "definition", owner: "game-project",
+          family: "definition", owner: "world",
           path: `scenes.${sceneId}.walkableRegion[${index}]`,
           message: "Scene geometry must remain inside the Scene Size.",
         });
@@ -1105,13 +1105,13 @@ function validateProjectDefinitions(
       if (scenery.baseline < 0 || scenery.baseline > height) {
         diagnostics.push({
           code: "definition.scene-space.bounds",
-          family: "definition", owner: "game-project",
+          family: "definition", owner: "world",
           path: `scenes.${sceneId}.scenery.${sceneryId}.baseline`,
           message: "A Scenery Baseline must remain inside the Scene Size.",
         });
       }
       if (scenery.position && !inScene(scenery.position)) {
-        diagnostics.push({ code: "definition.scene-space.bounds", family: "definition", owner: "game-project", path: `scenes.${sceneId}.scenery.${sceneryId}.position`, message: "Scenery positions must remain inside the Scene Size." });
+        diagnostics.push({ code: "definition.scene-space.bounds", family: "definition", owner: "world", path: `scenes.${sceneId}.scenery.${sceneryId}.position`, message: "Scenery positions must remain inside the Scene Size." });
       }
       for (const [appearanceId, appearance] of Object.entries(scenery.appearances)) {
       if ("kind" in appearance && appearance.kind === "background-region") {
@@ -1121,9 +1121,9 @@ function validateProjectDefinitions(
     }
     for (const [entranceId, entrance] of Object.entries(scene.entrances ?? {})) {
       if (!inScene(entrance.groundPoint)) {
-        diagnostics.push({ code: "definition.scene-space.bounds", family: "definition", owner: "game-project", path: `scenes.${sceneId}.entrances.${entranceId}.groundPoint`, message: "Scene Entrance Ground Points must remain inside the Scene Size." });
+        diagnostics.push({ code: "definition.scene-space.bounds", family: "definition", owner: "world", path: `scenes.${sceneId}.entrances.${entranceId}.groundPoint`, message: "Scene Entrance Ground Points must remain inside the Scene Size." });
       } else if (!pointInPolygonOrBoundary(scene.walkableRegion, entrance.groundPoint)) {
-        diagnostics.push({ code: "definition.entrance.walkable", family: "definition", owner: "game-project", path: `scenes.${sceneId}.entrances.${entranceId}.groundPoint`, message: "A Scene Entrance Ground Point must lie in the Walkable Region." });
+        diagnostics.push({ code: "definition.entrance.walkable", family: "definition", owner: "world", path: `scenes.${sceneId}.entrances.${entranceId}.groundPoint`, message: "A Scene Entrance Ground Point must lie in the Walkable Region." });
       }
     }
     scene.arrivalSequences?.forEach((rule, ruleIndex) => {
@@ -1139,7 +1139,7 @@ function validateProjectDefinitions(
           previous.when.variable === rule.when.variable && previous.when.equals !== rule.when.equals;
         if (entrancesOverlap && !conditionsDisjoint) diagnostics.push({
           code: "definition.arrival-sequence.ambiguous",
-          family: "definition", owner: "game-project",
+          family: "definition", owner: "sequence",
           path: base,
           message: `Arrival Sequence rules ${previousIndex} and ${ruleIndex} can both apply to the same arrival.`,
         });
@@ -1152,9 +1152,9 @@ function validateProjectDefinitions(
       }
       validatePolygonBounds(hotspot.area, `${base}.area`, inScene, diagnostics);
       if (!inScene(hotspot.approach.groundPoint)) {
-        diagnostics.push({ code: "definition.approach.bounds", family: "definition", owner: "game-project", path: `${base}.approach`, message: "Approach Point must be inside Scene Space." });
+        diagnostics.push({ code: "definition.approach.bounds", family: "definition", owner: "world", path: `${base}.approach`, message: "Approach Point must be inside Scene Space." });
       } else if (!pointInPolygonOrBoundary(scene.walkableRegion, hotspot.approach.groundPoint)) {
-        diagnostics.push({ code: "definition.approach.walkable", family: "definition", owner: "game-project", path: `${base}.approach`, message: "An Approach Point must lie in the Walkable Region." });
+        diagnostics.push({ code: "definition.approach.walkable", family: "definition", owner: "world", path: `${base}.approach`, message: "An Approach Point must lie in the Walkable Region." });
       }
       const targetExists =
         hotspot.target.kind === "background" ||
@@ -1179,7 +1179,7 @@ function validateProjectDefinitions(
             missingOwnerNounPaths.add(ownerPath);
             diagnostics.push({
               code: "definition.hotspot.target-noun.required",
-              family: "definition", owner: "game-project",
+              family: "definition", owner: "interaction",
               path: ownerPath,
               message: "A target referenced by a Hotspot must own a Noun Definition.",
             });
@@ -1193,9 +1193,9 @@ function validateProjectDefinitions(
       noun(passage.noun, `${base}.noun`, undefined, [sceneId]);
       validatePolygonBounds(passage.area, `${base}.area`, inScene, diagnostics);
       if (!inScene(passage.approach.groundPoint)) {
-        diagnostics.push({ code: "definition.approach.bounds", family: "definition", owner: "game-project", path: `${base}.approach`, message: "Approach Point must be inside Scene Space." });
+        diagnostics.push({ code: "definition.approach.bounds", family: "definition", owner: "world", path: `${base}.approach`, message: "Approach Point must be inside Scene Space." });
       } else if (!pointInPolygonOrBoundary(scene.walkableRegion, passage.approach.groundPoint)) {
-        diagnostics.push({ code: "definition.approach.walkable", family: "definition", owner: "game-project", path: `${base}.approach`, message: "An Approach Point must lie in the Walkable Region." });
+        diagnostics.push({ code: "definition.approach.walkable", family: "definition", owner: "world", path: `${base}.approach`, message: "An Approach Point must lie in the Walkable Region." });
       }
       condition(passage.when, `${base}.when`);
       const destination = input.scenes[passage.destination.scene];
@@ -1229,9 +1229,9 @@ function validateProjectDefinitions(
     }
     const path = `characters.${characterId}.initialGroundPoint`;
     if (!pointInScene(scene, character.initialGroundPoint)) {
-      diagnostics.push({ code: "definition.scene-space.bounds", family: "definition", owner: "game-project", path, message: "Character Ground Points must remain inside the Scene Size." });
+      diagnostics.push({ code: "definition.scene-space.bounds", family: "definition", owner: "world", path, message: "Character Ground Points must remain inside the Scene Size." });
     } else if (!pointInPolygonOrBoundary(scene.walkableRegion, character.initialGroundPoint)) {
-      diagnostics.push({ code: "definition.character.walkable", family: "definition", owner: "game-project", path, message: "A Character Ground Point must lie in the Scene Walkable Region." });
+      diagnostics.push({ code: "definition.character.walkable", family: "definition", owner: "world", path, message: "A Character Ground Point must lie in the Scene Walkable Region." });
     }
   }
   for (const [objectId, object] of Object.entries(objects)) {
@@ -1243,7 +1243,7 @@ function validateProjectDefinitions(
     );
     const scene = input.scenes[object.initialScene];
     if (scene && !pointInScene(scene, object.initialGroundPoint)) {
-      diagnostics.push({ code: "definition.scene-space.bounds", family: "definition", owner: "game-project", path: `objects.${objectId}.initialGroundPoint`, message: "Object Ground Points must remain inside the Scene Size." });
+      diagnostics.push({ code: "definition.scene-space.bounds", family: "definition", owner: "world", path: `objects.${objectId}.initialGroundPoint`, message: "Object Ground Points must remain inside the Scene Size." });
     }
   }
 
@@ -1296,7 +1296,7 @@ function validateProjectDefinitions(
               if (!scene || !pointInScene(scene, point)) {
                 diagnostics.push({
                   code: "definition.motion.bounds",
-                  family: "definition", owner: "game-project",
+                  family: "definition", owner: "world",
                   path: `${directionPath}.path[${pointIndex}]`,
                   message: "A Motion path point must remain inside the Sequence Scene Size.",
                 });
@@ -1306,7 +1306,7 @@ function validateProjectDefinitions(
               ) {
                 diagnostics.push({
                   code: "definition.motion.walkable",
-                  family: "definition", owner: "game-project",
+                  family: "definition", owner: "world",
                   path: `${directionPath}.path[${pointIndex}]`,
                   message: "A Character Motion destination must lie in the Walkable Region.",
                 });
@@ -1325,7 +1325,7 @@ function validateProjectDefinitions(
               ) {
                 diagnostics.push({
                   code: "definition.motion.scenery-rest",
-                  family: "definition", owner: "game-project",
+                  family: "definition", owner: "world",
                   path: `${directionPath}.path`,
                   message: "A Scenery Motion must end at its authored resting position.",
                 });
@@ -1358,7 +1358,7 @@ function validateProjectDefinitions(
           ["to", "to" in direction ? direction.to : undefined],
         ] as const;
         for (const [pointName, point] of cameraPoints) {
-          if (point && sceneId && !pointInScene(input.scenes[sceneId]!, point)) diagnostics.push({ code: "definition.camera.bounds", family: "definition", owner: "game-project", path: `${directionPath}.${pointName}`, message: "A Camera destination must remain inside the Sequence Scene Size." });
+          if (point && sceneId && !pointInScene(input.scenes[sceneId]!, point)) diagnostics.push({ code: "definition.camera.bounds", family: "definition", owner: "camera", path: `${directionPath}.${pointName}`, message: "A Camera destination must remain inside the Sequence Scene Size." });
         }
       }
       if (direction.startAfter) {
@@ -1371,7 +1371,7 @@ function validateProjectDefinitions(
         }
       }
     });
-    if (!hasFiniteBoundary) diagnostics.push({ code: "definition.sequence.direction.unbounded", family: "definition", owner: "game-project", path, message: "A Direction Step containing only loops needs a finite completion boundary." });
+    if (!hasFiniteBoundary) diagnostics.push({ code: "definition.sequence.direction.unbounded", family: "definition", owner: "sequence", path, message: "A Direction Step containing only loops needs a finite completion boundary." });
   };
 
   const visitSteps = (
@@ -1425,7 +1425,7 @@ function validateProjectDefinitions(
           if (alternative.spoken !== false && !input.playerCharacter) {
             diagnostics.push({
               code: "definition.choice.player-character",
-              family: "definition", owner: "game-project",
+              family: "definition", owner: "sequence",
               path: `${base}.alternatives[${alternativeIndex}].spoken`,
               message: "A spoken Choice requires a Player Character.",
             });
@@ -1441,7 +1441,7 @@ function validateProjectDefinitions(
         if (step.fallback.spoken !== false && !input.playerCharacter) {
           diagnostics.push({
             code: "definition.choice.player-character",
-            family: "definition", owner: "game-project",
+            family: "definition", owner: "sequence",
             path: `${base}.fallback.spoken`,
             message: "A spoken Choice requires a Player Character.",
           });
@@ -1507,7 +1507,7 @@ function validateProjectDefinitions(
   if (hasNouns && !input.commandLexicon) {
     diagnostics.push({
       code: "definition.command-lexicon.required",
-      family: "definition", owner: "game-project",
+      family: "definition", owner: "interaction",
       path: "commandLexicon",
       message: "A Game Project with Nouns must define a Command Lexicon.",
     });
@@ -1531,7 +1531,7 @@ function validatePolygon(
       if (segmentsIntersect(polygon[left]!, polygon[leftNext]!, polygon[right]!, polygon[rightNext]!)) {
         diagnostics.push({
           code: "definition.polygon.self-intersection",
-          family: "definition", owner: "game-project",
+          family: "definition", owner: "world",
           path,
           message: "A polygon cannot cross itself.",
         });
@@ -1546,7 +1546,7 @@ function validatePolygon(
   if (Math.abs(twiceArea) < Number.EPSILON) {
     diagnostics.push({
       code: "definition.polygon.degenerate",
-      family: "definition", owner: "game-project",
+      family: "definition", owner: "world",
       path,
       message: "A polygon must enclose a non-zero area.",
     });
@@ -1562,7 +1562,7 @@ function validateLocalPolygon(
     if (!Number.isFinite(point.x) || !Number.isFinite(point.y)) {
       diagnostics.push({
         code: "definition.point.finite",
-        family: "definition", owner: "game-project",
+        family: "definition", owner: "world",
         path: `${path}[${index}]`,
         message: "Scene Space coordinates must be finite numbers.",
       });
@@ -1571,7 +1571,7 @@ function validateLocalPolygon(
   if (polygon.length < 3) {
     diagnostics.push({
       code: "definition.polygon.vertices",
-      family: "definition", owner: "game-project",
+      family: "definition", owner: "world",
       path,
       message: "A polygon needs at least three vertices.",
     });
@@ -1588,7 +1588,7 @@ function validateVisualAnchor(
   if (anchor && (!Number.isFinite(anchor.x) || !Number.isFinite(anchor.y))) {
     diagnostics.push({
       code: "definition.point.finite",
-      family: "definition", owner: "game-project",
+      family: "definition", owner: "world",
       path,
       message: "A Visual Anchor must use finite image-pixel coordinates.",
     });
@@ -1608,7 +1608,7 @@ function validateAppearance(
   if (animationNames.length === 0) {
     diagnostics.push({
       code: "definition.appearance.animations",
-      family: "definition", owner: "game-project",
+      family: "definition", owner: "animation",
       path: `${path}.animations`,
       message: "An Appearance must define at least one Animation.",
     });
@@ -1616,7 +1616,7 @@ function validateAppearance(
   if (typeof appearance.roles.default !== "string" || !appearance.roles.default.trim()) {
     diagnostics.push({
       code: "definition.appearance.default-role",
-      family: "definition", owner: "game-project",
+      family: "definition", owner: "animation",
       path: `${path}.roles.default`,
       message: "An Appearance must identify a Default Animation Role.",
     });
@@ -1625,7 +1625,7 @@ function validateAppearance(
     if (!(animation in appearance.animations)) {
       diagnostics.push({
         code: "reference.animation.role",
-        family: "reference", owner: "game-project",
+        family: "reference", owner: "animation",
         path: `${path}.roles.${role}`,
         message: `Animation Role '${role}' refers to missing Animation '${animation}'.`,
       });
@@ -1639,7 +1639,7 @@ function validateAppearance(
     if (isAnimationImageFrames(animation.frames) && frameCount === 0) {
       diagnostics.push({
         code: "definition.animation.frames",
-        family: "definition", owner: "game-project",
+        family: "definition", owner: "animation",
         path: `${animationPath}.frames`,
         message: "An Animation must contain at least one frame.",
       });
@@ -1650,7 +1650,7 @@ function validateAppearance(
         if (!Number.isInteger(animation.frames[direction].count) || animation.frames[direction].count <= 0) {
           diagnostics.push({
             code: "definition.animation.frames",
-            family: "definition", owner: "game-project",
+            family: "definition", owner: "animation",
             path: `${animationPath}.frames.${direction}.count`,
             message: "An Animation strip must contain a positive integer number of frames.",
           });
@@ -1661,7 +1661,7 @@ function validateAppearance(
       if (counts.size > 1) {
         diagnostics.push({
           code: "definition.animation.directional-frame-count",
-          family: "definition", owner: "game-project",
+          family: "definition", owner: "animation",
           path: `${animationPath}.frames`,
           message: "Directional Animation strips must contain the same number of frames.",
         });
@@ -1670,7 +1670,7 @@ function validateAppearance(
     if (!Number.isFinite(animation.framesPerSecond) || animation.framesPerSecond <= 0) {
       diagnostics.push({
         code: "definition.animation.frames-per-second",
-        family: "definition", owner: "game-project",
+        family: "definition", owner: "animation",
         path: `${animationPath}.framesPerSecond`,
         message: "Animation frames per second must be a positive finite number.",
       });
@@ -1682,7 +1682,7 @@ function validateAppearance(
       if (!cue.trim() || !Number.isFinite(at) || at < 0 || at > duration) {
         diagnostics.push({
           code: "definition.animation.cue",
-          family: "definition", owner: "game-project",
+          family: "definition", owner: "animation",
           path: `${animationPath}.cues.${cue}`,
           message: "An Animation Cue must have a name and occur within the Animation duration.",
         });
@@ -1726,7 +1726,7 @@ function validatePolygonBounds(
     if (!pointInFrame(point)) {
       diagnostics.push({
         code: "definition.scene-space.bounds",
-        family: "definition", owner: "game-project",
+        family: "definition", owner: "world",
         path: `${path}[${index}]`,
         message: "Scene geometry must remain inside the Logical Resolution.",
       });

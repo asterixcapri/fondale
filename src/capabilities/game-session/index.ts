@@ -1,4 +1,4 @@
-import { AuthoringError, type AuthoringDiagnostic } from "../game-project/diagnostics";
+import { AuthoringError, type AuthoringDiagnostic } from "../game-project";
 import {
   conditionalOptionalValue,
   conditionalValue,

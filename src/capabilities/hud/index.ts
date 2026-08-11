@@ -1,4 +1,4 @@
-import { AuthoringError, type AuthoringDiagnostic } from "../game-project/diagnostics";
+import { AuthoringError, type AuthoringDiagnostic } from "../game-project";
 
 export type PassageDirection = "left" | "right" | "up" | "down" | "enter";
 

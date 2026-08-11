@@ -1,5 +1,5 @@
 import type { GameOperation, InteractionCondition, Line } from "../game-project";
-import { AuthoringError, type AuthoringDiagnostic } from "../game-project/diagnostics";
+import { AuthoringError, type AuthoringDiagnostic } from "../game-project";
 export { conditionMatchesState, hotspotAvailableInState } from "./state-queries";
 
 /** The semantic actions available to authored Commands. */

@@ -41,28 +41,11 @@ export class AuthoringError extends Error {
   readonly diagnostics: readonly AuthoringDiagnostic[];
 
   constructor(diagnostics: readonly AuthoringDiagnostic[]) {
-    const attributed = diagnostics.map((diagnostic) => Object.freeze({
-      ...diagnostic,
-      owner: inferredOwner(diagnostic),
-    }));
-    const ordered = attributed.sort((left, right) =>
+    const ordered = diagnostics.map((diagnostic) => Object.freeze({ ...diagnostic })).sort((left, right) =>
       `${left.path}\0${left.code}`.localeCompare(`${right.path}\0${right.code}`),
     );
     super(ordered.map(({ path, message }) => `${path}: ${message}`).join("\n"));
     this.name = "AuthoringError";
     this.diagnostics = Object.freeze(ordered);
   }
-}
-
-function inferredOwner(diagnostic: AuthoringDiagnostic): AuthoringDiagnosticOwner {
-  if (diagnostic.owner !== "game-project") return diagnostic.owner;
-  const value = `${diagnostic.code} ${diagnostic.path}`;
-  if (/animation|appearance|anchor/.test(value)) return "animation";
-  if (/camera/.test(value)) return "camera";
-  if (/sequence|choice|line|narration|cue|direction/.test(value)) return "sequence";
-  if (/command|noun|lexicon|response|inventory|object/.test(value)) return "interaction";
-  if (/scene|hotspot|point|polygon|approach|entrance|passage|scenery|character|motion|walk/.test(value)) {
-    return "world";
-  }
-  return "game-project";
 }

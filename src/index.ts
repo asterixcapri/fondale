@@ -3,7 +3,7 @@ export {
   type AuthoringDiagnostic,
   type AuthoringDiagnosticFamily,
   type AuthoringDiagnosticOwner,
-} from "./capabilities/game-project/diagnostics";
+} from "./capabilities/game-project";
 export {
   commandVerbs,
   defineCommandLexicon,

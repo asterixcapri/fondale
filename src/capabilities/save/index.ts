@@ -2,7 +2,7 @@ import type { GameState } from "../game-session";
 import { resolveSequencePath } from "../sequence";
 import { conditionMatchesState, hotspotAvailableInState } from "../interaction";
 import { commandVerbs, type CommandVerb, type Verb } from "../interaction";
-import { AuthoringError, type AuthoringDiagnostic } from "../game-project/diagnostics";
+import { AuthoringError, type AuthoringDiagnostic } from "../game-project";
 import {
   getGameProjectData,
   type GameProject,

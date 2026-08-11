@@ -28,8 +28,7 @@ for (const file of sourceFiles(capabilityRoot)) {
     const targetOwner = targetRelative.split("/")[0];
     if (owner === targetOwner) continue;
     const interfaceFile = join(capabilityRoot, targetOwner, "index.ts");
-    const diagnosticInterface = join(capabilityRoot, "game-project", "diagnostics.ts");
-    if (target !== interfaceFile && target !== diagnosticInterface) {
+    if (target !== interfaceFile) {
       failures.push(
         `${relative(root, file)} imports private ${targetOwner} implementation ${relative(root, target)}.`,
       );
