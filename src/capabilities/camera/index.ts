@@ -1,10 +1,9 @@
 import type {
   AuthoringDiagnostic,
   LogicalResolution,
-  Point,
-  SceneSize,
 } from "../game-project";
 import type { CueStart, DirectedSubject } from "../sequence";
+import type { Point, SceneSize } from "../world";
 
 export type CameraDirection =
   | { readonly type: "camera"; readonly mode: "cut"; readonly point: Point; readonly startAfter?: CueStart }

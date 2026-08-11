@@ -1,7 +1,861 @@
-import type { Point } from "../game-project";
-import type { MotionDirection } from "../sequence";
+import {
+  AuthoringError,
+  type AuthoringDiagnostic,
+  type InteractionCondition,
+  type LogicalResolution,
+} from "../game-project";
+import {
+  validateAppearance,
+  validateAppearanceSet,
+  type Appearance,
+} from "../animation";
+import type { NounDefinition } from "../interaction";
+import type { PassageDirection } from "../hud";
+import type { DirectedSubject, MotionDirection } from "../sequence";
+import { isInside } from "./geometry";
 
 export { isInside, navigationPath, nearestPoint } from "./geometry";
+
+/** A point measured in logical Scene Space pixels. */
+export interface Point {
+  readonly x: number;
+  readonly y: number;
+}
+
+/** The complete two-dimensional extent of one Scene Space. */
+export interface SceneSize {
+  readonly width: number;
+  readonly height: number;
+}
+
+/** The four authored facings used by directional Character walking. */
+export type Facing = "front" | "back" | "left" | "right";
+
+/** An Appearance cut directly from the owning Scene's Background. */
+export interface BackgroundRegionAppearance {
+  readonly kind: "background-region";
+  readonly area: readonly Point[];
+}
+
+export type EntityAppearance = Appearance;
+export type SceneryAppearance = Appearance | BackgroundRegionAppearance;
+
+/** A locally validated persistent Character definition. */
+export interface CharacterDefinition {
+  readonly initialScene: string;
+  readonly initialGroundPoint: Point;
+  readonly initialFacing: Facing;
+  readonly initialAppearance: string;
+  readonly appearances: Readonly<Record<string, EntityAppearance>>;
+  readonly movementSpeed: number;
+  readonly noun?: NounDefinition;
+}
+
+/** Input accepted by {@link defineCharacter}. */
+export interface CharacterInput extends CharacterDefinition {}
+
+/** Creates and freezes one persistent Character definition. */
+export function defineCharacter(input: CharacterInput): CharacterDefinition {
+  const diagnostics: AuthoringDiagnostic[] = [];
+  if (!Number.isFinite(input.initialGroundPoint.x) || !Number.isFinite(input.initialGroundPoint.y)) {
+    diagnostics.push({
+      code: "definition.point.finite",
+      family: "definition", owner: "world",
+      path: "initialGroundPoint",
+      message: "A Character Ground Point must use finite Scene Space coordinates.",
+    });
+  }
+  if (!Number.isFinite(input.movementSpeed) || input.movementSpeed <= 0) {
+    diagnostics.push({
+      code: "definition.character.movement-speed",
+      family: "definition", owner: "world",
+      path: "movementSpeed",
+      message: "Character movement speed must be a positive finite number.",
+    });
+  }
+  diagnostics.push(...validateAppearanceSet(input.appearances, {
+    path: "appearances",
+    initialAppearance: input.initialAppearance,
+    subject: "Character",
+  }));
+  if (diagnostics.length > 0) throw new AuthoringError(diagnostics);
+  return deepFreeze({
+    ...input,
+    initialGroundPoint: { ...input.initialGroundPoint },
+    appearances: { ...input.appearances },
+  });
+}
+
+/** A persistent collectible Object definition. */
+export interface ObjectDefinition {
+  readonly initialScene: string;
+  readonly initialGroundPoint: Point;
+  readonly initialAppearance: string;
+  readonly appearances: Readonly<Record<string, EntityAppearance>>;
+  readonly inventoryAppearance: URL | string;
+  readonly noun?: NounDefinition;
+}
+
+/** Creates and freezes one Object that initially belongs to a Scene. */
+export function defineObject(input: ObjectDefinition): ObjectDefinition {
+  const diagnostics: AuthoringDiagnostic[] = [];
+  if (!Number.isFinite(input.initialGroundPoint.x) || !Number.isFinite(input.initialGroundPoint.y)) {
+    diagnostics.push({
+      code: "definition.point.finite",
+      family: "definition", owner: "world",
+      path: "initialGroundPoint",
+      message: "An Object Ground Point must use finite Scene Space coordinates.",
+    });
+  }
+  diagnostics.push(...validateAppearanceSet(input.appearances, {
+    path: "appearances",
+    initialAppearance: input.initialAppearance,
+    subject: "Object",
+  }));
+  if (diagnostics.length > 0) throw new AuthoringError(diagnostics);
+  return deepFreeze({
+    ...input,
+    initialGroundPoint: { ...input.initialGroundPoint },
+    appearances: { ...input.appearances },
+  });
+}
+
+export type HotspotTarget =
+  | { readonly kind: "background" }
+  | { readonly kind: "character"; readonly character: string }
+  | { readonly kind: "object"; readonly object: string }
+  | { readonly kind: "scenery"; readonly scenery: string };
+
+export interface ApproachPoint {
+  readonly groundPoint: Point;
+  readonly facing: Facing;
+}
+
+interface HotspotDefinitionBase {
+  readonly area: readonly Point[];
+  readonly approach: ApproachPoint;
+  readonly when?: InteractionCondition;
+}
+
+interface BackgroundHotspotDefinition extends HotspotDefinitionBase {
+  readonly target: { readonly kind: "background" };
+  readonly noun: NounDefinition;
+}
+
+interface CharacterHotspotDefinition extends HotspotDefinitionBase {
+  readonly target: Extract<HotspotTarget, { readonly kind: "character" }>;
+  readonly noun?: never;
+}
+
+interface ObjectHotspotDefinition extends HotspotDefinitionBase {
+  readonly target: Extract<HotspotTarget, { readonly kind: "object" }>;
+  readonly noun?: never;
+}
+
+interface SceneryHotspotDefinition extends HotspotDefinitionBase {
+  readonly target: Extract<HotspotTarget, { readonly kind: "scenery" }>;
+  readonly noun?: never;
+}
+
+export type HotspotDefinition =
+  | BackgroundHotspotDefinition
+  | CharacterHotspotDefinition
+  | ObjectHotspotDefinition
+  | SceneryHotspotDefinition;
+
+export interface SceneryDefinition {
+  readonly baseline: number;
+  readonly initialAppearance: string;
+  readonly appearances: Readonly<Record<string, SceneryAppearance>>;
+  readonly position?: Point;
+  readonly noun?: NounDefinition;
+}
+
+export interface SceneEntrance {
+  readonly groundPoint: Point;
+  readonly facing: Facing;
+}
+
+export interface ScenePassage {
+  readonly area: readonly Point[];
+  readonly approach: ApproachPoint;
+  readonly when?: InteractionCondition;
+  readonly noun: NounDefinition;
+  readonly direction: PassageDirection;
+  readonly destination: { readonly scene: string; readonly entrance: string };
+}
+
+/** A conditional Sequence start evaluated after arrival through a Scene Passage. */
+export interface ArrivalSequenceRule {
+  readonly sequence: string;
+  readonly entrance?: string;
+  readonly when?: InteractionCondition;
+}
+
+export interface PerspectiveScaleStop {
+  readonly y: number;
+  readonly scale: number;
+}
+
+/** The minimal input accepted by {@link defineScene}. */
+export interface SceneInput {
+  readonly background: URL | string;
+  readonly size?: SceneSize;
+  readonly walkableRegion: readonly Point[];
+  readonly perspectiveScale?: readonly PerspectiveScaleStop[];
+  readonly scenery?: Readonly<Record<string, SceneryDefinition>>;
+  readonly hotspots?: readonly HotspotDefinition[];
+  readonly entrances?: Readonly<Record<string, SceneEntrance>>;
+  readonly passages?: readonly ScenePassage[];
+  readonly arrivalSequences?: readonly ArrivalSequenceRule[];
+}
+
+/** A locally validated Scene definition. Its registry key supplies its identity. */
+export interface SceneDefinition extends SceneInput {}
+
+/** A Scene whose default Size has been resolved during composition. */
+export interface ResolvedSceneDefinition extends Omit<SceneDefinition, "size"> {
+  readonly size: SceneSize;
+}
+
+/** Creates and freezes one Scene after validating its local geometry. */
+export function defineScene(input: SceneInput): SceneDefinition {
+  const diagnostics: AuthoringDiagnostic[] = [];
+
+  for (const axis of ["width", "height"] as const) {
+    const value = input.size?.[axis];
+    if (input.size && (!Number.isInteger(value) || value! <= 0)) {
+      diagnostics.push({
+        code: "definition.scene-size.positive-integer",
+        family: "definition", owner: "world",
+        path: `size.${axis}`,
+        message: "Scene Size dimensions must be positive integers.",
+      });
+    }
+  }
+
+  input.walkableRegion.forEach((point, index) => {
+    if (!Number.isFinite(point.x) || !Number.isFinite(point.y)) {
+      diagnostics.push({
+        code: "definition.point.finite",
+        family: "definition", owner: "world",
+        path: `walkableRegion[${index}]`,
+        message: "Scene Space coordinates must be finite numbers.",
+        suggestion: "Replace NaN and infinite coordinates with finite logical pixels.",
+      });
+    }
+  });
+
+  if (input.walkableRegion.length < 3) {
+    diagnostics.push({
+      code: "definition.polygon.vertices",
+      family: "definition", owner: "world",
+      path: "walkableRegion",
+      message: "A Walkable Region needs at least three vertices.",
+      suggestion: "Provide a non-degenerate polygon with at least three vertices.",
+    });
+  }
+  if (
+    input.walkableRegion.length >= 3 &&
+    input.walkableRegion.every(({ x, y }) => Number.isFinite(x) && Number.isFinite(y))
+  ) {
+    validatePolygon(input.walkableRegion, "walkableRegion", diagnostics);
+  }
+  for (const [sceneryId, scenery] of Object.entries(input.scenery ?? {})) {
+    if (!(scenery.initialAppearance in scenery.appearances)) {
+      diagnostics.push({
+        code: "reference.appearance.initial",
+        family: "reference", owner: "animation",
+        path: `scenery.${sceneryId}.initialAppearance`,
+        message: `Appearance '${scenery.initialAppearance}' is not defined on this Scenery.`,
+      });
+    }
+    if (!Number.isFinite(scenery.baseline)) {
+      diagnostics.push({
+        code: "definition.scenery.baseline",
+        family: "definition", owner: "world",
+        path: `scenery.${sceneryId}.baseline`,
+        message: "A Scenery baseline must be a finite Scene Space coordinate.",
+      });
+    }
+    if (scenery.position && (!Number.isFinite(scenery.position.x) || !Number.isFinite(scenery.position.y))) {
+      diagnostics.push({
+        code: "definition.point.finite",
+        family: "definition", owner: "world",
+        path: `scenery.${sceneryId}.position`,
+        message: "A Scenery position must use finite Scene Space coordinates.",
+      });
+    }
+    for (const [appearanceId, appearance] of Object.entries(scenery.appearances)) {
+      if (!isAnimatedAppearance(appearance)) {
+        validateLocalPolygon(
+          appearance.area,
+          `scenery.${sceneryId}.appearances.${appearanceId}.area`,
+          diagnostics,
+        );
+      } else {
+        diagnostics.push(...validateAppearance(
+          appearance,
+          `scenery.${sceneryId}.appearances.${appearanceId}`,
+        ));
+      }
+    }
+  }
+  input.hotspots?.forEach((hotspot, index) =>
+    validateLocalPolygon(hotspot.area, `hotspots[${index}].area`, diagnostics),
+  );
+  input.passages?.forEach((passage, index) =>
+    validateLocalPolygon(passage.area, `passages[${index}].area`, diagnostics),
+  );
+
+  if (diagnostics.length > 0) throw new AuthoringError(diagnostics);
+
+  return deepFreeze({
+    ...input,
+    background: input.background instanceof URL ? new URL(input.background.href) : input.background,
+    ...(input.size ? { size: { ...input.size } } : {}),
+    walkableRegion: input.walkableRegion.map((point) => ({ ...point })),
+    scenery: { ...(input.scenery ?? {}) },
+    hotspots: [...(input.hotspots ?? [])],
+    entrances: { ...(input.entrances ?? {}) },
+    passages: [...(input.passages ?? [])],
+    arrivalSequences: [...(input.arrivalSequences ?? [])],
+  });
+}
+
+export interface CharacterState {
+  scene: string;
+  groundPoint: Point;
+  facing: Facing;
+  appearance: string;
+}
+
+export type ObjectLocation =
+  | { kind: "scene"; scene: string; groundPoint: Point }
+  | { kind: "inventory" }
+  | { kind: "consumed" };
+
+export interface ObjectState {
+  location: ObjectLocation;
+  appearance: string;
+}
+
+export interface WorldState {
+  currentScene: string;
+  characters: Record<string, CharacterState>;
+  scenery: Record<string, Record<string, string>>;
+  objects: Record<string, ObjectState>;
+}
+
+export interface WorldProjectView {
+  readonly initialScene: string;
+  readonly scenes: Readonly<Record<string, ResolvedSceneDefinition>>;
+  readonly characters: Readonly<Record<string, CharacterDefinition>>;
+  readonly objects: Readonly<Record<string, ObjectDefinition>>;
+}
+
+export interface WorldDefinitionView {
+  readonly logicalResolution: LogicalResolution;
+  readonly initialScene: string;
+  readonly playerCharacter?: string;
+  readonly scenes: Readonly<Record<string, SceneDefinition>>;
+  readonly characters: Readonly<Record<string, CharacterDefinition>>;
+  readonly objects: Readonly<Record<string, ObjectDefinition>>;
+}
+
+export interface WorldDefinitionQueries {
+  hasSubject(scene: string | undefined, subject: DirectedSubject): boolean;
+  hasDirectedSubject(
+    scene: string,
+    subject: DirectedSubject,
+    availableObjects: ReadonlySet<string>,
+  ): boolean;
+  pointInScene(scene: string, point: Point): boolean;
+  characterPointIsWalkable(scene: string, point: Point): boolean;
+  sceneryRestingPoint(scene: string, scenery: string): Point | undefined;
+  validatePlacement(
+    scenes: readonly string[],
+    point: Point,
+    path: string,
+  ): readonly AuthoringDiagnostic[];
+}
+
+/** Creates the narrow spatial queries used while other capabilities validate references. */
+export function createWorldDefinitionQueries(view: WorldDefinitionView): WorldDefinitionQueries {
+  const pointInScene = (sceneId: string, point: Point): boolean => {
+    const scene = view.scenes[sceneId];
+    return scene !== undefined && pointInSceneSize(
+      resolvedSceneSize(scene, view.logicalResolution),
+      point,
+    );
+  };
+  return {
+    hasSubject(scene, subject) {
+      if (subject.kind === "character") return subject.character in view.characters;
+      if (subject.kind === "object") return subject.object in view.objects;
+      return scene !== undefined && subject.scenery in (view.scenes[scene]?.scenery ?? {});
+    },
+    hasDirectedSubject(scene, subject, availableObjects) {
+      if (subject.kind === "character") {
+        const character = view.characters[subject.character];
+        return character !== undefined && (
+          subject.character === view.playerCharacter || character.initialScene === scene
+        );
+      }
+      if (subject.kind === "object") {
+        return subject.object in view.objects && availableObjects.has(subject.object);
+      }
+      return subject.scenery in (view.scenes[scene]?.scenery ?? {});
+    },
+    pointInScene,
+    characterPointIsWalkable(sceneId, point) {
+      const scene = view.scenes[sceneId];
+      return scene !== undefined && pointInPolygonOrBoundary(scene.walkableRegion, point);
+    },
+    sceneryRestingPoint(sceneId, scenery) {
+      const point = view.scenes[sceneId]?.scenery?.[scenery]?.position;
+      return point ? { ...point } : undefined;
+    },
+    validatePlacement(scenes, point, path) {
+      return scenes.some((scene) => !pointInScene(scene, point))
+        ? [worldDefinition(
+            "definition.operation.ground-point",
+            path,
+            "A placed Object Ground Point must be finite and inside the destination Scene Size.",
+          )]
+        : [];
+    },
+  };
+}
+
+/** Reports composed geometry, membership, and spatial-reference errors owned by World. */
+export function validateWorldProject(view: WorldDefinitionView): readonly AuthoringDiagnostic[] {
+  const diagnostics: AuthoringDiagnostic[] = [];
+  if (!(view.initialScene in view.scenes)) {
+    diagnostics.push(worldReference(
+      "reference.scene.initial",
+      "initialScene",
+      `Scene '${view.initialScene}' does not exist.`,
+    ));
+  }
+  if (view.playerCharacter !== undefined && !(view.playerCharacter in view.characters)) {
+    diagnostics.push(worldReference(
+      "reference.character.player",
+      "playerCharacter",
+      `Character '${view.playerCharacter}' does not exist.`,
+    ));
+  }
+
+  for (const [sceneId, scene] of Object.entries(view.scenes)) {
+    const size = resolvedSceneSize(scene, view.logicalResolution);
+    for (const axis of ["width", "height"] as const) {
+      if (size[axis] < view.logicalResolution[axis]) {
+        diagnostics.push({
+          code: "definition.scene-size.viewport-minimum",
+          family: "definition", owner: "world",
+          path: `scenes.${sceneId}.size.${axis}`,
+          message: `Scene Size ${axis} must be at least the Logical Resolution ${axis}.`,
+        });
+      }
+    }
+    const inScene = (point: Point) => pointInSceneSize(size, point);
+    scene.walkableRegion.forEach((point, index) => {
+      if (!inScene(point)) {
+        diagnostics.push({
+          code: "definition.scene-space.bounds",
+          family: "definition", owner: "world",
+          path: `scenes.${sceneId}.walkableRegion[${index}]`,
+          message: "Scene geometry must remain inside the Scene Size.",
+        });
+      }
+    });
+    scene.perspectiveScale?.forEach((stop, index) => {
+      if (!Number.isFinite(stop.y) || !Number.isFinite(stop.scale) ||
+          stop.scale <= 0 || stop.y < 0 || stop.y > size.height) {
+        diagnostics.push({
+          code: "definition.perspective-scale.stop",
+          family: "definition", owner: "world",
+          path: `scenes.${sceneId}.perspectiveScale[${index}]`,
+          message: "Perspective Scale stops need an in-frame y and a positive finite scale.",
+        });
+      }
+    });
+    for (const [sceneryId, scenery] of Object.entries(scene.scenery ?? {})) {
+      if (scenery.baseline < 0 || scenery.baseline > size.height) {
+        diagnostics.push({
+          code: "definition.scene-space.bounds",
+          family: "definition", owner: "world",
+          path: `scenes.${sceneId}.scenery.${sceneryId}.baseline`,
+          message: "A Scenery Baseline must remain inside the Scene Size.",
+        });
+      }
+      if (scenery.position && !inScene(scenery.position)) {
+        diagnostics.push({
+          code: "definition.scene-space.bounds",
+          family: "definition", owner: "world",
+          path: `scenes.${sceneId}.scenery.${sceneryId}.position`,
+          message: "Scenery positions must remain inside the Scene Size.",
+        });
+      }
+      for (const [appearanceId, appearance] of Object.entries(scenery.appearances)) {
+        if ("kind" in appearance && appearance.kind === "background-region") {
+          validatePolygonBounds(
+            appearance.area,
+            `scenes.${sceneId}.scenery.${sceneryId}.appearances.${appearanceId}.area`,
+            inScene,
+            diagnostics,
+          );
+        }
+      }
+    }
+    for (const [entranceId, entrance] of Object.entries(scene.entrances ?? {})) {
+      const path = `scenes.${sceneId}.entrances.${entranceId}.groundPoint`;
+      if (!inScene(entrance.groundPoint)) {
+        diagnostics.push(worldDefinition("definition.scene-space.bounds", path, "Scene Entrance Ground Points must remain inside the Scene Size."));
+      } else if (!pointInPolygonOrBoundary(scene.walkableRegion, entrance.groundPoint)) {
+        diagnostics.push(worldDefinition("definition.entrance.walkable", path, "A Scene Entrance Ground Point must lie in the Walkable Region."));
+      }
+    }
+    scene.hotspots?.forEach((hotspot, index) => {
+      const base = `scenes.${sceneId}.hotspots[${index}]`;
+      validatePolygonBounds(hotspot.area, `${base}.area`, inScene, diagnostics);
+      validateApproach(scene, hotspot.approach, base, inScene, diagnostics);
+      const targetExists = hotspot.target.kind === "background" ||
+        hotspot.target.kind === "character" && hotspot.target.character in view.characters ||
+        hotspot.target.kind === "object" && hotspot.target.object in view.objects ||
+        hotspot.target.kind === "scenery" && hotspot.target.scenery in (scene.scenery ?? {});
+      if (!targetExists) {
+        diagnostics.push(worldReference(
+          "reference.hotspot.target",
+          `${base}.target`,
+          "Hotspot target does not exist.",
+        ));
+      }
+    });
+    scene.passages?.forEach((passage, index) => {
+      const base = `scenes.${sceneId}.passages[${index}]`;
+      validatePolygonBounds(passage.area, `${base}.area`, inScene, diagnostics);
+      validateApproach(scene, passage.approach, base, inScene, diagnostics);
+      const destination = view.scenes[passage.destination.scene];
+      if (!destination) {
+        diagnostics.push(worldReference(
+          "reference.passage.scene",
+          `${base}.destination.scene`,
+          `Scene '${passage.destination.scene}' does not exist.`,
+        ));
+      } else if (!(passage.destination.entrance in (destination.entrances ?? {}))) {
+        diagnostics.push(worldReference(
+          "reference.passage.entrance",
+          `${base}.destination.entrance`,
+          `Scene Entrance '${passage.destination.entrance}' does not exist.`,
+        ));
+      }
+    });
+  }
+
+  for (const [characterId, character] of Object.entries(view.characters)) {
+    const scene = view.scenes[character.initialScene];
+    if (!scene) {
+      diagnostics.push(worldReference(
+        "reference.character.initial-scene",
+        `characters.${characterId}.initialScene`,
+        `Scene '${character.initialScene}' does not exist.`,
+      ));
+      continue;
+    }
+    const path = `characters.${characterId}.initialGroundPoint`;
+    if (!pointInSceneSize(resolvedSceneSize(scene, view.logicalResolution), character.initialGroundPoint)) {
+      diagnostics.push(worldDefinition("definition.scene-space.bounds", path, "Character Ground Points must remain inside the Scene Size."));
+    } else if (!pointInPolygonOrBoundary(scene.walkableRegion, character.initialGroundPoint)) {
+      diagnostics.push(worldDefinition("definition.character.walkable", path, "A Character Ground Point must lie in the Scene Walkable Region."));
+    }
+  }
+  for (const [objectId, object] of Object.entries(view.objects)) {
+    const scene = view.scenes[object.initialScene];
+    if (!scene) {
+      diagnostics.push(worldReference(
+        "reference.object.initial-scene",
+        `objects.${objectId}.initialScene`,
+        `Scene '${object.initialScene}' does not exist.`,
+      ));
+      continue;
+    }
+    if (!pointInSceneSize(resolvedSceneSize(scene, view.logicalResolution), object.initialGroundPoint)) {
+      diagnostics.push(worldDefinition(
+        "definition.scene-space.bounds",
+        `objects.${objectId}.initialGroundPoint`,
+        "Object Ground Points must remain inside the Scene Size.",
+      ));
+    }
+  }
+  return diagnostics;
+}
+
+export type WorldTarget =
+  | { readonly kind: "hotspot"; readonly index: number }
+  | { readonly kind: "passage"; readonly index: number };
+
+export interface WorldHotspot {
+  readonly index: number;
+  readonly definition: HotspotDefinition;
+}
+
+export interface WorldPassage {
+  readonly index: number;
+  readonly definition: ScenePassage;
+}
+
+export type WorldConditionMatches = (condition: InteractionCondition | undefined) => boolean;
+
+export interface WorldSceneryPresentation {
+  readonly id: string;
+  readonly appearanceName: string;
+  readonly appearance: SceneryAppearance;
+  readonly baseline: number;
+  readonly position?: Point;
+}
+
+export interface WorldObjectPresentation {
+  readonly id: string;
+  readonly appearanceName: string;
+  readonly groundPoint: Point;
+  readonly scale: number;
+}
+
+export interface WorldCharacterPresentation extends WorldObjectPresentation {
+  readonly facing: Facing;
+}
+
+export interface WorldPresentation {
+  readonly scene: string;
+  readonly background: URL | string;
+  readonly size: SceneSize;
+  readonly scenery: readonly WorldSceneryPresentation[];
+  readonly objects: readonly WorldObjectPresentation[];
+  readonly characters: readonly WorldCharacterPresentation[];
+}
+
+/** World-owned spatial policy over one validated Game Project view. */
+export interface World {
+  initialState(): WorldState;
+  hitTest(state: Readonly<WorldState>, point: Point, matches: WorldConditionMatches): WorldTarget | null;
+  isHotspotAvailable(
+    state: Readonly<WorldState>,
+    hotspot: HotspotDefinition,
+    matches: WorldConditionMatches,
+  ): boolean;
+  hotspots(state: Readonly<WorldState>, matches: WorldConditionMatches): readonly WorldHotspot[];
+  passages(state: Readonly<WorldState>, matches: WorldConditionMatches): readonly WorldPassage[];
+  hasDirectedSubject(state: Readonly<WorldState>, subject: DirectedSubject): boolean;
+  pointForSubject(state: Readonly<WorldState>, subject: DirectedSubject): Point | undefined;
+  canPlaceObject(scene: string, point: Point): boolean;
+  presentation(
+    state: Readonly<WorldState>,
+    directedSceneryPoint?: (scenery: string) => Point | undefined,
+  ): WorldPresentation;
+}
+
+/** Creates the World module from only the definitions needed for spatial policy. */
+export function createWorld(view: WorldProjectView): World {
+  const availableHotspots = (
+    state: Readonly<WorldState>,
+    matches: WorldConditionMatches,
+  ): readonly WorldHotspot[] => {
+    const scene = view.scenes[state.currentScene];
+    return (scene?.hotspots ?? []).flatMap((definition, index) => {
+      if (!isHotspotAvailable(state, definition, matches)) return [];
+      return [{ index, definition: structuredClone(definition) }];
+    });
+  };
+  const availablePassages = (
+    state: Readonly<WorldState>,
+    matches: WorldConditionMatches,
+  ): readonly WorldPassage[] => {
+    const scene = view.scenes[state.currentScene];
+    return (scene?.passages ?? []).flatMap((definition, index) =>
+      matches(definition.when)
+        ? [{ index, definition: structuredClone(definition) }]
+        : [],
+    );
+  };
+
+  return {
+    initialState() {
+      return {
+        currentScene: view.initialScene,
+        characters: Object.fromEntries(
+          Object.entries(view.characters).map(([id, definition]) => [
+            id,
+            {
+              scene: definition.initialScene,
+              groundPoint: { ...definition.initialGroundPoint },
+              facing: definition.initialFacing,
+              appearance: definition.initialAppearance,
+            },
+          ]),
+        ),
+        scenery: Object.fromEntries(
+          Object.entries(view.scenes).map(([sceneId, scene]) => [
+            sceneId,
+            Object.fromEntries(
+              Object.entries(scene.scenery ?? {}).map(([id, definition]) => [
+                id,
+                definition.initialAppearance,
+              ]),
+            ),
+          ]),
+        ),
+        objects: Object.fromEntries(
+          Object.entries(view.objects).map(([id, definition]) => [
+            id,
+            {
+              location: {
+                kind: "scene" as const,
+                scene: definition.initialScene,
+                groundPoint: { ...definition.initialGroundPoint },
+              },
+              appearance: definition.initialAppearance,
+            },
+          ]),
+        ),
+      };
+    },
+    hitTest(state, point, matches) {
+      const hotspot = availableHotspots(state, matches)
+        .findLast(({ definition }) => isInside(definition.area, point));
+      if (hotspot) return { kind: "hotspot", index: hotspot.index };
+      const passage = availablePassages(state, matches)
+        .findLast(({ definition }) => isInside(definition.area, point));
+      return passage ? { kind: "passage", index: passage.index } : null;
+    },
+    isHotspotAvailable,
+    hotspots: availableHotspots,
+    passages: availablePassages,
+    hasDirectedSubject(state, subject) {
+      if (subject.kind === "character") {
+        return state.characters[subject.character]?.scene === state.currentScene;
+      }
+      if (subject.kind === "object") {
+        const location = state.objects[subject.object]?.location;
+        return location?.kind === "scene" && location.scene === state.currentScene;
+      }
+      return subject.scenery in (view.scenes[state.currentScene]?.scenery ?? {});
+    },
+    pointForSubject(state, subject) {
+      if (subject.kind === "character") {
+        const character = state.characters[subject.character];
+        return character?.scene === state.currentScene
+          ? { ...character.groundPoint }
+          : undefined;
+      }
+      if (subject.kind === "object") {
+        const location = state.objects[subject.object]?.location;
+        return location?.kind === "scene" && location.scene === state.currentScene
+          ? { ...location.groundPoint }
+          : undefined;
+      }
+      const position = view.scenes[state.currentScene]?.scenery?.[subject.scenery]?.position;
+      return position ? { ...position } : undefined;
+    },
+    canPlaceObject(sceneId, point) {
+      const scene = view.scenes[sceneId];
+      return scene !== undefined && pointInSceneSize(scene.size, point);
+    },
+    presentation(state, directedSceneryPoint = () => undefined) {
+      const scene = view.scenes[state.currentScene]!;
+      return {
+        scene: state.currentScene,
+        background: scene.background instanceof URL
+          ? new URL(scene.background.href)
+          : scene.background,
+        size: { ...scene.size },
+        scenery: Object.entries(scene.scenery ?? {}).map(([id, definition]) => {
+          const appearanceName = state.scenery[state.currentScene]?.[id] ??
+            definition.initialAppearance;
+          const position = directedSceneryPoint(id) ?? definition.position;
+          return {
+            id,
+            appearanceName,
+            appearance: cloneSceneryAppearance(definition.appearances[appearanceName]!),
+            baseline: definition.baseline,
+            ...(position ? { position: { ...position } } : {}),
+          };
+        }),
+        objects: Object.entries(state.objects).flatMap(([id, object]) =>
+          object.location.kind === "scene" && object.location.scene === state.currentScene
+            ? [{
+                id,
+                appearanceName: object.appearance,
+                groundPoint: { ...object.location.groundPoint },
+                scale: perspectiveScaleAt(scene.perspectiveScale, object.location.groundPoint.y),
+              }]
+            : [],
+        ),
+        characters: Object.entries(state.characters).flatMap(([id, character]) =>
+          character.scene === state.currentScene
+            ? [{
+                id,
+                appearanceName: character.appearance,
+                groundPoint: { ...character.groundPoint },
+                facing: character.facing,
+                scale: perspectiveScaleAt(scene.perspectiveScale, character.groundPoint.y),
+              }]
+            : [],
+        ),
+      };
+    },
+  };
+
+  function isHotspotAvailable(
+    state: Readonly<WorldState>,
+    hotspot: HotspotDefinition,
+    matches: WorldConditionMatches,
+  ): boolean {
+    if (!matches(hotspot.when)) return false;
+    if (hotspot.target.kind !== "object") return true;
+    const location = state.objects[hotspot.target.object]?.location;
+    return location?.kind === "scene" && location.scene === state.currentScene;
+  }
+}
+
+function cloneSceneryAppearance(appearance: SceneryAppearance): SceneryAppearance {
+  if (!isAnimatedAppearance(appearance)) {
+    return { kind: "background-region", area: appearance.area.map((point) => ({ ...point })) };
+  }
+  return {
+    animations: Object.fromEntries(
+      Object.entries(appearance.animations).map(([name, animation]) => [
+        name,
+        {
+          ...animation,
+          frames: "side" in animation.frames
+            ? {
+                side: {
+                  ...animation.frames.side,
+                  image: cloneAssetReference(animation.frames.side.image),
+                },
+                front: {
+                  ...animation.frames.front,
+                  image: cloneAssetReference(animation.frames.front.image),
+                },
+                back: {
+                  ...animation.frames.back,
+                  image: cloneAssetReference(animation.frames.back.image),
+                },
+              }
+            : animation.frames.map(cloneAssetReference),
+          ...(animation.cues ? { cues: { ...animation.cues } } : {}),
+        },
+      ]),
+    ),
+    roles: { ...appearance.roles },
+    ...(appearance.visualAnchor ? { visualAnchor: { ...appearance.visualAnchor } } : {}),
+  };
+}
+
+function cloneAssetReference(reference: URL | string): URL | string {
+  return reference instanceof URL ? new URL(reference.href) : reference;
+}
 
 /** World-owned arrival predicate shared by simulation and presentation. */
 export function characterMotionReachedDestination(
@@ -38,4 +892,170 @@ export function pointAlongPath(path: readonly Point[], progress: number): Point 
     remaining -= length;
   }
   return { ...path.at(-1)! };
+}
+
+function validatePolygon(
+  polygon: readonly Point[],
+  path: string,
+  diagnostics: AuthoringDiagnostic[],
+): void {
+  for (let left = 0; left < polygon.length; left += 1) {
+    const leftNext = (left + 1) % polygon.length;
+    for (let right = left + 1; right < polygon.length; right += 1) {
+      const rightNext = (right + 1) % polygon.length;
+      if (left === right || leftNext === right || rightNext === left) continue;
+      if (segmentsIntersect(polygon[left]!, polygon[leftNext]!, polygon[right]!, polygon[rightNext]!)) {
+        diagnostics.push({
+          code: "definition.polygon.self-intersection",
+          family: "definition", owner: "world",
+          path,
+          message: "A polygon cannot cross itself.",
+        });
+        return;
+      }
+    }
+  }
+  const twiceArea = polygon.reduce((total, point, index) => {
+    const next = polygon[(index + 1) % polygon.length]!;
+    return total + point.x * next.y - next.x * point.y;
+  }, 0);
+  if (Math.abs(twiceArea) < Number.EPSILON) {
+    diagnostics.push({
+      code: "definition.polygon.degenerate",
+      family: "definition", owner: "world",
+      path,
+      message: "A polygon must enclose a non-zero area.",
+    });
+  }
+}
+
+function validateLocalPolygon(
+  polygon: readonly Point[],
+  path: string,
+  diagnostics: AuthoringDiagnostic[],
+): void {
+  polygon.forEach((point, index) => {
+    if (!Number.isFinite(point.x) || !Number.isFinite(point.y)) {
+      diagnostics.push({
+        code: "definition.point.finite",
+        family: "definition", owner: "world",
+        path: `${path}[${index}]`,
+        message: "Scene Space coordinates must be finite numbers.",
+      });
+    }
+  });
+  if (polygon.length < 3) {
+    diagnostics.push({
+      code: "definition.polygon.vertices",
+      family: "definition", owner: "world",
+      path,
+      message: "A polygon needs at least three vertices.",
+    });
+  } else if (polygon.every(({ x, y }) => Number.isFinite(x) && Number.isFinite(y))) {
+    validatePolygon(polygon, path, diagnostics);
+  }
+}
+
+function validatePolygonBounds(
+  polygon: readonly Point[],
+  path: string,
+  pointInScene: (point: Point) => boolean,
+  diagnostics: AuthoringDiagnostic[],
+): void {
+  polygon.forEach((point, index) => {
+    if (!pointInScene(point)) {
+      diagnostics.push(worldDefinition(
+        "definition.scene-space.bounds",
+        `${path}[${index}]`,
+        "Scene geometry must remain inside the Scene Size.",
+      ));
+    }
+  });
+}
+
+function validateApproach(
+  scene: SceneDefinition,
+  approach: ApproachPoint,
+  base: string,
+  pointInScene: (point: Point) => boolean,
+  diagnostics: AuthoringDiagnostic[],
+): void {
+  if (!pointInScene(approach.groundPoint)) {
+    diagnostics.push(worldDefinition(
+      "definition.approach.bounds",
+      `${base}.approach`,
+      "Approach Point must be inside Scene Space.",
+    ));
+  } else if (!pointInPolygonOrBoundary(scene.walkableRegion, approach.groundPoint)) {
+    diagnostics.push(worldDefinition(
+      "definition.approach.walkable",
+      `${base}.approach`,
+      "An Approach Point must lie in the Walkable Region.",
+    ));
+  }
+}
+
+function resolvedSceneSize(scene: SceneDefinition, logicalResolution: LogicalResolution): SceneSize {
+  return scene.size ?? logicalResolution;
+}
+
+function pointInSceneSize(size: SceneSize, point: Point): boolean {
+  return Number.isFinite(point.x) && Number.isFinite(point.y) &&
+    point.x >= 0 && point.y >= 0 && point.x <= size.width && point.y <= size.height;
+}
+
+function pointInPolygonOrBoundary(polygon: readonly Point[], point: Point): boolean {
+  if (isInside(polygon, point)) return true;
+  return polygon.some((start, index) => {
+    const end = polygon[(index + 1) % polygon.length]!;
+    const cross = (point.x - start.x) * (end.y - start.y) -
+      (point.y - start.y) * (end.x - start.x);
+    return Math.abs(cross) <= 1e-9 &&
+      point.x >= Math.min(start.x, end.x) && point.x <= Math.max(start.x, end.x) &&
+      point.y >= Math.min(start.y, end.y) && point.y <= Math.max(start.y, end.y);
+  });
+}
+
+function perspectiveScaleAt(stops: readonly PerspectiveScaleStop[] | undefined, y: number): number {
+  if (!stops || stops.length === 0) return 1;
+  const sorted = [...stops].sort((left, right) => left.y - right.y);
+  const first = sorted[0]!;
+  const last = sorted.at(-1)!;
+  if (y <= first.y) return first.scale;
+  if (y >= last.y) return last.scale;
+  for (let index = 1; index < sorted.length; index += 1) {
+    const lower = sorted[index - 1]!;
+    const upper = sorted[index]!;
+    if (y <= upper.y) {
+      const amount = (y - lower.y) / (upper.y - lower.y);
+      return lower.scale + (upper.scale - lower.scale) * amount;
+    }
+  }
+  return last.scale;
+}
+
+function worldDefinition(code: string, path: string, message: string): AuthoringDiagnostic {
+  return { code, family: "definition", owner: "world", path, message };
+}
+
+function worldReference(code: string, path: string, message: string): AuthoringDiagnostic {
+  return { code, family: "reference", owner: "world", path, message };
+}
+
+function isAnimatedAppearance(appearance: EntityAppearance | SceneryAppearance): appearance is Appearance {
+  return "animations" in appearance;
+}
+
+function segmentsIntersect(a: Point, b: Point, c: Point, d: Point): boolean {
+  const cross = (p: Point, q: Point, r: Point) =>
+    Math.sign((q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x));
+  return cross(a, b, c) !== cross(a, b, d) && cross(c, d, a) !== cross(c, d, b);
+}
+
+function deepFreeze<T>(value: T): T {
+  if (value && typeof value === "object" && !(value instanceof URL) && !Object.isFrozen(value)) {
+    Object.freeze(value);
+    for (const child of Object.values(value)) deepFreeze(child);
+  }
+  return value;
 }

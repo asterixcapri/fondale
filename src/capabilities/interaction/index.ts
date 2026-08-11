@@ -1,6 +1,6 @@
 import type { GameOperation, InteractionCondition, Line } from "../game-project";
 import { AuthoringError, type AuthoringDiagnostic } from "../game-project";
-export { conditionMatchesState, hotspotAvailableInState } from "./state-queries";
+export { conditionMatchesState } from "./state-queries";
 
 /** The semantic actions available to authored Commands. */
 export const commandVerbs = [

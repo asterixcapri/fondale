@@ -1,6 +1,6 @@
 import type { GameState } from "../game-session";
 import { resolveSequencePath } from "../sequence";
-import { conditionMatchesState, hotspotAvailableInState } from "../interaction";
+import { conditionMatchesState } from "../interaction";
 import { commandVerbs, type CommandVerb, type Verb } from "../interaction";
 import { AuthoringError, type AuthoringDiagnostic } from "../game-project";
 import {
@@ -10,6 +10,7 @@ import {
   type SequenceDefinition,
   type SequenceStep,
 } from "../game-project";
+import { createWorld, type World } from "../world";
 
 /** JSON-safe representation of the latest committed Game State. */
 export interface SaveSnapshot {
@@ -38,6 +39,7 @@ export function validateSaveSnapshot(
   value: unknown,
 ): SaveSnapshotValidation {
   const data = getGameProjectData(project);
+  const world = createWorld(data);
   const diagnostics: AuthoringDiagnostic[] = [];
   if (!isRecord(value)) {
     diagnostics.push(saveDiagnostic("save.shape", "Save Snapshot must be a JSON object."));
@@ -54,7 +56,7 @@ export function validateSaveSnapshot(
     if (value.projectVersion !== data.version) {
       diagnostics.push(saveDiagnostic("save.project.version", "Save Snapshot uses another Project Version."));
     }
-    if (!validStateShape(value.state, data)) {
+    if (!validStateShape(value.state, data, world)) {
       diagnostics.push(
         invalidCommandStateDiagnostic(value.state, data) ??
         saveDiagnostic("save.state.invalid", "Save Snapshot contains an invalid Game State."),
@@ -92,7 +94,7 @@ export function getValidatedSaveState(snapshot: ValidatedSaveSnapshot): GameStat
   return structuredClone(snapshot.state);
 }
 
-function validStateShape(value: unknown, data: GameProjectData): value is GameState {
+function validStateShape(value: unknown, data: GameProjectData, world: World): value is GameState {
   if (!isRecord(value) || !hasExactKeys(value, ["currentScene", "characters", "scenery", "objects", "inventory", "command", "variables", "activity", "tick"])) return false;
   if (typeof value.currentScene !== "string" || !(value.currentScene in data.scenes)) return false;
   if (!Number.isInteger(value.tick) || (value.tick as number) < 0) return false;
@@ -141,11 +143,11 @@ function validStateShape(value: unknown, data: GameProjectData): value is GameSt
   }
   if (!isRecord(value.variables) || !sameKeys(value.variables, data.variables)) return false;
   if (!Object.values(value.variables).every((variable) => typeof variable === "boolean")) return false;
-  if (!validActivity(value.activity, data, value as unknown as GameState)) return false;
+  if (!validActivity(value.activity, data, value as unknown as GameState, world)) return false;
   return isJsonSafe(value);
 }
 
-function validActivity(value: unknown, data: GameProjectData, state: GameState): boolean {
+function validActivity(value: unknown, data: GameProjectData, state: GameState, world: World): boolean {
   if (value === null) return true;
   if (!isRecord(value) || typeof value.type !== "string") return false;
   if (value.type === "line") {
@@ -166,7 +168,11 @@ function validActivity(value: unknown, data: GameProjectData, state: GameState):
       if (!hasExactKeys(value.intent, ["kind", "scene", "hotspot"], ["command"])) return false;
       if (value.intent.scene !== state.currentScene || !Number.isInteger(value.intent.hotspot)) return false;
       const hotspot = data.scenes[state.currentScene]!.hotspots?.[value.intent.hotspot as number];
-      if (!hotspot || !hotspotAvailableInState(hotspot, state)) return false;
+      if (!hotspot || !world.isHotspotAvailable(
+        state,
+        hotspot,
+        (condition) => conditionMatchesState(condition, state),
+      )) return false;
       if (value.intent.command !== undefined) {
         if (!isRecord(value.intent.command) || !hasExactKeys(value.intent.command, ["verb"], ["firstNoun", "preserveState"])) return false;
         if (!isCommandVerb(value.intent.command.verb)) return false;

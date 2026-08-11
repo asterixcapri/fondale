@@ -6,11 +6,10 @@ import {
   type Appearance,
 } from "../capabilities/animation";
 import type {
-  EntityAppearance,
   GameProjectData,
-  Point,
   SequenceStep,
 } from "../capabilities/game-project";
+import type { EntityAppearance, Point } from "../capabilities/world";
 
 export interface LoadedAssets {
   readonly textures: ReadonlyMap<string, Texture>;

@@ -25,19 +25,18 @@ import {
 import {
   interpretDirectionStep,
   resolveSequencePath,
-  secondsToTicks,
   type DirectionStep,
   type DirectionStepInterpretation,
   type DirectedSubject,
 } from "../capabilities/sequence";
 import {
   characterMotionReachedDestination,
-  pointAlongPath,
+  type Point,
+  type SceneryAppearance,
+  type WorldPresentation,
 } from "../capabilities/world";
 import type {
   GameProjectData,
-  Point,
-  SceneryAppearance,
   SequenceStep,
 } from "../capabilities/game-project";
 import type { Verb } from "../capabilities/interaction";
@@ -125,12 +124,13 @@ export class BrowserRenderer {
     if (movement?.type === "movement-started") {
       this.frame.dataset.fondaleMovement = movement.fast ? "fast" : "normal";
     }
-    const signature = sceneSignature(state);
+    const world = this.core.world();
+    const signature = worldPresentationSignature(world);
     if (signature !== this.sceneSignature) {
       this.sceneSignature = signature;
-      this.rebuildWorld(state);
+      this.rebuildWorld(state, world);
     }
-    this.updateCharacters(state);
+    this.updateCharacters(world);
     this.updateAnimations(state);
     this.world.sortChildren();
     this.cameraOrigin = this.core.camera().origin;
@@ -152,66 +152,55 @@ export class BrowserRenderer {
     this.animationViews.length = 0;
   }
 
-  private rebuildWorld(state: GameState): void {
+  private rebuildWorld(state: GameState, world: WorldPresentation): void {
     this.world.removeChildren();
     this.characterViews.clear();
     this.animationViews.length = 0;
-    const scene = this.data.scenes[state.currentScene]!;
-    const backgroundTexture = this.assets.textures.get(assetUrl(scene.background))!;
+    const backgroundTexture = this.assets.textures.get(assetUrl(world.background))!;
     const background = new Sprite(backgroundTexture);
     background.zIndex = Number.NEGATIVE_INFINITY;
     this.world.addChild(background);
 
-    for (const [sceneryId, scenery] of Object.entries(scene.scenery ?? {})) {
-      const selected = state.scenery[state.currentScene]?.[sceneryId] ?? scenery.initialAppearance;
-      const appearance = scenery.appearances[selected]!;
+    for (const scenery of world.scenery) {
       const view = this.createScenery(
-        appearance,
+        scenery.appearance,
         backgroundTexture,
-        `scenes.${state.currentScene}.scenery.${sceneryId}.appearances.${selected}`,
-        { kind: "scenery", scenery: sceneryId },
-        this.animationPresentation(state, { kind: "scenery", scenery: sceneryId }),
+        `scenes.${world.scene}.scenery.${scenery.id}.appearances.${scenery.appearanceName}`,
+        { kind: "scenery", scenery: scenery.id },
+        this.animationPresentation(state, { kind: "scenery", scenery: scenery.id }),
       );
-      view.label = `scenery:${sceneryId}`;
+      view.label = `scenery:${scenery.id}`;
       view.zIndex = scenery.baseline;
-      const directedPosition = this.directedSceneryPoint(state, sceneryId);
-      if (directedPosition ?? scenery.position) {
-        const position = directedPosition ?? scenery.position!;
-        view.position.set(position.x, position.y);
+      if (scenery.position) {
+        view.position.set(scenery.position.x, scenery.position.y);
       }
       this.world.addChild(view);
     }
 
-    for (const [objectId, object] of Object.entries(state.objects)) {
-      if (object.location.kind !== "scene" || object.location.scene !== state.currentScene) continue;
-      const definition = this.data.objects[objectId]!;
-      const appearance = definition.appearances[object.appearance]!;
+    for (const object of world.objects) {
       const view = this.createCharacter(
-        this.animationPresentation(state, { kind: "object", object: objectId })!,
-        `objects.${objectId}.appearances.${object.appearance}`,
-        { kind: "object", object: objectId },
+        this.animationPresentation(state, { kind: "object", object: object.id })!,
+        `objects.${object.id}.appearances.${object.appearanceName}`,
+        { kind: "object", object: object.id },
         "front",
       );
-      view.container.label = `object:${objectId}`;
-      view.container.position.set(object.location.groundPoint.x, object.location.groundPoint.y);
-      view.container.zIndex = object.location.groundPoint.y;
-      view.container.scale.set(scaleAt(scene.perspectiveScale, object.location.groundPoint.y));
+      view.container.label = `object:${object.id}`;
+      view.container.position.set(object.groundPoint.x, object.groundPoint.y);
+      view.container.zIndex = object.groundPoint.y;
+      view.container.scale.set(object.scale);
       this.world.addChild(view.container);
     }
 
-    for (const [characterId, character] of Object.entries(state.characters)) {
-      if (character.scene !== state.currentScene) continue;
-      const definition = this.data.characters[characterId]!;
-      const appearance = definition.appearances[character.appearance]!;
+    for (const character of world.characters) {
       const direction = character.facing === "left" || character.facing === "right" ? "side" : character.facing;
       const view = this.createCharacter(
-        this.animationPresentation(state, { kind: "character", character: characterId })!,
-        `characters.${characterId}.appearances.${character.appearance}`,
-        { kind: "character", character: characterId },
+        this.animationPresentation(state, { kind: "character", character: character.id })!,
+        `characters.${character.id}.appearances.${character.appearanceName}`,
+        { kind: "character", character: character.id },
         direction,
       );
-      view.container.label = `character:${characterId}`;
-      this.characterViews.set(characterId, view);
+      view.container.label = `character:${character.id}`;
+      this.characterViews.set(character.id, view);
       this.world.addChild(view.container);
     }
   }
@@ -255,13 +244,13 @@ export class BrowserRenderer {
     return view;
   }
 
-  private updateCharacters(state: GameState): void {
-    const scene = this.data.scenes[state.currentScene]!;
-    for (const [characterId, view] of this.characterViews) {
-      const character = state.characters[characterId]!;
+  private updateCharacters(world: WorldPresentation): void {
+    for (const character of world.characters) {
+      const view = this.characterViews.get(character.id);
+      if (!view) continue;
       view.container.position.set(Math.round(character.groundPoint.x), Math.round(character.groundPoint.y));
       view.container.zIndex = character.groundPoint.y;
-      const perspective = scaleAt(scene.perspectiveScale, character.groundPoint.y);
+      const perspective = character.scale;
       const direction =
         character.facing === "left" || character.facing === "right" ? "side" : character.facing;
       const horizontal = character.facing === "left" ? -perspective : perspective;
@@ -350,19 +339,6 @@ export class BrowserRenderer {
     };
     this.directionInterpretations.set(state, active);
     return active;
-  }
-
-  private directedSceneryPoint(state: GameState, scenery: string): Point | undefined {
-    const active = this.activeDirection(state);
-    if (!active) return undefined;
-    for (let index = active.step.directions.length - 1; index >= 0; index -= 1) {
-      const direction = active.step.directions[index]!;
-      if (direction.type !== "motion" || direction.subject.kind !== "scenery" || direction.subject.scenery !== scenery) continue;
-      const timing = active.interpretation.directions[index]!;
-      if (!timing.presented) continue;
-      return pointAlongPath(direction.path, Math.min(1, timing.localTick / secondsToTicks(direction.duration!)));
-    }
-    return undefined;
   }
 
   private animationFrames(
@@ -1670,38 +1646,17 @@ function colorWithAlpha(color: string, alpha: number): string {
   return `rgba(${channels.join(",")},${Math.max(0, Math.min(1, alpha))})`;
 }
 
-function sceneSignature(state: GameState): string {
+function worldPresentationSignature(world: WorldPresentation): string {
   return JSON.stringify({
-    scene: state.currentScene,
-    scenery: state.scenery[state.currentScene],
-    characters: Object.fromEntries(
-      Object.entries(state.characters).map(([id, character]) => [id, [character.scene, character.appearance]]),
-    ),
-    objects: state.objects,
-    activity: state.activity,
+    scene: world.scene,
+    scenery: world.scenery.map(({ id, appearanceName, position }) => [id, appearanceName, position]),
+    characters: world.characters.map(({ id, appearanceName }) => [id, appearanceName]),
+    objects: world.objects.map(({ id, appearanceName, groundPoint }) => [id, appearanceName, groundPoint]),
   });
 }
 
 function setAnchor(sprite: Sprite, anchor: Point | undefined, width: number, height: number): void {
   sprite.anchor.set(anchor ? anchor.x / width : 0.5, anchor ? anchor.y / height : 1);
-}
-
-function scaleAt(stops: readonly { y: number; scale: number }[] | undefined, y: number): number {
-  if (!stops || stops.length === 0) return 1;
-  const sorted = [...stops].sort((left, right) => left.y - right.y);
-  const first = sorted[0]!;
-  const last = sorted.at(-1)!;
-  if (y <= first.y) return first.scale;
-  if (y >= last.y) return last.scale;
-  for (let index = 1; index < sorted.length; index += 1) {
-    const lower = sorted[index - 1]!;
-    const upper = sorted[index]!;
-    if (y <= upper.y) {
-      const amount = (y - lower.y) / (upper.y - lower.y);
-      return lower.scale + (upper.scale - lower.scale) * amount;
-    }
-  }
-  return last.scale;
 }
 
 function boundingBox(area: readonly Point[]): Rectangle {

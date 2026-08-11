@@ -4,15 +4,15 @@
 
 **Blocked by:** 01 — Own Direction Step end to end.
 
-**Status:** ready-for-agent
+**Status:** ready-for-human
 
-- [ ] World owns Scene, Character, Object, Scenery, Hotspot, Scene Size, Scene Space and world-position contracts behind its module interface.
-- [ ] World owns geometry and spatial validation for polygons, bounds, ground points, anchors and entity membership.
-- [ ] World creates the initial spatial state of Characters, Objects and Scenery from a narrow Game Project view.
-- [ ] Hit testing and availability queries use World-owned services and immutable Game State rather than CoreSession private knowledge.
-- [ ] Directed-subject availability is answered by World for the current Scene and reused by Sequence.
-- [ ] The browser receives stable world presentation facts and retains only PixiJS construction, texture use and pointer-coordinate adaptation.
-- [ ] Layering, perspective scaling, background regions and visual entity placement remain equivalent in fixtures and Capri 1535.
-- [ ] Invalid Scene membership and geometry produce structured diagnostics owned by World and aggregated by Game Project.
-- [ ] World tests cover overlapping hotspots, concave polygons, entity presence, conditional availability and defensive results.
-- [ ] Package, CoreSession and browser verification pass through the existing public entry point.
+- [x] World owns Scene, Character, Object, Scenery, Hotspot, Scene Size, Scene Space and world-position contracts behind its module interface.
+- [x] World owns geometry and spatial validation for polygons, bounds, ground points, anchors and entity membership.
+- [x] World creates the initial spatial state of Characters, Objects and Scenery from a narrow Game Project view.
+- [x] Hit testing and availability queries use World-owned services and immutable Game State rather than CoreSession private knowledge.
+- [x] Directed-subject availability is answered by World for the current Scene and reused by Sequence.
+- [x] The browser receives stable world presentation facts and retains only PixiJS construction, texture use and pointer-coordinate adaptation.
+- [x] Layering, perspective scaling, background regions and visual entity placement remain equivalent in fixtures and Capri 1535.
+- [x] Invalid Scene membership and geometry produce structured diagnostics owned by World and aggregated by Game Project.
+- [x] World tests cover overlapping hotspots, concave polygons, entity presence, conditional availability and defensive results.
+- [x] Package, CoreSession and browser verification pass through the existing public entry point.

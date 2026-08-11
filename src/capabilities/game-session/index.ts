@@ -12,15 +12,11 @@ import {
 } from "../interaction";
 import {
   getGameProjectData,
-  type Facing,
   type GameOperation,
   type GameProject,
   type GameProjectData,
-  type HotspotDefinition,
-  type HotspotTarget,
   type InteractionCondition,
   type Line,
-  type Point,
   type SequenceDefinition,
   type SequenceStep,
 } from "../game-project";
@@ -32,10 +28,20 @@ import {
 } from "../save";
 import {
   characterMotionReachedDestination,
-  isInside,
+  createWorld,
   navigationPath,
   nearestPoint,
   pointAlongPath,
+  type CharacterState,
+  type Facing,
+  type HotspotDefinition,
+  type HotspotTarget,
+  type ObjectLocation,
+  type ObjectState,
+  type Point,
+  type WorldPresentation,
+  type WorldState,
+  type WorldTarget,
 } from "../world";
 import {
   interpretDirectionStep,
@@ -47,24 +53,9 @@ import {
 } from "../sequence";
 import { appearanceForSubject, type AnimationDefinition } from "../animation";
 import { Camera, type CameraPresentation } from "../camera";
-import { conditionMatchesState, hotspotAvailableInState } from "../interaction";
+import { conditionMatchesState } from "../interaction";
 
-export interface CharacterState {
-  scene: string;
-  groundPoint: Point;
-  facing: Facing;
-  appearance: string;
-}
-
-export type ObjectLocation =
-  | { kind: "scene"; scene: string; groundPoint: Point }
-  | { kind: "inventory" }
-  | { kind: "consumed" };
-
-export interface ObjectState {
-  location: ObjectLocation;
-  appearance: string;
-}
+export type { CharacterState, ObjectLocation, ObjectState } from "../world";
 
 export interface PlayerIntentState {
   type: "player-intent";
@@ -110,11 +101,7 @@ export interface LineActivityState {
 
 export type GameActivityState = PlayerIntentState | SequenceActivityState | LineActivityState;
 
-export interface GameState {
-  currentScene: string;
-  characters: Record<string, CharacterState>;
-  scenery: Record<string, Record<string, string>>;
-  objects: Record<string, ObjectState>;
+export interface GameState extends WorldState {
   inventory: { objects: string[] };
   command: { verb: Verb; firstNoun: null | { kind: "object"; object: string } };
   variables: Record<string, boolean>;
@@ -147,9 +134,7 @@ export type CoreEffect =
   | { readonly type: "scene-changed"; readonly scene: string }
   | { readonly type: "sequence-changed" };
 
-export type CoreWorldTarget =
-  | { readonly kind: "hotspot"; readonly index: number }
-  | { readonly kind: "passage"; readonly index: number };
+export type CoreWorldTarget = WorldTarget;
 
 export interface AvailableHotspot {
   readonly index: number;
@@ -191,6 +176,7 @@ export interface CoreSession {
   availableHotspots(): readonly AvailableHotspot[];
   availableInventory(): readonly AvailableInventoryNoun[];
   availablePassages(): readonly AvailablePassage[];
+  world(): WorldPresentation;
   camera(): CameraPresentation;
   stop(): void;
 }
@@ -207,7 +193,8 @@ export function createCoreSession(
   restored?: ValidatedSaveSnapshot,
 ): CoreSession {
   const data = getGameProjectData(project);
-  let state = restored ? getValidatedSaveState(restored) : initialState(data);
+  const world = createWorld(data);
+  let state = restored ? getValidatedSaveState(restored) : initialState(data, world.initialState());
   let status: "running" | "failed" | "stopped" = "running";
   let failureDiagnostics: readonly AuthoringDiagnostic[] = [];
   const inputs: CoreInput[] = [];
@@ -240,33 +227,23 @@ export function createCoreSession(
     lifecycle: () => status,
     diagnostics: () => failureDiagnostics,
     hitTest(point) {
-      const scene = data.scenes[state.currentScene]!;
-      const hotspot = [...(scene.hotspots ?? [])].findLastIndex(
-        (definition) => hotspotAvailable(definition) && isInside(definition.area, point),
-      );
-      if (hotspot >= 0) return { kind: "hotspot", index: hotspot };
-      const passage = [...(scene.passages ?? [])].findLastIndex(
-        ({ area, when }) => conditionMatches(when) && isInside(area, point),
-      );
-      return passage >= 0 ? { kind: "passage", index: passage } : null;
+      return world.hitTest(state, point, conditionMatches);
     },
     availableHotspots() {
-      const scene = data.scenes[state.currentScene]!;
-      return (scene.hotspots ?? []).flatMap((hotspot, index) => {
-        if (!hotspotAvailable(hotspot)) return [];
+      return world.hotspots(state, conditionMatches).map(({ definition: hotspot, index }) => {
         const noun = hotspotNoun(state.currentScene, hotspot);
         const label = conditionalValue(noun.labels, state).text;
         const preferredVerb = conditionalValue(noun.preferredVerbs, state).verb;
         const secondaryVerb = conditionalOptionalValue(noun.secondaryVerbs, state)?.verb;
         const objectVerb = conditionalOptionalValue(noun.objectVerbs, state)?.verb;
-        return [{
+        return {
           index,
           area: hotspot.area.map((point) => ({ ...point })),
           label,
           ...(preferredVerb ? { preferredVerb } : {}),
           ...(secondaryVerb ? { secondaryVerb } : {}),
           ...(objectVerb ? { objectVerb } : {}),
-        }];
+        };
       });
     },
     availableInventory() {
@@ -283,12 +260,10 @@ export function createCoreSession(
       });
     },
     availablePassages() {
-      const scene = data.scenes[state.currentScene]!;
-      return (scene.passages ?? []).flatMap((passage, index) => {
-        if (!conditionMatches(passage.when)) return [];
+      return world.passages(state, conditionMatches).map(({ definition: passage, index }) => {
         const secondaryVerb = conditionalOptionalValue(passage.noun.secondaryVerbs, state)?.verb;
         const objectVerb = conditionalOptionalValue(passage.noun.objectVerbs, state)?.verb;
-        return [{
+        return {
           index,
           area: passage.area.map((point) => ({ ...point })),
           label: conditionalValue(passage.noun.labels, state).text,
@@ -296,8 +271,14 @@ export function createCoreSession(
           ...(secondaryVerb ? { secondaryVerb } : {}),
           ...(objectVerb ? { objectVerb } : {}),
           direction: passage.direction,
-        }];
+        };
       });
+    },
+    world() {
+      return world.presentation(state, (scenery) => directedSubjectPoint(
+        { kind: "scenery", scenery },
+        activeDirectionPresentation(),
+      ));
     },
     camera() {
       return cameraPresentation;
@@ -777,13 +758,7 @@ export function createCoreSession(
       const selected = firstNounObject;
       if (!selected || !draft.inventory.objects.includes(selected)) throw new Error("No Object is selected.");
       const object = draft.objects[selected]!;
-      const destination = data.scenes[draft.currentScene]!;
-      if (
-        operation.groundPoint.x < 0 ||
-        operation.groundPoint.y < 0 ||
-        operation.groundPoint.x > destination.size.width ||
-        operation.groundPoint.y > destination.size.height
-      ) {
+      if (!world.canPlaceObject(draft.currentScene, operation.groundPoint)) {
         throw new Error("The placed Object Ground Point is outside the destination Scene Size.");
       }
       if (operation.appearance !== undefined && !(operation.appearance in data.objects[selected]!.appearances)) {
@@ -801,7 +776,7 @@ export function createCoreSession(
       const definition = data.objects[operation.object];
       const destination = data.scenes[operation.scene];
       if (!object || !definition || !destination) throw new Error("Placed Object or destination Scene does not exist.");
-      if (operation.groundPoint.x < 0 || operation.groundPoint.y < 0 || operation.groundPoint.x > destination.size.width || operation.groundPoint.y > destination.size.height) throw new Error("The placed Object Ground Point is outside the destination Scene Size.");
+      if (!world.canPlaceObject(operation.scene, operation.groundPoint)) throw new Error("The placed Object Ground Point is outside the destination Scene Size.");
       if (operation.appearance !== undefined && !(operation.appearance in definition.appearances)) throw new Error(`Unknown Object Appearance '${operation.appearance}'.`);
       object.location = { kind: "scene", scene: operation.scene, groundPoint: { ...operation.groundPoint } };
       if (operation.appearance !== undefined) object.appearance = operation.appearance;
@@ -883,15 +858,7 @@ export function createCoreSession(
   function directedSubjectsAreAvailable(step: DirectionStep): boolean {
     return step.directions.every((direction) => {
       if (direction.type === "camera" && direction.mode !== "follow") return true;
-      const subject = direction.subject;
-      if (subject.kind === "character") {
-        return state.characters[subject.character]?.scene === state.currentScene;
-      }
-      if (subject.kind === "object") {
-        const location = state.objects[subject.object]?.location;
-        return location?.kind === "scene" && location.scene === state.currentScene;
-      }
-      return subject.scenery in (data.scenes[state.currentScene]?.scenery ?? {});
+      return world.hasDirectedSubject(state, direction.subject);
     });
   }
 
@@ -957,17 +924,7 @@ export function createCoreSession(
     subject: DirectedSubject,
     active: ReturnType<typeof activeDirectionPresentation>,
   ): Point | undefined {
-    if (subject.kind === "character") {
-      const character = state.characters[subject.character];
-      return character?.scene === state.currentScene ? character.groundPoint : undefined;
-    }
-    if (subject.kind === "object") {
-      const object = state.objects[subject.object];
-      return object?.location.kind === "scene" && object.location.scene === state.currentScene
-        ? object.location.groundPoint
-        : undefined;
-    }
-    if (active) {
+    if (subject.kind === "scenery" && active) {
       for (let index = active.step.directions.length - 1; index >= 0; index -= 1) {
         const direction = active.step.directions[index]!;
         const timing = active.interpretation.directions[index]!;
@@ -979,7 +936,7 @@ export function createCoreSession(
         );
       }
     }
-    return data.scenes[state.currentScene]?.scenery?.[subject.scenery]?.position;
+    return world.pointForSubject(state, subject);
   }
 
   function applyDirectedMotions(step: DirectionStep, localTicks: readonly number[]): void {
@@ -1054,7 +1011,7 @@ export function createCoreSession(
   }
 
   function hotspotAvailable(hotspot: HotspotDefinition): boolean {
-    return hotspotAvailableInState(hotspot, state);
+    return world.isHotspotAvailable(state, hotspot, conditionMatches);
   }
 
   function failOperation(message: string, cause?: unknown): void {
@@ -1075,44 +1032,9 @@ export function createCoreSession(
   return session;
 }
 
-function initialState(data: GameProjectData): GameState {
-  const characters = Object.fromEntries(
-    Object.entries(data.characters).map(([id, definition]) => [
-      id,
-      {
-        scene: definition.initialScene,
-        groundPoint: { ...definition.initialGroundPoint },
-        facing: definition.initialFacing,
-        appearance: definition.initialAppearance,
-      },
-    ]),
-  );
-  const objects = Object.fromEntries(
-    Object.entries(data.objects).map(([id, definition]) => [
-      id,
-      {
-        location: {
-          kind: "scene" as const,
-          scene: definition.initialScene,
-          groundPoint: { ...definition.initialGroundPoint },
-        },
-        appearance: definition.initialAppearance,
-      },
-    ]),
-  );
-  const scenery = Object.fromEntries(
-    Object.entries(data.scenes).map(([sceneId, scene]) => [
-      sceneId,
-      Object.fromEntries(
-        Object.entries(scene.scenery ?? {}).map(([id, definition]) => [id, definition.initialAppearance]),
-      ),
-    ]),
-  );
+function initialState(data: GameProjectData, world: WorldState): GameState {
   return {
-    currentScene: data.initialScene,
-    characters,
-    scenery,
-    objects,
+    ...world,
     inventory: { objects: [] },
     command: { verb: "walk-to", firstNoun: null },
     variables: { ...data.variables },

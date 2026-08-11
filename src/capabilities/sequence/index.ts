@@ -1,8 +1,7 @@
 import type {
-  Facing,
-  Point,
   AuthoringDiagnostic,
 } from "../game-project";
+import type { Facing, Point } from "../world";
 import {
   animationCueTick,
   animationDurationTicks,

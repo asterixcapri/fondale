@@ -56,6 +56,20 @@ test("equal inputs and logical steps produce equal snapshots and effects", () =>
   expect(first.effects()).toEqual(second.effects());
 });
 
+test("CoreSession exposes defensive World presentation facts", () => {
+  const session = createTestSession(project);
+  const presentation = session.world();
+  const exposedPoint = presentation.characters[0]!.groundPoint as { x: number };
+  exposedPoint.x = 99;
+
+  expect(session.world()).toMatchObject({
+    scene: "opening",
+    size: { width: 100, height: 100 },
+    characters: [{ id: "player", groundPoint: { x: 10, y: 10 }, scale: 1 }],
+  });
+  expect(session.snapshot().characters.player!.groundPoint).toEqual({ x: 10, y: 10 });
+});
+
 test("Camera facts do not depend on how often a consumer reads them", () => {
   const panoramicScene = defineScene({
     background: "panorama.png",

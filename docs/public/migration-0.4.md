@@ -56,6 +56,16 @@ Invalid authored Camera coordinates report
 remains outside Save Snapshots, and returns to Player following after a
 Direction Step completes or is skipped.
 
+## World ownership
+
+World now owns Scene, Character, Object, Scenery, Hotspot, Scene Space, entity
+presence, hit testing, Perspective Scale, and spatial placement rules. Public
+imports and authoring shapes are unchanged and remain available only from the
+package root. Diagnostics for composed Scene geometry, membership, Passage
+destinations, Hotspot targets, and Perspective Scale now consistently use the
+`world` owner. World presentation facts are transient and do not add fields to
+Game State or Save Snapshots.
+
 ## Authoring Diagnostic attribution
 
 Every `AuthoringDiagnostic` now includes an `owner` identifying the capability

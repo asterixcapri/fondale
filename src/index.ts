@@ -33,26 +33,28 @@ export {
 } from "./capabilities/animation";
 export {
   defineGame,
-  defineCharacter,
-  defineScene,
-  defineObject,
   defineSequence,
-  type CharacterDefinition,
-  type ArrivalSequenceRule,
-  type Facing,
   type GameProject,
   type LogicalResolution,
   type GameOperation,
-  type HotspotDefinition,
   type InteractionCondition,
   type Line,
   type NarrationStep,
+  type SequenceDefinition,
+} from "./capabilities/game-project";
+export {
+  defineCharacter,
+  defineObject,
+  defineScene,
+  type ArrivalSequenceRule,
+  type CharacterDefinition,
+  type Facing,
+  type HotspotDefinition,
   type ObjectDefinition,
   type Point,
   type SceneDefinition,
   type SceneSize,
-  type SequenceDefinition,
-} from "./capabilities/game-project";
+} from "./capabilities/world";
 export {
   type AnimationDirection,
   type CueStart,

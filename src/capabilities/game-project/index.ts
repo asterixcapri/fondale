@@ -12,7 +12,7 @@ import {
   type NounDefinition,
   validateCommandResponse,
 } from "../interaction";
-import type { HUDTheme, PassageDirection } from "../hud";
+import type { HUDTheme } from "../hud";
 import {
   cloneDirectionStep,
   validateDirectionStep,
@@ -21,7 +21,6 @@ import {
   type DirectedSubject,
 } from "../sequence";
 import {
-  validateAppearance,
   validateAppearanceSet,
   validateAnimationReference,
   type AnimationDefinition,
@@ -30,6 +29,43 @@ import {
   type AnimationStrip,
   type Appearance,
 } from "../animation";
+import {
+  createWorldDefinitionQueries,
+  validateWorldProject,
+  type CharacterDefinition,
+  type EntityAppearance,
+  type HotspotTarget,
+  type ObjectDefinition,
+  type Point,
+  type ResolvedSceneDefinition,
+  type SceneryAppearance,
+  type SceneDefinition,
+} from "../world";
+export {
+  defineCharacter,
+  defineObject,
+  defineScene,
+  type ApproachPoint,
+  type ArrivalSequenceRule,
+  type BackgroundRegionAppearance,
+  type CharacterDefinition,
+  type CharacterInput,
+  type EntityAppearance,
+  type Facing,
+  type HotspotDefinition,
+  type HotspotTarget,
+  type ObjectDefinition,
+  type PerspectiveScaleStop,
+  type Point,
+  type ResolvedSceneDefinition,
+  type SceneryAppearance,
+  type SceneryDefinition,
+  type SceneDefinition,
+  type SceneEntrance,
+  type SceneInput,
+  type ScenePassage,
+  type SceneSize,
+} from "../world";
 export type {
   AnimationDefinition,
   AnimationFrames,
@@ -38,114 +74,10 @@ export type {
   Appearance,
 } from "../animation";
 
-/** A point measured in logical Scene Space pixels. */
-export interface Point {
-  readonly x: number;
-  readonly y: number;
-}
-
 /** The fixed dimensions of the logical viewport and Engine-owned overlay. */
 export interface LogicalResolution {
   readonly width: number;
   readonly height: number;
-}
-
-/** The complete two-dimensional extent of one Scene Space. */
-export interface SceneSize {
-  readonly width: number;
-  readonly height: number;
-}
-
-/** The four authored facings used by directional Character walking. */
-export type Facing = "front" | "back" | "left" | "right";
-
-/** An Appearance cut directly from the owning Scene's Background. */
-export interface BackgroundRegionAppearance {
-  readonly kind: "background-region";
-  readonly area: readonly Point[];
-}
-
-export type EntityAppearance = Appearance;
-export type SceneryAppearance = Appearance | BackgroundRegionAppearance;
-
-/** A locally validated persistent Character definition. */
-export interface CharacterDefinition {
-  readonly initialScene: string;
-  readonly initialGroundPoint: Point;
-  readonly initialFacing: Facing;
-  readonly initialAppearance: string;
-  readonly appearances: Readonly<Record<string, EntityAppearance>>;
-  readonly movementSpeed: number;
-  readonly noun?: NounDefinition;
-}
-
-/** Input accepted by {@link defineCharacter}. */
-export interface CharacterInput extends CharacterDefinition {}
-
-/** Creates and freezes one persistent Character definition. */
-export function defineCharacter(input: CharacterInput): CharacterDefinition {
-  const diagnostics: AuthoringDiagnostic[] = [];
-  if (!Number.isFinite(input.initialGroundPoint.x) || !Number.isFinite(input.initialGroundPoint.y)) {
-    diagnostics.push({
-      code: "definition.point.finite",
-      family: "definition", owner: "world",
-      path: "initialGroundPoint",
-      message: "A Character Ground Point must use finite Scene Space coordinates.",
-    });
-  }
-  if (!Number.isFinite(input.movementSpeed) || input.movementSpeed <= 0) {
-    diagnostics.push({
-      code: "definition.character.movement-speed",
-      family: "definition", owner: "world",
-      path: "movementSpeed",
-      message: "Character movement speed must be a positive finite number.",
-    });
-  }
-  diagnostics.push(...validateAppearanceSet(input.appearances, {
-    path: "appearances",
-    initialAppearance: input.initialAppearance,
-    subject: "Character",
-  }));
-  if (diagnostics.length > 0) throw new AuthoringError(diagnostics);
-  return deepFreeze({
-    ...input,
-    initialGroundPoint: { ...input.initialGroundPoint },
-    appearances: { ...input.appearances },
-  });
-}
-
-/** A persistent collectible Object definition. */
-export interface ObjectDefinition {
-  readonly initialScene: string;
-  readonly initialGroundPoint: Point;
-  readonly initialAppearance: string;
-  readonly appearances: Readonly<Record<string, EntityAppearance>>;
-  readonly inventoryAppearance: URL | string;
-  readonly noun?: NounDefinition;
-}
-
-/** Creates and freezes one Object that initially belongs to a Scene. */
-export function defineObject(input: ObjectDefinition): ObjectDefinition {
-  const diagnostics: AuthoringDiagnostic[] = [];
-  if (!Number.isFinite(input.initialGroundPoint.x) || !Number.isFinite(input.initialGroundPoint.y)) {
-    diagnostics.push({
-      code: "definition.point.finite",
-      family: "definition", owner: "world",
-      path: "initialGroundPoint",
-      message: "An Object Ground Point must use finite Scene Space coordinates.",
-    });
-  }
-  diagnostics.push(...validateAppearanceSet(input.appearances, {
-    path: "appearances",
-    initialAppearance: input.initialAppearance,
-    subject: "Object",
-  }));
-  if (diagnostics.length > 0) throw new AuthoringError(diagnostics);
-  return deepFreeze({
-    ...input,
-    initialGroundPoint: { ...input.initialGroundPoint },
-    appearances: { ...input.appearances },
-  });
 }
 
 /** A boolean proposition evaluated against the latest committed Game State. */
@@ -179,204 +111,6 @@ export type GameOperation =
       readonly appearance?: string;
     }
   | { readonly type: "consume-selected-object" };
-
-export type HotspotTarget =
-  | { readonly kind: "background" }
-  | { readonly kind: "character"; readonly character: string }
-  | { readonly kind: "object"; readonly object: string }
-  | { readonly kind: "scenery"; readonly scenery: string };
-
-export interface ApproachPoint {
-  readonly groundPoint: Point;
-  readonly facing: Facing;
-}
-
-interface HotspotDefinitionBase {
-  readonly area: readonly Point[];
-  readonly approach: ApproachPoint;
-  readonly when?: InteractionCondition;
-}
-
-interface BackgroundHotspotDefinition extends HotspotDefinitionBase {
-  readonly target: { readonly kind: "background" };
-  readonly noun: NounDefinition;
-}
-
-interface CharacterHotspotDefinition extends HotspotDefinitionBase {
-  readonly target: Extract<HotspotTarget, { readonly kind: "character" }>;
-  readonly noun?: never;
-}
-
-interface ObjectHotspotDefinition extends HotspotDefinitionBase {
-  readonly target: Extract<HotspotTarget, { readonly kind: "object" }>;
-  readonly noun?: never;
-}
-
-interface SceneryHotspotDefinition extends HotspotDefinitionBase {
-  readonly target: Extract<HotspotTarget, { readonly kind: "scenery" }>;
-  readonly noun?: never;
-}
-
-export type HotspotDefinition =
-  | BackgroundHotspotDefinition
-  | CharacterHotspotDefinition
-  | ObjectHotspotDefinition
-  | SceneryHotspotDefinition;
-
-export interface SceneryDefinition {
-  readonly baseline: number;
-  readonly initialAppearance: string;
-  readonly appearances: Readonly<Record<string, SceneryAppearance>>;
-  readonly position?: Point;
-  readonly noun?: NounDefinition;
-}
-
-export interface SceneEntrance {
-  readonly groundPoint: Point;
-  readonly facing: Facing;
-}
-
-export interface ScenePassage {
-  readonly area: readonly Point[];
-  readonly approach: ApproachPoint;
-  readonly when?: InteractionCondition;
-  readonly noun: NounDefinition;
-  readonly direction: PassageDirection;
-  readonly destination: { readonly scene: string; readonly entrance: string };
-}
-
-/** A conditional Sequence start evaluated after arrival through a Scene Passage. */
-export interface ArrivalSequenceRule {
-  readonly sequence: string;
-  readonly entrance?: string;
-  readonly when?: InteractionCondition;
-}
-
-export interface PerspectiveScaleStop {
-  readonly y: number;
-  readonly scale: number;
-}
-
-/** The minimal input accepted by {@link defineScene}. */
-export interface SceneInput {
-  readonly background: URL | string;
-  readonly size?: SceneSize;
-  readonly walkableRegion: readonly Point[];
-  readonly perspectiveScale?: readonly PerspectiveScaleStop[];
-  readonly scenery?: Readonly<Record<string, SceneryDefinition>>;
-  readonly hotspots?: readonly HotspotDefinition[];
-  readonly entrances?: Readonly<Record<string, SceneEntrance>>;
-  readonly passages?: readonly ScenePassage[];
-  readonly arrivalSequences?: readonly ArrivalSequenceRule[];
-}
-
-/** A locally validated Scene definition. Its registry key supplies its identity. */
-export interface SceneDefinition extends SceneInput {}
-
-/** Creates and freezes one Scene after validating its local geometry. */
-export function defineScene(input: SceneInput): SceneDefinition {
-  const diagnostics: AuthoringDiagnostic[] = [];
-
-  for (const axis of ["width", "height"] as const) {
-    const value = input.size?.[axis];
-    if (input.size && (!Number.isInteger(value) || value! <= 0)) {
-      diagnostics.push({
-        code: "definition.scene-size.positive-integer",
-        family: "definition", owner: "world",
-        path: `size.${axis}`,
-        message: "Scene Size dimensions must be positive integers.",
-      });
-    }
-  }
-
-  input.walkableRegion.forEach((point, index) => {
-    if (!Number.isFinite(point.x) || !Number.isFinite(point.y)) {
-      diagnostics.push({
-        code: "definition.point.finite",
-        family: "definition", owner: "world",
-        path: `walkableRegion[${index}]`,
-        message: "Scene Space coordinates must be finite numbers.",
-        suggestion: "Replace NaN and infinite coordinates with finite logical pixels.",
-      });
-    }
-  });
-
-  if (input.walkableRegion.length < 3) {
-    diagnostics.push({
-      code: "definition.polygon.vertices",
-      family: "definition", owner: "world",
-      path: "walkableRegion",
-      message: "A Walkable Region needs at least three vertices.",
-      suggestion: "Provide a non-degenerate polygon with at least three vertices.",
-    });
-  }
-  if (
-    input.walkableRegion.length >= 3 &&
-    input.walkableRegion.every(({ x, y }) => Number.isFinite(x) && Number.isFinite(y))
-  ) {
-    validatePolygon(input.walkableRegion, "walkableRegion", diagnostics);
-  }
-  for (const [sceneryId, scenery] of Object.entries(input.scenery ?? {})) {
-    if (!(scenery.initialAppearance in scenery.appearances)) {
-      diagnostics.push({
-        code: "reference.appearance.initial",
-        family: "reference", owner: "animation",
-        path: `scenery.${sceneryId}.initialAppearance`,
-        message: `Appearance '${scenery.initialAppearance}' is not defined on this Scenery.`,
-      });
-    }
-    if (!Number.isFinite(scenery.baseline)) {
-      diagnostics.push({
-        code: "definition.scenery.baseline",
-        family: "definition", owner: "sequence",
-        path: `scenery.${sceneryId}.baseline`,
-        message: "A Scenery baseline must be a finite Scene Space coordinate.",
-      });
-    }
-    if (scenery.position && (!Number.isFinite(scenery.position.x) || !Number.isFinite(scenery.position.y))) {
-      diagnostics.push({
-        code: "definition.point.finite",
-        family: "definition", owner: "world",
-        path: `scenery.${sceneryId}.position`,
-        message: "A Scenery position must use finite Scene Space coordinates.",
-      });
-    }
-    for (const [appearanceId, appearance] of Object.entries(scenery.appearances)) {
-      if (!isAnimatedAppearance(appearance)) {
-        validateLocalPolygon(
-          appearance.area,
-          `scenery.${sceneryId}.appearances.${appearanceId}.area`,
-          diagnostics,
-        );
-      } else {
-        diagnostics.push(...validateAppearance(
-          appearance,
-          `scenery.${sceneryId}.appearances.${appearanceId}`,
-        ));
-      }
-    }
-  }
-  input.hotspots?.forEach((hotspot, index) =>
-    validateLocalPolygon(hotspot.area, `hotspots[${index}].area`, diagnostics),
-  );
-  input.passages?.forEach((passage, index) =>
-    validateLocalPolygon(passage.area, `passages[${index}].area`, diagnostics),
-  );
-
-  if (diagnostics.length > 0) throw new AuthoringError(diagnostics);
-
-  return deepFreeze({
-    ...input,
-    background: input.background instanceof URL ? new URL(input.background.href) : input.background,
-    ...(input.size ? { size: { ...input.size } } : {}),
-    walkableRegion: input.walkableRegion.map((point) => ({ ...point })),
-    scenery: { ...(input.scenery ?? {}) },
-    hotspots: [...(input.hotspots ?? [])],
-    entrances: { ...(input.entrances ?? {}) },
-    passages: [...(input.passages ?? [])],
-    arrivalSequences: [...(input.arrivalSequences ?? [])],
-  });
-}
 
 export interface Line {
   readonly text: string;
@@ -606,56 +340,23 @@ export interface GameProjectData
   readonly variables: Readonly<Record<string, boolean>>;
 }
 
-/** @internal A Scene whose default Size has been resolved during composition. */
-export interface ResolvedSceneDefinition extends Omit<SceneDefinition, "size"> {
-  readonly size: SceneSize;
-}
-
 const projectData = new WeakMap<GameProject, GameProjectData>();
 
 /** Composes named definitions into one validated and immutable Game Project. */
 export function defineGame(input: GameInput): GameProject {
   const diagnostics: AuthoringDiagnostic[] = [];
-  if (!(input.initialScene in input.scenes)) {
-    diagnostics.push({
-      code: "reference.scene.initial",
-      family: "reference", owner: "world",
-      path: "initialScene",
-      message: `Scene '${input.initialScene}' does not exist.`,
-    });
-  }
   const characters = input.characters ?? {};
   const objects = input.objects ?? {};
   const sequences = input.sequences ?? {};
   const variables = input.variables ?? {};
-  if (input.playerCharacter !== undefined && !(input.playerCharacter in characters)) {
-    diagnostics.push({
-      code: "reference.character.player",
-      family: "reference", owner: "world",
-      path: "playerCharacter",
-      message: `Character '${input.playerCharacter}' does not exist.`,
-    });
-  }
-  for (const [characterId, character] of Object.entries(characters)) {
-    if (!(character.initialScene in input.scenes)) {
-      diagnostics.push({
-        code: "reference.character.initial-scene",
-        family: "reference", owner: "world",
-        path: `characters.${characterId}.initialScene`,
-        message: `Scene '${character.initialScene}' does not exist.`,
-      });
-    }
-  }
-  for (const [objectId, object] of Object.entries(objects)) {
-    if (!(object.initialScene in input.scenes)) {
-      diagnostics.push({
-        code: "reference.object.initial-scene",
-        family: "reference", owner: "interaction",
-        path: `objects.${objectId}.initialScene`,
-        message: `Scene '${object.initialScene}' does not exist.`,
-      });
-    }
-  }
+  diagnostics.push(...validateWorldProject({
+    logicalResolution: input.logicalResolution,
+    initialScene: input.initialScene,
+    ...(input.playerCharacter === undefined ? {} : { playerCharacter: input.playerCharacter }),
+    scenes: input.scenes,
+    characters,
+    objects,
+  }));
   validateProjectDefinitions(input, characters, objects, sequences, variables, diagnostics);
   if (input.inventoryAppearanceSize !== undefined &&
       (!Number.isInteger(input.inventoryAppearanceSize) || input.inventoryAppearanceSize <= 0)) {
@@ -690,19 +391,6 @@ export function defineGame(input: GameInput): GameProject {
         path: `logicalResolution.${axis}`,
         message: "Logical Resolution dimensions must be positive integers.",
       });
-    }
-  }
-  for (const [sceneId, scene] of Object.entries(input.scenes)) {
-    const size = scene.size ?? input.logicalResolution;
-    for (const axis of ["width", "height"] as const) {
-      if (size[axis] < input.logicalResolution[axis]) {
-        diagnostics.push({
-          code: "definition.scene-size.viewport-minimum",
-          family: "definition", owner: "world",
-          path: `scenes.${sceneId}.size.${axis}`,
-          message: `Scene Size ${axis} must be at least the Logical Resolution ${axis}.`,
-        });
-      }
     }
   }
   if (diagnostics.length > 0) throw new AuthoringError(diagnostics);
@@ -751,14 +439,14 @@ function validateProjectDefinitions(
 ): void {
   const missingOwnerNounPaths = new Set<string>();
   const allSceneIds = Object.keys(input.scenes);
-  const sceneSize = (scene: SceneDefinition): SceneSize => scene.size ?? input.logicalResolution;
-  const pointInScene = (scene: SceneDefinition, point: Point) => {
-    const { width, height } = sceneSize(scene);
-    return (
-    Number.isFinite(point.x) && Number.isFinite(point.y) &&
-    point.x >= 0 && point.y >= 0 && point.x <= width && point.y <= height
-    );
-  };
+  const world = createWorldDefinitionQueries({
+    logicalResolution: input.logicalResolution,
+    initialScene: input.initialScene,
+    ...(input.playerCharacter === undefined ? {} : { playerCharacter: input.playerCharacter }),
+    scenes: input.scenes,
+    characters,
+    objects,
+  });
   const condition = (value: InteractionCondition | undefined, path: string) => {
     if (!value) return;
     if ("variable" in value && !(value.variable in variables)) {
@@ -824,22 +512,17 @@ function validateProjectDefinitions(
         if (!(operation.object in objects)) diagnostics.push(referenceDiagnostic("reference.object", `${operationPath}.object`, `Object '${operation.object}' does not exist.`));
         if (!(operation.scene in input.scenes)) diagnostics.push(referenceDiagnostic("reference.scene", `${operationPath}.scene`, `Scene '${operation.scene}' does not exist.`));
         if (objects[operation.object] && operation.appearance !== undefined && !(operation.appearance in objects[operation.object]!.appearances)) diagnostics.push(referenceDiagnostic("reference.appearance", `${operationPath}.appearance`, `Appearance '${operation.appearance}' does not exist on Object '${operation.object}'.`));
-        const destination = input.scenes[operation.scene];
-        if (!destination || !pointInScene(destination, operation.groundPoint)) diagnostics.push({ code: "definition.operation.ground-point", family: "definition", owner: "world", path: `${operationPath}.groundPoint`, message: "A placed Object Ground Point must be finite and inside its destination Scene Size." });
-      } else if (operation.type === "place-selected-object" && (
-        !Number.isFinite(operation.groundPoint.x) ||
-        !Number.isFinite(operation.groundPoint.y) ||
-        (context.scenes ?? allSceneIds).some((sceneId) => {
-          const scene = input.scenes[sceneId];
-          return scene !== undefined && !pointInScene(scene, operation.groundPoint);
-        })
-      )) {
-        diagnostics.push({
-          code: "definition.operation.ground-point",
-          family: "definition", owner: "world",
-          path: `${operationPath}.groundPoint`,
-          message: "A placed Object Ground Point must be finite and inside the destination Scene Size.",
-        });
+        diagnostics.push(...world.validatePlacement(
+          [operation.scene],
+          operation.groundPoint,
+          `${operationPath}.groundPoint`,
+        ));
+      } else if (operation.type === "place-selected-object") {
+        diagnostics.push(...world.validatePlacement(
+          context.scenes ?? allSceneIds,
+          operation.groundPoint,
+          `${operationPath}.groundPoint`,
+        ));
       }
     });
   };
@@ -936,28 +619,6 @@ function validateProjectDefinitions(
   }
 
   for (const [sceneId, scene] of Object.entries(input.scenes)) {
-    const { height } = sceneSize(scene);
-    const inScene = (point: Point) => pointInScene(scene, point);
-    scene.walkableRegion.forEach((point, index) => {
-      if (!inScene(point)) {
-        diagnostics.push({
-          code: "definition.scene-space.bounds",
-          family: "definition", owner: "world",
-          path: `scenes.${sceneId}.walkableRegion[${index}]`,
-          message: "Scene geometry must remain inside the Scene Size.",
-        });
-      }
-    });
-    scene.perspectiveScale?.forEach((stop, index) => {
-      if (!Number.isFinite(stop.y) || !Number.isFinite(stop.scale) || stop.scale <= 0 || stop.y < 0 || stop.y > height) {
-        diagnostics.push({
-          code: "definition.perspective-scale.stop",
-          family: "definition", owner: "game-project",
-          path: `scenes.${sceneId}.perspectiveScale[${index}]`,
-          message: "Perspective Scale stops need an in-frame y and a positive finite scale.",
-        });
-      }
-    });
     for (const [sceneryId, scenery] of Object.entries(scene.scenery ?? {})) {
       noun(
         scenery.noun,
@@ -967,29 +628,6 @@ function validateProjectDefinitions(
       );
       if (!(scenery.initialAppearance in scenery.appearances)) {
         diagnostics.push(referenceDiagnostic("reference.appearance.initial", `scenes.${sceneId}.scenery.${sceneryId}.initialAppearance`, "Initial Scenery Appearance does not exist."));
-      }
-      if (scenery.baseline < 0 || scenery.baseline > height) {
-        diagnostics.push({
-          code: "definition.scene-space.bounds",
-          family: "definition", owner: "world",
-          path: `scenes.${sceneId}.scenery.${sceneryId}.baseline`,
-          message: "A Scenery Baseline must remain inside the Scene Size.",
-        });
-      }
-      if (scenery.position && !inScene(scenery.position)) {
-        diagnostics.push({ code: "definition.scene-space.bounds", family: "definition", owner: "world", path: `scenes.${sceneId}.scenery.${sceneryId}.position`, message: "Scenery positions must remain inside the Scene Size." });
-      }
-      for (const [appearanceId, appearance] of Object.entries(scenery.appearances)) {
-      if ("kind" in appearance && appearance.kind === "background-region") {
-          validatePolygonBounds(appearance.area, `scenes.${sceneId}.scenery.${sceneryId}.appearances.${appearanceId}.area`, inScene, diagnostics);
-        }
-      }
-    }
-    for (const [entranceId, entrance] of Object.entries(scene.entrances ?? {})) {
-      if (!inScene(entrance.groundPoint)) {
-        diagnostics.push({ code: "definition.scene-space.bounds", family: "definition", owner: "world", path: `scenes.${sceneId}.entrances.${entranceId}.groundPoint`, message: "Scene Entrance Ground Points must remain inside the Scene Size." });
-      } else if (!pointInPolygonOrBoundary(scene.walkableRegion, entrance.groundPoint)) {
-        diagnostics.push({ code: "definition.entrance.walkable", family: "definition", owner: "world", path: `scenes.${sceneId}.entrances.${entranceId}.groundPoint`, message: "A Scene Entrance Ground Point must lie in the Walkable Region." });
       }
     }
     scene.arrivalSequences?.forEach((rule, ruleIndex) => {
@@ -1016,20 +654,12 @@ function validateProjectDefinitions(
       if (hotspot.target.kind === "background") {
         noun(hotspot.noun, `${base}.noun`, hotspot.target, [sceneId]);
       }
-      validatePolygonBounds(hotspot.area, `${base}.area`, inScene, diagnostics);
-      if (!inScene(hotspot.approach.groundPoint)) {
-        diagnostics.push({ code: "definition.approach.bounds", family: "definition", owner: "world", path: `${base}.approach`, message: "Approach Point must be inside Scene Space." });
-      } else if (!pointInPolygonOrBoundary(scene.walkableRegion, hotspot.approach.groundPoint)) {
-        diagnostics.push({ code: "definition.approach.walkable", family: "definition", owner: "world", path: `${base}.approach`, message: "An Approach Point must lie in the Walkable Region." });
-      }
       const targetExists =
         hotspot.target.kind === "background" ||
         (hotspot.target.kind === "character" && hotspot.target.character in characters) ||
         (hotspot.target.kind === "object" && hotspot.target.object in objects) ||
         (hotspot.target.kind === "scenery" && hotspot.target.scenery in (scene.scenery ?? {}));
-      if (!targetExists) {
-        diagnostics.push(referenceDiagnostic("reference.hotspot.target", `${base}.target`, "Hotspot target does not exist."));
-      } else if (hotspot.target.kind !== "background") {
+      if (targetExists && hotspot.target.kind !== "background") {
         const owner = hotspot.target.kind === "character"
           ? characters[hotspot.target.character]
           : hotspot.target.kind === "object"
@@ -1057,19 +687,7 @@ function validateProjectDefinitions(
     scene.passages?.forEach((passage, passageIndex) => {
       const base = `scenes.${sceneId}.passages[${passageIndex}]`;
       noun(passage.noun, `${base}.noun`, undefined, [sceneId]);
-      validatePolygonBounds(passage.area, `${base}.area`, inScene, diagnostics);
-      if (!inScene(passage.approach.groundPoint)) {
-        diagnostics.push({ code: "definition.approach.bounds", family: "definition", owner: "world", path: `${base}.approach`, message: "Approach Point must be inside Scene Space." });
-      } else if (!pointInPolygonOrBoundary(scene.walkableRegion, passage.approach.groundPoint)) {
-        diagnostics.push({ code: "definition.approach.walkable", family: "definition", owner: "world", path: `${base}.approach`, message: "An Approach Point must lie in the Walkable Region." });
-      }
       condition(passage.when, `${base}.when`);
-      const destination = input.scenes[passage.destination.scene];
-      if (!destination) {
-        diagnostics.push(referenceDiagnostic("reference.passage.scene", `${base}.destination.scene`, `Scene '${passage.destination.scene}' does not exist.`));
-      } else if (!(passage.destination.entrance in (destination.entrances ?? {}))) {
-        diagnostics.push(referenceDiagnostic("reference.passage.entrance", `${base}.destination.entrance`, `Scene Entrance '${passage.destination.entrance}' does not exist.`));
-      }
     });
   }
 
@@ -1088,14 +706,6 @@ function validateProjectDefinitions(
         requireWalking: true,
       }));
     }
-    const scene = input.scenes[character.initialScene];
-    if (!scene) continue;
-    const path = `characters.${characterId}.initialGroundPoint`;
-    if (!pointInScene(scene, character.initialGroundPoint)) {
-      diagnostics.push({ code: "definition.scene-space.bounds", family: "definition", owner: "world", path, message: "Character Ground Points must remain inside the Scene Size." });
-    } else if (!pointInPolygonOrBoundary(scene.walkableRegion, character.initialGroundPoint)) {
-      diagnostics.push({ code: "definition.character.walkable", family: "definition", owner: "world", path, message: "A Character Ground Point must lie in the Scene Walkable Region." });
-    }
   }
   for (const [objectId, object] of Object.entries(objects)) {
     noun(
@@ -1104,10 +714,6 @@ function validateProjectDefinitions(
       { kind: "object", object: objectId },
       allSceneIds,
     );
-    const scene = input.scenes[object.initialScene];
-    if (scene && !pointInScene(scene, object.initialGroundPoint)) {
-      diagnostics.push({ code: "definition.scene-space.bounds", family: "definition", owner: "world", path: `objects.${objectId}.initialGroundPoint`, message: "Object Ground Points must remain inside the Scene Size." });
-    }
   }
 
   const appearancesForSubject = (subject: DirectedSubject, sceneId?: string): Appearance[] => {
@@ -1148,27 +754,18 @@ function validateProjectDefinitions(
           else objectsInScene.delete(operation.object);
         }
       } else if (step.type === "direction") {
-        const scene = sceneId === undefined ? undefined : input.scenes[sceneId];
         diagnostics.push(...validateDirectionStepReferences(step, base, {
           hasScene: sceneId !== undefined,
           appearancesForSubject: (subject) => appearancesForSubject(subject, sceneId),
-          subjectBelongsToScene: (subject) => sceneId !== undefined && subjectBelongsToScene(
-            subject,
-            sceneId,
-            input.playerCharacter,
-            characters,
-            objects,
-            input.scenes,
-            objectsInScene,
-          ),
-          cameraSubjectExists: (subject) => subject.kind === "character"
-            ? subject.character in characters
-            : subject.kind === "object"
-              ? subject.object in objects
-              : scene !== undefined && subject.scenery in (scene.scenery ?? {}),
-          pointInScene: (point) => scene !== undefined && pointInScene(scene, point),
-          characterPointIsWalkable: (point) => scene !== undefined && pointInPolygonOrBoundary(scene.walkableRegion, point),
-          sceneryRestingPoint: (scenery) => scene?.scenery?.[scenery]?.position,
+          subjectBelongsToScene: (subject) => sceneId !== undefined &&
+            world.hasDirectedSubject(sceneId, subject, objectsInScene),
+          cameraSubjectExists: (subject) => world.hasSubject(sceneId, subject),
+          pointInScene: (point) => sceneId !== undefined && world.pointInScene(sceneId, point),
+          characterPointIsWalkable: (point) => sceneId !== undefined &&
+            world.characterPointIsWalkable(sceneId, point),
+          sceneryRestingPoint: (scenery) => sceneId === undefined
+            ? undefined
+            : world.sceneryRestingPoint(sceneId, scenery),
           continuesSceneryMotion: (scenery, destination) => {
             const next = steps[index + 1];
             if (next?.type !== "direction") return false;
@@ -1284,131 +881,7 @@ function referenceDiagnostic(code: string, path: string, message: string): Autho
   return { code, family: "reference", owner: "game-project", path, message };
 }
 
-function validatePolygon(
-  polygon: readonly Point[],
-  path: string,
-  diagnostics: AuthoringDiagnostic[],
-): void {
-  for (let left = 0; left < polygon.length; left += 1) {
-    const leftNext = (left + 1) % polygon.length;
-    for (let right = left + 1; right < polygon.length; right += 1) {
-      const rightNext = (right + 1) % polygon.length;
-      if (left === right || leftNext === right || rightNext === left) continue;
-      if (segmentsIntersect(polygon[left]!, polygon[leftNext]!, polygon[right]!, polygon[rightNext]!)) {
-        diagnostics.push({
-          code: "definition.polygon.self-intersection",
-          family: "definition", owner: "world",
-          path,
-          message: "A polygon cannot cross itself.",
-        });
-        return;
-      }
-    }
-  }
-  const twiceArea = polygon.reduce((total, point, index) => {
-    const next = polygon[(index + 1) % polygon.length]!;
-    return total + point.x * next.y - next.x * point.y;
-  }, 0);
-  if (Math.abs(twiceArea) < Number.EPSILON) {
-    diagnostics.push({
-      code: "definition.polygon.degenerate",
-      family: "definition", owner: "world",
-      path,
-      message: "A polygon must enclose a non-zero area.",
-    });
-  }
-}
-
-function validateLocalPolygon(
-  polygon: readonly Point[],
-  path: string,
-  diagnostics: AuthoringDiagnostic[],
-): void {
-  polygon.forEach((point, index) => {
-    if (!Number.isFinite(point.x) || !Number.isFinite(point.y)) {
-      diagnostics.push({
-        code: "definition.point.finite",
-        family: "definition", owner: "world",
-        path: `${path}[${index}]`,
-        message: "Scene Space coordinates must be finite numbers.",
-      });
-    }
-  });
-  if (polygon.length < 3) {
-    diagnostics.push({
-      code: "definition.polygon.vertices",
-      family: "definition", owner: "world",
-      path,
-      message: "A polygon needs at least three vertices.",
-    });
-  } else if (polygon.every(({ x, y }) => Number.isFinite(x) && Number.isFinite(y))) {
-    validatePolygon(polygon, path, diagnostics);
-  }
-}
-
-function isAnimatedAppearance(appearance: EntityAppearance | SceneryAppearance): appearance is Appearance {
-  return "animations" in appearance;
-}
-
-function subjectBelongsToScene(
-  subject: DirectedSubject,
-  sceneId: string,
-  playerCharacter: string | undefined,
-  characters: Readonly<Record<string, CharacterDefinition>>,
-  objects: Readonly<Record<string, ObjectDefinition>>,
-  scenes: Readonly<Record<string, SceneDefinition>>,
-  availableObjects: ReadonlySet<string> = new Set(),
-): boolean {
-  if (subject.kind === "character") {
-    return subject.character === playerCharacter || characters[subject.character]?.initialScene === sceneId;
-  }
-  if (subject.kind === "object") return subject.object in objects && availableObjects.has(subject.object);
-  return subject.scenery in (scenes[sceneId]?.scenery ?? {});
-}
-
 function intersectSets(values: readonly ReadonlySet<string>[]): Set<string> {
   const [first, ...rest] = values;
   return new Set([...(first ?? [])].filter((value) => rest.every((candidate) => candidate.has(value))));
-}
-
-function validatePolygonBounds(
-  polygon: readonly Point[],
-  path: string,
-  pointInFrame: (point: Point) => boolean,
-  diagnostics: AuthoringDiagnostic[],
-): void {
-  polygon.forEach((point, index) => {
-    if (!pointInFrame(point)) {
-      diagnostics.push({
-        code: "definition.scene-space.bounds",
-        family: "definition", owner: "world",
-        path: `${path}[${index}]`,
-        message: "Scene geometry must remain inside the Logical Resolution.",
-      });
-    }
-  });
-}
-
-function pointInPolygonOrBoundary(polygon: readonly Point[], point: Point): boolean {
-  let inside = false;
-  for (let current = 0, previous = polygon.length - 1; current < polygon.length; previous = current++) {
-    const a = polygon[previous]!;
-    const b = polygon[current]!;
-    const cross = (point.x - a.x) * (b.y - a.y) - (point.y - a.y) * (b.x - a.x);
-    const onSegment = Math.abs(cross) <= 1e-9 &&
-      point.x >= Math.min(a.x, b.x) && point.x <= Math.max(a.x, b.x) &&
-      point.y >= Math.min(a.y, b.y) && point.y <= Math.max(a.y, b.y);
-    if (onSegment) return true;
-    if ((a.y > point.y) !== (b.y > point.y) &&
-        point.x < ((b.x - a.x) * (point.y - a.y)) / (b.y - a.y) + a.x) {
-      inside = !inside;
-    }
-  }
-  return inside;
-}
-
-function segmentsIntersect(a: Point, b: Point, c: Point, d: Point): boolean {
-  const cross = (p: Point, q: Point, r: Point) =>
-    Math.sign((q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x));
-  return cross(a, b, c) !== cross(a, b, d) && cross(c, d, a) !== cross(c, d, b);
 }
