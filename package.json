@@ -27,12 +27,14 @@
     "verify:architecture": "node tools/verify-architecture.mjs",
     "verify:architecture-doc": "node tools/verify-architecture-doc.mjs",
     "verify:docs": "node tools/verify-docs.mjs",
-    "verify": "playwright test"
+    "verify": "playwright test",
+    "sandcastle:implement": "node .sandcastle/index.js"
   },
   "dependencies": {
     "pixi.js": "^8.19.0"
   },
   "devDependencies": {
+    "@ai-hero/sandcastle": "^0.12.0",
     "@playwright/test": "^1.62.1",
     "typescript": "^5.9.3",
     "vite": "^6.4.3"
