@@ -44,7 +44,6 @@ import type { Verb } from "../capabilities/interaction";
 import type { AuthoringDiagnostic } from "../capabilities/game-project";
 import type { SaveSnapshot } from "../capabilities/save";
 import { assetUrl, type LoadedAssets } from "./assets";
-import { Camera } from "../capabilities/camera";
 
 interface AnimationView {
   readonly sprite: Sprite;
@@ -86,14 +85,11 @@ export class BrowserRenderer {
   private readonly overlay: EngineOverlay;
   private readonly characterViews = new Map<string, CharacterView>();
   private readonly animationViews: AnimationView[] = [];
-  private readonly camera = new Camera();
   private cameraOrigin: Point = { x: 0, y: 0 };
-  private cameraDirected = false;
   private readonly directionInterpretations = new WeakMap<GameState, {
     step: DirectionStep;
     interpretation: DirectionStepInterpretation;
   }>();
-  private currentScene = "";
   private sceneSignature = "";
 
   constructor(
@@ -137,23 +133,7 @@ export class BrowserRenderer {
     this.updateCharacters(state);
     this.updateAnimations(state);
     this.world.sortChildren();
-    const scene = this.data.scenes[state.currentScene]!;
-    const player = this.data.playerCharacter
-      ? state.characters[this.data.playerCharacter]
-      : undefined;
-    const sceneChanged = state.currentScene !== this.currentScene;
-    this.currentScene = state.currentScene;
-    const directedFocus = this.directedCameraFocus(state);
-    const wasDirected = this.cameraDirected;
-    this.cameraDirected = directedFocus !== undefined;
-    this.cameraOrigin = this.camera.update({
-      viewport: this.data.logicalResolution,
-      scene: scene.size,
-      ...(directedFocus
-        ? { follow: directedFocus }
-        : player?.scene === state.currentScene ? { follow: player.groundPoint } : {}),
-      continuous: !sceneChanged && !this.cameraDirected && !wasDirected,
-    });
+    this.cameraOrigin = this.core.camera().origin;
     this.world.position.set(-this.cameraOrigin.x, -this.cameraOrigin.y);
     this.overlay.render(state, effects);
     this.application.renderer.render(this.application.stage);
@@ -383,38 +363,6 @@ export class BrowserRenderer {
       return pointAlongPath(direction.path, Math.min(1, timing.localTick / secondsToTicks(direction.duration!)));
     }
     return undefined;
-  }
-
-  private directedCameraFocus(state: GameState): Point | undefined {
-    const active = this.activeDirection(state);
-    if (!active) return undefined;
-    for (let index = active.step.directions.length - 1; index >= 0; index -= 1) {
-      const direction = active.step.directions[index]!;
-      if (direction.type !== "camera") continue;
-      const timing = active.interpretation.directions[index]!;
-      if (!timing.presented) continue;
-      if (direction.mode === "cut" || direction.mode === "hold") return direction.point;
-      if (direction.mode === "move") {
-        const progress = Math.min(1, timing.localTick / secondsToTicks(direction.duration));
-        return { x: direction.from.x + (direction.to.x - direction.from.x) * progress, y: direction.from.y + (direction.to.y - direction.from.y) * progress };
-      }
-      return this.subjectPoint(state, direction.subject);
-    }
-    return undefined;
-  }
-
-  private subjectPoint(state: GameState, subject: DirectedSubject): Point | undefined {
-    if (subject.kind === "character") {
-      const character = state.characters[subject.character];
-      return character?.scene === state.currentScene ? character.groundPoint : undefined;
-    }
-    if (subject.kind === "object") {
-      const object = state.objects[subject.object];
-      return object?.location.kind === "scene" && object.location.scene === state.currentScene
-        ? object.location.groundPoint
-        : undefined;
-    }
-    return this.directedSceneryPoint(state, subject.scenery) ?? this.data.scenes[state.currentScene]?.scenery?.[subject.scenery]?.position;
   }
 
   private animationFrames(

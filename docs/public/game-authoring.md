@@ -77,8 +77,9 @@ When `size` is omitted, a 320×180 project expects a 320×180 Background and
 keeps the fixed view at origin. In the panoramic example above, Fondale expects
 a 640×360 Background, follows the Player Character automatically, clamps the
 Camera at the Scene edges, and keeps Camera position out of Save Snapshots.
-The first capability does not expose Camera coordinates, cinematic pans, zoom,
-alternative follow targets, edge scrolling, or Author-controlled easing.
+Camera coordinates remain internal derived facts. A Sequence can author cut,
+logical-time move, hold, and subject-follow directions; zoom, edge scrolling,
+and Author-controlled easing are not part of the contract.
 
 A Scene Passage owns its Noun and direction because it is itself the semantic
 navigation target. Holding Tab reveals available Hotspots and Passages.

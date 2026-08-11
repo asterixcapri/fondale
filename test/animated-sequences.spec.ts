@@ -11,6 +11,7 @@ import {
   defineSequence,
   validateSaveSnapshot,
   type Appearance,
+  type CameraDirection,
 } from "../src/index";
 import { createTestSession } from "../src/capabilities/game-session";
 
@@ -484,7 +485,15 @@ test("composition diagnoses nested directed Sequences and Motion outside their S
 
 export { staticAppearance };
 
-function directedProject(skippable = false, directionDuration?: number) {
+function directedProject(
+  skippable = false,
+  directionDuration?: number,
+  cameraDirections: readonly CameraDirection[] = [
+    { type: "camera", mode: "hold", point: { x: 50, y: 50 }, duration: 2 / 60 },
+    { type: "camera", mode: "hold", point: { x: 50, y: 50 } },
+    { type: "camera", mode: "follow", subject: { kind: "character", character: "actor" } },
+  ],
+) {
   const square = [
     { x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }, { x: 0, y: 100 },
   ];
@@ -545,14 +554,12 @@ function directedProject(skippable = false, directionDuration?: number) {
             animation: "react",
             startAfter: { direction: 0, cue: "contact" },
           },
-          { type: "camera", mode: "hold", point: { x: 50, y: 50 }, duration: 2 / 60 },
+          ...cameraDirections,
           {
             type: "animation",
             subject: { kind: "scenery", scenery: "marker" },
             animation: "idle",
           },
-          { type: "camera", mode: "hold", point: { x: 50, y: 50 } },
-          { type: "camera", mode: "follow", subject: { kind: "character", character: "actor" } },
         ],
       },
       {
@@ -619,6 +626,35 @@ function startDirectedSequence(session: ReturnType<typeof createTestSession>): v
   session.input({ type: "quick-hotspot", hotspot: 0, verb: "use" });
   session.steps();
 }
+
+test("CoreSession exposes Camera facts from the shared Direction Step interpretation", () => {
+  const session = createTestSession(directedProject());
+  startDirectedSequence(session);
+
+  expect(session.camera()).toEqual({
+    directed: true,
+    focus: { x: 10, y: 10 },
+    origin: { x: 0, y: 0 },
+  });
+});
+
+test("CoreSession gives Camera the Cue-local time interpreted by Sequence", () => {
+  const session = createTestSession(directedProject(false, undefined, [{
+    type: "camera",
+    mode: "move",
+    from: { x: 50, y: 50 },
+    to: { x: 90, y: 90 },
+    duration: 2 / 60,
+    startAfter: { direction: 0, cue: "contact" },
+  }]));
+  startDirectedSequence(session);
+
+  expect(session.camera()).toMatchObject({ directed: false, focus: { x: 10, y: 10 } });
+  session.steps();
+  expect(session.camera()).toMatchObject({ directed: true, focus: { x: 50, y: 50 } });
+  session.steps();
+  expect(session.camera()).toMatchObject({ directed: true, focus: { x: 70, y: 70 } });
+});
 
 test("a directed Sequence completes mixed finite, looping, held, and following directions", () => {
   const session = createTestSession(directedProject());

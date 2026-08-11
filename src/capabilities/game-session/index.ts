@@ -46,6 +46,7 @@ import {
   type MotionDirection,
 } from "../sequence";
 import { appearanceForSubject, type AnimationDefinition } from "../animation";
+import { Camera, type CameraPresentation } from "../camera";
 import { conditionMatchesState, hotspotAvailableInState } from "../interaction";
 
 export interface CharacterState {
@@ -190,6 +191,7 @@ export interface CoreSession {
   availableHotspots(): readonly AvailableHotspot[];
   availableInventory(): readonly AvailableInventoryNoun[];
   availablePassages(): readonly AvailablePassage[];
+  camera(): CameraPresentation;
   stop(): void;
 }
 
@@ -210,6 +212,7 @@ export function createCoreSession(
   let failureDiagnostics: readonly AuthoringDiagnostic[] = [];
   const inputs: CoreInput[] = [];
   const emitted: CoreEffect[] = [];
+  const camera = new Camera();
 
   const session: CoreSession = {
     input(input) {
@@ -293,6 +296,26 @@ export function createCoreSession(
           ...(objectVerb ? { objectVerb } : {}),
           direction: passage.direction,
         }];
+      });
+    },
+    camera() {
+      const scene = data.scenes[state.currentScene]!;
+      const active = activeDirectionPresentation();
+      const player = data.playerCharacter === undefined
+        ? undefined
+        : state.characters[data.playerCharacter];
+      return camera.update({
+        tick: state.tick,
+        scene: state.currentScene,
+        viewport: data.logicalResolution,
+        sceneSize: scene.size,
+        ...(player?.scene === state.currentScene ? { player: player.groundPoint } : {}),
+        directions: active?.step.directions.flatMap((direction, index) =>
+          direction.type === "camera"
+            ? [{ direction, ...active.interpretation.directions[index]! }]
+            : [],
+        ) ?? [],
+        pointForSubject: (subject) => directedSubjectPoint(subject, active),
       });
     },
     stop() {
@@ -896,6 +919,55 @@ export function createCoreSession(
   function directedAnimation(subject: DirectedSubject, animationName: string): AnimationDefinition | undefined {
     const appearance = appearanceForSubject(data, state, subject);
     return appearance?.animations[animationName];
+  }
+
+  function activeDirectionPresentation(): {
+    readonly step: DirectionStep;
+    readonly interpretation: ReturnType<typeof interpretDirectionStep>;
+  } | undefined {
+    if (state.activity?.type !== "sequence" || state.activity.active?.kind !== "direction") return undefined;
+    const step = resolveSequencePath(
+      data.sequences[state.activity.sequence],
+      state.activity.active.path,
+    ) as DirectionStep;
+    return {
+      step,
+      interpretation: interpretDirectionStep(
+        step,
+        state.activity.active.elapsedTicks,
+        directedAnimation,
+        characterMotionComplete,
+      ),
+    };
+  }
+
+  function directedSubjectPoint(
+    subject: DirectedSubject,
+    active: ReturnType<typeof activeDirectionPresentation>,
+  ): Point | undefined {
+    if (subject.kind === "character") {
+      const character = state.characters[subject.character];
+      return character?.scene === state.currentScene ? character.groundPoint : undefined;
+    }
+    if (subject.kind === "object") {
+      const object = state.objects[subject.object];
+      return object?.location.kind === "scene" && object.location.scene === state.currentScene
+        ? object.location.groundPoint
+        : undefined;
+    }
+    if (active) {
+      for (let index = active.step.directions.length - 1; index >= 0; index -= 1) {
+        const direction = active.step.directions[index]!;
+        const timing = active.interpretation.directions[index]!;
+        if (direction.type !== "motion" || direction.subject.kind !== "scenery" ||
+            direction.subject.scenery !== subject.scenery || !timing.presented) continue;
+        return pointAlongPath(
+          direction.path,
+          Math.min(1, timing.localTick / secondsToTicks(direction.duration!)),
+        );
+      }
+    }
+    return data.scenes[state.currentScene]?.scenery?.[subject.scenery]?.position;
   }
 
   function applyDirectedMotions(step: DirectionStep, localTicks: readonly number[]): void {

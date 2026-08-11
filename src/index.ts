@@ -55,13 +55,13 @@ export {
 } from "./capabilities/game-project";
 export {
   type AnimationDirection,
-  type CameraDirection,
   type CueStart,
   type DirectionStep,
   type DirectedSubject,
   type MotionDirection,
   type SequenceDirection,
 } from "./capabilities/sequence";
+export { type CameraDirection } from "./capabilities/camera";
 export {
   startGame,
   type GameSession,

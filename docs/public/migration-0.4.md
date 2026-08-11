@@ -47,6 +47,15 @@ logical second zero starts dependent directions immediately. Active Line and
 Player Intent state now records `animationStartedTick` so Save Snapshots restore
 their activity-local visual progress exactly.
 
+## Camera validation and presentation
+
+Camera now owns its cut, logical-time move, hold, and subject-follow semantics.
+Invalid authored Camera coordinates report
+`definition.camera.point.finite` instead of the World-owned
+`definition.point.finite`. Camera presentation advances from logical ticks,
+remains outside Save Snapshots, and returns to Player following after a
+Direction Step completes or is skipped.
+
 ## Authoring Diagnostic attribution
 
 Every `AuthoringDiagnostic` now includes an `owner` identifying the capability

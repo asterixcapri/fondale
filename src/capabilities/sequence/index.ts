@@ -10,6 +10,11 @@ import {
   type AnimationDefinition,
   type Appearance,
 } from "../animation";
+import {
+  validateCameraDirection,
+  validateCameraDirectionReferences,
+  type CameraDirection,
+} from "../camera";
 
 /** A Character, Object, or current-Scene Scenery directed by a Sequence. */
 export type DirectedSubject =
@@ -39,12 +44,6 @@ export interface MotionDirection {
   readonly facing?: Facing;
   readonly startAfter?: CueStart;
 }
-
-export type CameraDirection =
-  | { readonly type: "camera"; readonly mode: "cut"; readonly point: Point; readonly startAfter?: CueStart }
-  | { readonly type: "camera"; readonly mode: "move"; readonly from: Point; readonly to: Point; readonly duration: number; readonly startAfter?: CueStart }
-  | { readonly type: "camera"; readonly mode: "hold"; readonly point: Point; readonly duration?: number; readonly startAfter?: CueStart }
-  | { readonly type: "camera"; readonly mode: "follow"; readonly subject: DirectedSubject; readonly duration?: number; readonly startAfter?: CueStart };
 
 export type SequenceDirection = AnimationDirection | MotionDirection | CameraDirection;
 
@@ -102,13 +101,9 @@ export function validateDirectionStep(
       } else hasFiniteBoundary = true;
       return;
     }
-    if ("duration" in direction && direction.duration !== undefined) {
-      if (!Number.isFinite(direction.duration) || direction.duration <= 0) diagnostics.push({ code: "definition.camera.duration", family: "definition", owner: "camera", path: `${directionPath}.duration`, message: "A Camera duration must be positive and finite." });
-      else hasFiniteBoundary = true;
-    }
-    for (const [pointName, point] of [["point", "point" in direction ? direction.point : undefined], ["from", "from" in direction ? direction.from : undefined], ["to", "to" in direction ? direction.to : undefined]] as const) {
-      if (point && (!Number.isFinite(point.x) || !Number.isFinite(point.y))) diagnostics.push({ code: "definition.point.finite", family: "definition", owner: "world", path: `${directionPath}.${pointName}`, message: "A Camera point must use finite Scene Space coordinates." });
-    }
+    diagnostics.push(...validateCameraDirection(direction, directionPath));
+    if ("duration" in direction && direction.duration !== undefined &&
+        Number.isFinite(direction.duration) && direction.duration > 0) hasFiniteBoundary = true;
     if (direction.mode === "cut") hasFiniteBoundary = true;
   });
   if (!hasFiniteBoundary && step.directions.length > 0 && step.directions.every((direction) => direction.type !== "animation")) {
@@ -185,23 +180,12 @@ export function validateDirectionStepReferences(
     }
     if (direction.type === "camera") {
       if (direction.mode === "cut" || direction.duration !== undefined) hasFiniteBoundary = true;
-      if (direction.mode === "follow") {
-        if (!context.cameraSubjectExists(direction.subject)) {
-          diagnostics.push({ code: "reference.camera.subject", family: "reference", owner: "camera", path: `${directionPath}.subject`, message: "Camera follow subject does not exist." });
-        } else if (context.hasScene && !context.subjectBelongsToScene(direction.subject)) {
-          diagnostics.push({ code: "reference.camera.subject-scene", family: "reference", owner: "camera", path: `${directionPath}.subject`, message: "A Camera follow subject must belong to the Sequence Scene." });
-        }
-      }
-      const cameraPoints = [
-        ["point", "point" in direction ? direction.point : undefined],
-        ["from", "from" in direction ? direction.from : undefined],
-        ["to", "to" in direction ? direction.to : undefined],
-      ] as const;
-      for (const [pointName, point] of cameraPoints) {
-        if (point && context.hasScene && !context.pointInScene(point)) {
-          diagnostics.push({ code: "definition.camera.bounds", family: "definition", owner: "camera", path: `${directionPath}.${pointName}`, message: "A Camera destination must remain inside the Sequence Scene Size." });
-        }
-      }
+      diagnostics.push(...validateCameraDirectionReferences(direction, directionPath, {
+        hasScene: context.hasScene,
+        subjectExists: context.cameraSubjectExists,
+        subjectBelongsToScene: context.subjectBelongsToScene,
+        pointInScene: context.pointInScene,
+      }));
     }
     if (direction.startAfter) {
       const source = step.directions[direction.startAfter.direction];
