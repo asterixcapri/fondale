@@ -24,7 +24,7 @@
     "typecheck": "tsc --noEmit",
     "build:package": "vite build --config vite.lib.config.ts && tsc -p tsconfig.declarations.json",
     "build": "npm run build:package && npm run typecheck && npm run verify:architecture && npm run verify:architecture-doc && npm run verify:docs",
-    "verify:architecture": "node tools/verify-architecture.mjs",
+    "verify:architecture": "node --test tools/verify-architecture.spec.mjs && node tools/verify-architecture.mjs",
     "verify:architecture-doc": "node tools/verify-architecture-doc.mjs",
     "verify:docs": "node tools/verify-docs.mjs",
     "verify": "playwright test",

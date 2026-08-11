@@ -1,7 +1,8 @@
 import { expect, test } from "@playwright/test";
 
-import { Camera } from "../src/capabilities/camera";
-import { AuthoringError, defineSequence } from "../src";
+import { Camera } from "./index";
+import { AuthoringError } from "../game-project";
+import { defineSequence } from "../sequence";
 
 test("Camera derives a clamped Player-following presentation from logical facts", () => {
   const camera = new Camera();

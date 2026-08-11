@@ -10,9 +10,9 @@ import {
   validateAppearanceSet,
   type AnimationProjectView,
   type Appearance,
-} from "../src/capabilities/animation";
-import type { GameState } from "../src/capabilities/game-session";
-import { interpretDirectionStep, type DirectionStep } from "../src/capabilities/sequence";
+} from "./index";
+import type { GameState } from "../game-session";
+import { interpretDirectionStep, type DirectionStep } from "../sequence";
 
 test("Animation owns complete local Appearance validation", () => {
   const appearance = {

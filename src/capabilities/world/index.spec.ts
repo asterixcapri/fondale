@@ -3,17 +3,15 @@ import { expect, test } from "@playwright/test";
 import {
   createWorldDefinitionQueries,
   createWorld,
+  defineCharacter,
+  defineObject,
+  defineScene,
   isInside,
   navigationPath,
   validateMotionDirection,
   validateWorldProject,
-} from "../src/capabilities/world";
-import {
-  defineCharacter,
-  defineObject,
-  defineScene,
-  type InteractionCondition,
-} from "../src/index";
+} from "./index";
+import type { InteractionCondition } from "../interaction";
 
 const square = [
   { x: 0, y: 0 },
