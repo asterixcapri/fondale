@@ -1,6 +1,13 @@
 import type { GameOperation, Line } from "../game-project";
 import { AuthoringError, type AuthoringDiagnostic } from "../game-project";
-import type { Facing, HotspotDefinition, HotspotTarget, Point, WorldTarget } from "../world";
+import type {
+  Facing,
+  HotspotDefinition,
+  HotspotTarget,
+  ObjectState,
+  Point,
+  WorldTarget,
+} from "../world";
 import { conditionMatchesState } from "./state-queries";
 export { conditionMatchesState };
 
@@ -24,6 +31,23 @@ export type Verb = CommandVerb | "walk-to";
 export type InteractionCondition =
   | { readonly variable: string; readonly equals: boolean }
   | { readonly hasObject: string };
+
+/** Authored consequences that change Inventory membership or Object lifecycle. */
+export type InventoryOperation =
+  | { readonly type: "collect-target-object" }
+  | {
+      readonly type: "place-selected-object";
+      readonly groundPoint: Point;
+      readonly appearance?: string;
+    }
+  | {
+      readonly type: "place-object";
+      readonly object: string;
+      readonly scene: string;
+      readonly groundPoint: Point;
+      readonly appearance?: string;
+    }
+  | { readonly type: "consume-selected-object" };
 
 /** One state-dependent player-facing name, with an unconditional final variant. */
 export interface NounLabel {
@@ -484,8 +508,147 @@ export interface InteractionProjectView {
     readonly scenery?: Readonly<Record<string, { readonly noun?: NounDefinition }>>;
   }>>;
   readonly characters?: Readonly<Record<string, { readonly noun?: NounDefinition }>>;
-  readonly objects: Readonly<Record<string, { readonly noun?: NounDefinition }>>;
+  readonly objects: Readonly<Record<string, {
+    readonly noun?: NounDefinition;
+    readonly inventoryAppearance?: URL | string;
+  }>>;
   readonly commandFallbacks?: Readonly<Partial<Record<CommandVerb, CommandResponse>>>;
+}
+
+/** @internal The committed Object and Command facts changed by Inventory consequences. */
+export interface InventoryLifecycleState {
+  readonly currentScene: string;
+  readonly objects: Readonly<Record<string, Readonly<ObjectState>>>;
+  readonly inventory: { readonly objects: readonly string[] };
+  readonly command: CommandState;
+}
+
+/** @internal Context retained while applying one Inventory consequence. */
+export interface InventoryOperationContext {
+  readonly target: HotspotTarget;
+  readonly firstNounObject?: string;
+}
+
+/** @internal Capability interfaces consulted without duplicating their policy. */
+export interface InventoryAuthorities {
+  readonly canPlaceObject: (scene: string, point: Point) => boolean;
+  readonly objectHasAppearance: (object: string, appearance: string) => boolean;
+}
+
+/** @internal Authoring context in which one Inventory operation is declared. */
+export interface InventoryOperationValidationContext {
+  readonly target?: HotspotTarget;
+  readonly scenes?: readonly string[];
+}
+
+/** @internal Validation interfaces supplied by World and Animation. */
+export interface InventoryOperationValidationAuthorities {
+  readonly objects: ReadonlySet<string>;
+  readonly scenes: ReadonlySet<string>;
+  readonly validatePlacement: (
+    scenes: readonly string[],
+    point: Point,
+    path: string,
+  ) => readonly AuthoringDiagnostic[];
+  readonly validateObjectAppearance: (
+    object: string,
+    appearance: string,
+    path: string,
+  ) => readonly AuthoringDiagnostic[];
+}
+
+/** Reports whether a Game Operation belongs to the Inventory lifecycle. */
+export function isInventoryOperation(operation: GameOperation): operation is InventoryOperation {
+  return operation.type === "collect-target-object" ||
+    operation.type === "place-selected-object" ||
+    operation.type === "place-object" ||
+    operation.type === "consume-selected-object";
+}
+
+/** Validates one authored Inventory consequence through capability-owned interfaces. */
+export function validateInventoryOperation(
+  operation: InventoryOperation,
+  path: string,
+  context: InventoryOperationValidationContext,
+  authorities: InventoryOperationValidationAuthorities,
+): readonly AuthoringDiagnostic[] {
+  const diagnostics: AuthoringDiagnostic[] = [];
+  if (operation.type === "collect-target-object") {
+    if (context.target?.kind !== "object") {
+      diagnostics.push({
+        code: "definition.operation.collect-target",
+        family: "definition",
+        owner: "interaction",
+        path,
+        message: "collect-target-object requires an Object Hotspot target.",
+      });
+    }
+    return diagnostics;
+  }
+  if (operation.type === "place-selected-object") {
+    diagnostics.push(...authorities.validatePlacement(
+      context.scenes ?? [...authorities.scenes],
+      operation.groundPoint,
+      `${path}.groundPoint`,
+    ));
+    return diagnostics;
+  }
+  if (operation.type === "consume-selected-object") return diagnostics;
+
+  if (!authorities.objects.has(operation.object)) {
+    diagnostics.push(interactionReference(
+      "reference.object",
+      `${path}.object`,
+      `Object '${operation.object}' does not exist.`,
+    ));
+  }
+  if (!authorities.scenes.has(operation.scene)) {
+    diagnostics.push(interactionReference(
+      "reference.scene",
+      `${path}.scene`,
+      `Scene '${operation.scene}' does not exist.`,
+    ));
+  } else {
+    diagnostics.push(...authorities.validatePlacement(
+      [operation.scene],
+      operation.groundPoint,
+      `${path}.groundPoint`,
+    ));
+  }
+  if (authorities.objects.has(operation.object) && operation.appearance !== undefined) {
+    diagnostics.push(...authorities.validateObjectAppearance(
+      operation.object,
+      operation.appearance,
+      `${path}.appearance`,
+    ));
+  }
+  return diagnostics;
+}
+
+/** @internal Explicit result returned to Game Session for atomic commit. */
+export type InventoryOperationResult =
+  | { readonly status: "applied"; readonly state: Omit<InventoryLifecycleState, "currentScene"> }
+  | { readonly status: "invalid"; readonly message: string };
+
+interface InventoryLifecycleDraft {
+  objects: Record<string, ObjectState>;
+  inventory: { objects: string[] };
+  command: CommandState;
+}
+
+/** @internal One carried Object prepared for presentation by the HUD. */
+export interface InventoryPresentationEntry {
+  readonly object: string;
+  readonly label: string;
+  readonly inventoryAppearance: string;
+  readonly preferredVerb?: Verb;
+  readonly secondaryVerb?: Verb;
+  readonly selected: boolean;
+}
+
+/** @internal Immutable Inventory facts consumed without aggregate project or state queries. */
+export interface InventoryPresentation {
+  readonly entries: readonly InventoryPresentationEntry[];
 }
 
 /** @internal */
@@ -558,10 +721,22 @@ export interface Interaction {
     state: InteractionStateView,
     target?: InteractionTargetView,
   ): InteractionDecision;
+  applyInventoryOperation(
+    operation: InventoryOperation,
+    state: InventoryLifecycleState,
+    context: InventoryOperationContext,
+  ): InventoryOperationResult;
+  inventory(state: InteractionStateView): InventoryPresentation;
 }
 
 /** Creates the Interaction module that translates Player input into explicit intentions. */
-export function createInteraction(view: InteractionProjectView): Interaction {
+export function createInteraction(
+  view: InteractionProjectView,
+  authorities: InventoryAuthorities = {
+    canPlaceObject: () => false,
+    objectHasAppearance: () => false,
+  },
+): Interaction {
   const resetCommand: CommandState = { verb: "walk-to", firstNoun: null };
 
   const resolve = (
@@ -639,6 +814,30 @@ export function createInteraction(view: InteractionProjectView): Interaction {
     ...(command.firstNoun ? { firstNoun: command.firstNoun } : {}),
     ...(command.preserveCommandState ? { preserveState: true } : {}),
   });
+
+  const placeObject = (
+    draft: InventoryLifecycleDraft,
+    objectId: string,
+    scene: string,
+    groundPoint: Point,
+    appearance?: string,
+  ): string | undefined => {
+    if (!authorities.canPlaceObject(scene, groundPoint)) {
+      return "The placed Object Ground Point is outside the destination Scene Size.";
+    }
+    if (appearance !== undefined && !authorities.objectHasAppearance(objectId, appearance)) {
+      return `Unknown Object Appearance '${appearance}'.`;
+    }
+    const object = draft.objects[objectId]!;
+    object.location = {
+      kind: "scene",
+      scene,
+      groundPoint: { ...groundPoint },
+    };
+    if (appearance !== undefined) object.appearance = appearance;
+    draft.inventory.objects = draft.inventory.objects.filter((candidate) => candidate !== objectId);
+    return undefined;
+  };
 
   return {
     nounForHotspot(scene, hotspot) {
@@ -792,6 +991,97 @@ export function createInteraction(view: InteractionProjectView): Interaction {
         intent.command.preserveState ? "preserve" : "reset",
         intent.command.firstNoun,
       );
+    },
+    applyInventoryOperation(operation, state, context) {
+      const next: InventoryLifecycleDraft = {
+        objects: structuredClone(state.objects) as Record<string, ObjectState>,
+        inventory: { objects: [...state.inventory.objects] },
+        command: structuredClone(state.command),
+      };
+      if (operation.type === "collect-target-object") {
+        if (context.target.kind !== "object") {
+          return { status: "invalid", message: "Collect requires an Object target." };
+        }
+        const object = next.objects[context.target.object];
+        if (!object || object.location.kind !== "scene" || object.location.scene !== state.currentScene) {
+          return {
+            status: "invalid",
+            message: "The target Object is not present in the current Scene.",
+          };
+        }
+        object.location = { kind: "inventory" };
+        next.inventory.objects.push(context.target.object);
+      } else if (operation.type === "consume-selected-object") {
+        const selected = context.firstNounObject;
+        if (!selected || !next.inventory.objects.includes(selected)) {
+          return { status: "invalid", message: "No Object is selected." };
+        }
+        const object = next.objects[selected];
+        if (!object) {
+          return { status: "invalid", message: `Unknown Object '${selected}'.` };
+        }
+        object.location = { kind: "consumed" };
+        next.inventory.objects = next.inventory.objects.filter((objectId) => objectId !== selected);
+      } else if (operation.type === "place-selected-object") {
+        const selected = context.firstNounObject;
+        if (!selected || !next.inventory.objects.includes(selected)) {
+          return { status: "invalid", message: "No Object is selected." };
+        }
+        const object = next.objects[selected];
+        if (!object) {
+          return { status: "invalid", message: `Unknown Object '${selected}'.` };
+        }
+        const failure = placeObject(
+          next,
+          selected,
+          state.currentScene,
+          operation.groundPoint,
+          operation.appearance,
+        );
+        if (failure) return { status: "invalid", message: failure };
+      } else if (operation.type === "place-object") {
+        const object = next.objects[operation.object];
+        if (!object) {
+          return {
+            status: "invalid",
+            message: "Placed Object or destination Scene does not exist.",
+          };
+        }
+        const failure = placeObject(
+          next,
+          operation.object,
+          operation.scene,
+          operation.groundPoint,
+          operation.appearance,
+        );
+        if (failure) return { status: "invalid", message: failure };
+      }
+      if (
+        next.command.firstNoun &&
+        !next.inventory.objects.includes(next.command.firstNoun.object)
+      ) {
+        next.command = { verb: "walk-to", firstNoun: null };
+      }
+      return { status: "applied", state: next };
+    },
+    inventory(state) {
+      const entries = state.inventory.objects.flatMap((object) => {
+        const definition = view.objects[object];
+        const noun = definition?.noun;
+        const source = definition?.inventoryAppearance;
+        if (!noun || source === undefined) return [];
+        const preferredVerb = conditionalValue(noun.preferredVerbs, state).verb;
+        const secondaryVerb = conditionalOptionalValue(noun.secondaryVerbs, state)?.verb;
+        return [Object.freeze({
+          object,
+          label: conditionalValue(noun.labels, state).text,
+          inventoryAppearance: source instanceof URL ? source.href : source,
+          ...(preferredVerb ? { preferredVerb } : {}),
+          ...(secondaryVerb ? { secondaryVerb } : {}),
+          selected: state.command.firstNoun?.object === object,
+        })];
+      });
+      return Object.freeze({ entries: Object.freeze(entries) });
     },
   };
 }

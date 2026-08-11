@@ -4,6 +4,7 @@ import {
   createInteraction,
   defineNoun,
   type InteractionStateView,
+  validateInventoryOperation,
 } from "./index";
 
 const state: InteractionStateView = {
@@ -78,6 +79,348 @@ test("an Inventory secondary action resolves immediately without a Player Intent
       response: { text: "A brass key." },
     },
   });
+});
+
+test("collecting a present Object appends it to the Inventory in acquisition order", () => {
+  const interaction = createInteraction({
+    objects: { key: {}, coin: {} },
+    commandFallbacks: {},
+  });
+
+  expect(interaction.applyInventoryOperation(
+    { type: "collect-target-object" },
+    {
+      currentScene: "courtyard",
+      objects: {
+        key: {
+          appearance: "normal",
+          location: { kind: "inventory" },
+        },
+        coin: {
+          appearance: "normal",
+          location: {
+            kind: "scene",
+            scene: "courtyard",
+            groundPoint: { x: 12, y: 18 },
+          },
+        },
+      },
+      inventory: { objects: ["key"] },
+      command: { verb: "walk-to", firstNoun: null },
+    },
+    { target: { kind: "object", object: "coin" } },
+  )).toEqual({
+    status: "applied",
+    state: {
+      objects: {
+        key: {
+          appearance: "normal",
+          location: { kind: "inventory" },
+        },
+        coin: {
+          appearance: "normal",
+          location: { kind: "inventory" },
+        },
+      },
+      inventory: { objects: ["key", "coin"] },
+      command: { verb: "walk-to", firstNoun: null },
+    },
+  });
+});
+
+test("consuming the selected Object clears its invalid Command selection atomically", () => {
+  const interaction = createInteraction({ objects: { key: {} } });
+
+  expect(interaction.applyInventoryOperation(
+    { type: "consume-selected-object" },
+    {
+      currentScene: "courtyard",
+      objects: {
+        key: {
+          appearance: "normal",
+          location: { kind: "inventory" },
+        },
+      },
+      inventory: { objects: ["key"] },
+      command: {
+        verb: "use",
+        firstNoun: { kind: "object", object: "key" },
+      },
+    },
+    {
+      target: { kind: "background" },
+      firstNounObject: "key",
+    },
+  )).toEqual({
+    status: "applied",
+    state: {
+      objects: {
+        key: {
+          appearance: "normal",
+          location: { kind: "consumed" },
+        },
+      },
+      inventory: { objects: [] },
+      command: { verb: "walk-to", firstNoun: null },
+    },
+  });
+});
+
+test("placing the selected Object uses World and Animation authority", () => {
+  const interaction = createInteraction(
+    { objects: { key: {} } },
+    {
+      canPlaceObject: (scene, point) =>
+        scene === "courtyard" && point.x === 24 && point.y === 30,
+      objectHasAppearance: (object, appearance) =>
+        object === "key" && appearance === "used",
+    },
+  );
+
+  expect(interaction.applyInventoryOperation(
+    {
+      type: "place-selected-object",
+      groundPoint: { x: 24, y: 30 },
+      appearance: "used",
+    },
+    {
+      currentScene: "courtyard",
+      objects: {
+        key: {
+          appearance: "normal",
+          location: { kind: "inventory" },
+        },
+      },
+      inventory: { objects: ["key"] },
+      command: {
+        verb: "use",
+        firstNoun: { kind: "object", object: "key" },
+      },
+    },
+    {
+      target: { kind: "background" },
+      firstNounObject: "key",
+    },
+  )).toEqual({
+    status: "applied",
+    state: {
+      objects: {
+        key: {
+          appearance: "used",
+          location: {
+            kind: "scene",
+            scene: "courtyard",
+            groundPoint: { x: 24, y: 30 },
+          },
+        },
+      },
+      inventory: { objects: [] },
+      command: { verb: "walk-to", firstNoun: null },
+    },
+  });
+});
+
+test("placing a named Object removes it from the Inventory wherever it was", () => {
+  const interaction = createInteraction(
+    { objects: { coin: {} } },
+    {
+      canPlaceObject: (scene, point) =>
+        scene === "vault" && point.x === 8 && point.y === 13,
+      objectHasAppearance: () => false,
+    },
+  );
+
+  expect(interaction.applyInventoryOperation(
+    {
+      type: "place-object",
+      object: "coin",
+      scene: "vault",
+      groundPoint: { x: 8, y: 13 },
+    },
+    {
+      currentScene: "courtyard",
+      objects: {
+        coin: {
+          appearance: "normal",
+          location: { kind: "inventory" },
+        },
+      },
+      inventory: { objects: ["coin"] },
+      command: {
+        verb: "give",
+        firstNoun: { kind: "object", object: "coin" },
+      },
+    },
+    { target: { kind: "background" } },
+  )).toEqual({
+    status: "applied",
+    state: {
+      objects: {
+        coin: {
+          appearance: "normal",
+          location: {
+            kind: "scene",
+            scene: "vault",
+            groundPoint: { x: 8, y: 13 },
+          },
+        },
+      },
+      inventory: { objects: [] },
+      command: { verb: "walk-to", firstNoun: null },
+    },
+  });
+});
+
+test("Inventory presentation is an immutable ordered model of available Nouns for the HUD", () => {
+  const key = defineNoun({
+    labels: [
+      { text: "Used key", when: { variable: "used", equals: true } },
+      { text: "Key" },
+    ],
+    preferredVerbs: [{ verb: "use" }],
+    secondaryVerbs: [{ verb: "look-at" }],
+    cases: [],
+  });
+  const interaction = createInteraction({
+    objects: {
+      key: { noun: key, inventoryAppearance: "key-inventory.png" },
+      orphan: { inventoryAppearance: "orphan-inventory.png" },
+    },
+  });
+
+  const presentation = interaction.inventory({
+    currentScene: "courtyard",
+    variables: { used: true },
+    inventory: { objects: ["key", "orphan"] },
+    command: {
+      verb: "use",
+      firstNoun: { kind: "object", object: "key" },
+    },
+  });
+
+  expect(presentation).toEqual({
+    entries: [{
+      object: "key",
+      label: "Used key",
+      inventoryAppearance: "key-inventory.png",
+      preferredVerb: "use",
+      secondaryVerb: "look-at",
+      selected: true,
+    }],
+  });
+  expect(Object.isFrozen(presentation)).toBe(true);
+  expect(Object.isFrozen(presentation.entries)).toBe(true);
+  expect(Object.isFrozen(presentation.entries[0])).toBe(true);
+});
+
+test("Inventory authoring delegates placement and Appearance diagnostics to their owners", () => {
+  expect(validateInventoryOperation(
+    {
+      type: "place-object",
+      object: "key",
+      scene: "courtyard",
+      groundPoint: { x: -1, y: 30 },
+      appearance: "missing",
+    },
+    "cases[0].operations[0]",
+    { scenes: ["courtyard"] },
+    {
+      objects: new Set(["key"]),
+      scenes: new Set(["courtyard"]),
+      validatePlacement: (_scenes, _point, path) => [{
+        code: "definition.operation.ground-point",
+        family: "definition",
+        owner: "world",
+        path,
+        message: "The point is outside Scene Space.",
+      }],
+      validateObjectAppearance: (_object, _appearance, path) => [{
+        code: "reference.appearance",
+        family: "reference",
+        owner: "animation",
+        path,
+        message: "The Appearance does not exist.",
+      }],
+    },
+  )).toEqual([
+    expect.objectContaining({ owner: "world", path: "cases[0].operations[0].groundPoint" }),
+    expect.objectContaining({ owner: "animation", path: "cases[0].operations[0].appearance" }),
+  ]);
+});
+
+test("invalid Inventory consequences are deterministic and leave their input unchanged", () => {
+  const interaction = createInteraction(
+    { objects: { key: {} } },
+    {
+      canPlaceObject: (_scene, point) => point.x >= 0,
+      objectHasAppearance: () => false,
+    },
+  );
+  const state = {
+    currentScene: "courtyard",
+    objects: {
+      key: {
+        appearance: "normal",
+        location: { kind: "inventory" as const },
+      },
+    },
+    inventory: { objects: ["key"] },
+    command: { verb: "walk-to" as const, firstNoun: null },
+  };
+  const original = structuredClone(state);
+
+  expect([
+    interaction.applyInventoryOperation(
+      { type: "collect-target-object" },
+      state,
+      { target: { kind: "background" } },
+    ),
+    interaction.applyInventoryOperation(
+      { type: "consume-selected-object" },
+      state,
+      { target: { kind: "background" } },
+    ),
+    interaction.applyInventoryOperation(
+      { type: "place-selected-object", groundPoint: { x: -1, y: 30 } },
+      state,
+      { target: { kind: "background" }, firstNounObject: "key" },
+    ),
+    interaction.applyInventoryOperation(
+      {
+        type: "place-selected-object",
+        groundPoint: { x: 10, y: 30 },
+        appearance: "missing",
+      },
+      state,
+      { target: { kind: "background" }, firstNounObject: "key" },
+    ),
+    interaction.applyInventoryOperation(
+      {
+        type: "place-object",
+        object: "missing",
+        scene: "courtyard",
+        groundPoint: { x: 10, y: 30 },
+      },
+      state,
+      { target: { kind: "background" } },
+    ),
+  ]).toEqual([
+    { status: "invalid", message: "Collect requires an Object target." },
+    { status: "invalid", message: "No Object is selected." },
+    {
+      status: "invalid",
+      message: "The placed Object Ground Point is outside the destination Scene Size.",
+    },
+    {
+      status: "invalid",
+      message: "Unknown Object Appearance 'missing'.",
+    },
+    {
+      status: "invalid",
+      message: "Placed Object or destination Scene does not exist.",
+    },
+  ]);
+  expect(state).toEqual(original);
 });
 
 test("an unavailable Noun rejects a resumed Player Intent and resets its Command", () => {

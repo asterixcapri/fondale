@@ -13,7 +13,11 @@ import {
   type ValidatedSaveSnapshot,
 } from "../src/index";
 
-function projectFixture(consumeSelectedObject = false, duplicateCollection = false) {
+function projectFixture(
+  consumeSelectedObject = false,
+  duplicateCollection = false,
+  includeSecondObject = false,
+) {
   const square = [
     { x: 0, y: 0 },
     { x: 100, y: 0 },
@@ -155,6 +159,25 @@ function projectFixture(consumeSelectedObject = false, duplicateCollection = fal
       }],
     }),
   });
+  const coin = defineObject({
+    initialScene: "opening",
+    initialGroundPoint: { x: 30, y: 30 },
+    initialAppearance: "new",
+    appearances: {
+      new: { animations: { idle: { frames: ["coin.png"], framesPerSecond: 1, loop: true } }, roles: { default: "idle" } },
+      polished: { animations: { idle: { frames: ["polished-coin.png"], framesPerSecond: 1, loop: true } }, roles: { default: "idle" } },
+    },
+    inventoryAppearance: "coin-inventory.png",
+    noun: defineNoun({
+      labels: [{ text: "Coin" }],
+      preferredVerbs: [{ verb: "pick-up" }],
+      cases: [{
+        verb: "pick-up",
+        response: { text: "You take the coin." },
+        operations: [{ type: "collect-target-object" }],
+      }],
+    }),
+  });
   const conversation = defineSequence({
     skippable: true,
     skipOutcome: [],
@@ -197,7 +220,7 @@ function projectFixture(consumeSelectedObject = false, duplicateCollection = fal
     scenes: { opening, ending },
     characters: { player },
     playerCharacter: "player",
-    objects: { key },
+    objects: { key, ...(includeSecondObject ? { coin } : {}) },
     sequences: { conversation },
     variables: { met: false, gateOpen: false, behaviorRan: false, keyCleaned: false },
     commandLexicon: defineCommandLexicon({
@@ -296,6 +319,41 @@ test("Save Snapshot validation restores the exact active Choice", () => {
     session.steps();
   }
   expect(restored.snapshot()).toEqual(uninterrupted.snapshot());
+});
+
+test("Save round trip preserves Inventory order, Object location, selection, and Appearance", () => {
+  const project = projectFixture(false, false, true);
+  const source = createTestSession(project).createSaveSnapshot();
+  const raw = {
+    ...source,
+    state: {
+      ...source.state,
+      objects: {
+        ...source.state.objects,
+        coin: {
+          ...source.state.objects.coin!,
+          location: { kind: "inventory" as const },
+          appearance: "polished",
+        },
+        key: {
+          ...source.state.objects.key!,
+          location: { kind: "inventory" as const },
+          appearance: "used",
+        },
+      },
+      inventory: { objects: ["coin", "key"] },
+      command: {
+        verb: "use" as const,
+        firstNoun: { kind: "object" as const, object: "key" },
+      },
+    },
+  };
+
+  const validation = validateSaveSnapshot(project, raw);
+  expect(validation.ok).toBe(true);
+  if (!validation.ok) throw new Error("Expected the Inventory Save Snapshot to be valid.");
+  const restored = createTestSession(project, validation.snapshot);
+  expect(restored.createSaveSnapshot().state).toEqual(raw.state);
 });
 
 test("a skippable Sequence can dismiss active Narration", () => {
@@ -517,7 +575,7 @@ test("one Object Noun updates its conditional label in the world and Inventory",
   expect(session.availableHotspots().find(({ index }) => index === 1)?.label).toBe("Dirty key");
 
   interact(session, 1);
-  expect(session.availableInventory()).toContainEqual(expect.objectContaining({
+  expect(session.inventory().entries).toContainEqual(expect.objectContaining({
     object: "key",
     label: "Dirty key",
   }));
@@ -525,7 +583,7 @@ test("one Object Noun updates its conditional label in the world and Inventory",
   session.input({ type: "contextual-object", object: "key", action: "secondary" });
   session.steps();
   expect(session.snapshot().variables.keyCleaned).toBe(true);
-  expect(session.availableInventory()).toContainEqual(expect.objectContaining({
+  expect(session.inventory().entries).toContainEqual(expect.objectContaining({
     object: "key",
     label: "Clean key",
   }));

@@ -10,8 +10,11 @@ import {
   type CommandLexicon,
   type CommandResponse,
   type InteractionCondition,
+  type InventoryOperation,
   type NounDefinition,
+  isInventoryOperation,
   validateCommandResponse,
+  validateInventoryOperation,
   validateInteractionComposition,
   validateInteractionConditionReference,
   validateNounReferences,
@@ -27,6 +30,7 @@ import {
 import {
   validateAppearanceSet,
   validateAnimationReference,
+  validateObjectAppearanceReference,
   type AnimationDefinition,
   type AnimationFrames,
   type AnimationRoles,
@@ -97,20 +101,7 @@ export type GameOperation =
       readonly appearance: string;
     }
   | { readonly type: "start-sequence"; readonly sequence: string }
-  | { readonly type: "collect-target-object" }
-  | {
-      readonly type: "place-selected-object";
-      readonly groundPoint: Point;
-      readonly appearance?: string;
-    }
-  | {
-      readonly type: "place-object";
-      readonly object: string;
-      readonly scene: string;
-      readonly groundPoint: Point;
-      readonly appearance?: string;
-    }
-  | { readonly type: "consume-selected-object" };
+  | InventoryOperation;
 
 export interface Line {
   readonly text: string;
@@ -447,6 +438,7 @@ function validateProjectDefinitions(
   diagnostics: AuthoringDiagnostic[],
 ): void {
   const allSceneIds = Object.keys(input.scenes);
+  const sceneReferences = new Set(allSceneIds);
   const world = createWorldDefinitionQueries({
     logicalResolution: input.logicalResolution,
     initialScene: input.initialScene,
@@ -488,6 +480,30 @@ function validateProjectDefinitions(
           message: "A Sequence cannot use a selected-Object operation because it has no Command selection context.",
         });
       }
+      if (isInventoryOperation(operation)) {
+        diagnostics.push(...validateInventoryOperation(
+          operation,
+          operationPath,
+          {
+            ...(context.target ? { target: context.target } : {}),
+            ...(context.scenes ? { scenes: context.scenes } : {}),
+          },
+          {
+            objects: interactionReferences.objects,
+            scenes: sceneReferences,
+            validatePlacement: (scenes, point, placementPath) =>
+              world.validatePlacement(scenes, point, placementPath),
+            validateObjectAppearance: (object, appearance, appearancePath) =>
+              validateObjectAppearanceReference(
+                { objects },
+                object,
+                appearance,
+                appearancePath,
+              ),
+          },
+        ));
+        return;
+      }
       if (operation.type === "set-variable" && !(operation.variable in variables)) {
         diagnostics.push(referenceDiagnostic("reference.variable", operationPath, `Game Variable '${operation.variable}' does not exist.`));
       } else if (operation.type === "start-sequence") {
@@ -502,13 +518,6 @@ function validateProjectDefinitions(
             message: "A Sequence cannot start another Sequence.",
           });
         }
-      } else if (operation.type === "collect-target-object" && context.target?.kind !== "object") {
-        diagnostics.push({
-          code: "definition.operation.collect-target",
-          family: "definition", owner: "game-project",
-          path: operationPath,
-          message: "collect-target-object requires an Object Hotspot target.",
-        });
       } else if (operation.type === "set-appearance") {
         const target = operation.target;
         const appearances =
@@ -522,21 +531,6 @@ function validateProjectDefinitions(
         } else if (!(operation.appearance in appearances)) {
           diagnostics.push(referenceDiagnostic("reference.appearance", operationPath, `Appearance '${operation.appearance}' does not exist on the target.`));
         }
-      } else if (operation.type === "place-object") {
-        if (!(operation.object in objects)) diagnostics.push(referenceDiagnostic("reference.object", `${operationPath}.object`, `Object '${operation.object}' does not exist.`));
-        if (!(operation.scene in input.scenes)) diagnostics.push(referenceDiagnostic("reference.scene", `${operationPath}.scene`, `Scene '${operation.scene}' does not exist.`));
-        if (objects[operation.object] && operation.appearance !== undefined && !(operation.appearance in objects[operation.object]!.appearances)) diagnostics.push(referenceDiagnostic("reference.appearance", `${operationPath}.appearance`, `Appearance '${operation.appearance}' does not exist on Object '${operation.object}'.`));
-        diagnostics.push(...world.validatePlacement(
-          [operation.scene],
-          operation.groundPoint,
-          `${operationPath}.groundPoint`,
-        ));
-      } else if (operation.type === "place-selected-object") {
-        diagnostics.push(...world.validatePlacement(
-          context.scenes ?? allSceneIds,
-          operation.groundPoint,
-          `${operationPath}.groundPoint`,
-        ));
       }
     });
   };

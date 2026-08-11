@@ -4,6 +4,7 @@ import {
   conditionMatchesState,
   conditionalOptionalValue,
   conditionalValue,
+  isInventoryOperation,
   type CommandState,
   type CommandResponse,
   type CommandVerb,
@@ -11,6 +12,7 @@ import {
   type InteractionCondition,
   type InteractionInput,
   type InteractionTargetView,
+  type InventoryPresentation,
   type PlayerIntent,
   type PlayerIntentState,
   type Verb,
@@ -51,7 +53,11 @@ import {
   type DirectedSubject,
   type MotionDirection,
 } from "../sequence";
-import { appearanceForSubject, type AnimationDefinition } from "../animation";
+import {
+  appearanceForSubject,
+  objectHasAppearance,
+  type AnimationDefinition,
+} from "../animation";
 import { Camera, type CameraPresentation } from "../camera";
 
 export type { CharacterState, ObjectLocation, ObjectState } from "../world";
@@ -110,13 +116,6 @@ export interface AvailableHotspot {
   readonly objectVerb?: Verb;
 }
 
-export interface AvailableInventoryNoun {
-  readonly object: string;
-  readonly label: string;
-  readonly preferredVerb: Verb;
-  readonly secondaryVerb?: Verb;
-}
-
 export interface AvailablePassage {
   readonly index: number;
   readonly area: readonly Point[];
@@ -139,7 +138,7 @@ export interface CoreSession {
   diagnostics(): readonly AuthoringDiagnostic[];
   hitTest(point: Point): CoreWorldTarget | null;
   availableHotspots(): readonly AvailableHotspot[];
-  availableInventory(): readonly AvailableInventoryNoun[];
+  inventory(): InventoryPresentation;
   availablePassages(): readonly AvailablePassage[];
   world(): WorldPresentation;
   camera(): CameraPresentation;
@@ -159,7 +158,10 @@ export function createCoreSession(
 ): CoreSession {
   const data = getGameProjectData(project);
   const world = createWorld(data);
-  const interaction = createInteraction(data);
+  const interaction = createInteraction(data, {
+    canPlaceObject: (scene, point) => world.canPlaceObject(scene, point),
+    objectHasAppearance: (object, appearance) => objectHasAppearance(data, object, appearance),
+  });
   let state = restored ? getValidatedSaveState(restored) : initialState(data, world.initialState());
   let status: "running" | "failed" | "stopped" = "running";
   let failureDiagnostics: readonly AuthoringDiagnostic[] = [];
@@ -213,18 +215,8 @@ export function createCoreSession(
         }];
       });
     },
-    availableInventory() {
-      return state.inventory.objects.flatMap((object) => {
-        const noun = data.objects[object]?.noun;
-        if (!noun) return [];
-        const secondaryVerb = conditionalOptionalValue(noun.secondaryVerbs, state)?.verb;
-        return [{
-          object,
-          label: conditionalValue(noun.labels, state).text,
-          preferredVerb: conditionalValue(noun.preferredVerbs, state).verb,
-          ...(secondaryVerb ? { secondaryVerb } : {}),
-        }];
-      });
+    inventory() {
+      return interaction.inventory(state);
     },
     availablePassages() {
       return world.passages(state, conditionMatches).map(({ definition: passage, index }) => {
@@ -491,12 +483,6 @@ export function createCoreSession(
       return false;
     }
     state = draft;
-    if (
-      state.command.firstNoun &&
-      !state.inventory.objects.includes(state.command.firstNoun.object)
-    ) {
-      state.command = { verb: "walk-to", firstNoun: null };
-    }
     if (state.activity?.type === "sequence") advanceSequence();
     return true;
   }
@@ -543,46 +529,19 @@ export function createCoreSession(
         pendingPaths: topLevelPaths(data.sequences[operation.sequence]!),
         active: null,
       };
-    } else if (operation.type === "collect-target-object") {
-      if (target.kind !== "object") throw new Error("Collect requires an Object target.");
-      const object = draft.objects[target.object];
-      if (!object || object.location.kind !== "scene" || object.location.scene !== draft.currentScene) {
-        throw new Error("The target Object is not present in the current Scene.");
-      }
-      object.location = { kind: "inventory" };
-      draft.inventory.objects.push(target.object);
-    } else if (operation.type === "place-selected-object") {
-      const selected = firstNounObject;
-      if (!selected || !draft.inventory.objects.includes(selected)) throw new Error("No Object is selected.");
-      const object = draft.objects[selected]!;
-      if (!world.canPlaceObject(draft.currentScene, operation.groundPoint)) {
-        throw new Error("The placed Object Ground Point is outside the destination Scene Size.");
-      }
-      if (operation.appearance !== undefined && !(operation.appearance in data.objects[selected]!.appearances)) {
-        throw new Error(`Unknown Object Appearance '${operation.appearance}'.`);
-      }
-      object.location = {
-        kind: "scene",
-        scene: draft.currentScene,
-        groundPoint: { ...operation.groundPoint },
-      };
-      if (operation.appearance !== undefined) object.appearance = operation.appearance;
-      draft.inventory.objects = draft.inventory.objects.filter((id) => id !== selected);
-    } else if (operation.type === "place-object") {
-      const object = draft.objects[operation.object];
-      const definition = data.objects[operation.object];
-      const destination = data.scenes[operation.scene];
-      if (!object || !definition || !destination) throw new Error("Placed Object or destination Scene does not exist.");
-      if (!world.canPlaceObject(operation.scene, operation.groundPoint)) throw new Error("The placed Object Ground Point is outside the destination Scene Size.");
-      if (operation.appearance !== undefined && !(operation.appearance in definition.appearances)) throw new Error(`Unknown Object Appearance '${operation.appearance}'.`);
-      object.location = { kind: "scene", scene: operation.scene, groundPoint: { ...operation.groundPoint } };
-      if (operation.appearance !== undefined) object.appearance = operation.appearance;
-      draft.inventory.objects = draft.inventory.objects.filter((id) => id !== operation.object);
-    } else if (operation.type === "consume-selected-object") {
-      const selected = firstNounObject;
-      if (!selected || !draft.inventory.objects.includes(selected)) throw new Error("No Object is selected.");
-      draft.objects[selected]!.location = { kind: "consumed" };
-      draft.inventory.objects = draft.inventory.objects.filter((id) => id !== selected);
+    } else if (isInventoryOperation(operation)) {
+      const result = interaction.applyInventoryOperation(
+        operation,
+        draft,
+        {
+          target,
+          ...(firstNounObject ? { firstNounObject } : {}),
+        },
+      );
+      if (result.status === "invalid") throw new Error(result.message);
+      draft.objects = structuredClone(result.state.objects) as Record<string, ObjectState>;
+      draft.inventory = { objects: [...result.state.inventory.objects] };
+      draft.command = structuredClone(result.state.command);
     }
   }
 

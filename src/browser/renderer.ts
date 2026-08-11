@@ -9,7 +9,6 @@ import {
 
 import type {
   AvailableHotspot,
-  AvailableInventoryNoun,
   AvailablePassage,
   CoreEffect,
   CoreSession,
@@ -39,7 +38,7 @@ import type {
   GameProjectData,
   SequenceStep,
 } from "../capabilities/game-project";
-import type { Verb } from "../capabilities/interaction";
+import type { InventoryPresentationEntry, Verb } from "../capabilities/interaction";
 import type { AuthoringDiagnostic } from "../capabilities/game-project";
 import type { SaveSnapshot } from "../capabilities/save";
 import { assetUrl, type LoadedAssets } from "./assets";
@@ -766,7 +765,7 @@ class EngineOverlay {
         this.speechDuration(latestResponse.text),
       );
     }
-    this.renderInventory(state);
+    this.renderInventory();
     if (!this.hoveredHotspot && !this.inventoryActionObject) {
       this.action.style.display = "none";
     }
@@ -802,7 +801,7 @@ class EngineOverlay {
     this.hoveredHotspot = hotspot;
     this.action.style.zIndex = "8";
     const firstNoun = state.command.firstNoun
-      ? this.core.availableInventory().find(({ object }) => object === state.command.firstNoun?.object)
+      ? this.core.inventory().entries.find(({ object }) => object === state.command.firstNoun?.object)
       : undefined;
     const primaryVerb = firstNoun ? hotspot.objectVerb ?? "use" : hotspot.preferredVerb;
     const secondaryVerb = firstNoun ? hotspot.preferredVerb : hotspot.secondaryVerb;
@@ -849,25 +848,25 @@ class EngineOverlay {
     this.root.remove();
   }
 
-  private renderInventory(state: GameState): void {
-    if (state.inventory.objects.length > this.previousInventoryCount) {
-      this.inventoryPage = Math.floor((state.inventory.objects.length - 1) / 8);
+  private renderInventory(): void {
+    const presentation = this.core.inventory();
+    if (presentation.entries.length > this.previousInventoryCount) {
+      this.inventoryPage = Math.floor((presentation.entries.length - 1) / 8);
     }
-    this.previousInventoryCount = state.inventory.objects.length;
-    const maximumPage = Math.max(0, Math.ceil(state.inventory.objects.length / 8) - 1);
+    this.previousInventoryCount = presentation.entries.length;
+    const maximumPage = Math.max(0, Math.ceil(presentation.entries.length / 8) - 1);
     this.inventoryPage = Math.min(this.inventoryPage, maximumPage);
-    const signature = JSON.stringify([state.inventory, state.command, this.inventoryPage, this.inventoryOpen]);
+    const signature = JSON.stringify([presentation, this.inventoryPage, this.inventoryOpen]);
     if (signature === this.inventorySignature) return;
     this.inventorySignature = signature;
     this.inventory.replaceChildren();
-    const available = new Map(this.core.availableInventory().map((noun) => [noun.object, noun]));
-    const visibleObjects = state.inventory.objects.slice(this.inventoryPage * 8, this.inventoryPage * 8 + 8);
-    for (const objectId of visibleObjects) {
-      const selected = state.command.firstNoun?.object === objectId;
+    const visibleEntries = presentation.entries.slice(this.inventoryPage * 8, this.inventoryPage * 8 + 8);
+    for (const entry of visibleEntries) {
+      const { object: objectId, selected } = entry;
       const button = document.createElement("button");
       button.type = "button";
       button.dataset.fondaleInventoryObject = objectId;
-      button.setAttribute("aria-label", available.get(objectId)?.label ?? objectId);
+      button.setAttribute("aria-label", entry.label);
       button.setAttribute("aria-pressed", String(selected));
       button.style.cssText = [
         "position:relative",
@@ -895,7 +894,7 @@ class EngineOverlay {
       image.width = displaySize;
       image.height = displaySize;
       image.alt = "";
-      image.src = assetUrl(this.data.objects[objectId]!.inventoryAppearance);
+      image.src = assetUrl(entry.inventoryAppearance);
       button.append(image);
       if (selected) {
         const marker = document.createElement("span");
@@ -909,27 +908,24 @@ class EngineOverlay {
         this.core.input({ type: "contextual-object", object: objectId, action: "primary" });
         this.setInventoryOpen(false);
       });
-      const inventoryNoun = available.get(objectId);
-      if (inventoryNoun) {
-        button.addEventListener("pointermove", (event) => {
-          this.showInventoryAction(inventoryNoun, button, event);
-        });
-        button.addEventListener("pointerleave", () => {
-          if (document.activeElement !== button) this.dismissAction();
-        });
-        button.addEventListener("focus", () => this.showInventoryAction(inventoryNoun, button));
-        button.addEventListener("blur", () => this.dismissAction());
-        button.addEventListener("contextmenu", (event) => {
-          event.preventDefault();
-          if (!inventoryNoun.secondaryVerb) return;
-          this.dismissAction();
-          this.core.input({ type: "contextual-object", object: objectId, action: "secondary" });
-        });
-      }
+      button.addEventListener("pointermove", (event) => {
+        this.showInventoryAction(entry, button, event);
+      });
+      button.addEventListener("pointerleave", () => {
+        if (document.activeElement !== button) this.dismissAction();
+      });
+      button.addEventListener("focus", () => this.showInventoryAction(entry, button));
+      button.addEventListener("blur", () => this.dismissAction());
+      button.addEventListener("contextmenu", (event) => {
+        event.preventDefault();
+        if (!entry.secondaryVerb) return;
+        this.dismissAction();
+        this.core.input({ type: "contextual-object", object: objectId, action: "secondary" });
+      });
       this.inventory.append(button);
     }
     if (this.data.commandLexicon) {
-      for (let index = visibleObjects.length; index < 8; index += 1) {
+      for (let index = visibleEntries.length; index < 8; index += 1) {
         const empty = document.createElement("span");
         empty.dataset.fondaleInventorySlot = "empty";
         empty.setAttribute("aria-hidden", "true");
@@ -969,12 +965,11 @@ class EngineOverlay {
   }
 
   private showInventoryAction(
-    noun: AvailableInventoryNoun,
+    noun: InventoryPresentationEntry,
     button: HTMLButtonElement,
     event?: PointerEvent,
   ): void {
-    const selected = this.core.snapshot().command.firstNoun?.object === noun.object;
-    const selectionPattern = selected
+    const selectionPattern = noun.selected
       ? this.data.commandLexicon!.inventory.deselect
       : this.data.commandLexicon!.inventory.select;
     this.setActionText(this.primaryAction, selectionPattern.replace("{noun}", noun.label));
@@ -1016,7 +1011,7 @@ class EngineOverlay {
   }
 
   private changeInventoryPage(amount: number): void {
-    const maximumPage = Math.max(0, Math.ceil(this.core.snapshot().inventory.objects.length / 8) - 1);
+    const maximumPage = Math.max(0, Math.ceil(this.core.inventory().entries.length / 8) - 1);
     this.inventoryPage = Math.max(0, Math.min(maximumPage, this.inventoryPage + amount));
     this.inventorySignature = "";
   }

@@ -422,6 +422,33 @@ export function appearanceForSubject(
   return appearanceSelectionForSubject(data, state, subject)?.appearance;
 }
 
+/** Reports whether Animation recognizes an Appearance for one persistent Object. */
+export function objectHasAppearance(
+  data: Pick<GameProjectData, "objects">,
+  object: string,
+  appearance: string,
+): boolean {
+  return appearance in (data.objects[object]?.appearances ?? {});
+}
+
+/** Validates one Object Appearance reference without exposing Animation representation. */
+export function validateObjectAppearanceReference(
+  data: Pick<GameProjectData, "objects">,
+  object: string,
+  appearance: string,
+  path: string,
+): readonly AuthoringDiagnostic[] {
+  return objectHasAppearance(data, object, appearance)
+    ? []
+    : [{
+        code: "reference.appearance",
+        family: "reference",
+        owner: "animation",
+        path,
+        message: `Appearance '${appearance}' does not exist on Object '${object}'.`,
+      }];
+}
+
 function appearanceSelectionForSubject(
   data: GameProjectData,
   state: Readonly<GameState>,
