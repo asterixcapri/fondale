@@ -714,6 +714,11 @@ export type WorldTarget =
   | { readonly kind: "hotspot"; readonly index: number }
   | { readonly kind: "passage"; readonly index: number };
 
+/** Reports whether two World Target values refer to the same available world element. */
+export function sameWorldTarget(left: WorldTarget, right: WorldTarget): boolean {
+  return left.kind === right.kind && left.index === right.index;
+}
+
 export interface WorldHotspot {
   readonly index: number;
   readonly definition: HotspotDefinition;

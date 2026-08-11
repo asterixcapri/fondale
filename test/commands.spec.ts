@@ -242,6 +242,53 @@ test("Inventory drawer paginates more than eight collected Objects", async ({ pa
   await expect(frame.locator('[data-fondale-inventory-object="key"]')).toBeVisible();
 });
 
+test("Inventory keyboard and pointer transitions apply HUD focus intentions", async ({ page }) => {
+  await page.goto("/test/fixtures/commands.html");
+  const frame = page.locator("[data-fondale-frame]");
+  const panel = frame.locator("[data-fondale-inventory-panel]");
+
+  await frame.focus();
+  await page.keyboard.press("i");
+  await expect(panel).toBeVisible();
+  await expect(panel).toBeFocused();
+
+  await page.keyboard.press("Escape");
+  await expect(panel).toBeHidden();
+  await expect(frame).toBeFocused();
+
+  await frame.locator("[data-fondale-inventory-trigger]").click();
+  await expect(panel).toBeFocused();
+  await frame.locator("[data-fondale-inventory-scrim]").click({ position: { x: 300, y: 200 } });
+  await expect(frame).toBeFocused();
+});
+
+test("contextual HUD presentation remains inside a smaller letterboxed viewport", async ({ page }) => {
+  await page.setViewportSize({ width: 900, height: 700 });
+  await page.goto("/test/fixtures/commands.html");
+  const frame = page.locator("[data-fondale-frame]");
+  const canvas = frame.locator("canvas");
+  await expect(frame).toHaveCSS("width", "852px");
+  await expect(frame).toHaveCSS("height", "480px");
+
+  await frame.locator("[data-fondale-inventory-trigger]").click();
+  await expect(frame.locator("[data-fondale-inventory-slot]"))
+    .toHaveCount(8);
+  const panelBounds = await frame.locator("[data-fondale-inventory-panel]").boundingBox();
+  await frame.locator("[data-fondale-inventory-close]").click();
+
+  const door = await logicalPoint(frame, 230, 110);
+  await page.mouse.move(door.x, door.y);
+  const canvasBounds = await canvas.boundingBox();
+  const previewBounds = await frame.locator("[data-fondale-command-preview]").boundingBox();
+  if (!canvasBounds || !panelBounds || !previewBounds) throw new Error("missing HUD bounds");
+  for (const bounds of [panelBounds, previewBounds]) {
+    expect.soft(bounds.x).toBeGreaterThanOrEqual(canvasBounds.x);
+    expect.soft(bounds.y).toBeGreaterThanOrEqual(canvasBounds.y);
+    expect.soft(bounds.x + bounds.width).toBeLessThanOrEqual(canvasBounds.x + canvasBounds.width);
+    expect.soft(bounds.y + bounds.height).toBeLessThanOrEqual(canvasBounds.y + canvasBounds.height);
+  }
+});
+
 test("Speech is readable over the Scene and Choice temporarily owns input", async ({ page }) => {
   await page.goto("/test/fixtures/commands.html");
   const frame = page.locator("[data-fondale-frame]");

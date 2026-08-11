@@ -8,8 +8,6 @@ import {
 } from "pixi.js";
 
 import type {
-  AvailableHotspot,
-  AvailablePassage,
   CoreEffect,
   CoreSession,
   GameState,
@@ -26,12 +24,19 @@ import type {
   SequencePresentation,
 } from "../capabilities/sequence";
 import {
+  sameWorldTarget,
   type Point,
   type SceneryAppearance,
   type WorldPresentation,
+  type WorldTarget,
 } from "../capabilities/world";
 import type { GameProjectData } from "../capabilities/game-project";
-import type { InventoryPresentationEntry, Verb } from "../capabilities/interaction";
+import type {
+  HUDInput,
+  HUDInventoryEntryPresentation,
+  HUDNounPresentation,
+  HUDPresentation,
+} from "../capabilities/hud";
 import type { AuthoringDiagnostic } from "../capabilities/game-project";
 import type { SaveSnapshot } from "../capabilities/save";
 import { assetUrl, type LoadedAssets } from "./assets";
@@ -349,10 +354,10 @@ export class BrowserRenderer {
     const target = this.core.hitTest(point);
     if (target?.kind === "hotspot") {
       this.overlay.dismissAction();
-      this.core.input({ type: "contextual-hotspot", hotspot: target.index, action: "primary" });
+      this.overlay.inputHUD({ type: "activate-noun", target, action: "primary" });
     } else if (target?.kind === "passage") {
       this.overlay.dismissAction();
-      this.core.input({ type: "contextual-passage", passage: target.index, action: "primary" });
+      this.overlay.inputHUD({ type: "activate-noun", target, action: "primary" });
     } else this.core.input({ type: "move", point, fast: event.detail >= 2 });
   };
 
@@ -365,16 +370,17 @@ export class BrowserRenderer {
     ) return;
     const { scene: point } = this.pointerPoints(event);
     const target = this.core.hitTest(point);
+    const noun = target
+      ? this.core.hud().nouns.find((candidate) => sameWorldTarget(candidate.target, target))
+      : undefined;
     if (target?.kind === "hotspot") {
-      const hotspot = this.core.availableHotspots().find(({ index }) => index === target.index);
-      if (!this.core.snapshot().command.firstNoun && !hotspot?.secondaryVerb) return;
+      if (!noun?.secondary) return;
       this.overlay.dismissAction();
-      this.core.input({ type: "contextual-hotspot", hotspot: target.index, action: "secondary" });
+      this.overlay.inputHUD({ type: "activate-noun", target, action: "secondary" });
     } else if (target?.kind === "passage") {
-      const passage = this.core.availablePassages().find(({ index }) => index === target.index);
-      if (!this.core.snapshot().command.firstNoun && !passage?.secondaryVerb) return;
+      if (!noun?.secondary) return;
       this.overlay.dismissAction();
-      this.core.input({ type: "contextual-passage", passage: target.index, action: "secondary" });
+      this.overlay.inputHUD({ type: "activate-noun", target, action: "secondary" });
     }
   };
 
@@ -403,21 +409,19 @@ export class BrowserRenderer {
     const points = this.pointerPoints(event);
     const point = points.scene;
     const target = this.core.hitTest(point);
-    const hotspot = target?.kind === "hotspot"
-      ? this.core.availableHotspots().find(({ index }) => index === target.index)
+    const noun = target
+      ? this.core.hud().nouns.find((candidate) => sameWorldTarget(candidate.target, target))
       : undefined;
-    const passage = target?.kind === "passage"
-      ? this.core.availablePassages().find(({ index }) => index === target.index)
-      : undefined;
-    this.overlay.showAction(hotspot ?? passage);
+    this.overlay.showAction(noun);
     const cursors = {
       left: "w-resize", right: "e-resize", up: "n-resize", down: "s-resize", enter: "pointer",
     } as const;
-    const themedCursor = passage ? this.data.hudTheme?.cursors[passage.direction] : undefined;
-    this.application.canvas.style.cursor = passage
+    const direction = noun?.direction;
+    const themedCursor = direction ? this.data.hudTheme?.cursors[direction] : undefined;
+    this.application.canvas.style.cursor = direction
       ? themedCursor
-        ? `url(${JSON.stringify(assetUrl(themedCursor))}) 8 8, ${cursors[passage.direction]}`
-        : cursors[passage.direction]
+        ? `url(${JSON.stringify(assetUrl(themedCursor))}) 8 8, ${cursors[direction]}`
+        : cursors[direction]
       : "pointer";
     this.overlay.showCursor(points.viewport);
   };
@@ -473,14 +477,11 @@ class EngineOverlay {
   private activitySignature = "";
   private focusBeforeTextActivity: HTMLElement | null = null;
   private textActivityWasActive = false;
-  private hotspotsRevealed = false;
-  private hoveredHotspot: AvailableHotspot | AvailablePassage | null = null;
+  private currentHUD: HUDPresentation;
+  private hoveredNoun: HUDNounPresentation | null = null;
   private inventoryActionObject: string | null = null;
   private modalKind: "options" | "help" | "save" | "load" | null = null;
   private preferences: PlayerPreferences;
-  private inventoryPage = 0;
-  private inventoryOpen = false;
-  private previousInventoryCount = 0;
   private lineTimer: number | undefined;
   private responseTimer: number | undefined;
   private activeAudio: HTMLAudioElement | undefined;
@@ -496,6 +497,7 @@ class EngineOverlay {
     private readonly sceneToViewport: (point: Point) => Point,
   ) {
     this.preferences = readPreferences(data.identity);
+    this.currentHUD = core.hud();
     this.root.dataset.fondaleOverlay = "";
     Object.assign(this.root.style, {
       position: "absolute",
@@ -572,14 +574,18 @@ class EngineOverlay {
     this.inventory.dataset.fondaleInventory = "";
     this.inventory.addEventListener("wheel", (event) => {
       event.preventDefault();
-      this.changeInventoryPage(event.deltaY > 0 ? 1 : -1);
+      this.inputHUD({ type: "change-inventory-page", amount: event.deltaY > 0 ? 1 : -1 });
     });
     this.inventoryNav.style.cssText = "display:flex;justify-content:center;gap:4px;pointer-events:auto";
-    const previous = this.modalButton("‹", () => this.changeInventoryPage(-1));
+    const previous = this.modalButton("‹", () => {
+      this.inputHUD({ type: "change-inventory-page", amount: -1 });
+    });
     previous.dataset.fondaleInventoryPrevious = "";
     previous.setAttribute("aria-label", "Previous Inventory page");
     this.styleInventoryControl(previous);
-    const next = this.modalButton("›", () => this.changeInventoryPage(1));
+    const next = this.modalButton("›", () => {
+      this.inputHUD({ type: "change-inventory-page", amount: 1 });
+    });
     next.dataset.fondaleInventoryNext = "";
     next.setAttribute("aria-label", "Next Inventory page");
     this.styleInventoryControl(next);
@@ -615,12 +621,12 @@ class EngineOverlay {
     bagBand.style.cssText = "position:absolute;left:0;right:0;top:3px;height:1px;background:#6e4d16";
     bag.append(bagHandle, bagBand);
     this.inventoryTrigger.append(bag);
-    this.inventoryTrigger.addEventListener("click", () => this.setInventoryOpen(!this.inventoryOpen));
+    this.inventoryTrigger.addEventListener("click", () => this.inputHUD({ type: "toggle-inventory" }));
     this.inventoryScrim.type = "button";
     this.inventoryScrim.dataset.fondaleInventoryScrim = "";
     this.inventoryScrim.setAttribute("aria-label", "Close Inventory");
     this.inventoryScrim.style.cssText = "position:absolute;display:none;z-index:19;inset:0;padding:0;pointer-events:auto;background:rgba(2,6,9,.32);border:0";
-    this.inventoryScrim.addEventListener("click", () => this.setInventoryOpen(false));
+    this.inventoryScrim.addEventListener("click", () => this.inputHUD({ type: "close-inventory" }));
     this.inventoryPanel.dataset.fondaleInventoryPanel = "";
     this.inventoryPanel.setAttribute("aria-label", "Inventory");
     this.inventoryPanel.setAttribute("role", "dialog");
@@ -648,7 +654,7 @@ class EngineOverlay {
     inventoryHeader.style.cssText = "display:flex;align-items:center;justify-content:space-between";
     const inventoryTitle = document.createElement("strong");
     inventoryTitle.textContent = "Inventory";
-    const closeInventory = this.modalButton("×", () => this.setInventoryOpen(false));
+    const closeInventory = this.modalButton("×", () => this.inputHUD({ type: "close-inventory" }));
     closeInventory.dataset.fondaleInventoryClose = "";
     closeInventory.setAttribute("aria-label", "Close Inventory");
     this.styleInventoryControl(closeInventory);
@@ -695,11 +701,14 @@ class EngineOverlay {
       "padding:3px",
     ].join(";");
     this.reveal.addEventListener("click", () => {
-      this.hotspotsRevealed = !this.hotspotsRevealed;
-      this.reveal.setAttribute("aria-pressed", String(this.hotspotsRevealed));
-      this.renderRevealedHotspots();
+      this.inputHUD({
+        type: "set-nouns-revealed",
+        revealed: !this.currentHUD.nounsRevealed,
+      });
+      this.reveal.setAttribute("aria-pressed", String(this.currentHUD.nounsRevealed));
+      this.renderRevealedNouns();
     });
-    if (data.commandLexicon) this.reveal.style.display = "none";
+    if (this.currentHUD.nounRevealControl === "keyboard") this.reveal.style.display = "none";
     this.revealedHotspots.dataset.fondaleRevealedHotspots = "";
     this.revealedHotspots.setAttribute(
       "viewBox",
@@ -725,7 +734,7 @@ class EngineOverlay {
   }
 
   blocksWorldInput(): boolean {
-    return this.modalKind !== null || this.inventoryOpen;
+    return this.modalKind !== null || this.currentHUD.inventory.open;
   }
 
   render(state: GameState, effects: readonly CoreEffect[]): void {
@@ -739,8 +748,13 @@ class EngineOverlay {
         this.speechDuration(latestResponse.text),
       );
     }
+    const inventoryWasOpen = this.currentHUD.inventory.open;
+    this.currentHUD = this.core.hud();
+    if (inventoryWasOpen && !this.currentHUD.inventory.open) {
+      this.frame.focus({ preventScroll: true });
+    }
     this.renderInventory();
-    if (!this.hoveredHotspot && !this.inventoryActionObject) {
+    if (!this.hoveredNoun && !this.inventoryActionObject) {
       this.action.style.display = "none";
     }
     if (state.activity?.type === "line" || state.activity?.type === "sequence") {
@@ -750,49 +764,38 @@ class EngineOverlay {
     const line = this.activity.querySelector<HTMLElement>("[data-fondale-line]");
     const speaker = line?.dataset.fondaleSpeaker;
     if (line && speaker) this.positionSpeech(line, state, speaker);
-    const choosing = state.activity?.type === "sequence" && state.activity.active?.kind === "choice";
-    this.inventoryTrigger.style.visibility = choosing ? "hidden" : "visible";
-    if (choosing && this.inventoryOpen) this.setInventoryOpen(false);
-    if (this.hotspotsRevealed) this.renderRevealedHotspots();
+    if (this.currentHUD.nounsRevealed) this.renderRevealedNouns();
   }
 
-  showAction(hotspot: AvailableHotspot | AvailablePassage | undefined): void {
-    const state = this.core.snapshot();
+  showAction(noun: HUDNounPresentation | undefined): void {
     this.inventoryActionObject = null;
-    if (!hotspot) {
-      this.hoveredHotspot = null;
+    if (!noun) {
+      this.hoveredNoun = null;
       this.dismissedActionSignature = null;
       this.action.style.display = "none";
       return;
     }
-    const signature = this.actionSignature(hotspot);
+    const signature = this.actionSignature(noun);
     if (signature === this.dismissedActionSignature) {
-      this.hoveredHotspot = null;
+      this.hoveredNoun = null;
       this.action.style.display = "none";
       return;
     }
     this.dismissedActionSignature = null;
-    this.hoveredHotspot = hotspot;
+    this.hoveredNoun = noun;
     this.action.style.zIndex = "8";
-    const firstNoun = state.command.firstNoun
-      ? this.core.inventory().entries.find(({ object }) => object === state.command.firstNoun?.object)
-      : undefined;
-    const primaryVerb = firstNoun ? hotspot.objectVerb ?? "use" : hotspot.preferredVerb;
-    const secondaryVerb = firstNoun ? hotspot.preferredVerb : hotspot.secondaryVerb;
-    this.setActionText(this.primaryAction, this.commandPhrase(primaryVerb, hotspot.label, firstNoun?.label));
-    const secondary = secondaryVerb && secondaryVerb !== primaryVerb
-      ? this.commandPhrase(secondaryVerb, hotspot.label)
-      : "";
+    this.setActionText(this.primaryAction, noun.primary.text);
+    const secondary = noun.secondary?.text ?? "";
     this.setActionText(this.secondaryAction, secondary);
     this.secondaryAction.style.display = secondary ? "flex" : "none";
     this.action.style.display = "block";
   }
 
   dismissAction(): void {
-    if (this.hoveredHotspot) {
-      this.dismissedActionSignature = this.actionSignature(this.hoveredHotspot);
+    if (this.hoveredNoun) {
+      this.dismissedActionSignature = this.actionSignature(this.hoveredNoun);
     }
-    this.hoveredHotspot = null;
+    this.hoveredNoun = null;
     this.inventoryActionObject = null;
     this.action.style.display = "none";
   }
@@ -803,6 +806,21 @@ class EngineOverlay {
     this.response.textContent = "";
     this.response.style.display = "none";
     return true;
+  }
+
+  inputHUD(input: HUDInput): void {
+    const result = this.core.hudInput(input);
+    this.currentHUD = this.core.hud();
+    this.inventorySignature = "";
+    this.renderInventory();
+    if (input.type !== "set-nouns-revealed" && input.type !== "change-inventory-page") {
+      this.dismissAction();
+    }
+    if (this.response.textContent) this.positionLowerText(this.response, "command-response");
+    const narration = this.activity.querySelector<HTMLElement>("[data-fondale-narration]");
+    if (narration) this.positionLowerText(narration, "narration");
+    if (result.focus === "inventory") this.inventoryPanel.focus({ preventScroll: true });
+    else if (result.focus === "frame") this.frame.focus({ preventScroll: true });
   }
 
   showCursor(point: Point): void {
@@ -823,19 +841,20 @@ class EngineOverlay {
   }
 
   private renderInventory(): void {
-    const presentation = this.core.inventory();
-    if (presentation.entries.length > this.previousInventoryCount) {
-      this.inventoryPage = Math.floor((presentation.entries.length - 1) / 8);
-    }
-    this.previousInventoryCount = presentation.entries.length;
-    const maximumPage = Math.max(0, Math.ceil(presentation.entries.length / 8) - 1);
-    this.inventoryPage = Math.min(this.inventoryPage, maximumPage);
-    const signature = JSON.stringify([presentation, this.inventoryPage, this.inventoryOpen]);
+    const presentation = this.currentHUD.inventory;
+    const signature = JSON.stringify(presentation);
     if (signature === this.inventorySignature) return;
     this.inventorySignature = signature;
+    this.inventoryPanel.style.display = presentation.open ? "grid" : "none";
+    this.inventoryScrim.style.display = presentation.open ? "block" : "none";
+    this.inventoryTrigger.setAttribute("aria-expanded", String(presentation.open));
+    this.inventoryTrigger.setAttribute(
+      "aria-label",
+      presentation.open ? "Close Inventory" : "Open Inventory",
+    );
+    this.inventoryTrigger.style.visibility = presentation.triggerVisible ? "visible" : "hidden";
     this.inventory.replaceChildren();
-    const visibleEntries = presentation.entries.slice(this.inventoryPage * 8, this.inventoryPage * 8 + 8);
-    for (const entry of visibleEntries) {
+    for (const entry of presentation.entries) {
       const { object: objectId, selected } = entry;
       const button = document.createElement("button");
       button.type = "button";
@@ -879,8 +898,7 @@ class EngineOverlay {
       }
       button.addEventListener("click", () => {
         this.dismissAction();
-        this.core.input({ type: "contextual-object", object: objectId, action: "primary" });
-        this.setInventoryOpen(false);
+        this.inputHUD({ type: "activate-inventory", object: objectId, action: "primary" });
       });
       button.addEventListener("pointermove", (event) => {
         this.showInventoryAction(entry, button, event);
@@ -892,14 +910,14 @@ class EngineOverlay {
       button.addEventListener("blur", () => this.dismissAction());
       button.addEventListener("contextmenu", (event) => {
         event.preventDefault();
-        if (!entry.secondaryVerb) return;
+        if (!entry.secondary) return;
         this.dismissAction();
-        this.core.input({ type: "contextual-object", object: objectId, action: "secondary" });
+        this.inputHUD({ type: "activate-inventory", object: objectId, action: "secondary" });
       });
       this.inventory.append(button);
     }
-    if (this.data.commandLexicon) {
-      for (let index = visibleEntries.length; index < 8; index += 1) {
+    if (presentation.fillEmptySlots) {
+      for (let index = 0; index < presentation.emptySlots; index += 1) {
         const empty = document.createElement("span");
         empty.dataset.fondaleInventorySlot = "empty";
         empty.setAttribute("aria-hidden", "true");
@@ -911,27 +929,11 @@ class EngineOverlay {
       }
       const previous = this.inventoryNav.querySelector<HTMLButtonElement>("[data-fondale-inventory-previous]")!;
       const next = this.inventoryNav.querySelector<HTMLButtonElement>("[data-fondale-inventory-next]")!;
-      previous.disabled = this.inventoryPage === 0;
-      next.disabled = this.inventoryPage >= maximumPage;
+      previous.disabled = !presentation.canGoPrevious;
+      next.disabled = !presentation.canGoNext;
       previous.style.opacity = previous.disabled ? "0.35" : "1";
       next.style.opacity = next.disabled ? "0.35" : "1";
     }
-  }
-
-  private setInventoryOpen(open: boolean): void {
-    this.inventoryOpen = open;
-    this.inventoryPanel.style.display = open ? "grid" : "none";
-    this.inventoryScrim.style.display = open ? "block" : "none";
-    this.inventoryTrigger.setAttribute("aria-expanded", String(open));
-    this.inventoryTrigger.setAttribute("aria-label", open ? "Close Inventory" : "Open Inventory");
-    this.inventorySignature = "";
-    this.dismissAction();
-    this.action.style.zIndex = "8";
-    if (this.response.textContent) this.positionLowerText(this.response, "command-response");
-    const narration = this.activity.querySelector<HTMLElement>("[data-fondale-narration]");
-    if (narration) this.positionLowerText(narration, "narration");
-    if (open) this.inventoryPanel.focus({ preventScroll: true });
-    else this.frame.focus({ preventScroll: true });
   }
 
   private setActionText(element: HTMLElement, text: string): void {
@@ -939,20 +941,15 @@ class EngineOverlay {
   }
 
   private showInventoryAction(
-    noun: InventoryPresentationEntry,
+    noun: HUDInventoryEntryPresentation,
     button: HTMLButtonElement,
     event?: PointerEvent,
   ): void {
-    const selectionPattern = noun.selected
-      ? this.data.commandLexicon!.inventory.deselect
-      : this.data.commandLexicon!.inventory.select;
-    this.setActionText(this.primaryAction, selectionPattern.replace("{noun}", noun.label));
-    const secondary = noun.secondaryVerb
-      ? this.commandPhrase(noun.secondaryVerb, noun.label)
-      : "";
+    this.setActionText(this.primaryAction, noun.primary.text);
+    const secondary = noun.secondary?.text ?? "";
     this.setActionText(this.secondaryAction, secondary);
     this.secondaryAction.style.display = secondary ? "flex" : "none";
-    this.hoveredHotspot = null;
+    this.hoveredNoun = null;
     this.inventoryActionObject = noun.object;
     this.dismissedActionSignature = null;
     this.action.style.zIndex = "21";
@@ -967,27 +964,6 @@ class EngineOverlay {
       x: (clientX - frameBounds.left) / scale,
       y: (clientY - frameBounds.top) / scale,
     });
-  }
-
-  private commandPhrase(verb: Verb | undefined, noun: string, firstNoun?: string): string {
-    if (!verb || verb === "walk-to") return noun;
-    const label = this.data.commandLexicon?.verbs[verb];
-    if (!label) return noun;
-    if (firstNoun && (verb === "give" || verb === "use")) {
-      return (this.data.commandLexicon?.patterns[verb] ?? `${label} {first} {second}`)
-        .replace("{verb}", label)
-        .replace("{first}", firstNoun)
-        .replace("{second}", noun);
-    }
-    return (this.data.commandLexicon?.patterns.unary ?? "{verb} {noun}")
-      .replace("{verb}", label)
-      .replace("{noun}", noun);
-  }
-
-  private changeInventoryPage(amount: number): void {
-    const maximumPage = Math.max(0, Math.ceil(this.core.inventory().entries.length / 8) - 1);
-    this.inventoryPage = Math.max(0, Math.min(maximumPage, this.inventoryPage + amount));
-    this.inventorySignature = "";
   }
 
   private renderActivity(state: GameState): void {
@@ -1178,7 +1154,9 @@ class EngineOverlay {
       ? Math.min(this.data.logicalResolution.width - 40, Math.round(compactWidth * 1.6))
       : compactWidth;
     const drawerLeft = this.data.logicalResolution.width - 6 - 158;
-    const availableRight = this.inventoryOpen ? drawerLeft - 6 : this.data.logicalResolution.width;
+    const availableRight = this.currentHUD.inventory.open
+      ? drawerLeft - 6
+      : this.data.logicalResolution.width;
     element.dataset.fondalePresentation = presentation;
     delete element.dataset.fondaleSpeaker;
     element.style.position = "absolute";
@@ -1202,38 +1180,35 @@ class EngineOverlay {
     element.style.textShadow = "1px 1px #000,-1px -1px #000";
     element.style.left = `${Math.max(2, (availableRight - Math.min(width, availableRight - 4)) / 2)}px`;
     element.style.top = `${Math.max(4, this.data.logicalResolution.height - element.offsetHeight - 4)}px`;
-    element.style.zIndex = this.inventoryOpen ? "21" : "7";
+    element.style.zIndex = this.currentHUD.inventory.open ? "21" : "7";
   }
 
-  private renderRevealedHotspots(): void {
-    this.revealedHotspots.style.display = this.hotspotsRevealed ? "block" : "none";
+  private renderRevealedNouns(): void {
+    this.revealedHotspots.style.display = this.currentHUD.nounsRevealed ? "block" : "none";
     this.revealedHotspots.replaceChildren();
-    if (!this.hotspotsRevealed) return;
-    for (const hotspot of this.core.availableHotspots()) {
-      const area = hotspot.area.map(this.sceneToViewport);
+    if (!this.currentHUD.nounsRevealed) return;
+    for (const noun of this.currentHUD.nouns) {
+      const area = noun.area.map(this.sceneToViewport);
       const polygon = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
-      polygon.dataset.fondaleRevealedHotspot = String(hotspot.index);
+      if (noun.target.kind === "hotspot") {
+        polygon.dataset.fondaleRevealedHotspot = String(noun.target.index);
+      } else {
+        polygon.dataset.fondaleRevealedPassage = String(noun.target.index);
+      }
       polygon.setAttribute("points", area.map(({ x, y }) => `${x},${y}`).join(" "));
-      polygon.setAttribute("fill", "rgba(53,167,255,.22)");
-      polygon.setAttribute("stroke", "#ffffff");
+      polygon.setAttribute(
+        "fill",
+        noun.target.kind === "hotspot" ? "rgba(53,167,255,.22)" : "rgba(242,173,98,.18)",
+      );
+      polygon.setAttribute("stroke", noun.target.kind === "hotspot" ? "#ffffff" : "#f2ad62");
       polygon.setAttribute("stroke-width", "1");
       const title = document.createElementNS("http://www.w3.org/2000/svg", "title");
-      title.textContent = hotspot.label;
+      title.textContent = noun.label;
       polygon.append(title);
-      this.revealedHotspots.append(polygon, revealLabel(area, hotspot.label, "hotspot"));
-    }
-    for (const passage of this.core.availablePassages()) {
-      const area = passage.area.map(this.sceneToViewport);
-      const polygon = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
-      polygon.dataset.fondaleRevealedPassage = String(passage.index);
-      polygon.setAttribute("points", area.map(({ x, y }) => `${x},${y}`).join(" "));
-      polygon.setAttribute("fill", "rgba(242,173,98,.18)");
-      polygon.setAttribute("stroke", "#f2ad62");
-      polygon.setAttribute("stroke-width", "1");
-      const title = document.createElementNS("http://www.w3.org/2000/svg", "title");
-      title.textContent = passage.label;
-      polygon.append(title);
-      this.revealedHotspots.append(polygon, revealLabel(area, passage.label, "passage"));
+      this.revealedHotspots.append(
+        polygon,
+        revealLabel(area, noun.label, noun.target.kind),
+      );
     }
   }
 
@@ -1305,33 +1280,33 @@ class EngineOverlay {
       event.preventDefault();
       return;
     }
-    if (event.key.toLowerCase() === "i" && this.data.commandLexicon) {
+    if (event.key.toLowerCase() === "i" && this.currentHUD.inventory.keyboardShortcutAvailable) {
       event.preventDefault();
-      this.setInventoryOpen(!this.inventoryOpen);
+      this.inputHUD({ type: "toggle-inventory" });
       return;
     }
-    if (event.key === "Tab" && this.data.commandLexicon) {
+    if (event.key === "Tab" && this.currentHUD.nounRevealControl === "keyboard") {
       event.preventDefault();
-      this.hotspotsRevealed = true;
-      this.renderRevealedHotspots();
+      this.inputHUD({ type: "set-nouns-revealed", revealed: true });
+      this.renderRevealedNouns();
       return;
     }
     if (event.key === "Escape") {
-      if (this.inventoryOpen) this.setInventoryOpen(false);
+      if (this.currentHUD.inventory.open) this.inputHUD({ type: "close-inventory" });
       else this.core.input({ type: "escape" });
     }
   };
 
   private readonly onKeyUp = (event: KeyboardEvent): void => {
-    if (event.key !== "Tab" || !this.data.commandLexicon) return;
+    if (event.key !== "Tab" || this.currentHUD.nounRevealControl !== "keyboard") return;
     event.preventDefault();
-    this.hotspotsRevealed = false;
-    this.renderRevealedHotspots();
+    this.inputHUD({ type: "set-nouns-revealed", revealed: false });
+    this.renderRevealedNouns();
   };
 
   private openModal(kind: EngineOverlay["modalKind"]): void {
     this.clearLineTimer();
-    if (kind && this.inventoryOpen) this.setInventoryOpen(false);
+    if (kind && this.currentHUD.inventory.open) this.inputHUD({ type: "close-inventory" });
     this.modalKind = kind;
     this.modal.replaceChildren();
     this.modal.style.display = kind ? "block" : "none";
@@ -1492,8 +1467,8 @@ class EngineOverlay {
     return Math.max(minimumDuration, text.length * millisecondsPerCharacter);
   }
 
-  private actionSignature(hotspot: AvailableHotspot | AvailablePassage): string {
-    return `${"direction" in hotspot ? "passage" : "hotspot"}:${hotspot.index}`;
+  private actionSignature(noun: HUDNounPresentation): string {
+    return `${noun.target.kind}:${noun.target.index}`;
   }
 
   private playLineAudio(reference: URL | string): number {
@@ -1536,6 +1511,7 @@ function revealLabel(
   text.textContent = label;
   return text;
 }
+
 
 const defaultPreferences: PlayerPreferences = {
   textSpeed: "normal",

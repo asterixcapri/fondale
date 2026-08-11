@@ -646,10 +646,12 @@ test("Inventory contextual input selects an Object or executes its secondary Ver
 
 test("one Object Noun updates its conditional label in the world and Inventory", () => {
   const session = createTestSession(projectFixture());
-  expect(session.availableHotspots().find(({ index }) => index === 1)?.label).toBe("Dirty key");
+  expect(session.hud().nouns.find(({ target }) =>
+    target.kind === "hotspot" && target.index === 1
+  )?.label).toBe("Dirty key");
 
   interact(session, 1);
-  expect(session.inventory().entries).toContainEqual(expect.objectContaining({
+  expect(session.hud().inventory.entries).toContainEqual(expect.objectContaining({
     object: "key",
     label: "Dirty key",
   }));
@@ -657,13 +659,15 @@ test("one Object Noun updates its conditional label in the world and Inventory",
   session.input({ type: "contextual-object", object: "key", action: "secondary" });
   session.steps();
   expect(session.snapshot().variables.keyCleaned).toBe(true);
-  expect(session.inventory().entries).toContainEqual(expect.objectContaining({
+  expect(session.hud().inventory.entries).toContainEqual(expect.objectContaining({
     object: "key",
     label: "Clean key",
   }));
 
   useKeyOn(session, 2);
-  expect(session.availableHotspots().find(({ index }) => index === 1)?.label).toBe("Clean key");
+  expect(session.hud().nouns.find(({ target }) =>
+    target.kind === "hotspot" && target.index === 1
+  )?.label).toBe("Clean key");
 });
 
 test("a declarative Command commits operations and an enabled passage transitions atomically", () => {

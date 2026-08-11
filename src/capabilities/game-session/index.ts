@@ -2,8 +2,6 @@ import { AuthoringError, type AuthoringDiagnostic } from "../game-project";
 import {
   createInteraction,
   conditionMatchesState,
-  conditionalOptionalValue,
-  conditionalValue,
   isInventoryOperation,
   type CommandState,
   type CommandResponse,
@@ -12,11 +10,17 @@ import {
   type InteractionCondition,
   type InteractionInput,
   type InteractionTargetView,
-  type InventoryPresentation,
   type PlayerIntent,
   type PlayerIntentState,
-  type Verb,
 } from "../interaction";
+import {
+  createHUD,
+  type HUDInput,
+  type HUDInputResult,
+  type HUDNounView,
+  type HUDPresentation,
+  type HUDPresentationContext,
+} from "../hud";
 import {
   getGameProjectData,
   type GameOperation,
@@ -95,25 +99,6 @@ export type CoreEffect =
 
 export type CoreWorldTarget = WorldTarget;
 
-export interface AvailableHotspot {
-  readonly index: number;
-  readonly area: readonly Point[];
-  readonly label: string;
-  readonly preferredVerb?: Verb;
-  readonly secondaryVerb?: Verb;
-  readonly objectVerb?: Verb;
-}
-
-export interface AvailablePassage {
-  readonly index: number;
-  readonly area: readonly Point[];
-  readonly label: string;
-  readonly preferredVerb: Verb;
-  readonly secondaryVerb?: Verb;
-  readonly objectVerb?: Verb;
-  readonly direction: "left" | "right" | "up" | "down" | "enter";
-}
-
 /** Internal deterministic seam shared by browser and tests. */
 export interface CoreSession {
   input(input: CoreInput): void;
@@ -125,9 +110,8 @@ export interface CoreSession {
   lifecycle(): "running" | "failed" | "stopped";
   diagnostics(): readonly AuthoringDiagnostic[];
   hitTest(point: Point): CoreWorldTarget | null;
-  availableHotspots(): readonly AvailableHotspot[];
-  inventory(): InventoryPresentation;
-  availablePassages(): readonly AvailablePassage[];
+  hud(): HUDPresentation;
+  hudInput(input: HUDInput): HUDInputResult;
   world(): WorldPresentation;
   camera(): CameraPresentation;
   sequence(): SequencePresentation | null;
@@ -151,6 +135,7 @@ export function createCoreSession(
     canPlaceObject: (scene, point) => world.canPlaceObject(scene, point),
     objectHasAppearance: (object, appearance) => objectHasAppearance(data, object, appearance),
   });
+  const hud = createHUD({ commandLexicon: data.commandLexicon });
   const sequenceCapability = createSequence(data.sequences);
   const save = createSave(project);
   let state = restored
@@ -190,41 +175,14 @@ export function createCoreSession(
     hitTest(point) {
       return world.hitTest(state, point, conditionMatches);
     },
-    availableHotspots() {
-      return world.hotspots(state, conditionMatches).flatMap(({ definition: hotspot, index }) => {
-        const noun = interaction.nounForHotspot(state.currentScene, hotspot);
-        if (!noun) return [];
-        const label = conditionalValue(noun.labels, state).text;
-        const preferredVerb = conditionalValue(noun.preferredVerbs, state).verb;
-        const secondaryVerb = conditionalOptionalValue(noun.secondaryVerbs, state)?.verb;
-        const objectVerb = conditionalOptionalValue(noun.objectVerbs, state)?.verb;
-        return [{
-          index,
-          area: hotspot.area.map((point) => ({ ...point })),
-          label,
-          ...(preferredVerb ? { preferredVerb } : {}),
-          ...(secondaryVerb ? { secondaryVerb } : {}),
-          ...(objectVerb ? { objectVerb } : {}),
-        }];
-      });
+    hud() {
+      return hud.presentation(hudContext());
     },
-    inventory() {
-      return interaction.inventory(state);
-    },
-    availablePassages() {
-      return world.passages(state, conditionMatches).map(({ definition: passage, index }) => {
-        const secondaryVerb = conditionalOptionalValue(passage.noun.secondaryVerbs, state)?.verb;
-        const objectVerb = conditionalOptionalValue(passage.noun.objectVerbs, state)?.verb;
-        return {
-          index,
-          area: passage.area.map((point) => ({ ...point })),
-          label: conditionalValue(passage.noun.labels, state).text,
-          preferredVerb: conditionalValue(passage.noun.preferredVerbs, state).verb,
-          ...(secondaryVerb ? { secondaryVerb } : {}),
-          ...(objectVerb ? { objectVerb } : {}),
-          direction: passage.direction,
-        };
-      });
+    hudInput(input) {
+      if (status !== "running") return { focus: null };
+      const result = hud.input(input, hudContext());
+      if (result.interaction) inputs.push(structuredClone(result.interaction));
+      return result;
     },
     world() {
       return world.presentation(state, (scenery) => directedSubjectPoint(
@@ -247,6 +205,46 @@ export function createCoreSession(
 
   function assertRunning(): void {
     if (status !== "running") throw new Error(`Game Session is ${status}.`);
+  }
+
+  function hudContext(): HUDPresentationContext {
+    const nouns: HUDNounView[] = world.hotspots(state, conditionMatches)
+      .flatMap(({ definition: hotspot, index }) => {
+        const noun = interaction.nounForHotspot(state.currentScene, hotspot);
+        if (!noun) return [];
+        return [nounView(
+          { kind: "hotspot", index },
+          hotspot.area,
+          noun,
+        )];
+      });
+    nouns.push(...world.passages(state, conditionMatches).map(({ definition: passage, index }) => ({
+      ...nounView(
+        { kind: "passage", index },
+        passage.area,
+        passage.noun,
+      ),
+      direction: passage.direction,
+    })));
+    return {
+      state,
+      nouns,
+      inventory: interaction.inventory(state),
+      inventorySuspended:
+        state.activity?.type === "sequence" && state.activity.active?.kind === "choice",
+    };
+  }
+
+  function nounView(
+    target: WorldTarget,
+    area: readonly Point[],
+    noun: HUDNounView["noun"],
+  ): HUDNounView {
+    return {
+      target,
+      area: area.map((point) => ({ ...point })),
+      noun,
+    };
   }
 
   function step(): void {
