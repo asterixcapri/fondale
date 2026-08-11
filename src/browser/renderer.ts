@@ -32,10 +32,16 @@ import {
 } from "../capabilities/world";
 import type { GameProjectData } from "../capabilities/game-project";
 import type {
+  HUDNarrativePresentation,
+  HUDAdapterFacts,
   HUDInput,
   HUDInventoryEntryPresentation,
+  HUDModalKind,
   HUDNounPresentation,
+  PlayerPreferences,
   HUDPresentation,
+  HUDCommandResponsePresentation,
+  HUDSaveSlotFacts,
 } from "../capabilities/hud";
 import type { AuthoringDiagnostic } from "../capabilities/game-project";
 import type { SaveSnapshot } from "../capabilities/save";
@@ -58,12 +64,10 @@ const commandResponseFontSize = "8px";
 const speechFontSize = "9px";
 const speechTextShadow = "-2px -2px #000,0 -2px #000,2px -2px #000,-2px 0 #000,2px 0 #000,-2px 2px #000,0 2px #000,2px 2px #000,-1px -1px #000,1px -1px #000,-1px 1px #000,1px 1px #000,3px 3px #000";
 
-export interface BrowserSaveSlot {
+export interface BrowserSaveSlot extends HUDSaveSlotFacts {
   readonly name: string;
   readonly savedAt: string;
   readonly snapshot: SaveSnapshot | unknown;
-  readonly compatible: boolean;
-  readonly diagnostics: readonly AuthoringDiagnostic[];
 }
 
 export interface BrowserSessionControls {
@@ -331,17 +335,11 @@ export class BrowserRenderer {
 
   private readonly onPointerUp = (event: PointerEvent): void => {
     if (this.overlay.blocksWorldInput()) return;
-    const activity = this.core.snapshot().activity;
+    const hud = this.core.hud();
     if (event.button === 1) {
-      if (activity?.type === "line") {
+      if (hud.narrative?.kind === "line" || hud.narrative?.kind === "narration") {
         event.preventDefault();
-        this.core.input({ type: "advance-line" });
-      } else if (
-        activity?.type === "sequence" &&
-        (activity.active?.kind === "line" || activity.active?.kind === "narration")
-      ) {
-        event.preventDefault();
-        this.core.input({ type: "advance-sequence" });
+        this.overlay.inputHUD({ type: "advance-activity" });
       } else if (this.overlay.dismissResponse()) {
         event.preventDefault();
       }
@@ -350,7 +348,7 @@ export class BrowserRenderer {
     if (event.button !== 0) return;
     this.frame.focus({ preventScroll: true });
     const { scene: point } = this.pointerPoints(event);
-    if (["line", "sequence"].includes(this.core.snapshot().activity?.type ?? "")) return;
+    if (hud.narrative || hud.sequenceActive) return;
     const target = this.core.hitTest(point);
     if (target?.kind === "hotspot") {
       this.overlay.dismissAction();
@@ -364,10 +362,8 @@ export class BrowserRenderer {
   private readonly onContextMenu = (event: MouseEvent): void => {
     event.preventDefault();
     this.frame.focus({ preventScroll: true });
-    if (
-      this.overlay.blocksWorldInput() ||
-      ["line", "sequence"].includes(this.core.snapshot().activity?.type ?? "")
-    ) return;
+    const hud = this.core.hud();
+    if (this.worldInputBlocked(hud)) return;
     const { scene: point } = this.pointerPoints(event);
     const target = this.core.hitTest(point);
     const noun = target
@@ -385,10 +381,8 @@ export class BrowserRenderer {
   };
 
   private readonly onDoubleClick = (event: MouseEvent): void => {
-    if (
-      this.overlay.blocksWorldInput() ||
-      ["line", "sequence"].includes(this.core.snapshot().activity?.type ?? "")
-    ) return;
+    const hud = this.core.hud();
+    if (this.worldInputBlocked(hud)) return;
     const { scene: point } = this.pointerPoints(event);
     const target = this.core.hitTest(point);
     if (target?.kind === "passage") {
@@ -399,10 +393,8 @@ export class BrowserRenderer {
   };
 
   private readonly onPointerMove = (event: PointerEvent): void => {
-    if (
-      this.overlay.blocksWorldInput() ||
-      ["line", "sequence"].includes(this.core.snapshot().activity?.type ?? "")
-    ) {
+    const hud = this.core.hud();
+    if (this.worldInputBlocked(hud)) {
       this.overlay.showAction(undefined);
       return;
     }
@@ -430,6 +422,10 @@ export class BrowserRenderer {
     this.overlay.showAction(undefined);
     this.overlay.hideCursor();
   };
+
+  private worldInputBlocked(hud: HUDPresentation): boolean {
+    return this.overlay.blocksWorldInput() || hud.narrative !== null || hud.sequenceActive;
+  }
 
   private pointerPoints(event: Pick<MouseEvent, "clientX" | "clientY">): {
     viewport: Point;
@@ -469,19 +465,17 @@ class EngineOverlay {
   private readonly inventoryTrigger = document.createElement("button");
   private readonly inventoryPanel = document.createElement("aside");
   private readonly inventoryScrim = document.createElement("button");
-  private readonly activity = document.createElement("div");
+  private readonly narrative = document.createElement("div");
   private readonly modal = document.createElement("section");
   private readonly reveal = document.createElement("button");
   private readonly revealedHotspots = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   private inventorySignature = "";
-  private activitySignature = "";
-  private focusBeforeTextActivity: HTMLElement | null = null;
-  private textActivityWasActive = false;
+  private narrativeSignature = "";
+  private focusBeforeNarrative: HTMLElement | null = null;
+  private narrativeWasActive = false;
   private currentHUD: HUDPresentation;
   private hoveredNoun: HUDNounPresentation | null = null;
   private inventoryActionObject: string | null = null;
-  private modalKind: "options" | "help" | "save" | "load" | null = null;
-  private preferences: PlayerPreferences;
   private lineTimer: number | undefined;
   private responseTimer: number | undefined;
   private activeAudio: HTMLAudioElement | undefined;
@@ -496,8 +490,11 @@ class EngineOverlay {
     private readonly characterSilhouetteTop: (character: string) => number | undefined,
     private readonly sceneToViewport: (point: Point) => Point,
   ) {
-    this.preferences = readPreferences(data.identity);
-    this.currentHUD = core.hud();
+    core.hudInput({
+      type: "restore-preferences",
+      value: readPreferences(data.identity),
+    }, this.adapterFacts());
+    this.currentHUD = core.hud(this.adapterFacts());
     this.root.dataset.fondaleOverlay = "";
     Object.assign(this.root.style, {
       position: "absolute",
@@ -660,7 +657,7 @@ class EngineOverlay {
     this.styleInventoryControl(closeInventory);
     inventoryHeader.append(inventoryTitle, closeInventory);
     this.inventoryPanel.append(inventoryHeader, this.inventory, this.inventoryNav);
-    Object.assign(this.activity.style, {
+    Object.assign(this.narrative.style, {
       position: "absolute",
       inset: "0",
       display: "grid",
@@ -724,46 +721,36 @@ class EngineOverlay {
       this.inventoryPanel,
       this.inventoryTrigger,
       this.reveal,
-      this.activity,
+      this.narrative,
       this.modal,
     );
     this.frame.append(this.root);
     this.frame.addEventListener("keydown", this.onKeyDown);
     this.frame.addEventListener("keyup", this.onKeyUp);
-    this.updatePreference({});
+    this.persistPreferences(this.currentHUD.system.preferences);
   }
 
   blocksWorldInput(): boolean {
-    return this.modalKind !== null || this.currentHUD.inventory.open;
+    return this.currentHUD.system.blocksWorldInput;
   }
 
-  render(state: GameState, effects: readonly CoreEffect[]): void {
-    const latestResponse = [...effects].reverse().find(({ type }) => type === "interaction-response");
-    if (latestResponse?.type === "interaction-response") {
-      this.clearResponseTimer();
-      this.response.textContent = latestResponse.text;
-      this.positionLowerText(this.response, "command-response");
-      this.responseTimer = window.setTimeout(
-        () => this.dismissResponse(),
-        this.speechDuration(latestResponse.text),
-      );
-    }
+  render(_state: GameState, _effects: readonly CoreEffect[]): void {
     const inventoryWasOpen = this.currentHUD.inventory.open;
-    this.currentHUD = this.core.hud();
+    const previousResponseId = this.currentHUD.commandResponse?.id ?? null;
+    this.currentHUD = this.core.hud(this.adapterFacts());
     if (inventoryWasOpen && !this.currentHUD.inventory.open) {
       this.frame.focus({ preventScroll: true });
     }
+    this.renderCommandResponse(previousResponseId);
     this.renderInventory();
     if (!this.hoveredNoun && !this.inventoryActionObject) {
       this.action.style.display = "none";
     }
-    if (state.activity?.type === "line" || state.activity?.type === "sequence") {
-      this.dismissResponse();
+    this.renderNarrative();
+    const line = this.narrative.querySelector<HTMLElement>("[data-fondale-line]");
+    if (line && this.currentHUD.narrative?.kind === "line") {
+      this.positionSpeech(line, this.currentHUD.narrative);
     }
-    this.renderActivity(state);
-    const line = this.activity.querySelector<HTMLElement>("[data-fondale-line]");
-    const speaker = line?.dataset.fondaleSpeaker;
-    if (line && speaker) this.positionSpeech(line, state, speaker);
     if (this.currentHUD.nounsRevealed) this.renderRevealedNouns();
   }
 
@@ -801,26 +788,36 @@ class EngineOverlay {
   }
 
   dismissResponse(): boolean {
-    if (!this.response.textContent) return false;
+    if (!this.currentHUD.commandResponse) return false;
     this.clearResponseTimer();
-    this.response.textContent = "";
-    this.response.style.display = "none";
+    this.inputHUD({ type: "dismiss-response" });
     return true;
   }
 
   inputHUD(input: HUDInput): void {
-    const result = this.core.hudInput(input);
-    this.currentHUD = this.core.hud();
+    const previousResponseId = this.currentHUD.commandResponse?.id ?? null;
+    const result = this.core.hudInput(input, this.adapterFacts());
+    if (result.preferences) this.persistPreferences(result.preferences);
+    if (result.adapter?.type === "save") {
+      this.controls.save(result.adapter.name);
+    } else if (result.adapter?.type === "load" && this.controls.load(result.adapter.index).ok) {
+      return;
+    }
+    this.currentHUD = this.core.hud(this.adapterFacts());
     this.inventorySignature = "";
     this.renderInventory();
     if (input.type !== "set-nouns-revealed" && input.type !== "change-inventory-page") {
       this.dismissAction();
     }
-    if (this.response.textContent) this.positionLowerText(this.response, "command-response");
-    const narration = this.activity.querySelector<HTMLElement>("[data-fondale-narration]");
-    if (narration) this.positionLowerText(narration, "narration");
+    this.renderCommandResponse(previousResponseId);
+    this.renderNarrative();
+    if (input.type !== "change-preferences" && input.type !== "restore-preferences") {
+      this.renderModal();
+    }
     if (result.focus === "inventory") this.inventoryPanel.focus({ preventScroll: true });
     else if (result.focus === "frame") this.frame.focus({ preventScroll: true });
+    else if (result.focus === "modal") this.modal.querySelector<HTMLElement>("button,input,select")?.focus({ preventScroll: true });
+    else if (result.focus === "restore") this.frame.focus({ preventScroll: true });
   }
 
   showCursor(point: Point): void {
@@ -966,64 +963,46 @@ class EngineOverlay {
     });
   }
 
-  private renderActivity(state: GameState): void {
-    const activity = state.activity?.type === "sequence" || state.activity?.type === "line"
-      ? state.activity
-      : null;
-    const signature = JSON.stringify(activity);
-    if (signature === this.activitySignature) return;
+  private renderNarrative(): void {
+    const narrative = this.currentHUD.narrative;
+    const signature = narrativeRenderSignature(narrative);
+    if (signature === this.narrativeSignature) return;
     this.clearLineTimer();
-    if (activity && !this.textActivityWasActive) {
-      this.focusBeforeTextActivity =
+    if (narrative && !this.narrativeWasActive) {
+      this.focusBeforeNarrative =
         document.activeElement instanceof HTMLElement && document.activeElement.isConnected
           ? document.activeElement
           : this.frame;
     }
-    this.activitySignature = signature;
-    this.activity.replaceChildren();
-    if (!activity || activity.type === "sequence" && !activity.active) {
-      if (this.textActivityWasActive) {
-        const target = this.focusBeforeTextActivity?.isConnected ? this.focusBeforeTextActivity : this.frame;
+    this.narrativeSignature = signature;
+    this.narrative.replaceChildren();
+    if (!narrative) {
+      if (this.narrativeWasActive) {
+        const target = this.focusBeforeNarrative?.isConnected ? this.focusBeforeNarrative : this.frame;
         target.focus({ preventScroll: true });
       }
-      this.textActivityWasActive = false;
-      this.focusBeforeTextActivity = null;
+      this.narrativeWasActive = false;
+      this.focusBeforeNarrative = null;
       return;
     }
-    this.textActivityWasActive = true;
-    if (activity.type === "line") {
-      this.presentLine(
-        state,
-        activity.line.text,
-        activity.line.character,
-        activity.line.audio,
-        () => this.core.input({ type: "advance-line" }),
-      );
+    this.narrativeWasActive = true;
+    if (narrative.kind === "line") {
+      this.presentLine(narrative);
       return;
     }
-    const presentation = this.core.sequence();
-    if (!presentation) return;
-    if (presentation.kind === "line") {
-      this.presentLine(
-        state,
-        presentation.text,
-        presentation.character,
-        presentation.audio,
-        () => this.core.input({ type: "advance-sequence" }),
-      );
-    } else if (presentation.kind === "narration") {
+    if (narrative.kind === "narration") {
       const narration = document.createElement("div");
       narration.dataset.fondaleNarration = "";
       narration.setAttribute("role", "status");
-      narration.textContent = presentation.text;
-      this.activity.append(narration);
-      this.positionLowerText(narration, "narration");
+      narration.textContent = narrative.text;
+      this.narrative.append(narration);
+      this.positionLowerText(narration, narrative, "narration");
       this.frame.focus({ preventScroll: true });
       this.lineTimer = window.setTimeout(() => {
         this.lineTimer = undefined;
-        if (!this.modalKind) this.core.input({ type: "advance-sequence" });
-      }, this.speechDuration(presentation.text));
-    } else if (presentation.kind === "choice") {
+        if (!this.currentHUD.system.modal) this.inputHUD({ type: "advance-activity" });
+      }, narrative.durationMilliseconds);
+    } else if (narrative.kind === "choice") {
       const list = document.createElement("div");
       list.dataset.fondaleChoice = "";
       list.style.cssText = [
@@ -1035,12 +1014,7 @@ class EngineOverlay {
         "border:0",
         `background:linear-gradient(to top,${colorWithAlpha(this.data.hudTheme?.colors.backing ?? "#071016", 0.65)} 0%,${colorWithAlpha(this.data.hudTheme?.colors.backing ?? "#071016", 0.42)} 62%,transparent 100%)`,
       ].join(";");
-      const playerSpeechColor = (this.data.playerCharacter
-        ? this.data.hudTheme?.speechColors[this.data.playerCharacter]
-        : undefined)
-        ?? this.data.hudTheme?.colors.text
-        ?? "#f4dfb4";
-      presentation.alternatives.forEach((choice, displayIndex) => {
+      narrative.alternatives.forEach((choice) => {
         const button = document.createElement("button");
         button.type = "button";
         button.dataset.fondaleAlternative = String(choice.index);
@@ -1055,7 +1029,7 @@ class EngineOverlay {
           "text-align:left",
           "filter:brightness(1)",
           "transition:filter 80ms linear,transform 80ms linear",
-          `color:${playerSpeechColor}`,
+          `color:${narrative.color}`,
           `font:${speechFontSize}/1.25 ${JSON.stringify(this.data.hudTheme?.font.family ?? "monospace")}`,
           `text-shadow:${speechTextShadow}`,
         ].join(";");
@@ -1073,60 +1047,52 @@ class EngineOverlay {
         button.addEventListener("pointerleave", () => {
           if (document.activeElement !== button) idle();
         });
-        button.textContent = `${displayIndex + 1}. ${choice.text}`;
-        button.addEventListener("click", () => this.core.input({
-          type: "choose",
-          alternative: choice.index,
+        button.textContent = choice.label;
+        button.addEventListener("click", () => this.inputHUD({
+          type: "choose", alternative: choice.index,
         }));
         list.append(button);
       });
-      this.activity.append(list);
+      this.narrative.append(list);
       list.querySelector<HTMLButtonElement>("button")?.focus();
     }
   }
 
-  private presentLine(
-    state: GameState,
-    text: string,
-    speaker: string,
-    audio: URL | string | undefined,
-    advance: () => void,
-  ): void {
-    if (state.characters[speaker]?.scene !== state.currentScene) return;
+  private presentLine(presentation: Extract<HUDNarrativePresentation, { kind: "line" }>): void {
+    if (!presentation.layout) return;
     const line = document.createElement("div");
     line.dataset.fondaleLine = "";
     line.setAttribute("role", "status");
-    line.textContent = text;
-    this.activity.append(line);
-    this.positionSpeech(line, state, speaker);
+    line.textContent = presentation.text;
+    this.narrative.append(line);
+    this.positionSpeech(line, presentation);
     this.frame.focus({ preventScroll: true });
-    const audioDuration = audio ? this.playLineAudio(audio) : 0;
+    const audioDuration = presentation.audio ? this.playLineAudio(presentation.audio) : 0;
     this.lineTimer = window.setTimeout(() => {
       this.lineTimer = undefined;
-      if (!this.modalKind) advance();
-    }, Math.max(this.speechDuration(text), audioDuration));
+      if (!this.currentHUD.system.modal) this.inputHUD({ type: "advance-activity" });
+    }, Math.max(presentation.durationMilliseconds, audioDuration));
   }
 
   private positionSpeech(
     element: HTMLElement,
-    state: GameState,
-    speaker: string,
+    presentation: Extract<HUDNarrativePresentation, { kind: "line" }>,
   ): void {
-    const character = state.characters[speaker]!;
-    const safeBottom = this.data.logicalResolution.height - 4;
+    if (!presentation.layout) return;
+    const { anchor, maxWidth, safeArea } = presentation.layout;
     element.dataset.fondalePresentation = "speech";
-    element.dataset.fondaleSpeaker = speaker;
+    element.dataset.fondaleSpeaker = presentation.speaker;
     element.style.cssText = [
       "position:absolute",
-      `width:${this.data.hudTheme?.maxSpeechWidth ?? 150}px`,
-      `max-width:${this.data.hudTheme?.maxSpeechWidth ?? 150}px`,
+      `width:${maxWidth}px`,
+      `max-width:${maxWidth}px`,
       "white-space:normal",
       "overflow-wrap:anywhere",
-      `max-height:${safeBottom - 4}px`,
+      `max-height:${safeArea.bottom - safeArea.top}px`,
       "overflow-y:auto",
       "text-align:center",
       `font-size:${speechFontSize}`,
-      `color:${this.data.hudTheme?.speechColors[speaker] || this.data.hudTheme?.colors.text || "#f4dfb4"}`,
+      `color:${presentation.color}`,
       "box-sizing:border-box",
       "padding:2px 4px",
       "background:transparent",
@@ -1135,51 +1101,40 @@ class EngineOverlay {
       "box-shadow:none",
       `text-shadow:${speechTextShadow}`,
       "pointer-events:none",
-      `display:${this.preferences.speechText ? "block" : "none"}`,
+      `display:${presentation.visible ? "block" : "none"}`,
     ].join(";");
-    const width = this.data.hudTheme?.maxSpeechWidth ?? 150;
-    const projectedGroundPoint = this.sceneToViewport(character.groundPoint);
-    element.style.left = `${Math.max(2, Math.min(this.data.logicalResolution.width - width - 2, projectedGroundPoint.x - width / 2))}px`;
+    element.style.left = `${Math.max(safeArea.left, Math.min(safeArea.right - maxWidth, anchor.x - maxWidth / 2))}px`;
     const height = element.offsetHeight;
-    const silhouetteTop = this.characterSilhouetteTop(speaker) ?? projectedGroundPoint.y;
-    element.style.top = `${Math.max(4, Math.min(safeBottom - height, silhouetteTop - height - 2))}px`;
+    element.style.top = `${Math.max(safeArea.top, Math.min(safeArea.bottom - height, anchor.y - height - 2))}px`;
   }
 
   private positionLowerText(
     element: HTMLElement,
-    presentation: "command-response" | "narration",
+    presentation: HUDCommandResponsePresentation | Extract<HUDNarrativePresentation, { kind: "narration" }>,
+    kind: "command-response" | "narration",
   ): void {
-    const compactWidth = this.data.hudTheme?.maxSpeechWidth ?? 150;
-    const width = presentation === "narration"
-      ? Math.min(this.data.logicalResolution.width - 40, Math.round(compactWidth * 1.6))
-      : compactWidth;
-    const drawerLeft = this.data.logicalResolution.width - 6 - 158;
-    const availableRight = this.currentHUD.inventory.open
-      ? drawerLeft - 6
-      : this.data.logicalResolution.width;
-    element.dataset.fondalePresentation = presentation;
+    const { maxWidth, availableRight, bottom } = presentation.layout;
+    element.dataset.fondalePresentation = kind;
     delete element.dataset.fondaleSpeaker;
     element.style.position = "absolute";
     element.style.bottom = "auto";
-    element.style.display = this.preferences.speechText ? "block" : "none";
+    element.style.display = presentation.visible ? "block" : "none";
     element.style.boxSizing = "border-box";
-    element.style.width = `${Math.min(width, availableRight - 4)}px`;
-    element.style.maxWidth = `${width}px`;
+    element.style.width = `${Math.min(maxWidth, availableRight - 4)}px`;
+    element.style.maxWidth = `${maxWidth}px`;
     element.style.whiteSpace = "normal";
     element.style.overflowWrap = "anywhere";
     element.style.textAlign = "center";
     element.style.padding = "4px 7px";
-    element.style.fontSize = presentation === "narration" ? speechFontSize : commandResponseFontSize;
-    element.style.color = presentation === "narration"
-      ? this.data.hudTheme?.colors.text ?? "#f4dfb4"
-      : "#fff";
+    element.style.fontSize = kind === "narration" ? speechFontSize : commandResponseFontSize;
+    element.style.color = presentation.color;
     element.style.background = colorWithAlpha(this.data.hudTheme?.colors.backing ?? "#071016", 0.88);
     element.style.border = `1px solid ${this.data.hudTheme?.colors.border ?? "#5c7182"}`;
     element.style.borderRadius = "4px";
     element.style.boxShadow = "0 2px 8px rgba(0,0,0,.72)";
     element.style.textShadow = "1px 1px #000,-1px -1px #000";
-    element.style.left = `${Math.max(2, (availableRight - Math.min(width, availableRight - 4)) / 2)}px`;
-    element.style.top = `${Math.max(4, this.data.logicalResolution.height - element.offsetHeight - 4)}px`;
+    element.style.left = `${Math.max(2, (availableRight - Math.min(maxWidth, availableRight - 4)) / 2)}px`;
+    element.style.top = `${Math.max(4, this.data.logicalResolution.height - element.offsetHeight - bottom)}px`;
     element.style.zIndex = this.currentHUD.inventory.open ? "21" : "7";
   }
 
@@ -1215,7 +1170,7 @@ class EngineOverlay {
   private readonly onKeyDown = (event: KeyboardEvent): void => {
     if (event.key === "F5") {
       event.preventDefault();
-      this.openModal(this.modalKind === "options" ? null : "options");
+      this.openModal(this.currentHUD.system.modal?.kind === "options" ? null : "options");
       return;
     }
     if (event.ctrlKey && event.key.toLowerCase() === "s") {
@@ -1228,42 +1183,37 @@ class EngineOverlay {
       this.openModal("load");
       return;
     }
-    if (this.modalKind) {
+    if (this.currentHUD.system.modal) {
       if (event.key === "Escape") {
         event.preventDefault();
         this.openModal(null);
       }
       return;
     }
-    const state = this.core.snapshot();
-    if (state.activity?.type === "line") {
+    if (event.key === "Escape" && this.currentHUD.sequenceActive) {
+      event.preventDefault();
+      this.inputHUD({ type: "skip-sequence" });
+      return;
+    }
+    const narrative = this.currentHUD.narrative;
+    if (narrative?.kind === "line" || narrative?.kind === "narration") {
       if (event.key === ".") {
         event.preventDefault();
-        this.core.input({ type: "advance-line" });
+        this.inputHUD({ type: "advance-activity" });
       }
       return;
     }
-    if (state.activity?.type === "sequence") {
-      if (
-        event.key === "." &&
-        (state.activity.active?.kind === "line" || state.activity.active?.kind === "narration")
-      ) {
-        event.preventDefault();
-        this.core.input({ type: "advance-sequence" });
-      } else if (state.activity.active?.kind === "choice") {
+    if (narrative?.kind === "choice") {
         const numeric = Number(event.key);
         if (Number.isInteger(numeric) && numeric >= 1 && numeric <= 6) {
-          const alternative = this.core.sequence();
-          const index = alternative?.kind === "choice"
-            ? alternative.alternatives[numeric - 1]?.index
-            : undefined;
+          const index = narrative.alternatives[numeric - 1]?.index;
           if (index !== undefined) {
             event.preventDefault();
-            this.core.input({ type: "choose", alternative: index });
+            this.inputHUD({ type: "choose", alternative: index });
           }
           return;
         }
-        const buttons = [...this.activity.querySelectorAll<HTMLButtonElement>("button")];
+        const buttons = [...this.narrative.querySelectorAll<HTMLButtonElement>("button")];
         const current = Math.max(0, buttons.indexOf(document.activeElement as HTMLButtonElement));
         if (event.key === "ArrowDown" || event.key === "ArrowRight") {
           event.preventDefault();
@@ -1272,8 +1222,6 @@ class EngineOverlay {
           event.preventDefault();
           buttons[(current - 1 + buttons.length) % buttons.length]?.focus();
         }
-      }
-      if (event.key === "Escape") this.core.input({ type: "skip-sequence" });
       return;
     }
     if (event.key === "." && this.dismissResponse()) {
@@ -1304,41 +1252,45 @@ class EngineOverlay {
     this.renderRevealedNouns();
   };
 
-  private openModal(kind: EngineOverlay["modalKind"]): void {
+  private openModal(kind: HUDModalKind | null): void {
     this.clearLineTimer();
-    if (kind && this.currentHUD.inventory.open) this.inputHUD({ type: "close-inventory" });
-    this.modalKind = kind;
-    this.modal.replaceChildren();
-    this.modal.style.display = kind ? "block" : "none";
-    if (!kind) {
-      this.activitySignature = "";
-      this.frame.focus({ preventScroll: true });
-      return;
-    }
-    this.modal.dataset.fondaleModal = kind;
-    const heading = document.createElement("h2");
-    heading.textContent = kind[0]!.toUpperCase() + kind.slice(1);
-    heading.style.cssText = "font:inherit;margin:0 0 6px;color:#58d6d2";
-    this.modal.append(heading);
-    if (kind === "options") this.renderOptions();
-    else if (kind === "help") this.renderHelp();
-    else if (kind === "save") this.renderSave();
-    else this.renderLoad();
+    this.inputHUD(kind ? { type: "open-modal", modal: kind } : { type: "close-modal" });
+    if (!kind) this.narrativeSignature = "";
   }
 
-  private renderOptions(): void {
+  private renderModal(): void {
+    const presentation = this.currentHUD.system.modal;
+    this.modal.replaceChildren();
+    this.modal.style.display = presentation ? "block" : "none";
+    if (!presentation) {
+      delete this.modal.dataset.fondaleModal;
+      return;
+    }
+    this.modal.dataset.fondaleModal = presentation.kind;
+    const heading = document.createElement("h2");
+    heading.textContent = presentation.title;
+    heading.style.cssText = "font:inherit;margin:0 0 6px;color:#58d6d2";
+    this.modal.append(heading);
+    if (presentation.kind === "options") this.renderOptions(presentation.audioAvailable);
+    else if (presentation.kind === "help") this.renderHelp(presentation.text);
+    else if (presentation.kind === "save") this.renderSave(presentation.namePlaceholder);
+    else this.renderLoad(presentation);
+  }
+
+  private renderOptions(audioAvailable: boolean): void {
+    const preferences = this.currentHUD.system.preferences;
     const controls = document.createElement("div");
     controls.style.cssText = "display:grid;grid-template-columns:1fr 1fr;gap:5px";
-    const textSpeed = selectPreference("Text speed", ["slow", "normal", "fast"], this.preferences.textSpeed);
-    const speech = checkboxPreference("Speech text", this.preferences.speechText);
+    const textSpeed = selectPreference("Text speed", ["slow", "normal", "fast"], preferences.textSpeed);
+    const speech = checkboxPreference("Speech text", preferences.speechText);
     controls.append(textSpeed.label, speech.label);
-    if (this.assets.audio.size > 0) {
+    if (audioAvailable) {
       const volume = document.createElement("input");
       volume.type = "range";
       volume.min = "0";
       volume.max = "1";
       volume.step = "0.05";
-      volume.value = String(this.preferences.audioVolume);
+      volume.value = String(preferences.audioVolume);
       volume.setAttribute("aria-label", "Speech volume");
       volume.addEventListener("input", () => {
         this.updatePreference({ audioVolume: Number(volume.value) });
@@ -1351,47 +1303,45 @@ class EngineOverlay {
     this.modal.append(controls, this.modalButton("Help", () => this.openModal("help")), this.modalButton("Save", () => this.openModal("save")), this.modalButton("Load", () => this.openModal("load")));
   }
 
-  private renderHelp(): void {
+  private renderHelp(helpText: string): void {
     const text = document.createElement("p");
     text.dataset.fondaleHelp = "";
-    text.textContent = "Mouse: left main action, right secondary action when shown, middle skip Line or Command Response. Bag or I opens Inventory. Tab reveals Nouns. 1–6 selects a Choice. F5 Options. Ctrl+S Save. Ctrl+L Load. Period skips a Line or Command Response. Escape closes Inventory, deselects an Object, or skips a skippable Sequence.";
+    text.textContent = helpText;
     this.modal.append(text, this.modalButton("Back", () => this.openModal("options")));
   }
 
-  private renderSave(): void {
+  private renderSave(placeholder: string): void {
     const name = document.createElement("input");
     name.dataset.fondaleSaveName = "";
-    name.placeholder = "Save name";
+    name.placeholder = placeholder;
     const save = this.modalButton("Save", () => {
-      this.controls.save(name.value);
-      this.openModal(null);
+      this.inputHUD({ type: "save-slot", name: name.value });
     });
     save.dataset.fondaleSaveConfirm = "";
     this.modal.append(name, save);
     name.focus();
   }
 
-  private renderLoad(): void {
+  private renderLoad(presentation: Extract<NonNullable<HUDPresentation["system"]["modal"]>, { kind: "load" }>): void {
     const list = document.createElement("div");
     list.dataset.fondaleSaveSlots = "";
-    this.controls.slots().forEach((slot, index) => {
-      const button = this.modalButton(slot.name, () => {
-        if (this.controls.load(index).ok) this.openModal(null);
+    presentation.slots.forEach((slot) => {
+      const button = this.modalButton(slot.label, () => {
+        this.inputHUD({ type: "load-slot", index: slot.index });
       });
-      button.dataset.fondaleLoadSlot = String(index);
-      button.disabled = !slot.compatible;
-      if (!slot.compatible) {
-        button.textContent = `${slot.name} — incompatible`;
-        button.title = slot.diagnostics.map(({ message }) => message).join(" ");
+      button.dataset.fondaleLoadSlot = String(slot.index);
+      button.disabled = !slot.enabled;
+      if (!slot.enabled) {
+        button.title = slot.diagnostics.join(" ");
         const diagnostic = document.createElement("p");
-        diagnostic.dataset.fondaleLoadDiagnostic = String(index);
-        diagnostic.textContent = slot.diagnostics.map(({ message }) => message).join(" ");
+        diagnostic.dataset.fondaleLoadDiagnostic = String(slot.index);
+        diagnostic.textContent = slot.diagnostics.join(" ");
         list.append(button, diagnostic);
         return;
       }
       list.append(button);
     });
-    if (!list.hasChildNodes()) list.textContent = "No Save Slots.";
+    if (!list.hasChildNodes()) list.textContent = presentation.emptyText;
     this.modal.append(list);
   }
 
@@ -1438,9 +1388,43 @@ class EngineOverlay {
   }
 
   private updatePreference(change: Partial<PlayerPreferences>): void {
-    this.preferences = { ...this.preferences, ...change };
-    localStorage.setItem(preferencesKey(this.data.identity), JSON.stringify(this.preferences));
-    this.activitySignature = "";
+    this.inputHUD({ type: "change-preferences", change });
+    this.narrativeSignature = "";
+  }
+
+  private persistPreferences(preferences: PlayerPreferences): void {
+    localStorage.setItem(preferencesKey(this.data.identity), JSON.stringify(preferences));
+  }
+
+  private adapterFacts(): HUDAdapterFacts {
+    return {
+      audioAvailable: this.assets.audio.size > 0,
+      saveSlots: this.controls.slots(),
+      speakerSilhouetteTops: Object.fromEntries(
+        Object.keys(this.data.characters).flatMap((character) => {
+          const top = this.characterSilhouetteTop(character);
+          return top === undefined ? [] : [[character, top]];
+        }),
+      ),
+    };
+  }
+
+  private renderCommandResponse(previousId: number | null): void {
+    const presentation = this.currentHUD.commandResponse;
+    if (!presentation) {
+      this.clearResponseTimer();
+      this.response.textContent = "";
+      this.response.style.display = "none";
+      return;
+    }
+    this.response.textContent = presentation.text;
+    this.positionLowerText(this.response, presentation, "command-response");
+    if (previousId === presentation.id) return;
+    this.clearResponseTimer();
+    this.responseTimer = window.setTimeout(
+      () => this.dismissResponse(),
+      presentation.durationMilliseconds,
+    );
   }
 
   private clearLineTimer(): void {
@@ -1455,18 +1439,6 @@ class EngineOverlay {
     this.responseTimer = undefined;
   }
 
-  private speechDuration(text: string): number {
-    const millisecondsPerCharacter = {
-      slow: 130,
-      normal: 80,
-      fast: 25,
-    }[this.preferences.textSpeed];
-    const minimumDuration = { slow: 7_000, normal: 4_000, fast: 600 }[
-      this.preferences.textSpeed
-    ];
-    return Math.max(minimumDuration, text.length * millisecondsPerCharacter);
-  }
-
   private actionSignature(noun: HUDNounPresentation): string {
     return `${noun.target.kind}:${noun.target.index}`;
   }
@@ -1475,17 +1447,11 @@ class EngineOverlay {
     const source = this.assets.audio.get(assetUrl(reference));
     if (!source) return 0;
     source.currentTime = 0;
-    source.volume = this.preferences.audioVolume;
+    source.volume = this.currentHUD.system.preferences.audioVolume;
     this.activeAudio = source;
     void source.play().catch(() => undefined);
     return Number.isFinite(source.duration) ? source.duration * 1_000 : 0;
   }
-}
-
-interface PlayerPreferences {
-  readonly textSpeed: "slow" | "normal" | "fast";
-  readonly speechText: boolean;
-  readonly audioVolume: number;
 }
 
 function revealLabel(
@@ -1519,21 +1485,19 @@ const defaultPreferences: PlayerPreferences = {
   audioVolume: 1,
 };
 
+function narrativeRenderSignature(narrative: HUDNarrativePresentation | null): string {
+  if (narrative?.kind !== "line" || !narrative.layout) return JSON.stringify(narrative);
+  const { anchor: _dynamicAnchor, ...stableLayout } = narrative.layout;
+  return JSON.stringify({ ...narrative, layout: stableLayout });
+}
+
 function preferencesKey(identity: string): string {
   return `fondale.preferences.${identity}`;
 }
 
-function readPreferences(identity: string): PlayerPreferences {
+function readPreferences(identity: string): unknown {
   try {
-    const value = JSON.parse(localStorage.getItem(preferencesKey(identity)) ?? "null") as Partial<PlayerPreferences> | null;
-    if (!value) return defaultPreferences;
-    return {
-      ...defaultPreferences,
-      ...value,
-      audioVolume: typeof value.audioVolume === "number" && value.audioVolume >= 0 && value.audioVolume <= 1
-        ? value.audioVolume
-        : defaultPreferences.audioVolume,
-    };
+    return JSON.parse(localStorage.getItem(preferencesKey(identity)) ?? "null") as unknown;
   } catch {
     return defaultPreferences;
   }

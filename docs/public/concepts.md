@@ -45,6 +45,10 @@ pointer-following Contextual Actions, the
 Inventory trigger and drawer, Choices, Options, Help and Save/Load. A Noun's
 Preferred Verb supplies the primary action, while optional Secondary and
 Selected Object Verbs control the right mouse button and Object-first Commands.
+HUD prepares narrative text, Choice numbering, text timing, speech colour,
+layout intent, Player Preferences and modal transitions once. The browser maps
+those facts to accessible DOM, plays audio, forwards timers and actions, and
+stores preferences and Save Slots without choosing their presentation policy.
 The project-owned HUD Theme may choose local font and cursor assets, colours,
 opacity and speech styling, but cannot rearrange those controls.
 

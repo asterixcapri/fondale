@@ -76,6 +76,17 @@ destinations, Hotspot targets, and Perspective Scale now consistently use the
 `world` owner. World presentation facts are transient and do not add fields to
 Game State or Save Snapshots.
 
+## HUD ownership
+
+HUD now prepares Line, Narration, Choice, Command Response, Inventory and
+system-overlay presentation from resolved capability facts. It also owns text
+timing, speech visibility and colour, Choice numbering, layout intent, Player
+Preference semantics and modal transitions. The browser remains the adapter
+for DOM, focus application, audio playback, timers, localStorage and physical
+input; Save continues to decide whether each stored Save Slot is compatible.
+These internal ownership changes do not alter `HUDTheme`, keyboard shortcuts,
+Save Slot storage, or the Player-visible overlay structure.
+
 ## Authoring Diagnostic attribution
 
 Every `AuthoringDiagnostic` now includes an `owner` identifying the capability

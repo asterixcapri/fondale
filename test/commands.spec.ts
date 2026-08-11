@@ -103,6 +103,25 @@ test("a Command Response follows text speed, leads the HUD type scale, and can b
   await expect(response).toBeHidden();
 });
 
+test("an identical Command Response restarts its HUD-owned timeout", async ({ page }) => {
+  await page.goto("/test/fixtures/commands.html");
+  const frame = page.locator("[data-fondale-frame]");
+  await frame.focus();
+  await page.keyboard.press("F5");
+  await frame.getByLabel("Text speed").selectOption("fast");
+  await page.keyboard.press("Escape");
+
+  const door = await logicalPoint(frame, 230, 110);
+  const response = frame.locator("[aria-live=polite]");
+  await page.mouse.click(door.x, door.y);
+  await expect(response).toHaveText("Un vecchio portone.");
+  await page.waitForTimeout(400);
+  await page.mouse.click(door.x, door.y);
+  await page.waitForTimeout(400);
+  await expect(response).toBeVisible();
+  await expect(response).toBeHidden({ timeout: 1_000 });
+});
+
 test("a selected Inventory Object becomes contextual Use or Give", async ({ page }) => {
   await page.goto("/test/fixtures/commands.html");
   const frame = page.locator("[data-fondale-frame]");
@@ -415,6 +434,32 @@ test("text speed controls automatic Line advancement", async ({ page }) => {
   await page.mouse.click(host.x, host.y);
   await expect(frame.locator("[data-fondale-line]")).toHaveText("Benvenuto.");
   await expect(frame.locator("[data-fondale-choice]")).toBeVisible({ timeout: 2_500 });
+});
+
+test("the browser adapter plays Line audio at the HUD-owned preference volume", async ({ page }) => {
+  await page.addInitScript(() => {
+    HTMLMediaElement.prototype.play = function (this: HTMLMediaElement) {
+      (window as unknown as {
+        __fondalePlayedAudio?: { readonly source: string; readonly volume: number };
+      }).__fondalePlayedAudio = { source: this.currentSrc || this.src, volume: this.volume };
+      return Promise.resolve();
+    };
+  });
+  await page.goto("/test/fixtures/commands.html");
+  const frame = page.locator("[data-fondale-frame]");
+  await frame.focus();
+  await page.keyboard.press("F5");
+  await frame.getByLabel("Speech volume").fill("0.35");
+  await page.keyboard.press("Escape");
+
+  const host = await logicalPoint(frame, 315, 135);
+  await page.mouse.click(host.x, host.y);
+  await expect(frame.locator("[data-fondale-line]")).toHaveText("Benvenuto.");
+  await expect.poll(() => page.evaluate(() =>
+    (window as unknown as {
+      __fondalePlayedAudio?: { readonly source: string; readonly volume: number };
+    }).__fondalePlayedAudio,
+  )).toMatchObject({ volume: 0.35 });
 });
 
 test("Options, Help, named Save Slots, and selected Object restore through shortcuts", async ({ page }) => {

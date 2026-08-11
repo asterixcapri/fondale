@@ -15,6 +15,7 @@ import {
 } from "../interaction";
 import {
   createHUD,
+  type HUDAdapterFacts,
   type HUDInput,
   type HUDInputResult,
   type HUDNounView,
@@ -110,8 +111,8 @@ export interface CoreSession {
   lifecycle(): "running" | "failed" | "stopped";
   diagnostics(): readonly AuthoringDiagnostic[];
   hitTest(point: Point): CoreWorldTarget | null;
-  hud(): HUDPresentation;
-  hudInput(input: HUDInput): HUDInputResult;
+  hud(facts?: HUDAdapterFacts): HUDPresentation;
+  hudInput(input: HUDInput, facts?: HUDAdapterFacts): HUDInputResult;
   world(): WorldPresentation;
   camera(): CameraPresentation;
   sequence(): SequencePresentation | null;
@@ -135,7 +136,12 @@ export function createCoreSession(
     canPlaceObject: (scene, point) => world.canPlaceObject(scene, point),
     objectHasAppearance: (object, appearance) => objectHasAppearance(data, object, appearance),
   });
-  const hud = createHUD({ commandLexicon: data.commandLexicon });
+  const hud = createHUD({
+    commandLexicon: data.commandLexicon,
+    logicalResolution: data.logicalResolution,
+    playerCharacter: data.playerCharacter,
+    theme: data.hudTheme,
+  });
   const sequenceCapability = createSequence(data.sequences);
   const save = createSave(project);
   let state = restored
@@ -175,13 +181,14 @@ export function createCoreSession(
     hitTest(point) {
       return world.hitTest(state, point, conditionMatches);
     },
-    hud() {
-      return hud.presentation(hudContext());
+    hud(facts) {
+      return hud.presentation(hudContext(facts));
     },
-    hudInput(input) {
+    hudInput(input, facts) {
       if (status !== "running") return { focus: null };
-      const result = hud.input(input, hudContext());
+      const result = hud.input(input, hudContext(facts));
       if (result.interaction) inputs.push(structuredClone(result.interaction));
+      if (result.session) inputs.push(structuredClone(result.session));
       return result;
     },
     world() {
@@ -207,7 +214,7 @@ export function createCoreSession(
     if (status !== "running") throw new Error(`Game Session is ${status}.`);
   }
 
-  function hudContext(): HUDPresentationContext {
+  function hudContext(facts: HUDAdapterFacts = {}): HUDPresentationContext {
     const nouns: HUDNounView[] = world.hotspots(state, conditionMatches)
       .flatMap(({ definition: hotspot, index }) => {
         const noun = interaction.nounForHotspot(state.currentScene, hotspot);
@@ -230,9 +237,42 @@ export function createCoreSession(
       state,
       nouns,
       inventory: interaction.inventory(state),
+      ...facts,
+      narrative: activeNarrativeFacts(),
+      sequenceActive: state.activity?.type === "sequence",
+      world: world.presentation(state, (scenery) => directedSubjectPoint(
+        { kind: "scenery", scenery },
+        activeDirectionPresentation(),
+      )),
+      camera: cameraPresentation,
       inventorySuspended:
         state.activity?.type === "sequence" && state.activity.active?.kind === "choice",
     };
+  }
+
+  function activeNarrativeFacts(): HUDPresentationContext["narrative"] {
+    if (state.activity?.type === "line") {
+      return {
+        kind: "line",
+        source: "line",
+        character: state.activity.line.character,
+        text: state.activity.line.text,
+        ...(state.activity.line.audio ? { audio: state.activity.line.audio } : {}),
+      };
+    }
+    const presentation = activeSequencePresentation();
+    if (presentation?.kind === "line") {
+      return {
+        kind: "line",
+        source: "sequence",
+        character: presentation.character,
+        text: presentation.text,
+        ...(presentation.audio ? { audio: presentation.audio } : {}),
+      };
+    }
+    if (presentation?.kind === "narration") return presentation;
+    if (presentation?.kind === "choice") return presentation;
+    return undefined;
   }
 
   function nounView(
@@ -357,6 +397,7 @@ export function createCoreSession(
       decision.commandStateDisposition,
     )) return;
     if (decision.resolution.response) {
+      hud.notify({ type: "command-response", text: decision.resolution.response.text });
       emitted.push({
         type: "interaction-response",
         text: decision.resolution.response.text,
