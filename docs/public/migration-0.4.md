@@ -35,6 +35,16 @@ A `startAfter` Cue dependency must identify an earlier Animation direction.
 Fondale reports `definition.sequence.cue-source` when the index instead names
 a Motion or Camera direction.
 
+## Animation validation
+
+Animation now owns Appearance validation and logical frame progression. Frame
+sources must be a URL or non-empty string, `loop` must be a boolean when
+present, and Visual Anchor coordinates must be finite. Invalid definitions use
+the capability-owned codes `definition.animation.frame-source`,
+`definition.animation.loop`, and `definition.animation.visual-anchor`; the
+last replaces `definition.point.finite` for an invalid Visual Anchor. A Cue at
+logical second zero starts dependent directions immediately.
+
 ## Authoring Diagnostic attribution
 
 Every `AuthoringDiagnostic` now includes an `owner` identifying the capability

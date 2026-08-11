@@ -137,6 +137,39 @@ test("Animation derives directed presentation facts from immutable session input
   });
 });
 
+test("Animation derives default frame progression from the logical session tick", () => {
+  const appearance: Appearance = {
+    animations: {
+      idle: { frames: ["one.png", "two.png"], framesPerSecond: 2, loop: true },
+    },
+    roles: { default: "idle" },
+  };
+  const data = {
+    characters: { actor: { appearances: { normal: appearance } } },
+    objects: {},
+    scenes: {},
+  } as unknown as GameProjectData;
+  const state = {
+    tick: 30,
+    currentScene: "room",
+    characters: { actor: { scene: "room", appearance: "normal" } },
+    objects: {},
+    scenery: {},
+    activity: null,
+  } as unknown as GameState;
+
+  expect(animationPresentationForSubject(
+    data,
+    state,
+    { kind: "character", character: "actor" },
+  )).toMatchObject({
+    animationName: "idle",
+    elapsedTicks: 30,
+    frameIndex: 1,
+    loop: true,
+  });
+});
+
 test("Animation validates Appearance selection and required Roles for a subject", () => {
   const appearance: Appearance = {
     animations: { idle: { frames: ["idle.png"], framesPerSecond: 1, loop: true } },

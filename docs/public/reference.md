@@ -263,7 +263,9 @@ Definition codes: `definition.approach.bounds`,
 `definition.appearance.animations`, `definition.appearance.default-role`,
 `definition.motion.scenery-rest`, `definition.animation.frames`,
 `definition.animation.directional-frame-count`,
-`definition.animation.frames-per-second`, and `definition.animation.cue`.
+`definition.animation.frame-source`, `definition.animation.frames-per-second`,
+`definition.animation.loop`, `definition.animation.cue`, and
+`definition.animation.visual-anchor`.
 
 Reference codes: `reference.appearance`, `reference.appearance.initial`,
 `reference.appearance.target`, `reference.character`,

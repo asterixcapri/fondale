@@ -1,5 +1,4 @@
 import {
-  AnimatedSprite,
   Application,
   Container,
   Graphics,
@@ -47,11 +46,16 @@ import type { SaveSnapshot } from "../capabilities/save";
 import { assetUrl, type LoadedAssets } from "./assets";
 import { Camera } from "../capabilities/camera";
 
-interface CharacterView {
+interface AnimationView {
+  readonly sprite: Sprite;
+  readonly subject: DirectedSubject;
+  readonly path: string;
+  presentation: AnimationPresentation;
+  direction: "side" | "front" | "back";
+}
+
+interface CharacterView extends AnimationView {
   readonly container: Container;
-  readonly sprite: Sprite | AnimatedSprite;
-  readonly presentation: AnimationPresentation;
-  direction?: "side" | "front" | "back";
 }
 
 const commandPreviewFontSize = "6px";
@@ -81,6 +85,7 @@ export class BrowserRenderer {
   private readonly world = new Container();
   private readonly overlay: EngineOverlay;
   private readonly characterViews = new Map<string, CharacterView>();
+  private readonly animationViews: AnimationView[] = [];
   private readonly camera = new Camera();
   private cameraOrigin: Point = { x: 0, y: 0 };
   private cameraDirected = false;
@@ -130,6 +135,7 @@ export class BrowserRenderer {
       this.rebuildWorld(state);
     }
     this.updateCharacters(state);
+    this.updateAnimations(state);
     this.world.sortChildren();
     const scene = this.data.scenes[state.currentScene]!;
     const player = this.data.playerCharacter
@@ -163,11 +169,13 @@ export class BrowserRenderer {
     this.application.stage.removeChild(this.world);
     this.world.removeChildren();
     this.characterViews.clear();
+    this.animationViews.length = 0;
   }
 
   private rebuildWorld(state: GameState): void {
     this.world.removeChildren();
     this.characterViews.clear();
+    this.animationViews.length = 0;
     const scene = this.data.scenes[state.currentScene]!;
     const backgroundTexture = this.assets.textures.get(assetUrl(scene.background))!;
     const background = new Sprite(backgroundTexture);
@@ -181,6 +189,7 @@ export class BrowserRenderer {
         appearance,
         backgroundTexture,
         `scenes.${state.currentScene}.scenery.${sceneryId}.appearances.${selected}`,
+        { kind: "scenery", scenery: sceneryId },
         this.animationPresentation(state, { kind: "scenery", scenery: sceneryId }),
       );
       view.label = `scenery:${sceneryId}`;
@@ -200,6 +209,7 @@ export class BrowserRenderer {
       const view = this.createCharacter(
         this.animationPresentation(state, { kind: "object", object: objectId })!,
         `objects.${objectId}.appearances.${object.appearance}`,
+        { kind: "object", object: objectId },
         "front",
       );
       view.container.label = `object:${objectId}`;
@@ -217,6 +227,7 @@ export class BrowserRenderer {
       const view = this.createCharacter(
         this.animationPresentation(state, { kind: "character", character: characterId })!,
         `characters.${characterId}.appearances.${character.appearance}`,
+        { kind: "character", character: characterId },
         direction,
       );
       view.container.label = `character:${characterId}`;
@@ -229,12 +240,14 @@ export class BrowserRenderer {
     appearance: SceneryAppearance,
     background: Texture,
     path: string,
+    subject: DirectedSubject,
     presentation?: AnimationPresentation,
   ): Container {
     if ("animations" in appearance) {
       const container = new Container();
-      const sprite = this.animatedSprite(presentation!, path, "front");
-      container.addChild(sprite);
+      const view = this.animationView(presentation!, path, subject, "front");
+      this.animationViews.push(view);
+      container.addChild(view.sprite);
       return container;
     }
     const bounds = boundingBox(appearance.area);
@@ -252,12 +265,14 @@ export class BrowserRenderer {
   private createCharacter(
     presentation: AnimationPresentation,
     path: string,
+    subject: DirectedSubject,
     selectedDirection: "side" | "front" | "back" = "front",
   ): CharacterView {
     const container = new Container();
-    const sprite = this.animatedSprite(presentation, path, selectedDirection);
-    container.addChild(sprite);
-    return { container, sprite, presentation, direction: selectedDirection };
+    const view = { container, ...this.animationView(presentation, path, subject, selectedDirection) };
+    this.animationViews.push(view);
+    container.addChild(view.sprite);
+    return view;
   }
 
   private updateCharacters(state: GameState): void {
@@ -271,46 +286,44 @@ export class BrowserRenderer {
         character.facing === "left" || character.facing === "right" ? "side" : character.facing;
       const horizontal = character.facing === "left" ? -perspective : perspective;
       view.container.scale.set(horizontal, perspective);
-      if (
-        view.sprite instanceof AnimatedSprite &&
-        view.direction !== direction &&
-        view.presentation.animationName
-      ) {
-        view.direction = direction;
-        const appearance = state.characters[characterId]!.appearance;
-        const frames = this.animationFrames(
-          `characters.${characterId}.appearances.${appearance}`,
-          view.presentation.animationName,
-          view.presentation.animation,
-          direction,
-        );
-        if (frames.length > 0) view.sprite.textures = [...frames];
-      }
+      view.direction = direction;
     }
   }
 
-  private animatedSprite(
+  private updateAnimations(state: GameState): void {
+    for (const view of this.animationViews) {
+      const presentation = this.animationPresentation(state, view.subject);
+      if (!presentation) continue;
+      const frames = this.animationFrames(
+        view.path,
+        presentation.animationName,
+        presentation.animation,
+        view.direction,
+      );
+      const texture = frames[presentation.frameIndex];
+      if (!texture) continue;
+      view.presentation = presentation;
+      view.sprite.texture = texture;
+      setAnchor(view.sprite, presentation.visualAnchor, texture.width, texture.height);
+    }
+  }
+
+  private animationView(
     presentation: AnimationPresentation,
     path: string,
+    subject: DirectedSubject,
     direction: "side" | "front" | "back",
-  ): Sprite | AnimatedSprite {
+  ): AnimationView {
     const frames = this.animationFrames(
       path,
       presentation.animationName,
       presentation.animation,
       direction,
     );
-    const sprite = presentation.autoplay && frames.length > 1
-      ? new AnimatedSprite([...frames])
-      : new Sprite(frames[presentation.frameIndex]!);
+    const sprite = new Sprite(frames[presentation.frameIndex]!);
     const texture = frames[presentation.frameIndex]!;
     setAnchor(sprite, presentation.visualAnchor, texture.width, texture.height);
-    if (sprite instanceof AnimatedSprite) {
-      sprite.animationSpeed = presentation.animation.framesPerSecond / 60;
-      sprite.loop = presentation.loop;
-      sprite.play();
-    }
-    return sprite;
+    return { sprite, subject, path, presentation, direction };
   }
 
   private animationPresentation(
