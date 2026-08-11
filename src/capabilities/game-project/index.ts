@@ -9,8 +9,12 @@ import {
   commandVerbs,
   type CommandLexicon,
   type CommandResponse,
+  type InteractionCondition,
   type NounDefinition,
   validateCommandResponse,
+  validateInteractionComposition,
+  validateInteractionConditionReference,
+  validateNounReferences,
 } from "../interaction";
 import type { HUDTheme } from "../hud";
 import {
@@ -80,11 +84,6 @@ export interface LogicalResolution {
   readonly width: number;
   readonly height: number;
 }
-
-/** A boolean proposition evaluated against the latest committed Game State. */
-export type InteractionCondition =
-  | { readonly variable: string; readonly equals: boolean }
-  | { readonly hasObject: string };
 
 /** The finite set of declarative state transitions authored in Fondale 0.2. */
 export type GameOperation =
@@ -447,7 +446,6 @@ function validateProjectDefinitions(
   variables: Readonly<Record<string, boolean>>,
   diagnostics: AuthoringDiagnostic[],
 ): void {
-  const missingOwnerNounPaths = new Set<string>();
   const allSceneIds = Object.keys(input.scenes);
   const world = createWorldDefinitionQueries({
     logicalResolution: input.logicalResolution,
@@ -457,14 +455,20 @@ function validateProjectDefinitions(
     characters,
     objects,
   });
+  const interactionReferences = {
+    variables: new Set(Object.keys(variables)),
+    objects: new Set(Object.keys(objects)),
+    sequences: new Set(Object.keys(sequences)),
+    commandFallbacks: input.commandFallbacks,
+  };
+  diagnostics.push(...validateInteractionComposition({
+    commandLexicon: input.commandLexicon,
+    scenes: input.scenes,
+    characters,
+    objects,
+  }));
   const condition = (value: InteractionCondition | undefined, path: string) => {
-    if (!value) return;
-    if ("variable" in value && !(value.variable in variables)) {
-      diagnostics.push(referenceDiagnostic("reference.variable", path, `Game Variable '${value.variable}' does not exist.`));
-    }
-    if ("hasObject" in value && !(value.hasObject in objects)) {
-      diagnostics.push(referenceDiagnostic("reference.object", path, `Object '${value.hasObject}' does not exist.`));
-    }
+    diagnostics.push(...validateInteractionConditionReference(value, path, interactionReferences));
   };
   const operations = (
     values: readonly GameOperation[],
@@ -562,34 +566,9 @@ function validateProjectDefinitions(
     destinationScenes?: readonly string[],
   ) => {
     if (!value) return;
-    value.labels.forEach((label, index) => condition(label.when, `${path}.labels[${index}].when`));
-    value.preferredVerbs.forEach((preferred, index) =>
-      condition(preferred.when, `${path}.preferredVerbs[${index}].when`),
-    );
-    value.secondaryVerbs?.forEach((secondary, index) =>
-      condition(secondary.when, `${path}.secondaryVerbs[${index}].when`),
-    );
-    value.objectVerbs?.forEach((objectVerb, index) =>
-      condition(objectVerb.when, `${path}.objectVerbs[${index}].when`),
-    );
+    diagnostics.push(...validateNounReferences(value, path, interactionReferences));
     value.cases.forEach((candidate, index) => {
       const candidatePath = `${path}.cases[${index}]`;
-      condition(candidate.when, `${candidatePath}.when`);
-      if (candidate.firstNoun !== undefined && !(candidate.firstNoun in objects)) {
-        diagnostics.push(referenceDiagnostic(
-          "reference.object",
-          `${candidatePath}.firstNoun`,
-          `Object '${candidate.firstNoun}' does not exist.`,
-        ));
-      }
-      if (candidate.sequence !== undefined && !(candidate.sequence in sequences)) {
-        diagnostics.push(referenceDiagnostic(
-          "reference.sequence",
-          `${candidatePath}.sequence`,
-          `Sequence '${candidate.sequence}' does not exist.`,
-        ));
-      }
-      validateCommandResponse(candidate.response, `${candidatePath}.response`, diagnostics);
       line(candidate.line, `${candidatePath}.line`);
       operations(candidate.operations ?? [], `${candidatePath}.operations`, {
         target,
@@ -598,28 +577,11 @@ function validateProjectDefinitions(
     });
     for (const verb of commandVerbs) {
       const fallback = value.fallbacks?.[verb];
-      const globalFallback = input.commandFallbacks?.[verb];
-      if (!fallback && !globalFallback) {
-        diagnostics.push({
-          code: "definition.command.silent",
-          family: "definition", owner: "interaction",
-          path: `${path}.fallbacks.${verb}`,
-          message: `Noun '${path}' needs a local or global '${verb}' Command Fallback.`,
-        });
-      }
       if (fallback) {
-        validateCommandResponse(fallback.response, `${path}.fallbacks.${verb}.response`, diagnostics);
         operations(fallback.operations ?? [], `${path}.fallbacks.${verb}.operations`, {
           target,
           scenes: destinationScenes,
         });
-        if (fallback.sequence !== undefined && !(fallback.sequence in sequences)) {
-          diagnostics.push(referenceDiagnostic(
-            "reference.sequence",
-            `${path}.fallbacks.${verb}.sequence`,
-            `Sequence '${fallback.sequence}' does not exist.`,
-          ));
-        }
       }
     }
   };
@@ -650,34 +612,6 @@ function validateProjectDefinitions(
       const base = `scenes.${sceneId}.hotspots[${hotspotIndex}]`;
       if (hotspot.target.kind === "background") {
         noun(hotspot.noun, `${base}.noun`, hotspot.target, [sceneId]);
-      }
-      const targetExists =
-        hotspot.target.kind === "background" ||
-        (hotspot.target.kind === "character" && hotspot.target.character in characters) ||
-        (hotspot.target.kind === "object" && hotspot.target.object in objects) ||
-        (hotspot.target.kind === "scenery" && hotspot.target.scenery in (scene.scenery ?? {}));
-      if (targetExists && hotspot.target.kind !== "background") {
-        const owner = hotspot.target.kind === "character"
-          ? characters[hotspot.target.character]
-          : hotspot.target.kind === "object"
-            ? objects[hotspot.target.object]
-            : scene.scenery?.[hotspot.target.scenery];
-        if (!owner?.noun) {
-          const ownerPath = hotspot.target.kind === "character"
-            ? `characters.${hotspot.target.character}.noun`
-            : hotspot.target.kind === "object"
-              ? `objects.${hotspot.target.object}.noun`
-              : `scenes.${sceneId}.scenery.${hotspot.target.scenery}.noun`;
-          if (!missingOwnerNounPaths.has(ownerPath)) {
-            missingOwnerNounPaths.add(ownerPath);
-            diagnostics.push({
-              code: "definition.hotspot.target-noun.required",
-              family: "definition", owner: "interaction",
-              path: ownerPath,
-              message: "A target referenced by a Hotspot must own a Noun Definition.",
-            });
-          }
-        }
       }
       condition(hotspot.when, `${base}.when`);
     });
@@ -857,21 +791,6 @@ function validateProjectDefinitions(
     }
   }
 
-  const hasNouns = Object.values(characters).some((value) => value.noun !== undefined) ||
-    Object.values(objects).some((value) => value.noun !== undefined) ||
-    Object.values(input.scenes).some((scene) =>
-      Object.values(scene.scenery ?? {}).some((value) => value.noun !== undefined) ||
-      scene.hotspots?.some((value) => value.noun !== undefined) ||
-      scene.passages?.some((value) => value.noun !== undefined),
-    );
-  if (hasNouns && !input.commandLexicon) {
-    diagnostics.push({
-      code: "definition.command-lexicon.required",
-      family: "definition", owner: "interaction",
-      path: "commandLexicon",
-      message: "A Game Project with Nouns must define a Command Lexicon.",
-    });
-  }
 }
 
 function referenceDiagnostic(code: string, path: string, message: string): AuthoringDiagnostic {

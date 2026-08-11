@@ -689,13 +689,20 @@ test("defineGame composes Command authoring and aggregates Noun reference failur
     throw new Error("expected invalid Command references to be rejected");
   } catch (error) {
     expect(error).toBeInstanceOf(AuthoringError);
-    expect((error as AuthoringError).diagnostics.map(({ code }) => code)).toEqual(expect.arrayContaining([
+    const diagnostics = (error as AuthoringError).diagnostics;
+    expect(diagnostics.map(({ code }) => code)).toEqual(expect.arrayContaining([
       "definition.command.silent",
       "reference.character",
       "reference.object",
       "reference.sequence",
       "reference.variable",
     ]));
+    expect(diagnostics.filter(({ code }) =>
+      code === "definition.command.silent" ||
+      code === "reference.object" ||
+      code === "reference.sequence" ||
+      code === "reference.variable"
+    ).every(({ owner }) => owner === "interaction")).toBe(true);
   }
 });
 

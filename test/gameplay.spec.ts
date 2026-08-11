@@ -13,7 +13,7 @@ import {
   type ValidatedSaveSnapshot,
 } from "../src/index";
 
-function projectFixture(consumeSelectedObject = false) {
+function projectFixture(consumeSelectedObject = false, duplicateCollection = false) {
   const square = [
     { x: 0, y: 0 },
     { x: 100, y: 0 },
@@ -144,7 +144,10 @@ function projectFixture(consumeSelectedObject = false) {
       cases: [{
         verb: "pick-up",
         response: { text: "You take the key." },
-        operations: [{ type: "collect-target-object" }],
+        operations: [
+          { type: "collect-target-object" },
+          ...(duplicateCollection ? [{ type: "collect-target-object" } as const] : []),
+        ],
       }, {
         verb: "look-at",
         response: { text: "A small key." },
@@ -332,6 +335,20 @@ test("Save Snapshot validation restores a Command while it approaches its Noun",
   expect(restored.snapshot()).toEqual(uninterrupted.snapshot());
 });
 
+test("selecting a Verb cancels a Player Intent that is still approaching its Noun", () => {
+  const session = createTestSession(projectFixture());
+  session.input({ type: "select-verb", verb: "talk-to" });
+  session.input({ type: "activate-hotspot", hotspot: 0 });
+  session.steps();
+  expect(session.snapshot().activity).toMatchObject({ type: "player-intent" });
+
+  session.input({ type: "select-verb", verb: "look-at" });
+  session.steps();
+
+  expect(session.snapshot().activity).toBeNull();
+  expect(session.snapshot().command).toEqual({ verb: "look-at", firstNoun: null });
+});
+
 test("Save Snapshot validation rejects malformed or unavailable Command Nouns", () => {
   const project = projectFixture();
   const snapshot = createTestSession(project).createSaveSnapshot();
@@ -411,6 +428,11 @@ test("a binary Use preserves its first Noun on failure and relocates it atomical
   session.steps(20);
   expect(session.snapshot().command).toEqual({ verb: "walk-to", firstNoun: null });
   expect(session.snapshot().inventory.objects).toEqual(["key"]);
+  expect(session.takeEffects()).toContainEqual({
+    type: "interaction-response",
+    text: "That does not help.",
+    response: { text: "That does not help." },
+  });
 
   useKeyOn(session, 2);
   expect(session.snapshot().inventory).toEqual({ objects: [] });
@@ -420,6 +442,29 @@ test("a binary Use preserves its first Noun on failure and relocates it atomical
   });
   expect(session.snapshot().variables.gateOpen).toBe(true);
   expect(session.snapshot().scenery.opening!.gate).toBe("open");
+});
+
+test("a failed Command operation leaves Game State uncommitted and emits no response", () => {
+  const session = createTestSession(projectFixture(false, true));
+  session.input({ type: "select-verb", verb: "pick-up" });
+  session.input({ type: "activate-hotspot", hotspot: 1 });
+  session.steps(20);
+
+  expect(session.lifecycle()).toBe("failed");
+  expect(session.snapshot().objects.key!.location).toEqual({
+    kind: "scene",
+    scene: "opening",
+    groundPoint: { x: 40, y: 40 },
+  });
+  expect(session.snapshot().inventory.objects).toEqual([]);
+  expect(session.snapshot().command).toEqual({ verb: "pick-up", firstNoun: null });
+  expect(session.effects()).not.toContainEqual(expect.objectContaining({
+    type: "interaction-response",
+  }));
+  expect(session.diagnostics()).toContainEqual(expect.objectContaining({
+    code: "state.operation.invalid",
+    owner: "game-session",
+  }));
 });
 
 test("a successful binary Use can consume its first Object terminally", () => {

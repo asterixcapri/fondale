@@ -11,7 +11,9 @@ const testPort = (globalThis as {
  * channel, so it is not tied to a container-specific executable path.
  */
 export default defineConfig({
-  testDir: "./test",
+  testDir: ".",
+  testMatch: ["test/**/*.spec.ts", "src/capabilities/**/*.spec.ts"],
+  testIgnore: ["examples/**"],
   // Screenshots are the output the agent actually reads, so they go somewhere
   // stable rather than into a per-run temp directory.
   outputDir: "./test/.artifacts",

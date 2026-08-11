@@ -1,13 +1,18 @@
 import { AuthoringError, type AuthoringDiagnostic } from "../game-project";
 import {
+  createInteraction,
+  conditionMatchesState,
   conditionalOptionalValue,
   conditionalValue,
-  contextualVerb,
-  preferredFirstNoun,
-  resolveCommandDefinition,
+  type CommandState,
   type CommandResponse,
   type CommandVerb,
-  type NounDefinition,
+  type InteractionDecision,
+  type InteractionCondition,
+  type InteractionInput,
+  type InteractionTargetView,
+  type PlayerIntent,
+  type PlayerIntentState,
   type Verb,
 } from "../interaction";
 import {
@@ -15,7 +20,6 @@ import {
   type GameOperation,
   type GameProject,
   type GameProjectData,
-  type InteractionCondition,
   type Line,
   type SequenceDefinition,
   type SequenceStep,
@@ -31,7 +35,6 @@ import {
   createWorld,
   type CharacterState,
   type Facing,
-  type HotspotDefinition,
   type HotspotTarget,
   type ObjectLocation,
   type ObjectState,
@@ -50,32 +53,8 @@ import {
 } from "../sequence";
 import { appearanceForSubject, type AnimationDefinition } from "../animation";
 import { Camera, type CameraPresentation } from "../camera";
-import { conditionMatchesState } from "../interaction";
 
 export type { CharacterState, ObjectLocation, ObjectState } from "../world";
-
-export interface PlayerIntentState {
-  type: "player-intent";
-  animationStartedTick: number;
-  destination: Point;
-  finalFacing?: Facing;
-  fast?: true;
-  intent:
-    | { kind: "move" }
-    | {
-        kind: "interaction";
-        scene: string;
-        hotspot: number;
-        command?: { verb: CommandVerb; firstNoun?: string; preserveState?: boolean };
-      }
-    | {
-        kind: "passage-command";
-        scene: string;
-        passage: number;
-        command: { verb: CommandVerb; firstNoun?: string; preserveState?: boolean };
-      }
-    | { kind: "passage"; scene: string; passage: number };
-}
 
 export type SequenceActiveState =
   | { kind: "line"; path: string; animationStartedTick: number; choiceText?: string; choiceCharacter?: string }
@@ -100,25 +79,14 @@ export type GameActivityState = PlayerIntentState | SequenceActivityState | Line
 
 export interface GameState extends WorldState {
   inventory: { objects: string[] };
-  command: { verb: Verb; firstNoun: null | { kind: "object"; object: string } };
+  command: CommandState;
   variables: Record<string, boolean>;
   activity: GameActivityState | null;
   tick: number;
 }
 
-export type CoreInput =
+export type CoreInput = InteractionInput
   | { readonly type: "move"; readonly point: Point; readonly fast?: boolean }
-  | { readonly type: "select-verb"; readonly verb: CommandVerb }
-  | { readonly type: "activate-hotspot"; readonly hotspot: number }
-  | { readonly type: "quick-hotspot"; readonly hotspot: number; readonly verb?: Verb }
-  | { readonly type: "contextual-hotspot"; readonly hotspot: number; readonly action: "primary" | "secondary" }
-  | { readonly type: "activate-passage"; readonly passage: number; readonly fast?: boolean; readonly forceWalk?: boolean }
-  | { readonly type: "quick-passage"; readonly passage: number; readonly verb?: Verb }
-  | { readonly type: "contextual-passage"; readonly passage: number; readonly action: "primary" | "secondary" }
-  | { readonly type: "activate-object"; readonly object: string }
-  | { readonly type: "select-object"; readonly object: string }
-  | { readonly type: "contextual-object"; readonly object: string; readonly action: "primary" | "secondary" }
-  | { readonly type: "escape" }
   | { readonly type: "advance-sequence" }
   | { readonly type: "advance-line" }
   | { readonly type: "skip-sequence" }
@@ -191,6 +159,7 @@ export function createCoreSession(
 ): CoreSession {
   const data = getGameProjectData(project);
   const world = createWorld(data);
+  const interaction = createInteraction(data);
   let state = restored ? getValidatedSaveState(restored) : initialState(data, world.initialState());
   let status: "running" | "failed" | "stopped" = "running";
   let failureDiagnostics: readonly AuthoringDiagnostic[] = [];
@@ -227,20 +196,21 @@ export function createCoreSession(
       return world.hitTest(state, point, conditionMatches);
     },
     availableHotspots() {
-      return world.hotspots(state, conditionMatches).map(({ definition: hotspot, index }) => {
-        const noun = hotspotNoun(state.currentScene, hotspot);
+      return world.hotspots(state, conditionMatches).flatMap(({ definition: hotspot, index }) => {
+        const noun = interaction.nounForHotspot(state.currentScene, hotspot);
+        if (!noun) return [];
         const label = conditionalValue(noun.labels, state).text;
         const preferredVerb = conditionalValue(noun.preferredVerbs, state).verb;
         const secondaryVerb = conditionalOptionalValue(noun.secondaryVerbs, state)?.verb;
         const objectVerb = conditionalOptionalValue(noun.objectVerbs, state)?.verb;
-        return {
+        return [{
           index,
           area: hotspot.area.map((point) => ({ ...point })),
           label,
           ...(preferredVerb ? { preferredVerb } : {}),
           ...(secondaryVerb ? { secondaryVerb } : {}),
           ...(objectVerb ? { objectVerb } : {}),
-        };
+        }];
       });
     },
     availableInventory() {
@@ -319,166 +289,96 @@ export function createCoreSession(
       return;
     }
 
-    if (input.type === "select-verb") {
-      state.activity = null;
-      state.command = { verb: input.verb, firstNoun: null };
-    } else if (input.type === "move") {
+    if (input.type === "move") {
       beginIntent({ kind: "move" }, input.point, undefined, input.fast);
-    } else if (
-      input.type === "activate-hotspot" ||
-      input.type === "quick-hotspot" ||
-      input.type === "contextual-hotspot"
-    ) {
-      const scene = data.scenes[state.currentScene]!;
-      const hotspot = scene.hotspots?.[input.hotspot];
-      if (hotspot && hotspotAvailable(hotspot)) {
-        const approach = world.approach(
-          state,
-          { kind: "hotspot", index: input.hotspot },
-          conditionMatches,
-        );
-        if (!approach) return;
-        const noun = hotspotNoun(state.currentScene, hotspot);
-        if (
-          input.type === "activate-hotspot" &&
-          state.command.verb === "give" &&
-          !state.command.firstNoun
-        ) return;
-        if (input.type === "activate-hotspot" && state.command.verb === "walk-to") {
-          beginIntent({ kind: "move" }, approach.groundPoint, approach.facing);
-          return;
-        }
-        const quickVerb = input.type === "quick-hotspot"
-          ? input.verb ?? conditionalValue(noun.preferredVerbs, state).verb
-          : input.type === "contextual-hotspot"
-            ? contextualVerb(noun, input.action, state.command.firstNoun?.object, state)
-            : undefined;
-        if (input.type === "contextual-hotspot" && !quickVerb) return;
-        const commandFirstNoun = quickVerb
-          ? preferredFirstNoun(noun, quickVerb, state.command.firstNoun?.object, state)
-          : state.command.firstNoun?.object;
-        if (quickVerb === "walk-to") {
-          beginIntent({ kind: "move" }, approach.groundPoint, approach.facing);
-          return;
-        }
-        beginIntent(
-          {
-            kind: "interaction",
-            scene: state.currentScene,
-            hotspot: input.hotspot,
-            command: {
-              verb: (quickVerb ?? state.command.verb) as CommandVerb,
-              ...(commandFirstNoun
-                ? { firstNoun: commandFirstNoun }
-                : {}),
-              ...(quickVerb ? { preserveState: true } : {}),
-            },
-          },
-          approach.groundPoint,
-          approach.facing,
-        );
+    } else if (isInteractionInput(input)) {
+      handleInteractionDecision(interaction.input(input, state, interactionTarget(input)));
+    }
+  }
+
+  function interactionTarget(
+    value: InteractionInput | PlayerIntent,
+  ): InteractionTargetView | undefined {
+    const scene = "scene" in value ? value.scene : state.currentScene;
+    if (scene !== state.currentScene) return undefined;
+    if ("hotspot" in value) {
+      const definition = world.hotspots(state, conditionMatches)
+        .find(({ index }) => index === value.hotspot)?.definition;
+      const noun = definition ? interaction.nounForHotspot(scene, definition) : undefined;
+      if (!definition || !noun) return undefined;
+      return {
+        kind: "hotspot",
+        scene,
+        index: value.hotspot,
+        noun,
+        target: definition.target,
+      };
+    }
+    if ("passage" in value) {
+      const definition = world.passages(state, conditionMatches)
+        .find(({ index }) => index === value.passage)?.definition;
+      if (!definition) return undefined;
+      return {
+        kind: "passage",
+        scene,
+        index: value.passage,
+        noun: definition.noun,
+        target: { kind: "background" },
+      };
+    }
+    return undefined;
+  }
+
+  function handleInteractionDecision(decision: InteractionDecision): void {
+    if (decision.type === "ignored") return;
+    if (decision.type === "command") {
+      if (decision.cancelActivity) state.activity = null;
+      state.command = structuredClone(decision.command);
+      return;
+    }
+    if (decision.type === "request-approach") {
+      const approach = world.approach(state, decision.target, conditionMatches);
+      if (!approach) return;
+      beginIntent(
+        decision.intent,
+        approach.groundPoint,
+        approach.facing,
+        decision.fast,
+      );
+      return;
+    }
+    if (decision.type === "passage") {
+      resolvePassage({ kind: "passage", scene: state.currentScene, passage: decision.passage });
+      return;
+    }
+    if (!decision.resolution) {
+      if (decision.commandStateDisposition === "reset") {
+        state.command = { verb: "walk-to", firstNoun: null };
       }
-    } else if (
-      input.type === "activate-passage" ||
-      input.type === "quick-passage" ||
-      input.type === "contextual-passage"
-    ) {
-      const scene = data.scenes[state.currentScene]!;
-      const passage = scene.passages?.[input.passage];
-      if (passage && conditionMatches(passage.when)) {
-        const approach = world.approach(
-          state,
-          { kind: "passage", index: input.passage },
-          conditionMatches,
-        );
-        if (!approach) return;
-        if (
-          input.type === "activate-passage" &&
-          state.command.verb === "give" &&
-          !state.command.firstNoun
-        ) return;
-        const preferredVerb = input.type === "quick-passage"
-          ? input.verb ?? conditionalValue(passage.noun.preferredVerbs, state).verb
-          : input.type === "contextual-passage"
-            ? contextualVerb(passage.noun, input.action, state.command.firstNoun?.object, state)
-            : undefined;
-        if (input.type === "contextual-passage" && !preferredVerb) return;
-        const commandFirstNoun = preferredVerb
-          ? preferredFirstNoun(
-              passage.noun,
-              preferredVerb,
-              state.command.firstNoun?.object,
-              state,
-            )
-          : state.command.firstNoun?.object;
-        const shouldWalk = input.type === "activate-passage" &&
-          (input.forceWalk || state.command.verb === "walk-to") || preferredVerb === "walk-to";
-        const intent: PlayerIntentState["intent"] = shouldWalk
-          ? { kind: "passage", scene: state.currentScene, passage: input.passage }
-          : {
-              kind: "passage-command",
-              scene: state.currentScene,
-              passage: input.passage,
-              command: {
-                verb: (preferredVerb ?? state.command.verb) as CommandVerb,
-                ...(commandFirstNoun
-                  ? { firstNoun: commandFirstNoun }
-                  : {}),
-                ...(preferredVerb ? { preserveState: true } : {}),
-              },
-            };
-        beginIntent(
-          intent,
-          approach.groundPoint,
-          approach.facing,
-          input.type === "activate-passage" && input.fast,
-        );
-      }
-    } else if (input.type === "select-object") {
-      if (!state.inventory.objects.includes(input.object)) return;
-      state.activity = null;
-      state.command = state.command.firstNoun?.object === input.object
-        ? { verb: "walk-to", firstNoun: null }
-        : { verb: "use", firstNoun: { kind: "object", object: input.object } };
-    } else if (input.type === "contextual-object") {
-      if (!state.inventory.objects.includes(input.object)) return;
-      const noun = data.objects[input.object]?.noun;
-      if (!noun) return;
-      if (input.action === "primary") {
-        state.activity = null;
-        state.command = state.command.firstNoun?.object === input.object
-          ? { verb: "walk-to", firstNoun: null }
-          : { verb: "use", firstNoun: { kind: "object", object: input.object } };
-        return;
-      }
-      const verb = conditionalOptionalValue(noun.secondaryVerbs, state)?.verb;
-      if (!verb || verb === "walk-to") return;
-      resolveCommand(noun, verb, { kind: "object", object: input.object }, true);
-    } else if (input.type === "activate-object") {
-      if (!state.inventory.objects.includes(input.object)) return;
-      const noun = data.objects[input.object]?.noun;
-      if (!noun || state.command.verb === "walk-to") return;
-      if (state.command.verb === "give" && !state.command.firstNoun) {
-        state.activity = null;
-        state.command = { verb: state.command.verb, firstNoun: { kind: "object", object: input.object } };
-        return;
-      }
-      if (state.command.verb === "use" && !state.command.firstNoun) {
-        const unaryUse = noun.cases.some((candidate) =>
-          candidate.verb === "use" &&
-          candidate.firstNoun === undefined &&
-          conditionMatches(candidate.when)
-        );
-        if (!unaryUse) {
-          state.activity = null;
-          state.command = { verb: "use", firstNoun: { kind: "object", object: input.object } };
-          return;
-        }
-      }
-      const firstNoun = state.command.firstNoun?.object;
-      resolveCommand(noun, state.command.verb, { kind: "object", object: input.object }, false, firstNoun);
-    } else if (input.type === "escape") {
-      state.command = { verb: "walk-to", firstNoun: null };
+      return;
+    }
+    if (!applyOperations(
+      decision.resolution.operations,
+      decision.target,
+      decision.firstNoun,
+      decision.commandStateDisposition,
+    )) return;
+    if (decision.resolution.response) {
+      emitted.push({
+        type: "interaction-response",
+        text: decision.resolution.response.text,
+        response: decision.resolution.response,
+      });
+    } else if (decision.resolution.line) {
+      const { audio, ...line } = decision.resolution.line;
+      state.activity = {
+        type: "line",
+        animationStartedTick: state.tick + 1,
+        line: {
+          ...line,
+          ...(audio ? { audio: audio instanceof URL ? audio.href : audio } : {}),
+        },
+      };
     }
   }
 
@@ -498,7 +398,7 @@ export function createCoreSession(
   }
 
   function beginIntent(
-    intent: PlayerIntentState["intent"],
+    intent: PlayerIntent,
     requested: Point,
     finalFacing?: Facing,
     fast = false,
@@ -539,98 +439,12 @@ export function createCoreSession(
     if (!progress.complete) return;
     state.activity = null;
     emitted.push({ type: "movement-finished", destination: { ...activity.destination } });
-    if (activity.intent.kind === "interaction") resolveInteraction(activity.intent);
-    if (activity.intent.kind === "passage-command") resolvePassageCommand(activity.intent);
-    if (activity.intent.kind === "passage") resolvePassage(activity.intent);
-  }
-
-  function resolveInteraction(intent: Extract<PlayerIntentState["intent"], { kind: "interaction" }>): void {
-    if (intent.scene !== state.currentScene) return;
-    const hotspot = data.scenes[intent.scene]?.hotspots?.[intent.hotspot];
-    if (!hotspot || !hotspotAvailable(hotspot)) {
-      if (intent.command) state.command = { verb: "walk-to", firstNoun: null };
-      return;
-    }
-
-    if (intent.command) {
-      resolveCommand(
-        hotspotNoun(intent.scene, hotspot),
-        intent.command.verb,
-        hotspot.target,
-        intent.command.preserveState ?? false,
-        intent.command.firstNoun,
-      );
-      return;
-    }
-
-  }
-
-  function hotspotNoun(sceneId: string, hotspot: HotspotDefinition): NounDefinition {
-    if (hotspot.target.kind === "background") return hotspot.noun!;
-    if (hotspot.target.kind === "character") {
-      return data.characters[hotspot.target.character]!.noun!;
-    }
-    if (hotspot.target.kind === "object") {
-      return data.objects[hotspot.target.object]!.noun!;
-    }
-    return data.scenes[sceneId]!.scenery![hotspot.target.scenery]!.noun!;
-  }
-
-  function resolveCommand(
-    noun: NounDefinition,
-    verb: CommandVerb,
-    target: HotspotTarget,
-    preserveState: boolean,
-    firstNoun?: string,
-  ): void {
-    const resolution = resolveCommandDefinition({
-      noun,
-      verb,
-      ...(firstNoun ? { firstNoun } : {}),
-      state,
-      projectFallbacks: data.commandFallbacks,
-    });
-    if (!preserveState) state.command = { verb: "walk-to", firstNoun: null };
-    if (!resolution) return;
-    if (!applyOperations(resolution.operations, target, firstNoun)) return;
-    if (resolution.response) {
-      emitted.push({
-        type: "interaction-response",
-        text: resolution.response.text,
-        response: resolution.response,
-      });
-    } else if (resolution.line) {
-      const { audio, ...line } = resolution.line;
-      state.activity = {
-        type: "line",
-        animationStartedTick: state.tick + 1,
-        line: {
-          ...line,
-          ...(audio ? { audio: audio instanceof URL ? audio.href : audio } : {}),
-        },
-      };
-    }
-  }
-
-  function resolvePassageCommand(
-    intent: Extract<PlayerIntentState["intent"], { kind: "passage-command" }>,
-  ): void {
-    if (intent.scene !== state.currentScene) return;
-    const passage = data.scenes[intent.scene]?.passages?.[intent.passage];
-    if (!passage || !conditionMatches(passage.when)) {
-      if (!intent.command.preserveState) state.command = { verb: "walk-to", firstNoun: null };
-      return;
-    }
-    resolveCommand(
-      passage.noun,
-      intent.command.verb,
-      { kind: "background" },
-      intent.command.preserveState ?? false,
-      intent.command.firstNoun,
+    handleInteractionDecision(
+      interaction.resume(activity.intent, state, interactionTarget(activity.intent)),
     );
   }
 
-  function resolvePassage(intent: Extract<PlayerIntentState["intent"], { kind: "passage" }>): void {
+  function resolvePassage(intent: Extract<PlayerIntent, { kind: "passage" }>): void {
     if (intent.scene !== state.currentScene) return;
     const playerId = data.playerCharacter;
     if (!playerId) {
@@ -664,8 +478,12 @@ export function createCoreSession(
     operations: readonly GameOperation[],
     target: HotspotTarget,
     firstNounObject?: string,
+    commandStateDisposition: "preserve" | "reset" = "preserve",
   ): boolean {
     const draft = structuredClone(state);
+    if (commandStateDisposition === "reset") {
+      draft.command = { verb: "walk-to", firstNoun: null };
+    }
     try {
       for (const operation of operations) applyOperation(draft, operation, target, firstNounObject);
     } catch (cause) {
@@ -968,10 +786,6 @@ export function createCoreSession(
     return conditionMatchesState(condition, state);
   }
 
-  function hotspotAvailable(hotspot: HotspotDefinition): boolean {
-    return world.isHotspotAvailable(state, hotspot, conditionMatches);
-  }
-
   function failOperation(message: string, cause?: unknown): void {
     status = "failed";
     state.activity = null;
@@ -1008,4 +822,12 @@ function topLevelPaths(sequence: SequenceDefinition): string[] {
 function pathsForContainer(sequence: SequenceDefinition, path: string): string[] {
   const steps = resolveSequencePath(sequence, path) as readonly SequenceStep[];
   return steps.map((_, index) => `${path}/${index}`);
+}
+
+function isInteractionInput(input: CoreInput): input is InteractionInput {
+  return input.type !== "move" &&
+    input.type !== "advance-sequence" &&
+    input.type !== "advance-line" &&
+    input.type !== "skip-sequence" &&
+    input.type !== "choose";
 }

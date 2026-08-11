@@ -1,7 +1,6 @@
 import {
   AuthoringError,
   type AuthoringDiagnostic,
-  type InteractionCondition,
   type LogicalResolution,
 } from "../game-project";
 import {
@@ -9,7 +8,7 @@ import {
   validateAppearanceSet,
   type Appearance,
 } from "../animation";
-import type { NounDefinition } from "../interaction";
+import type { InteractionCondition, NounDefinition } from "../interaction";
 import type { PassageDirection } from "../hud";
 import type { DirectionStep, DirectedSubject, MotionDirection } from "../sequence";
 import { isInside, navigationPath, nearestPoint } from "./geometry";

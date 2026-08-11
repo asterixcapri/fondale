@@ -1,10 +1,15 @@
-import type { GameState } from "../game-session";
-import type { InteractionCondition } from "../game-project";
+import type { InteractionCondition } from "./index";
+
+/** The immutable state facts needed to evaluate every Interaction Condition. */
+export interface InteractionConditionStateView {
+  readonly variables: Readonly<Record<string, boolean>>;
+  readonly inventory: { readonly objects: readonly string[] };
+}
 
 /** Pure availability rules shared by runtime decisions and save validation. */
 export function conditionMatchesState(
   condition: InteractionCondition | undefined,
-  state: GameState,
+  state: InteractionConditionStateView,
 ): boolean {
   if (!condition) return true;
   if ("variable" in condition) return state.variables[condition.variable] === condition.equals;
