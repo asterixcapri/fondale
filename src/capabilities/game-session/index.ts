@@ -31,7 +31,13 @@ import {
   type SaveSnapshot,
   type ValidatedSaveSnapshot,
 } from "../save";
-import { isInside, navigationPath, nearestPoint } from "../world";
+import {
+  characterMotionReachedDestination,
+  isInside,
+  navigationPath,
+  nearestPoint,
+  pointAlongPath,
+} from "../world";
 import {
   interpretDirectionStep,
   resolveSequencePath,
@@ -41,7 +47,6 @@ import {
   type MotionDirection,
 } from "../sequence";
 import { appearanceForSubject } from "../animation";
-import { pointAlongPath } from "../world";
 import { conditionMatchesState, hotspotAvailableInState } from "../interaction";
 
 export interface CharacterState {
@@ -882,11 +887,7 @@ export function createCoreSession(
   function characterMotionComplete(direction: MotionDirection): boolean {
     if (direction.subject.kind !== "character") return false;
     const character = state.characters[direction.subject.character];
-    const destination = direction.path[0];
-    return character !== undefined && destination !== undefined && Math.hypot(
-      destination.x - character.groundPoint.x,
-      destination.y - character.groundPoint.y,
-    ) <= 1e-8;
+    return characterMotionReachedDestination(direction, character?.groundPoint);
   }
 
   function directedAnimation(subject: DirectedSubject, animationName: string): AnimationDefinition | undefined {

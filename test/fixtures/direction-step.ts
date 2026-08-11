@@ -33,7 +33,9 @@ declare global {
   }
 }
 
-const live = new URLSearchParams(window.location.search).has("live");
+const parameters = new URLSearchParams(window.location.search);
+const live = parameters.has("live");
+const completion = parameters.has("complete");
 const square = [
   { x: 0, y: 0 }, { x: 1586, y: 0 }, { x: 1586, y: 240 }, { x: 0, y: 240 },
 ];
@@ -68,14 +70,14 @@ const action = defineSequence({
       }, {
         type: "motion",
         subject: { kind: "character", character: "player" },
-        path: [{ x: live ? 400 : 219, y: 180 }],
+        path: [{ x: live ? completion ? 600 : 1400 : 219, y: 180 }],
         startAfter: { direction: 0, cue: "go" },
       }, {
         type: "camera",
         mode: "move",
         from: { x: 213, y: 120 },
         to: { x: live ? 600 : 500, y: 120 },
-        duration: live ? 2 : 4 / 60,
+        duration: live ? completion ? 4 : 10 : 4 / 60,
         startAfter: { direction: 0, cue: "go" },
       }],
     },
@@ -100,7 +102,7 @@ const scene = defineScene({
             idle: { frames: [signalUrl], framesPerSecond: 1, loop: true },
             signal: {
               frames: [signalUrl, signalUrl, signalUrl, signalUrl],
-              framesPerSecond: live ? 1 : 60,
+              framesPerSecond: live ? completion ? 0.5 : 4 / 60 : 60,
               cues: { go: live ? 0.5 : 2 / 60 },
             },
           },

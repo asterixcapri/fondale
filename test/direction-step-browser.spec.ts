@@ -47,6 +47,10 @@ test("Animation and Camera present the shared Cue-local Direction timing", async
   await page.evaluate(() => window.__directionStepTest!.advance(1));
   expect(await page.evaluate(() => window.__directionStepTest!.elapsedTicks())).toBe(4);
   expect(await renderedPixel(page, 400, 120)).not.toEqual(cameraPixelDuring);
+
+  await page.evaluate(() => window.__directionStepTest!.advance(2));
+  expect(await page.evaluate(() => window.__directionStepTest!.elapsedTicks())).toBe(6);
+  expect(await renderedPixel(page, 103, 120)).toEqual([48, 75, 101, 255]);
 });
 
 test("startGame saves, restores, and skips an active Direction Step through browser input", async ({ page }) => {
@@ -75,16 +79,22 @@ test("startGame saves, restores, and skips an active Direction Step through brow
   expect(savedElapsed).toBeGreaterThan(0);
 
   await frame.focus();
-  await page.keyboard.press("Escape");
-  await page.waitForTimeout(500);
+  await page.waitForTimeout(1_000);
+  const progressedActivity = (await liveState(page)).activity;
+  const progressedElapsed = progressedActivity?.type === "sequence" &&
+    progressedActivity.active?.kind === "direction"
+    ? progressedActivity.active.elapsedTicks
+    : undefined;
+  expect(progressedElapsed).toBeGreaterThan(savedElapsed!);
   await page.keyboard.press("Control+l");
   await frame.locator('[data-fondale-load-slot="0"]').click();
   await expect.poll(async () => {
     const activity = (await liveState(page)).activity;
-    return activity?.type === "sequence" && activity.active?.kind === "direction"
+    const elapsed = activity?.type === "sequence" && activity.active?.kind === "direction"
       ? activity.active.elapsedTicks
       : undefined;
-  }).toBe(savedElapsed);
+    return elapsed !== undefined && progressedElapsed !== undefined && elapsed < progressedElapsed;
+  }).toBe(true);
 
   await frame.focus();
   await page.keyboard.press("Escape");
@@ -93,13 +103,13 @@ test("startGame saves, restores, and skips an active Direction Step through brow
 });
 
 test("startGame presents a Direction Step through its natural completion", async ({ page }) => {
-  await page.goto("/test/fixtures/direction-step.html?live");
+  await page.goto("/test/fixtures/direction-step.html?live&complete");
   await page.waitForFunction(() => window.__directionStepLive !== undefined || window.__directionStepError !== undefined);
   const error = await page.evaluate(() => window.__directionStepError);
   if (error) throw new Error(error);
 
   await clickLogical(page, 213, 180);
   await expect.poll(async () => (await liveState(page)).activity?.type).toBe("sequence");
-  await expect.poll(async () => (await liveState(page)).activity, { timeout: 6_000 }).toBeNull();
+  await expect.poll(async () => (await liveState(page)).activity, { timeout: 12_000 }).toBeNull();
   expect((await liveState(page)).variables).toEqual({ completed: true, skipped: false });
 });

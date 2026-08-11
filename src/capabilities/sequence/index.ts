@@ -237,6 +237,7 @@ export interface DirectionTiming {
   readonly finite: boolean;
   readonly complete: boolean;
   readonly active: boolean;
+  readonly presented: boolean;
 }
 
 /** @internal */
@@ -286,6 +287,7 @@ export function interpretDirectionStep(
       finite,
       complete,
       active: started && !complete,
+      presented: started && (direction.type !== "animation" || !complete),
     });
   }));
   const finiteDirections = directions.filter(({ finite }) => finite);

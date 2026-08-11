@@ -1,6 +1,19 @@
 import type { Point } from "../game-project";
+import type { MotionDirection } from "../sequence";
 
 export { isInside, navigationPath, nearestPoint } from "./geometry";
+
+/** World-owned arrival predicate shared by simulation and presentation. */
+export function characterMotionReachedDestination(
+  direction: MotionDirection,
+  groundPoint: Point | undefined,
+): boolean {
+  const destination = direction.path[0];
+  return groundPoint !== undefined && destination !== undefined && Math.hypot(
+    destination.x - groundPoint.x,
+    destination.y - groundPoint.y,
+  ) <= 1e-8;
+}
 
 /** World-owned interpolation for Object and Scenery Motion paths. */
 export function pointAlongPath(path: readonly Point[], progress: number): Point {

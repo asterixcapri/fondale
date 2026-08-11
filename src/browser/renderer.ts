@@ -28,7 +28,10 @@ import {
   type DirectionStepInterpretation,
   type DirectedSubject,
 } from "../capabilities/sequence";
-import { pointAlongPath } from "../capabilities/world";
+import {
+  characterMotionReachedDestination,
+  pointAlongPath,
+} from "../capabilities/world";
 import type {
   EntityAppearance,
   AnimationDefinition,
@@ -400,11 +403,7 @@ export class BrowserRenderer {
         (direction) => {
           if (direction.subject.kind !== "character") return false;
           const character = state.characters[direction.subject.character];
-          const destination = direction.path[0];
-          return character !== undefined && destination !== undefined && Math.hypot(
-            destination.x - character.groundPoint.x,
-            destination.y - character.groundPoint.y,
-          ) <= 1e-8;
+          return characterMotionReachedDestination(direction, character?.groundPoint);
         },
       ),
     };
@@ -419,7 +418,7 @@ export class BrowserRenderer {
       const direction = active.step.directions[index]!;
       if (direction.type !== "motion" || direction.subject.kind !== "scenery" || direction.subject.scenery !== scenery) continue;
       const timing = active.interpretation.directions[index]!;
-      if (!timing.active) continue;
+      if (!timing.presented) continue;
       return pointAlongPath(direction.path, Math.min(1, timing.localTick / secondsToTicks(direction.duration!)));
     }
     return undefined;
@@ -432,7 +431,7 @@ export class BrowserRenderer {
       const direction = active.step.directions[index]!;
       if (direction.type !== "camera") continue;
       const timing = active.interpretation.directions[index]!;
-      if (!timing.active) continue;
+      if (!timing.presented) continue;
       if (direction.mode === "cut" || direction.mode === "hold") return direction.point;
       if (direction.mode === "move") {
         const progress = Math.min(1, timing.localTick / secondsToTicks(direction.duration));
