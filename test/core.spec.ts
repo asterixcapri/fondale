@@ -56,6 +56,46 @@ test("equal inputs and logical steps produce equal snapshots and effects", () =>
   expect(first.effects()).toEqual(second.effects());
 });
 
+test("Camera facts do not depend on how often a consumer reads them", () => {
+  const panoramicScene = defineScene({
+    background: "panorama.png",
+    size: { width: 300, height: 100 },
+    walkableRegion: [
+      { x: 0, y: 0 },
+      { x: 300, y: 0 },
+      { x: 300, y: 100 },
+      { x: 0, y: 100 },
+    ],
+  });
+  const panoramicPlayer = defineCharacter({
+    ...player,
+    initialGroundPoint: { x: 50, y: 50 },
+  });
+  const panoramicProject = defineGame({
+    identity: "test.core-camera-polling",
+    version: "1",
+    logicalResolution: { width: 100, height: 100 },
+    scenes: { opening: panoramicScene },
+    characters: { player: panoramicPlayer },
+    playerCharacter: "player",
+    initialScene: "opening",
+  });
+  const eager = createTestSession(panoramicProject);
+  const lazy = createTestSession(panoramicProject);
+
+  for (const session of [eager, lazy]) {
+    session.input({ type: "move", point: { x: 250, y: 50 } });
+  }
+  for (let tick = 0; tick < 20; tick += 1) {
+    eager.steps();
+    eager.camera();
+  }
+  lazy.steps(20);
+
+  expect(lazy.snapshot()).toEqual(eager.snapshot());
+  expect(lazy.camera()).toEqual(eager.camera());
+});
+
 test("a new Player Intent replaces movement already in progress", () => {
   const session = createTestSession(project);
   session.input({ type: "move", point: { x: 90, y: 10 } });

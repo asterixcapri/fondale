@@ -40,6 +40,7 @@ test("Camera derives a directed move from Sequence-local time", () => {
       },
       localTick: 30,
       presented: true,
+      durationTicks: 60,
     }],
     pointForSubject: () => undefined,
   })).toEqual({
@@ -170,11 +171,19 @@ test("Camera owns diagnostics for its authored points", () => {
       scene: "room",
       steps: [{
         type: "direction",
-        directions: [{
-          type: "camera",
-          mode: "cut",
-          point: { x: Number.NaN, y: 40 },
-        }],
+        directions: [
+          {
+            type: "camera",
+            mode: "cut",
+            point: { x: Number.NaN, y: 40 },
+          },
+          {
+            type: "camera",
+            mode: "hold",
+            point: { x: 20, y: 40 },
+            duration: 0,
+          },
+        ],
       }],
     });
     throw new Error("Expected Camera authoring to be rejected.");
@@ -184,6 +193,11 @@ test("Camera owns diagnostics for its authored points", () => {
       code: "definition.camera.point.finite",
       owner: "camera",
       path: "steps[0].directions[0].point",
+    }));
+    expect((error as AuthoringError).diagnostics).toContainEqual(expect.objectContaining({
+      code: "definition.camera.duration",
+      owner: "camera",
+      path: "steps[0].directions[1].duration",
     }));
   }
 });

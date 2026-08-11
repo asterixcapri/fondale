@@ -53,6 +53,24 @@ test("Animation and Camera present the shared Cue-local Direction timing", async
   expect(await renderedPixel(page, 103, 120)).toEqual([48, 75, 101, 255]);
 });
 
+test("the browser applies cut, hold, and subject-follow Camera facts", async ({ page }) => {
+  await page.goto("/test/fixtures/direction-step.html?cameraModes");
+  await page.waitForFunction(() => window.__directionStepTest !== undefined || window.__directionStepError !== undefined);
+  const error = await page.evaluate(() => window.__directionStepError);
+  if (error) throw new Error(error);
+
+  const canvas = page.locator("[data-fondale-frame] canvas");
+  const cut = await canvas.screenshot();
+  await page.evaluate(() => window.__directionStepTest!.advance(1));
+  const hold = await canvas.screenshot();
+  await page.evaluate(() => window.__directionStepTest!.advance(2));
+  const follow = await canvas.screenshot();
+
+  expect(hold.equals(cut)).toBe(false);
+  expect(follow.equals(hold)).toBe(false);
+  expect(follow.equals(cut)).toBe(false);
+});
+
 test("startGame saves, restores, and skips an active Direction Step through browser input", async ({ page }) => {
   await page.goto("/test/fixtures/direction-step.html?live");
   await page.evaluate(() => localStorage.clear());
@@ -77,6 +95,7 @@ test("startGame saves, restores, and skips an active Direction Step through brow
     return slots[0]!.snapshot.state.activity?.active?.elapsedTicks;
   });
   expect(savedElapsed).toBeGreaterThan(0);
+  const savedCameraPixel = await renderedPixel(page, 400, 120);
 
   await frame.focus();
   await page.waitForTimeout(1_000);
@@ -95,6 +114,7 @@ test("startGame saves, restores, and skips an active Direction Step through brow
       : undefined;
     return elapsed !== undefined && progressedElapsed !== undefined && elapsed < progressedElapsed;
   }).toBe(true);
+  expect(await renderedPixel(page, 400, 120)).toEqual(savedCameraPixel);
 
   await frame.focus();
   await page.keyboard.press("Escape");

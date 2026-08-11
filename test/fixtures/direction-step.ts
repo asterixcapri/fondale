@@ -36,6 +36,7 @@ declare global {
 const parameters = new URLSearchParams(window.location.search);
 const live = parameters.has("live");
 const completion = parameters.has("complete");
+const cameraModes = parameters.has("cameraModes");
 const square = [
   { x: 0, y: 0 }, { x: 1586, y: 0 }, { x: 1586, y: 240 }, { x: 0, y: 240 },
 ];
@@ -60,7 +61,34 @@ const action = defineSequence({
   scene: "stage",
   skippable: true,
   skipOutcome: [{ type: "set-variable", variable: "skipped", value: true }],
-  steps: [
+  steps: cameraModes ? [
+    {
+      type: "direction",
+      directions: [{ type: "camera", mode: "cut", point: { x: 300, y: 120 } }],
+    },
+    {
+      type: "direction",
+      directions: [{
+        type: "camera",
+        mode: "hold",
+        point: { x: 700, y: 120 },
+        duration: 2 / 60,
+      }],
+    },
+    {
+      type: "direction",
+      directions: [{
+        type: "camera",
+        mode: "follow",
+        subject: { kind: "scenery", scenery: "signal" },
+        duration: 2 / 60,
+      }],
+    },
+    {
+      type: "operations",
+      operations: [{ type: "set-variable", variable: "completed", value: true }],
+    },
+  ] : [
     {
       type: "direction",
       directions: [{

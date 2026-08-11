@@ -80,6 +80,7 @@ export interface ActiveCameraDirection {
   readonly direction: CameraDirection;
   readonly localTick: number;
   readonly presented: boolean;
+  readonly durationTicks?: number;
 }
 
 export interface CameraPresentation {
@@ -114,7 +115,7 @@ export class Camera {
     }
     const active = input.directions.findLast(({ presented }) => presented);
     const directedFocus = active?.direction.mode === "move"
-      ? pointAlongMove(active.direction, active.localTick)
+      ? pointAlongMove(active.direction, active.localTick, active.durationTicks)
       : active?.direction.mode === "cut" || active?.direction.mode === "hold"
         ? active.direction.point
         : active?.direction.mode === "follow"
@@ -222,8 +223,12 @@ function approach(current: number, target: number, velocity: number): {
 function pointAlongMove(
   direction: Extract<CameraDirection, { readonly mode: "move" }>,
   localTick: number,
+  durationTicks: number | undefined,
 ): Point {
-  const progress = Math.min(1, Math.max(0, localTick / Math.max(1, Math.ceil(direction.duration * 60))));
+  if (durationTicks === undefined) {
+    throw new Error("A Camera move needs its Sequence-interpreted duration in logical ticks.");
+  }
+  const progress = Math.min(1, Math.max(0, localTick / durationTicks));
   return {
     x: direction.from.x + (direction.to.x - direction.from.x) * progress,
     y: direction.from.y + (direction.to.y - direction.from.y) * progress,

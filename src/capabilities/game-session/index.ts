@@ -213,6 +213,7 @@ export function createCoreSession(
   const inputs: CoreInput[] = [];
   const emitted: CoreEffect[] = [];
   const camera = new Camera();
+  let cameraPresentation: CameraPresentation;
 
   const session: CoreSession = {
     input(input) {
@@ -299,24 +300,7 @@ export function createCoreSession(
       });
     },
     camera() {
-      const scene = data.scenes[state.currentScene]!;
-      const active = activeDirectionPresentation();
-      const player = data.playerCharacter === undefined
-        ? undefined
-        : state.characters[data.playerCharacter];
-      return camera.update({
-        tick: state.tick,
-        scene: state.currentScene,
-        viewport: data.logicalResolution,
-        sceneSize: scene.size,
-        ...(player?.scene === state.currentScene ? { player: player.groundPoint } : {}),
-        directions: active?.step.directions.flatMap((direction, index) =>
-          direction.type === "camera"
-            ? [{ direction, ...active.interpretation.directions[index]! }]
-            : [],
-        ) ?? [],
-        pointForSubject: (subject) => directedSubjectPoint(subject, active),
-      });
+      return cameraPresentation;
     },
     stop() {
       if (status === "stopped") return;
@@ -334,6 +318,7 @@ export function createCoreSession(
     advanceDirectedStep();
     advancePlayerIntent();
     state.tick += 1;
+    advanceCamera();
   }
 
   function handleInput(input: CoreInput): void {
@@ -941,6 +926,33 @@ export function createCoreSession(
     };
   }
 
+  function advanceCamera(): void {
+    const scene = data.scenes[state.currentScene]!;
+    const active = activeDirectionPresentation();
+    const player = data.playerCharacter === undefined
+      ? undefined
+      : state.characters[data.playerCharacter];
+    cameraPresentation = camera.update({
+      tick: state.tick,
+      scene: state.currentScene,
+      viewport: data.logicalResolution,
+      sceneSize: scene.size,
+      ...(player?.scene === state.currentScene ? { player: player.groundPoint } : {}),
+      directions: active?.step.directions.flatMap((direction, index) =>
+        direction.type === "camera"
+          ? [{
+              direction,
+              ...active.interpretation.directions[index]!,
+              ...(direction.mode === "move"
+                ? { durationTicks: secondsToTicks(direction.duration) }
+                : {}),
+            }]
+          : [],
+      ) ?? [],
+      pointForSubject: (subject) => directedSubjectPoint(subject, active),
+    });
+  }
+
   function directedSubjectPoint(
     subject: DirectedSubject,
     active: ReturnType<typeof activeDirectionPresentation>,
@@ -1059,6 +1071,7 @@ export function createCoreSession(
     ];
   }
 
+  advanceCamera();
   return session;
 }
 
