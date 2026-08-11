@@ -62,6 +62,7 @@ import type { Line } from "../sequence";
 import {
   appearanceForSubject,
   objectHasAppearance,
+  validateAppearanceOperationReference,
   type AnimationDefinition,
 } from "../animation";
 import { Camera, type CameraPresentation } from "../camera";
@@ -173,7 +174,7 @@ export function createCoreSession(
       return save.createSnapshot(state);
     },
     lifecycle: () => status,
-    diagnostics: () => failureDiagnostics,
+    diagnostics: () => structuredClone(failureDiagnostics),
     hitTest(point) {
       return world.hitTest(state, point, conditionMatches);
     },
@@ -284,9 +285,14 @@ export function createCoreSession(
   }
 
   function step(): void {
-    for (const input of inputs.splice(0)) handleInput(input);
+    for (const input of inputs.splice(0)) {
+      handleInput(input);
+      if (status !== "running") return;
+    }
     advanceDirectedStep();
+    if (status !== "running") return;
     advancePlayerIntent();
+    if (status !== "running") return;
     state.tick += 1;
     advanceCamera();
   }
@@ -493,7 +499,7 @@ export function createCoreSession(
     }
     state = { ...state, ...transition.state, activity: null };
     if (transition.arrivalSequence) {
-      state.activity = sequenceCapability.start(transition.arrivalSequence);
+      state.activity = sequenceCapability.start(transition.arrivalSequence, state.currentScene);
     }
     emitted.push({ type: "scene-changed", scene: state.currentScene });
     if (state.activity?.type === "sequence") advanceSequence();
@@ -530,33 +536,35 @@ export function createCoreSession(
       if (!(operation.variable in projectViews.gameProject.variables)) throw new Error(`Unknown Game Variable '${operation.variable}'.`);
       draft.variables[operation.variable] = operation.value;
     } else if (operation.type === "set-appearance") {
+      const [diagnostic] = validateAppearanceOperationReference(
+        operation,
+        "Game Session.operation",
+        projectViews.animation,
+      );
+      if (diagnostic) throw new Error(diagnostic.message);
       const { target: appearanceTarget } = operation;
       if (appearanceTarget.kind === "character") {
-        const definition = projectViews.animation.characters[appearanceTarget.character];
         const current = draft.characters[appearanceTarget.character];
-        if (!definition || !current || !(operation.appearance in definition.appearances)) {
+        if (!current) {
           throw new Error("Invalid Character Appearance operation.");
         }
         current.appearance = operation.appearance;
       } else if (appearanceTarget.kind === "object") {
-        const definition = projectViews.animation.objects[appearanceTarget.object];
         const current = draft.objects[appearanceTarget.object];
-        if (!definition || !current || !(operation.appearance in definition.appearances)) {
+        if (!current) {
           throw new Error("Invalid Object Appearance operation.");
         }
         current.appearance = operation.appearance;
       } else {
-        const definition = projectViews.animation.scenes[appearanceTarget.scene]?.scenery?.[appearanceTarget.scenery];
-        if (!definition || !(operation.appearance in definition.appearances)) {
+        const current = draft.scenery[appearanceTarget.scene];
+        if (!current || !(appearanceTarget.scenery in current)) {
           throw new Error("Invalid Scenery Appearance operation.");
         }
-        draft.scenery[appearanceTarget.scene]![appearanceTarget.scenery] = operation.appearance;
+        current[appearanceTarget.scenery] = operation.appearance;
       }
     } else if (operation.type === "start-sequence") {
-      if (!projectViews.sequences[operation.sequence]) throw new Error(`Unknown Sequence '${operation.sequence}'.`);
-      if (projectViews.sequences[operation.sequence]!.scene !== undefined && projectViews.sequences[operation.sequence]!.scene !== draft.currentScene) throw new Error(`Sequence '${operation.sequence}' belongs to another Scene.`);
       if (draft.activity?.type === "sequence") throw new Error("A Sequence cannot start another Sequence.");
-      draft.activity = sequenceCapability.start(operation.sequence);
+      draft.activity = sequenceCapability.start(operation.sequence, draft.currentScene);
     } else if (isInventoryOperation(operation)) {
       const result = interaction.applyInventoryOperation(
         operation,
@@ -732,7 +740,7 @@ export function createCoreSession(
 
   function failOperation(message: string, cause?: unknown): void {
     status = "failed";
-    state.activity = null;
+    inputs.length = 0;
     failureDiagnostics = [
       {
         code: "state.operation.invalid",

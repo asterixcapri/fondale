@@ -2,7 +2,12 @@ import { expect, test } from "@playwright/test";
 
 import { createTestSession } from "../src/capabilities/game-session";
 import { isInside } from "../src/capabilities/world";
-import { defineCharacter, defineGame, defineScene } from "../src/index";
+import {
+  defineCharacter,
+  defineGame,
+  defineScene,
+  validateSaveSnapshot,
+} from "../src/index";
 
 const scene = defineScene({
   background: "scene.png",
@@ -56,6 +61,66 @@ test("equal inputs and logical steps produce equal snapshots and effects", () =>
   expect(first.effects()).toEqual(second.effects());
 });
 
+test("CoreSession validates step counts and has an explicit lifecycle", () => {
+  const session = createTestSession(project);
+  const initial = session.snapshot();
+
+  for (const count of [-1, 0.5, Number.NaN, Number.POSITIVE_INFINITY]) {
+    expect(() => session.steps(count)).toThrow(RangeError);
+  }
+  expect(session.snapshot()).toEqual(initial);
+  expect(session.lifecycle()).toBe("running");
+
+  session.input({ type: "move", point: { x: 80, y: 80 } });
+  session.stop();
+  expect(session.lifecycle()).toBe("stopped");
+  expect(() => session.steps()).toThrow("Game Session is stopped.");
+  expect(session.snapshot()).toEqual(initial);
+});
+
+test("CoreSession consumes cloned inputs in queue order and preserves effect order", () => {
+  const session = createTestSession(project);
+  const firstPoint = { x: 80, y: 10 };
+  session.input({ type: "move", point: firstPoint });
+  firstPoint.x = 20;
+  session.input({ type: "move", point: { x: 10, y: 80 }, fast: true });
+
+  session.steps();
+
+  expect(session.snapshot().activity).toMatchObject({
+    type: "player-intent",
+    destination: { x: 10, y: 80 },
+    fast: true,
+  });
+  expect(session.effects()).toEqual([
+    { type: "movement-started", destination: { x: 80, y: 10 } },
+    { type: "movement-started", destination: { x: 10, y: 80 }, fast: true },
+  ]);
+});
+
+test("restored CoreSession replays the same future inputs exactly", () => {
+  const uninterrupted = createTestSession(project);
+  uninterrupted.input({ type: "move", point: { x: 80, y: 70 } });
+  uninterrupted.steps(13);
+  uninterrupted.takeEffects();
+
+  const validation = validateSaveSnapshot(
+    project,
+    structuredClone(uninterrupted.createSaveSnapshot()),
+  );
+  expect(validation.ok).toBe(true);
+  if (!validation.ok) return;
+  const restored = createTestSession(project, validation.snapshot);
+
+  for (const session of [uninterrupted, restored]) {
+    session.input({ type: "move", point: { x: 20, y: 90 }, fast: true });
+    session.steps(20);
+  }
+
+  expect(restored.snapshot()).toEqual(uninterrupted.snapshot());
+  expect(restored.effects()).toEqual(uninterrupted.effects());
+});
+
 test("CoreSession exposes defensive World presentation facts", () => {
   const session = createTestSession(project);
   const presentation = session.world();
@@ -67,6 +132,19 @@ test("CoreSession exposes defensive World presentation facts", () => {
     size: { width: 100, height: 100 },
     characters: [{ id: "player", groundPoint: { x: 10, y: 10 }, scale: 1 }],
   });
+  expect(session.snapshot().characters.player!.groundPoint).toEqual({ x: 10, y: 10 });
+});
+
+test("CoreSession exposes defensive Camera presentation facts", () => {
+  const session = createTestSession(project);
+  const presentation = session.camera();
+  const exposedOrigin = presentation.origin as { x: number };
+
+  expect(() => {
+    exposedOrigin.x = 99;
+  }).toThrow(TypeError);
+
+  expect(session.camera().origin).toEqual({ x: 0, y: 0 });
   expect(session.snapshot().characters.player!.groundPoint).toEqual({ x: 10, y: 10 });
 });
 

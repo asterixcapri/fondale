@@ -36,7 +36,7 @@ test("Sequence traverses a Branch and requests Operations before presenting a Li
       }],
     }),
   });
-  const started = sequence.start("opening");
+  const started = sequence.start("opening", "room");
   const beforeAdvance = structuredClone(started);
 
   const operationDecision = sequence.advance(started, runtimeContext);
@@ -77,7 +77,7 @@ test("Sequence owns Choice eligibility, speech, and nested continuation", () => 
       }],
     }),
   });
-  const choiceDecision = sequence.advance(sequence.start("conversation"), runtimeContext);
+  const choiceDecision = sequence.advance(sequence.start("conversation", "room"), runtimeContext);
   expect(choiceDecision).toMatchObject({
     type: "waiting",
     activity: { active: { kind: "choice", eligibleAlternatives: [0] } },
@@ -121,7 +121,7 @@ test("Sequence selects the unspoken Choice fallback and completes its nested pat
       }],
     }),
   });
-  const choice = sequence.advance(sequence.start("fallback"), runtimeContext);
+  const choice = sequence.advance(sequence.start("fallback", "room"), runtimeContext);
   expect(choice).toMatchObject({
     type: "waiting",
     activity: { active: { kind: "choice", eligibleAlternatives: [-1] } },
@@ -144,7 +144,7 @@ test("Sequence returns an explicit Skip Outcome without applying Game Operations
       steps: [{ type: "narration", text: "A long account." }],
     }),
   });
-  const waiting = sequence.advance(sequence.start("skippable"), runtimeContext);
+  const waiting = sequence.advance(sequence.start("skippable", "room"), runtimeContext);
   if (waiting.type !== "waiting") throw new Error("expected an active Sequence");
 
   expect(sequence.skip(waiting.activity)).toEqual({
@@ -166,7 +166,7 @@ test("Sequence owns Direction progress and resumes traversal after completion", 
       }],
     }),
   });
-  const waiting = sequence.advance(sequence.start("directed"), runtimeContext);
+  const waiting = sequence.advance(sequence.start("directed", "room"), runtimeContext);
   if (waiting.type !== "waiting") throw new Error("expected a Direction Step");
 
   const ticked = sequence.tickDirection(waiting.activity);
@@ -186,6 +186,19 @@ test("Sequence owns Direction progress and resumes traversal after completion", 
     type: "waiting",
     activity: { active: { kind: "narration" } },
   });
+});
+
+test("Sequence rejects a start outside its authored Scene", () => {
+  const sequence = createSequence({
+    local: defineSequence({
+      scene: "room",
+      steps: [{ type: "narration", text: "Only here." }],
+    }),
+  });
+
+  expect(() => sequence.start("local", "outside")).toThrow(
+    "Sequence 'local' belongs to another Scene.",
+  );
 });
 
 test("Sequence owns diagnostics for its composed references and recursive starts", () => {
@@ -232,7 +245,7 @@ test("Sequence validates restored active state against its authored traversal", 
       }],
     }),
   });
-  const first = sequence.advance(sequence.start("restore"), runtimeContext);
+  const first = sequence.advance(sequence.start("restore", "room"), runtimeContext);
   if (first.type !== "waiting") throw new Error("expected Narration");
   const choice = sequence.continue(first.activity, runtimeContext);
   if (choice.type !== "waiting") throw new Error("expected Choice");
@@ -269,7 +282,7 @@ test("Sequence rejects impossible restored Choice speech metadata", () => {
     characterExists: () => true,
     conditionMatches: runtimeContext.conditionMatches,
   };
-  const line = sequence.advance(sequence.start("restore"), runtimeContext);
+  const line = sequence.advance(sequence.start("restore", "room"), runtimeContext);
   if (line.type !== "waiting" || line.activity.active?.kind !== "line") {
     throw new Error("expected Line");
   }
@@ -315,7 +328,7 @@ test("Sequence presentation defensively clones a Line audio URL", () => {
       steps: [{ type: "line", character: "guide", text: "Listen.", audio }],
     }),
   });
-  const waiting = sequence.advance(sequence.start("audio"), runtimeContext);
+  const waiting = sequence.advance(sequence.start("audio", "room"), runtimeContext);
   if (waiting.type !== "waiting") throw new Error("expected Line");
 
   const presentation = sequence.presentation(waiting.activity);

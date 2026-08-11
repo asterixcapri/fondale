@@ -597,6 +597,10 @@ test("a failed Command operation leaves Game State uncommitted and emits no resp
     code: "state.operation.invalid",
     owner: "game-session",
   }));
+  const exposedDiagnostics = session.diagnostics() as unknown as { message: string }[];
+  exposedDiagnostics[0]!.message = "Changed outside CoreSession";
+
+  expect(session.diagnostics()[0]!.message).not.toBe("Changed outside CoreSession");
 });
 
 test("a successful binary Use can consume its first Object terminally", () => {

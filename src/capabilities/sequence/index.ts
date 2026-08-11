@@ -807,7 +807,7 @@ export type SequencePresentation =
 
 /** @internal Sequence-owned traversal and presentation behind one immutable module interface. */
 export interface Sequence {
-  start(sequence: string): SequenceActivityState;
+  start(sequence: string, currentScene: string): SequenceActivityState;
   advance(activity: SequenceActivityState, context: SequenceRuntimeContext): SequenceDecision;
   continue(activity: SequenceActivityState, context: SequenceRuntimeContext): SequenceDecision;
   choose(
@@ -833,9 +833,12 @@ export function createSequence(
   definitions: Readonly<Record<string, SequenceDefinition>>,
 ): Sequence {
   const sequence: Sequence = {
-    start(sequence) {
+    start(sequence, currentScene) {
       const definition = definitions[sequence];
       if (!definition) throw new Error(`Unknown Sequence '${sequence}'.`);
+      if (definition.scene !== undefined && definition.scene !== currentScene) {
+        throw new Error(`Sequence '${sequence}' belongs to another Scene.`);
+      }
       return {
         type: "sequence",
         sequence,
