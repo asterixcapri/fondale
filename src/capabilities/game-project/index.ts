@@ -10,6 +10,7 @@ import {
   type CommandLexicon,
   type CommandResponse,
   type InteractionCondition,
+  type InteractionProjectView,
   type InventoryOperation,
   type NounDefinition,
   isInventoryOperation,
@@ -19,8 +20,15 @@ import {
   validateInteractionConditionReference,
   validateNounReferences,
 } from "../interaction";
-import type { HUDTheme } from "../hud";
 import {
+  validateHUDProjectReferences,
+  type HUDProjectView,
+  type HUDTheme,
+} from "../hud";
+import {
+  validateArrivalSequenceReferences,
+  validateLineReferences,
+  validateSequenceStartReference,
   validateSequenceReferences,
   type DirectedSubject,
   type Line,
@@ -28,7 +36,8 @@ import {
 } from "../sequence";
 import {
   validateAppearanceSet,
-  validateAnimationReference,
+  validateAnimationProjectSettings,
+  validateAppearanceOperationReference,
   validateObjectAppearanceReference,
   type AnimationDefinition,
   type AnimationFrames,
@@ -47,6 +56,7 @@ import {
   type Point,
   type ResolvedSceneDefinition,
   type WorldProjectView,
+  type WorldDefinitionView,
   type SceneryAppearance,
   type SceneDefinition,
 } from "../world";
@@ -129,8 +139,8 @@ export interface GameProject {
   readonly [gameProjectBrand]: true;
 }
 
-/** @internal Fully expanded representation kept behind the opaque project boundary. */
-export interface GameProjectData
+/** Fully expanded representation kept inside the Game Project implementation. */
+interface GameProjectData
   extends Omit<GameInput, "scenes" | "characters" | "objects" | "sequences" | "variables"> {
   readonly scenes: Readonly<Record<string, ResolvedSceneDefinition>>;
   readonly letterboxColor: string;
@@ -156,6 +166,57 @@ export interface SaveCompositionView {
   readonly sequences: Readonly<Record<string, SequenceDefinition>>;
 }
 
+/** @internal Project-owned registries used while coordinating one Game Session. */
+export interface GameSessionGameProjectView {
+  readonly variables: Readonly<Record<string, boolean>>;
+}
+
+/** @internal Consumer-specific views composed for Game Session coordination. */
+export interface GameSessionCompositionView {
+  readonly gameProject: GameSessionGameProjectView;
+  readonly world: WorldProjectView & Pick<WorldDefinitionView, "logicalResolution" | "playerCharacter">;
+  readonly interaction: InteractionProjectView;
+  readonly animation: AnimationProjectView;
+  readonly hud: HUDProjectView;
+  readonly sequences: Readonly<Record<string, SequenceDefinition>>;
+}
+
+/** @internal Authored assets needed by the browser asset adapter. */
+export interface BrowserAssetProjectView {
+  readonly scenes: Readonly<Record<string, ResolvedSceneDefinition>>;
+  readonly characters: Readonly<Record<string, CharacterDefinition>>;
+  readonly objects: Readonly<Record<string, ObjectDefinition>>;
+  readonly sequences: Readonly<Record<string, SequenceDefinition>>;
+  readonly hudTheme?: HUDTheme;
+  readonly inventoryAppearanceSize?: number;
+}
+
+/** @internal Project settings needed to mount the browser adapters. */
+export interface BrowserStartProjectView {
+  readonly identity: string;
+  readonly logicalResolution: LogicalResolution;
+  readonly letterboxColor: string;
+}
+
+/** @internal Authored presentation settings consumed by the browser renderer. */
+export interface BrowserPresentationProjectView {
+  readonly identity: string;
+  readonly logicalResolution: LogicalResolution;
+  readonly playerCharacter?: string;
+  readonly characters: Readonly<Record<string, CharacterDefinition>>;
+  readonly objects: Readonly<Record<string, ObjectDefinition>>;
+  readonly scenes: Readonly<Record<string, ResolvedSceneDefinition>>;
+  readonly hudTheme?: HUDTheme;
+  readonly inventoryAppearanceSize?: number;
+}
+
+/** @internal Explicit browser adapter views; never the aggregate project representation. */
+export interface BrowserProjectView {
+  readonly startup: BrowserStartProjectView;
+  readonly assets: BrowserAssetProjectView;
+  readonly presentation: BrowserPresentationProjectView;
+}
+
 const projectData = new WeakMap<GameProject, GameProjectData>();
 
 /** Composes named definitions into one validated and immutable Game Project. */
@@ -174,15 +235,7 @@ export function defineGame(input: GameInput): GameProject {
     objects,
   }));
   validateProjectDefinitions(input, characters, objects, sequences, variables, diagnostics);
-  if (input.inventoryAppearanceSize !== undefined &&
-      (!Number.isInteger(input.inventoryAppearanceSize) || input.inventoryAppearanceSize <= 0)) {
-    diagnostics.push({
-      code: "definition.inventory-appearance-size",
-      family: "definition", owner: "animation",
-      path: "inventoryAppearanceSize",
-      message: "Inventory Appearance Size must be a positive integer.",
-    });
-  }
+  diagnostics.push(...validateAnimationProjectSettings(input.inventoryAppearanceSize));
   if (!input.identity.trim()) {
     diagnostics.push({
       code: "definition.project.identity",
@@ -230,21 +283,104 @@ export function defineGame(input: GameInput): GameProject {
   return project;
 }
 
-/** @internal Returns validated definitions without making them public properties. */
-export function getGameProjectData(project: GameProject): GameProjectData {
+function requireGameProjectData(project: GameProject): GameProjectData {
   const data = projectData.get(project);
   if (!data) throw new TypeError("Expected a Game Project returned by defineGame().");
   return data;
 }
 
+/** @internal Composes the capability views needed by Game Session. */
+export function getGameSessionCompositionView(project: GameProject): GameSessionCompositionView {
+  const data = requireGameProjectData(project);
+  const world = Object.freeze({
+    logicalResolution: data.logicalResolution,
+    initialScene: data.initialScene,
+    ...(data.playerCharacter === undefined ? {} : { playerCharacter: data.playerCharacter }),
+    scenes: data.scenes,
+    characters: data.characters,
+    objects: data.objects,
+  });
+  return Object.freeze({
+    gameProject: Object.freeze({ variables: data.variables }),
+    world,
+    interaction: Object.freeze({
+      scenes: data.scenes,
+      characters: data.characters,
+      objects: data.objects,
+      ...(data.commandFallbacks === undefined ? {} : { commandFallbacks: data.commandFallbacks }),
+    }),
+    animation: animationProjectView(data),
+    hud: Object.freeze({
+      ...(data.commandLexicon === undefined ? {} : { commandLexicon: data.commandLexicon }),
+      logicalResolution: data.logicalResolution,
+      ...(data.playerCharacter === undefined ? {} : { playerCharacter: data.playerCharacter }),
+      ...(data.hudTheme === undefined ? {} : { theme: data.hudTheme }),
+    }),
+    sequences: data.sequences,
+  });
+}
+
+/** @internal Composes distinct views for browser technical adapters. */
+export function getBrowserProjectView(project: GameProject): BrowserProjectView {
+  const data = requireGameProjectData(project);
+  return Object.freeze({
+    startup: Object.freeze({
+      identity: data.identity,
+      logicalResolution: data.logicalResolution,
+      letterboxColor: data.letterboxColor,
+    }),
+    assets: Object.freeze({
+      scenes: data.scenes,
+      characters: data.characters,
+      objects: data.objects,
+      sequences: data.sequences,
+      ...(data.hudTheme === undefined ? {} : { hudTheme: data.hudTheme }),
+      ...(data.inventoryAppearanceSize === undefined
+        ? {}
+        : { inventoryAppearanceSize: data.inventoryAppearanceSize }),
+    }),
+    presentation: Object.freeze({
+      identity: data.identity,
+      logicalResolution: data.logicalResolution,
+      ...(data.playerCharacter === undefined ? {} : { playerCharacter: data.playerCharacter }),
+      characters: data.characters,
+      objects: data.objects,
+      scenes: data.scenes,
+      ...(data.hudTheme === undefined ? {} : { hudTheme: data.hudTheme }),
+      ...(data.inventoryAppearanceSize === undefined
+        ? {}
+        : { inventoryAppearanceSize: data.inventoryAppearanceSize }),
+    }),
+  });
+}
+
 /** @internal Composes the distinct narrow views consumed by Save. */
 export function getSaveCompositionView(project: GameProject): SaveCompositionView {
-  const data = getGameProjectData(project);
+  const data = requireGameProjectData(project);
   return Object.freeze({
-    gameProject: data,
-    world: data,
-    animation: data,
+    gameProject: Object.freeze({
+      identity: data.identity,
+      version: data.version,
+      variables: data.variables,
+      ...(data.playerCharacter === undefined ? {} : { playerCharacter: data.playerCharacter }),
+    }),
+    world: Object.freeze({
+      initialScene: data.initialScene,
+      scenes: data.scenes,
+      characters: data.characters,
+      objects: data.objects,
+    }),
+    animation: animationProjectView(data),
     sequences: data.sequences,
+  });
+}
+
+function animationProjectView(data: GameProjectData): AnimationProjectView {
+  return Object.freeze({
+    characters: data.characters,
+    objects: data.objects,
+    scenes: data.scenes,
+    ...(data.playerCharacter === undefined ? {} : { playerCharacter: data.playerCharacter }),
   });
 }
 
@@ -322,46 +458,35 @@ function validateProjectDefinitions(
         return;
       }
       if (operation.type === "set-variable" && !(operation.variable in variables)) {
-        operationDiagnostics.push(referenceDiagnostic("reference.variable", operationPath, `Game Variable '${operation.variable}' does not exist.`));
+        operationDiagnostics.push({
+          code: "reference.variable",
+          family: "reference",
+          owner: "game-project",
+          path: operationPath,
+          message: `Game Variable '${operation.variable}' does not exist.`,
+        });
       } else if (operation.type === "start-sequence") {
-        if (!(operation.sequence in sequences)) {
-          operationDiagnostics.push(referenceDiagnostic("reference.sequence", operationPath, `Sequence '${operation.sequence}' does not exist.`));
-        }
+        operationDiagnostics.push(...validateSequenceStartReference(
+          operation.sequence,
+          operationPath,
+          sequences,
+        ));
       } else if (operation.type === "set-appearance") {
-        const target = operation.target;
-        const appearances =
-          target.kind === "character"
-            ? characters[target.character]?.appearances
-            : target.kind === "object"
-              ? objects[target.object]?.appearances
-              : input.scenes[target.scene]?.scenery?.[target.scenery]?.appearances;
-        if (!appearances) {
-          operationDiagnostics.push(referenceDiagnostic("reference.appearance.target", operationPath, "Appearance target does not exist."));
-        } else if (!(operation.appearance in appearances)) {
-          operationDiagnostics.push(referenceDiagnostic("reference.appearance", operationPath, `Appearance '${operation.appearance}' does not exist on the target.`));
-        }
+        operationDiagnostics.push(...validateAppearanceOperationReference(
+          operation,
+          operationPath,
+          { characters, objects, scenes: input.scenes },
+        ));
       }
     });
     return operationDiagnostics;
   };
   const line = (value: Line | undefined, path: string) => {
-    if (!value) return;
-    if (!(value.character in characters)) {
-      diagnostics.push(referenceDiagnostic(
-        "reference.character",
-        `${path}.character`,
-        `Character '${value.character}' does not exist.`,
-      ));
-    } else if (value.animation !== undefined) {
-      const appearances = Object.values(characters[value.character]!.appearances);
-      diagnostics.push(...validateAnimationReference(
-        appearances,
-        value.animation,
-        `${path}.animation`,
-        "reference.animation.line",
-        `Line Animation '${value.animation}' is not available in every Appearance of Character '${value.character}'.`,
-      ));
-    }
+    diagnostics.push(...validateLineReferences(value, path, {
+      characterExists: (character) => character in characters,
+      appearancesForCharacter: (character) =>
+        Object.values(characters[character]?.appearances ?? {}),
+    }));
   };
   const noun = (
     value: NounDefinition | undefined,
@@ -402,14 +527,14 @@ function validateProjectDefinitions(
         { kind: "scenery", scenery: sceneryId },
         [sceneId],
       );
-      if (!(scenery.initialAppearance in scenery.appearances)) {
-        diagnostics.push(referenceDiagnostic("reference.appearance.initial", `scenes.${sceneId}.scenery.${sceneryId}.initialAppearance`, "Initial Scenery Appearance does not exist."));
-      }
     }
+    diagnostics.push(...validateArrivalSequenceReferences(
+      sceneId,
+      scene.arrivalSequences,
+      sequences,
+    ));
     scene.arrivalSequences?.forEach((rule, ruleIndex) => {
       const base = `scenes.${sceneId}.arrivalSequences[${ruleIndex}]`;
-      if (!(rule.sequence in sequences)) diagnostics.push(referenceDiagnostic("reference.sequence", `${base}.sequence`, `Sequence '${rule.sequence}' does not exist.`));
-      else if (sequences[rule.sequence]?.scene !== undefined && sequences[rule.sequence]!.scene !== sceneId) diagnostics.push(referenceDiagnostic("reference.sequence.scene", `${base}.sequence`, `Sequence '${rule.sequence}' belongs to Scene '${sequences[rule.sequence]!.scene}'.`));
       condition(rule.when, `${base}.when`);
     });
     scene.hotspots?.forEach((hotspot, hotspotIndex) => {
@@ -490,18 +615,9 @@ function validateProjectDefinitions(
         }),
     }));
   }
-  for (const character of Object.keys(input.hudTheme?.speechColors ?? {})) {
-    if (!(character in characters)) {
-      diagnostics.push(referenceDiagnostic(
-        "reference.character",
-        `hudTheme.speechColors.${character}`,
-        `Character '${character}' does not exist.`,
-      ));
-    }
-  }
+  diagnostics.push(...validateHUDProjectReferences(
+    input.hudTheme,
+    new Set(Object.keys(characters)),
+  ));
 
-}
-
-function referenceDiagnostic(code: string, path: string, message: string): AuthoringDiagnostic {
-  return { code, family: "reference", owner: "game-project", path, message };
 }

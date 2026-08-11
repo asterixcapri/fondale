@@ -11,6 +11,7 @@ import {
   defineScene,
   defineSequence,
   type DirectionStep,
+  type GameInput,
   type HotspotDefinition,
 } from "../src/index";
 
@@ -21,6 +22,16 @@ const coordinatedDirectionStep = {
 } satisfies DirectionStep;
 
 void coordinatedDirectionStep;
+
+const minimalGameInput = {
+  identity: "example.typed-project",
+  version: "1",
+  logicalResolution: { width: 320, height: 180 },
+  scenes: {},
+  initialScene: "opening",
+} satisfies GameInput;
+
+void minimalGameInput;
 
 test("defineSequence diagnoses a Cue dependency on a non-Animation direction", () => {
   try {
@@ -200,6 +211,70 @@ test("an Author defines an immutable one-Scene Game Project through the root API
 
   expect(Object.isFrozen(project)).toBe(true);
   expect(Object.isFrozen(opening)).toBe(true);
+});
+
+test("defineGame aggregates Project Identity, Project Version, and capability diagnostics", () => {
+  const opening = defineScene({
+    background: "opening.png",
+    walkableRegion: [
+      { x: 0, y: 0 },
+      { x: 320, y: 0 },
+      { x: 320, y: 180 },
+      { x: 0, y: 180 },
+    ],
+  });
+  const hudTheme = defineHUDTheme({
+    font: { family: "Fondale", source: "fondale.woff2" },
+    colors: {
+      backing: "#000000",
+      border: "#111111",
+      text: "#ffffff",
+      preferred: "#eeeeee",
+      selected: "#dddddd",
+      inventoryWell: "#222222",
+    },
+    opacity: 1,
+    maxSpeechWidth: 160,
+    cursors: {
+      left: "left.png",
+      right: "right.png",
+      up: "up.png",
+      down: "down.png",
+      enter: "enter.png",
+    },
+    speechColors: { missingCharacter: "#abcdef" },
+  });
+
+  try {
+    defineGame({
+      identity: " ",
+      version: "",
+      logicalResolution: { width: 320, height: 180 },
+      scenes: { opening },
+      initialScene: "opening",
+      hudTheme,
+    });
+    throw new Error("expected invalid project composition");
+  } catch (error) {
+    expect(error).toBeInstanceOf(AuthoringError);
+    expect((error as AuthoringError).diagnostics).toEqual([
+      expect.objectContaining({
+        code: "reference.character",
+        owner: "hud",
+        path: "hudTheme.speechColors.missingCharacter",
+      }),
+      expect.objectContaining({
+        code: "definition.project.identity",
+        owner: "game-project",
+        path: "identity",
+      }),
+      expect.objectContaining({
+        code: "definition.project.version",
+        owner: "game-project",
+        path: "version",
+      }),
+    ]);
+  }
 });
 
 test("defineScene accepts and freezes a Scene Size independently of the viewport", () => {

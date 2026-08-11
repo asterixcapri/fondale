@@ -297,14 +297,17 @@ export interface HUD {
   notify(notification: { readonly type: "command-response"; readonly text: string }): void;
 }
 
-/** Creates the contextual HUD capability over narrow World and Interaction views. */
-export function createHUD(input: {
+/** @internal Authored settings needed to derive HUD presentation and intentions. */
+export interface HUDProjectView {
   readonly commandLexicon?: CommandLexicon;
   readonly inventoryPageSize?: number;
   readonly logicalResolution?: LogicalResolution;
   readonly playerCharacter?: string;
   readonly theme?: HUDTheme;
-}): HUD {
+}
+
+/** Creates the contextual HUD capability over narrow World and Interaction views. */
+export function createHUD(input: HUDProjectView): HUD {
   const pageSize = input.inventoryPageSize ?? 8;
   if (!Number.isInteger(pageSize) || pageSize <= 0) {
     throw new RangeError("Inventory page size must be a positive integer.");
@@ -730,6 +733,24 @@ export function defineHUDTheme(input: HUDTheme): HUDTheme {
     },
     speechColors: { ...input.speechColors },
   });
+}
+
+/** Validates HUD Theme references that can be resolved only during Game Project composition. */
+export function validateHUDProjectReferences(
+  theme: HUDTheme | undefined,
+  characters: ReadonlySet<string>,
+): readonly AuthoringDiagnostic[] {
+  return Object.keys(theme?.speechColors ?? {}).flatMap((character) =>
+    characters.has(character)
+      ? []
+      : [{
+          code: "reference.character",
+          family: "reference" as const,
+          owner: "hud" as const,
+          path: `hudTheme.speechColors.${character}`,
+          message: `Character '${character}' does not exist.`,
+        }],
+  );
 }
 
 function selectedInventoryEntry(

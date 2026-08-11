@@ -2,7 +2,7 @@ import { Application, TexturePool } from "pixi.js";
 
 import { createCoreSession, type CoreSession } from "../capabilities/game-session";
 import { AuthoringError, type AuthoringDiagnostic } from "../capabilities/game-project";
-import { getGameProjectData, type GameProject } from "../capabilities/game-project";
+import { getBrowserProjectView, type GameProject } from "../capabilities/game-project";
 import {
   validateSaveSnapshot,
   type SaveSnapshot,
@@ -46,7 +46,8 @@ export async function startGame(
   project: GameProject,
   options: StartGameOptions,
 ): Promise<GameSession> {
-  const data = getGameProjectData(project);
+  const projectView = getBrowserProjectView(project);
+  const startup = projectView.startup;
   const { target } = options;
   if (occupiedTargets.has(target)) {
     throw new AuthoringError([
@@ -98,12 +99,12 @@ export async function startGame(
         },
       ]);
     }
-    const assets = await loadProjectAssets(data);
+    const assets = await loadProjectAssets(projectView.assets);
     application = new Application();
     try {
       await application.init({
-        width: data.logicalResolution.width,
-        height: data.logicalResolution.height,
+        width: startup.logicalResolution.width,
+        height: startup.logicalResolution.height,
         preference: "webgl",
         backgroundAlpha: 0,
         antialias: false,
@@ -134,7 +135,7 @@ export async function startGame(
     application.canvas.style.imageRendering = "pixelated";
     frame.append(application.canvas);
 
-    target.style.background = data.letterboxColor;
+    target.style.background = startup.letterboxColor;
     target.style.display = "grid";
     target.style.placeItems = "center";
     target.style.overflow = "hidden";
@@ -142,7 +143,7 @@ export async function startGame(
 
     const fitFrame = () => {
       if (!frame) return;
-      const { width, height } = data.logicalResolution;
+      const { width, height } = startup.logicalResolution;
       const ratio = Math.min(target.clientWidth / width, target.clientHeight / height);
       const scale = ratio >= 1 ? Math.max(1, Math.floor(ratio)) : Math.max(0, ratio);
       frame.style.width = `${width * scale}px`;
@@ -159,14 +160,21 @@ export async function startGame(
       renderer?.destroy();
       core?.stop();
       core = createCoreSession(project, snapshot);
-      renderer = new BrowserRenderer(application!, frame!, data, assets, core, controls);
+      renderer = new BrowserRenderer(
+        application!,
+        frame!,
+        projectView.presentation,
+        assets,
+        core,
+        controls,
+      );
       renderer.render(core.snapshot(), []);
     };
     controls = createBrowserSessionControls(project, () => core!, replaceCore);
     renderer = new BrowserRenderer(
       application,
       frame,
-      data,
+      projectView.presentation,
       assets,
       core,
       controls,

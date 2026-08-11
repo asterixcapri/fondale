@@ -64,6 +64,65 @@ export interface AnimationProjectView {
   readonly playerCharacter?: string;
 }
 
+/** Validates project-level Animation settings outside any focused definition. */
+export function validateAnimationProjectSettings(
+  inventoryAppearanceSize: number | undefined,
+): readonly AuthoringDiagnostic[] {
+  return inventoryAppearanceSize === undefined || (
+    Number.isInteger(inventoryAppearanceSize) && inventoryAppearanceSize > 0
+  )
+    ? []
+    : [{
+        code: "definition.inventory-appearance-size",
+        family: "definition",
+        owner: "animation",
+        path: "inventoryAppearanceSize",
+        message: "Inventory Appearance Size must be a positive integer.",
+      }];
+}
+
+/** Validates one authored Appearance-changing operation against Animation definitions. */
+export function validateAppearanceOperationReference(
+  operation: {
+    readonly target:
+      | { readonly kind: "character"; readonly character: string }
+      | { readonly kind: "object"; readonly object: string }
+      | { readonly kind: "scenery"; readonly scene: string; readonly scenery: string };
+    readonly appearance: string;
+  },
+  path: string,
+  project: {
+    readonly characters: AnimationProjectView["characters"];
+    readonly objects: AnimationProjectView["objects"];
+    readonly scenes: Readonly<Record<string, Pick<ResolvedSceneDefinition, "scenery">>>;
+  },
+): readonly AuthoringDiagnostic[] {
+  const target = operation.target;
+  const appearances = target.kind === "character"
+    ? project.characters[target.character]?.appearances
+    : target.kind === "object"
+      ? project.objects[target.object]?.appearances
+      : project.scenes[target.scene]?.scenery?.[target.scenery]?.appearances;
+  if (!appearances) {
+    return [{
+      code: "reference.appearance.target",
+      family: "reference",
+      owner: "animation",
+      path,
+      message: "Appearance target does not exist.",
+    }];
+  }
+  return operation.appearance in appearances
+    ? []
+    : [{
+        code: "reference.appearance",
+        family: "reference",
+        owner: "animation",
+        path,
+        message: `Appearance '${operation.appearance}' does not exist on the target.`,
+      }];
+}
+
 /** Resolves an Engine-selected Animation Role, including the speaking fallback. */
 export function animationNameForRole(
   appearance: Appearance,

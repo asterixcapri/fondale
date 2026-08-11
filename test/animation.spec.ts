@@ -8,9 +8,9 @@ import {
   animationPresentationForSubject,
   validateAppearance,
   validateAppearanceSet,
+  type AnimationProjectView,
   type Appearance,
 } from "../src/capabilities/animation";
-import type { GameProjectData } from "../src/capabilities/game-project";
 import type { GameState } from "../src/capabilities/game-session";
 import { interpretDirectionStep, type DirectionStep } from "../src/capabilities/sequence";
 
@@ -98,7 +98,7 @@ test("Animation derives directed presentation facts from immutable session input
     characters: { actor: { appearances: { normal: appearance } } },
     objects: {},
     scenes: {},
-  } as unknown as GameProjectData;
+  } as unknown as AnimationProjectView;
   const state = {
     currentScene: "room",
     characters: { actor: { scene: "room", appearance: "normal" } },
@@ -153,7 +153,7 @@ test("Animation derives default frame progression from the logical session tick"
     characters: { actor: { appearances: { normal: appearance } } },
     objects: {},
     scenes: {},
-  } as unknown as GameProjectData;
+  } as unknown as AnimationProjectView;
   const state = {
     tick: 30,
     currentScene: "room",
@@ -187,7 +187,7 @@ test("Animation starts Line frame progression from the activity-local tick", () 
     characters: { actor: { appearances: { normal: appearance } } },
     objects: {},
     scenes: {},
-  } as unknown as GameProjectData;
+  } as unknown as AnimationProjectView;
   const state = {
     tick: 100,
     currentScene: "room",

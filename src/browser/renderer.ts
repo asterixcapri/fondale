@@ -30,7 +30,7 @@ import {
   type WorldPresentation,
   type WorldTarget,
 } from "../capabilities/world";
-import type { GameProjectData } from "../capabilities/game-project";
+import type { BrowserPresentationProjectView } from "../capabilities/game-project";
 import type {
   HUDNarrativePresentation,
   HUDAdapterFacts,
@@ -92,7 +92,7 @@ export class BrowserRenderer {
   constructor(
     private readonly application: Application,
     private readonly frame: HTMLElement,
-    private readonly data: GameProjectData,
+    private readonly data: BrowserPresentationProjectView,
     private readonly assets: LoadedAssets,
     private readonly core: CoreSession,
     private readonly controls: BrowserSessionControls,
@@ -483,7 +483,7 @@ class EngineOverlay {
 
   constructor(
     private readonly frame: HTMLElement,
-    private readonly data: GameProjectData,
+    private readonly data: BrowserPresentationProjectView,
     private readonly assets: LoadedAssets,
     private readonly core: CoreSession,
     private readonly controls: BrowserSessionControls,

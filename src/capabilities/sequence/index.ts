@@ -1,6 +1,11 @@
 import { AuthoringError, type AuthoringDiagnostic, type GameOperation } from "../game-project";
 import type { InteractionCondition } from "../interaction";
-import { validateMotionDirection, type Facing, type Point } from "../world";
+import {
+  validateMotionDirection,
+  type ArrivalSequenceRule,
+  type Facing,
+  type Point,
+} from "../world";
 import {
   animationCueTick,
   animationDurationTicks,
@@ -19,6 +24,36 @@ export interface Line {
   readonly character: string;
   readonly audio?: URL | string;
   readonly animation?: string;
+}
+
+/** Validates references owned by one Line wherever another capability embeds it. */
+export function validateLineReferences(
+  line: Line | undefined,
+  path: string,
+  context: {
+    readonly characterExists: (character: string) => boolean;
+    readonly appearancesForCharacter: (character: string) => readonly Appearance[];
+  },
+): readonly AuthoringDiagnostic[] {
+  if (!line) return [];
+  if (!context.characterExists(line.character)) {
+    return [{
+      code: "reference.character",
+      family: "reference",
+      owner: "sequence",
+      path: `${path}.character`,
+      message: `Character '${line.character}' does not exist.`,
+    }];
+  }
+  return line.animation === undefined
+    ? []
+    : validateAnimationReference(
+        context.appearancesForCharacter(line.character),
+        line.animation,
+        `${path}.animation`,
+        "reference.animation.line",
+        `Line Animation '${line.animation}' is not available in every Appearance of Character '${line.character}'.`,
+      );
 }
 
 export interface LineStep extends Line {
@@ -115,6 +150,54 @@ export interface SequenceDefinition {
   readonly scene?: string;
   readonly skippable?: boolean;
   readonly skipOutcome?: readonly GameOperation[];
+}
+
+/** Validates references from World arrival rules into Sequence definitions. */
+export function validateArrivalSequenceReferences(
+  scene: string,
+  rules: readonly ArrivalSequenceRule[] | undefined,
+  sequences: Readonly<Record<string, SequenceDefinition>>,
+): readonly AuthoringDiagnostic[] {
+  const diagnostics: AuthoringDiagnostic[] = [];
+  rules?.forEach((rule, ruleIndex) => {
+    const path = `scenes.${scene}.arrivalSequences[${ruleIndex}].sequence`;
+    const sequence = sequences[rule.sequence];
+    if (!sequence) {
+      diagnostics.push({
+        code: "reference.sequence",
+        family: "reference",
+        owner: "sequence",
+        path,
+        message: `Sequence '${rule.sequence}' does not exist.`,
+      });
+    } else if (sequence.scene !== undefined && sequence.scene !== scene) {
+      diagnostics.push({
+        code: "reference.sequence.scene",
+        family: "reference",
+        owner: "sequence",
+        path,
+        message: `Sequence '${rule.sequence}' belongs to Scene '${sequence.scene}'.`,
+      });
+    }
+  });
+  return diagnostics;
+}
+
+/** Validates an authored request to start a named Sequence. */
+export function validateSequenceStartReference(
+  sequence: string,
+  path: string,
+  sequences: Readonly<Record<string, SequenceDefinition>>,
+): readonly AuthoringDiagnostic[] {
+  return sequence in sequences
+    ? []
+    : [{
+        code: "reference.sequence",
+        family: "reference",
+        owner: "sequence",
+        path,
+        message: `Sequence '${sequence}' does not exist.`,
+      }];
 }
 
 /** Creates and freezes a finite Sequence of Lines, Narrations, Choices, branches and operations. */
@@ -422,22 +505,7 @@ export function validateSequenceReferences(
     steps.forEach((step, index) => {
       const base = `${path}[${index}]`;
       if (step.type === "line") {
-        if (!context.characterExists(step.character)) {
-          diagnostics.push({
-            code: "reference.character",
-            family: "reference", owner: "sequence",
-            path: `${base}.character`,
-            message: `Character '${step.character}' does not exist.`,
-          });
-        } else if (step.animation !== undefined) {
-          diagnostics.push(...validateAnimationReference(
-            context.appearancesForCharacter(step.character),
-            step.animation,
-            `${base}.animation`,
-            "reference.animation.line",
-            `Line Animation '${step.animation}' is not available in every Appearance of Character '${step.character}'.`,
-          ));
-        }
+        diagnostics.push(...validateLineReferences(step, base, context));
       } else if (step.type === "operations") {
         validateOperations(step.operations, `${base}.operations`);
         for (const operation of step.operations) {

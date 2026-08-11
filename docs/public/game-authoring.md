@@ -31,8 +31,11 @@ const project = defineGame({
 ```
 
 Registry keys are definition identities and all cross-references remain those
-declarative strings. `defineGame` validates them together and returns an opaque,
-frozen Game Project. See the compiled [first Scene recipe](recipes/first-scene.ts).
+declarative strings. `GameInput` is available from the package root when an
+Author wants to type this input separately. `defineGame` asks each capability
+to validate the definitions and relationships it owns, combines every
+diagnostic deterministically, and returns an opaque, deeply immutable Game
+Project. See the compiled [first Scene recipe](recipes/first-scene.ts).
 
 ## Define Scene space and navigation
 

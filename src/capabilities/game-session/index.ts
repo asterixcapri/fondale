@@ -23,10 +23,10 @@ import {
   type HUDPresentationContext,
 } from "../hud";
 import {
-  getGameProjectData,
+  getGameSessionCompositionView,
   type GameOperation,
   type GameProject,
-  type GameProjectData,
+  type GameSessionGameProjectView,
 } from "../game-project";
 import {
   createSave,
@@ -130,23 +130,19 @@ export function createCoreSession(
   project: GameProject,
   restored?: ValidatedSaveSnapshot,
 ): CoreSession {
-  const data = getGameProjectData(project);
-  const world = createWorld(data);
-  const interaction = createInteraction(data, {
+  const projectViews = getGameSessionCompositionView(project);
+  const world = createWorld(projectViews.world);
+  const interaction = createInteraction(projectViews.interaction, {
     canPlaceObject: (scene, point) => world.canPlaceObject(scene, point),
-    objectHasAppearance: (object, appearance) => objectHasAppearance(data, object, appearance),
+    objectHasAppearance: (object, appearance) =>
+      objectHasAppearance(projectViews.animation, object, appearance),
   });
-  const hud = createHUD({
-    commandLexicon: data.commandLexicon,
-    logicalResolution: data.logicalResolution,
-    playerCharacter: data.playerCharacter,
-    theme: data.hudTheme,
-  });
-  const sequenceCapability = createSequence(data.sequences);
+  const hud = createHUD(projectViews.hud);
+  const sequenceCapability = createSequence(projectViews.sequences);
   const save = createSave(project);
   let state = restored
     ? save.restore(restored)
-    : initialState(data, world.initialState());
+    : initialState(projectViews.gameProject, world.initialState());
   let status: "running" | "failed" | "stopped" = "running";
   let failureDiagnostics: readonly AuthoringDiagnostic[] = [];
   const inputs: CoreInput[] = [];
@@ -456,9 +452,9 @@ export function createCoreSession(
   function advancePlayerIntent(): void {
     const activity = state.activity;
     if (activity?.type !== "player-intent") return;
-    const playerId = data.playerCharacter;
+    const playerId = projectViews.world.playerCharacter;
     const player = playerId ? state.characters[playerId] : undefined;
-    const definition = playerId ? data.characters[playerId] : undefined;
+    const definition = playerId ? projectViews.world.characters[playerId] : undefined;
     if (!playerId || !player || !definition) {
       state.activity = null;
       return;
@@ -480,7 +476,7 @@ export function createCoreSession(
 
   function resolvePassage(intent: Extract<PlayerIntent, { kind: "passage" }>): void {
     if (intent.scene !== state.currentScene) return;
-    const playerId = data.playerCharacter;
+    const playerId = projectViews.world.playerCharacter;
     if (!playerId) {
       failOperation("A Scene Passage destination is not available.");
       return;
@@ -531,34 +527,34 @@ export function createCoreSession(
     firstNounObject?: string,
   ): void {
     if (operation.type === "set-variable") {
-      if (!(operation.variable in data.variables)) throw new Error(`Unknown Game Variable '${operation.variable}'.`);
+      if (!(operation.variable in projectViews.gameProject.variables)) throw new Error(`Unknown Game Variable '${operation.variable}'.`);
       draft.variables[operation.variable] = operation.value;
     } else if (operation.type === "set-appearance") {
       const { target: appearanceTarget } = operation;
       if (appearanceTarget.kind === "character") {
-        const definition = data.characters[appearanceTarget.character];
+        const definition = projectViews.animation.characters[appearanceTarget.character];
         const current = draft.characters[appearanceTarget.character];
         if (!definition || !current || !(operation.appearance in definition.appearances)) {
           throw new Error("Invalid Character Appearance operation.");
         }
         current.appearance = operation.appearance;
       } else if (appearanceTarget.kind === "object") {
-        const definition = data.objects[appearanceTarget.object];
+        const definition = projectViews.animation.objects[appearanceTarget.object];
         const current = draft.objects[appearanceTarget.object];
         if (!definition || !current || !(operation.appearance in definition.appearances)) {
           throw new Error("Invalid Object Appearance operation.");
         }
         current.appearance = operation.appearance;
       } else {
-        const definition = data.scenes[appearanceTarget.scene]?.scenery?.[appearanceTarget.scenery];
+        const definition = projectViews.animation.scenes[appearanceTarget.scene]?.scenery?.[appearanceTarget.scenery];
         if (!definition || !(operation.appearance in definition.appearances)) {
           throw new Error("Invalid Scenery Appearance operation.");
         }
         draft.scenery[appearanceTarget.scene]![appearanceTarget.scenery] = operation.appearance;
       }
     } else if (operation.type === "start-sequence") {
-      if (!data.sequences[operation.sequence]) throw new Error(`Unknown Sequence '${operation.sequence}'.`);
-      if (data.sequences[operation.sequence]!.scene !== undefined && data.sequences[operation.sequence]!.scene !== draft.currentScene) throw new Error(`Sequence '${operation.sequence}' belongs to another Scene.`);
+      if (!projectViews.sequences[operation.sequence]) throw new Error(`Unknown Sequence '${operation.sequence}'.`);
+      if (projectViews.sequences[operation.sequence]!.scene !== undefined && projectViews.sequences[operation.sequence]!.scene !== draft.currentScene) throw new Error(`Sequence '${operation.sequence}' belongs to another Scene.`);
       if (draft.activity?.type === "sequence") throw new Error("A Sequence cannot start another Sequence.");
       draft.activity = sequenceCapability.start(operation.sequence);
     } else if (isInventoryOperation(operation)) {
@@ -605,7 +601,9 @@ export function createCoreSession(
   function sequenceRuntimeContext() {
     return {
       tick: state.tick,
-      ...(data.playerCharacter ? { playerCharacter: data.playerCharacter } : {}),
+      ...(projectViews.world.playerCharacter
+        ? { playerCharacter: projectViews.world.playerCharacter }
+        : {}),
       conditionMatches,
       directedSubjectsAreAvailable,
     };
@@ -641,7 +639,7 @@ export function createCoreSession(
   }
 
   function directedAnimation(subject: DirectedSubject, animationName: string): AnimationDefinition | undefined {
-    const appearance = appearanceForSubject(data, state, subject);
+    const appearance = appearanceForSubject(projectViews.animation, state, subject);
     return appearance?.animations[animationName];
   }
 
@@ -663,15 +661,15 @@ export function createCoreSession(
   }
 
   function advanceCamera(): void {
-    const scene = data.scenes[state.currentScene]!;
+    const scene = projectViews.world.scenes[state.currentScene]!;
     const active = activeDirectionPresentation();
-    const player = data.playerCharacter === undefined
+    const player = projectViews.world.playerCharacter === undefined
       ? undefined
-      : state.characters[data.playerCharacter];
+      : state.characters[projectViews.world.playerCharacter];
     cameraPresentation = camera.update({
       tick: state.tick,
       scene: state.currentScene,
-      viewport: data.logicalResolution,
+      viewport: projectViews.world.logicalResolution,
       sceneSize: scene.size,
       ...(player?.scene === state.currentScene ? { player: player.groundPoint } : {}),
       directions: active?.directions.flatMap(({ direction, timing }) =>
@@ -750,7 +748,7 @@ export function createCoreSession(
   return session;
 }
 
-function initialState(data: GameProjectData, world: WorldState): GameState {
+function initialState(data: GameSessionGameProjectView, world: WorldState): GameState {
   return {
     ...world,
     inventory: { objects: [] },

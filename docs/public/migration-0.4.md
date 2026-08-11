@@ -4,6 +4,19 @@ Fondale 0.4 reorganizes the Engine around capability-owned modules without
 adding package subpaths. Authors continue to import every supported contract
 from `@asterixcapri/fondale`.
 
+## Game Project composition
+
+`GameInput` is exported from the package root for Authors who want to type a
+project input before passing it to `defineGame`. Focused builders such as
+`defineCharacter`, `defineObject`, `defineScene`, and `defineSequence` remain
+the supported way to prepare definitions before composing their registries.
+
+`defineGame` still returns an opaque, deeply immutable `GameProject`. Its
+complete representation is not an interface for Engine capabilities: Game
+Session, Save, and browser adapters receive only their declared immutable
+views. Invalid composition throws one `AuthoringError` containing the complete,
+deterministically ordered diagnostics returned by the owning capabilities.
+
 ## Direction Step
 
 The old `DirectStep` type has been removed. Use `DirectionStep`, and change its

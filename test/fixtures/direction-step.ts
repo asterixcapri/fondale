@@ -20,7 +20,7 @@ import {
 import { BrowserRenderer, type BrowserSessionControls } from "../../src/browser/renderer";
 import { loadProjectAssets } from "../../src/browser/assets";
 import { createCoreSession } from "../../src/capabilities/game-session";
-import { getGameProjectData } from "../../src/capabilities/game-project";
+import { getBrowserProjectView } from "../../src/capabilities/game-project";
 
 declare global {
   interface Window {
@@ -180,12 +180,13 @@ try {
   if (live) {
     window.__directionStepLive = { session: await startGame(project, { target: document.body }) };
   } else {
-    const data = getGameProjectData(project);
-    const assets = await loadProjectAssets(data);
+    const projectView = getBrowserProjectView(project);
+    const startup = projectView.startup;
+    const assets = await loadProjectAssets(projectView.assets);
     const application = new Application();
     await application.init({
-      width: data.logicalResolution.width,
-      height: data.logicalResolution.height,
+      width: startup.logicalResolution.width,
+      height: startup.logicalResolution.height,
       preference: "webgl",
       antialias: false,
       roundPixels: true,
@@ -202,7 +203,14 @@ try {
       save: () => undefined,
       load: () => ({ ok: false, diagnostics: [] }),
     };
-    const renderer = new BrowserRenderer(application, frame, data, assets, core, controls);
+    const renderer = new BrowserRenderer(
+      application,
+      frame,
+      projectView.presentation,
+      assets,
+      core,
+      controls,
+    );
     renderer.render(core.snapshot(), []);
     core.input({ type: "quick-hotspot", hotspot: 0, verb: "use" });
     core.steps();

@@ -5,7 +5,7 @@ import {
   isImageAnimationFrames,
   type Appearance,
 } from "../capabilities/animation";
-import type { GameProjectData } from "../capabilities/game-project";
+import type { BrowserAssetProjectView } from "../capabilities/game-project";
 import { sequenceLines } from "../capabilities/sequence";
 import type { EntityAppearance, Point } from "../capabilities/world";
 
@@ -20,7 +20,7 @@ export function assetUrl(url: URL | string): string {
 }
 
 /** Loads and validates every visual and Line audio asset before a Game Session becomes observable. */
-export async function loadProjectAssets(data: GameProjectData): Promise<LoadedAssets> {
+export async function loadProjectAssets(data: BrowserAssetProjectView): Promise<LoadedAssets> {
   const references = new Map<string, string[]>();
   const audioReferences = new Map<string, string[]>();
   const add = (url: URL | string, path: string) => {

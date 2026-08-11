@@ -34,6 +34,7 @@ export {
 } from "./capabilities/animation";
 export {
   defineGame,
+  type GameInput,
   type GameProject,
   type LogicalResolution,
   type GameOperation,
