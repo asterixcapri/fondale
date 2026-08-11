@@ -33,7 +33,6 @@ import {
 } from "../save";
 import { isInside, navigationPath, nearestPoint } from "../world";
 import {
-  directionStepComplete,
   interpretDirectionStep,
   resolveSequencePath,
   secondsToTicks,
@@ -847,18 +846,20 @@ export function createCoreSession(
     const definition = data.sequences[activity.sequence]!;
     const directionStep = resolveSequencePath(definition, activity.active.path) as DirectionStep;
     activity.active.elapsedTicks += 1;
-    const interpretation = interpretDirectionStep(
+    let interpretation = interpretDirectionStep(
       directionStep,
       activity.active.elapsedTicks,
       directedAnimation,
+      characterMotionComplete,
     );
     applyDirectedMotions(directionStep, interpretation.directions.map(({ localTick }) => localTick));
-    if (!directionStepComplete(
+    interpretation = interpretDirectionStep(
       directionStep,
-      interpretation,
+      activity.active.elapsedTicks,
       directedAnimation,
       characterMotionComplete,
-    )) return;
+    );
+    if (!interpretation.complete) return;
     activity.active = null;
     advanceSequence();
   }

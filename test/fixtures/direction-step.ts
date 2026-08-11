@@ -14,6 +14,8 @@ import {
   defineNoun,
   defineScene,
   defineSequence,
+  startGame,
+  type GameSession,
 } from "../../src/index";
 import { BrowserRenderer, type BrowserSessionControls } from "../../src/browser/renderer";
 import { loadProjectAssets } from "../../src/browser/assets";
@@ -26,10 +28,12 @@ declare global {
       advance(ticks: number): void;
       elapsedTicks(): number | undefined;
     };
+    __directionStepLive?: { session: GameSession };
     __directionStepError?: string;
   }
 }
 
+const live = new URLSearchParams(window.location.search).has("live");
 const square = [
   { x: 0, y: 0 }, { x: 1586, y: 0 }, { x: 1586, y: 240 }, { x: 0, y: 240 },
 ];
@@ -52,26 +56,34 @@ const player = defineCharacter({
 });
 const action = defineSequence({
   scene: "stage",
-  steps: [{
-    type: "direction",
-    directions: [{
-      type: "animation",
-      subject: { kind: "scenery", scenery: "signal" },
-      animation: "signal",
-    }, {
-      type: "motion",
-      subject: { kind: "character", character: "player" },
-      path: [{ x: 219, y: 180 }],
-      startAfter: { direction: 0, cue: "go" },
-    }, {
-      type: "camera",
-      mode: "move",
-      from: { x: 213, y: 120 },
-      to: { x: 500, y: 120 },
-      duration: 4 / 60,
-      startAfter: { direction: 0, cue: "go" },
-    }],
-  }],
+  skippable: true,
+  skipOutcome: [{ type: "set-variable", variable: "skipped", value: true }],
+  steps: [
+    {
+      type: "direction",
+      directions: [{
+        type: "animation",
+        subject: { kind: "scenery", scenery: "signal" },
+        animation: "signal",
+      }, {
+        type: "motion",
+        subject: { kind: "character", character: "player" },
+        path: [{ x: live ? 400 : 219, y: 180 }],
+        startAfter: { direction: 0, cue: "go" },
+      }, {
+        type: "camera",
+        mode: "move",
+        from: { x: 213, y: 120 },
+        to: { x: live ? 600 : 500, y: 120 },
+        duration: live ? 2 : 4 / 60,
+        startAfter: { direction: 0, cue: "go" },
+      }],
+    },
+    {
+      type: "operations",
+      operations: [{ type: "set-variable", variable: "completed", value: true }],
+    },
+  ],
 });
 const scene = defineScene({
   background: backgroundUrl,
@@ -88,8 +100,8 @@ const scene = defineScene({
             idle: { frames: [signalUrl], framesPerSecond: 1, loop: true },
             signal: {
               frames: [signalUrl, signalUrl, signalUrl, signalUrl],
-              framesPerSecond: 60,
-              cues: { go: 2 / 60 },
+              framesPerSecond: live ? 1 : 60,
+              cues: { go: live ? 0.5 : 2 / 60 },
             },
           },
           roles: { default: "idle" },
@@ -117,6 +129,7 @@ const project = defineGame({
   characters: { player },
   playerCharacter: "player",
   sequences: { action },
+  variables: { completed: false, skipped: false },
   initialScene: "stage",
   commandLexicon: defineCommandLexicon({
     inventory: { select: "Hold {noun}", deselect: "Put away {noun}" },
@@ -134,46 +147,50 @@ const project = defineGame({
 });
 
 try {
-  const data = getGameProjectData(project);
-  const assets = await loadProjectAssets(data);
-  const application = new Application();
-  await application.init({
-    width: data.logicalResolution.width,
-    height: data.logicalResolution.height,
-    preference: "webgl",
-    antialias: false,
-    roundPixels: true,
-  });
-  const frame = document.createElement("div");
-  frame.dataset.fondaleFrame = "";
-  frame.tabIndex = -1;
-  frame.append(application.canvas);
-  document.body.append(frame);
+  if (live) {
+    window.__directionStepLive = { session: await startGame(project, { target: document.body }) };
+  } else {
+    const data = getGameProjectData(project);
+    const assets = await loadProjectAssets(data);
+    const application = new Application();
+    await application.init({
+      width: data.logicalResolution.width,
+      height: data.logicalResolution.height,
+      preference: "webgl",
+      antialias: false,
+      roundPixels: true,
+    });
+    const frame = document.createElement("div");
+    frame.dataset.fondaleFrame = "";
+    frame.tabIndex = -1;
+    frame.append(application.canvas);
+    document.body.append(frame);
 
-  const core = createCoreSession(project);
-  const controls: BrowserSessionControls = {
-    slots: () => [],
-    save: () => undefined,
-    load: () => ({ ok: false, diagnostics: [] }),
-  };
-  const renderer = new BrowserRenderer(application, frame, data, assets, core, controls);
-  renderer.render(core.snapshot(), []);
-  core.input({ type: "quick-hotspot", hotspot: 0, verb: "use" });
-  core.steps();
-  renderer.render(core.snapshot(), core.takeEffects());
+    const core = createCoreSession(project);
+    const controls: BrowserSessionControls = {
+      slots: () => [],
+      save: () => undefined,
+      load: () => ({ ok: false, diagnostics: [] }),
+    };
+    const renderer = new BrowserRenderer(application, frame, data, assets, core, controls);
+    renderer.render(core.snapshot(), []);
+    core.input({ type: "quick-hotspot", hotspot: 0, verb: "use" });
+    core.steps();
+    renderer.render(core.snapshot(), core.takeEffects());
 
-  window.__directionStepTest = {
-    advance(ticks) {
-      core.steps(ticks);
-      renderer.render(core.snapshot(), core.takeEffects());
-    },
-    elapsedTicks() {
-      const activity = core.snapshot().activity;
-      return activity?.type === "sequence" && activity.active?.kind === "direction"
-        ? activity.active.elapsedTicks
-        : undefined;
-    },
-  };
+    window.__directionStepTest = {
+      advance(ticks) {
+        core.steps(ticks);
+        renderer.render(core.snapshot(), core.takeEffects());
+      },
+      elapsedTicks() {
+        const activity = core.snapshot().activity;
+        return activity?.type === "sequence" && activity.active?.kind === "direction"
+          ? activity.active.elapsedTicks
+          : undefined;
+      },
+    };
+  }
 } catch (error) {
   window.__directionStepError = error instanceof Error ? error.stack ?? error.message : String(error);
 }

@@ -17,7 +17,6 @@ import type {
   GameState,
 } from "../capabilities/game-session";
 import {
-  animationDurationTicks,
   appearanceForSubject,
   isImageAnimationFrames,
 } from "../capabilities/animation";
@@ -347,8 +346,8 @@ export class BrowserRenderer {
         if (direction.type !== "animation" || !sameSubject(direction.subject, subject)) continue;
         const timing = active.interpretation.directions[index]!;
         const animation = appearance.animations[direction.animation];
-        if (!animation || !timing.started) continue;
-        if (animation.loop || timing.localTick < animationDurationTicks(animation)) {
+        if (!animation || !timing.active) continue;
+        if (animation.loop || timing.finite) {
           return { name: direction.animation, elapsedTicks: timing.localTick };
         }
       }
@@ -356,7 +355,7 @@ export class BrowserRenderer {
         for (let index = active.step.directions.length - 1; index >= 0; index -= 1) {
           const direction = active.step.directions[index]!;
           const timing = active.interpretation.directions[index]!;
-          if (direction.type === "motion" && sameSubject(direction.subject, subject) && timing.started) {
+          if (direction.type === "motion" && sameSubject(direction.subject, subject) && timing.active) {
             return { name: appearance.roles.walking, elapsedTicks: timing.localTick, loop: true };
           }
         }
@@ -398,6 +397,15 @@ export class BrowserRenderer {
         step,
         state.activity.active.elapsedTicks,
         (subject, animation) => appearanceForSubject(this.data, state, subject)?.animations[animation],
+        (direction) => {
+          if (direction.subject.kind !== "character") return false;
+          const character = state.characters[direction.subject.character];
+          const destination = direction.path[0];
+          return character !== undefined && destination !== undefined && Math.hypot(
+            destination.x - character.groundPoint.x,
+            destination.y - character.groundPoint.y,
+          ) <= 1e-8;
+        },
       ),
     };
     this.directionInterpretations.set(state, active);
@@ -411,7 +419,7 @@ export class BrowserRenderer {
       const direction = active.step.directions[index]!;
       if (direction.type !== "motion" || direction.subject.kind !== "scenery" || direction.subject.scenery !== scenery) continue;
       const timing = active.interpretation.directions[index]!;
-      if (!timing.started) continue;
+      if (!timing.active) continue;
       return pointAlongPath(direction.path, Math.min(1, timing.localTick / secondsToTicks(direction.duration!)));
     }
     return undefined;
@@ -424,7 +432,7 @@ export class BrowserRenderer {
       const direction = active.step.directions[index]!;
       if (direction.type !== "camera") continue;
       const timing = active.interpretation.directions[index]!;
-      if (!timing.started) continue;
+      if (!timing.active) continue;
       if (direction.mode === "cut" || direction.mode === "hold") return direction.point;
       if (direction.mode === "move") {
         const progress = Math.min(1, timing.localTick / secondsToTicks(direction.duration));

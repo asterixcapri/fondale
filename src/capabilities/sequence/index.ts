@@ -234,12 +234,16 @@ export interface DirectionTiming {
   readonly startTick: number;
   readonly localTick: number;
   readonly started: boolean;
+  readonly finite: boolean;
+  readonly complete: boolean;
+  readonly active: boolean;
 }
 
 /** @internal */
 export interface DirectionStepInterpretation {
   readonly elapsedTicks: number;
   readonly durationElapsed: boolean;
+  readonly complete: boolean;
   readonly directions: readonly DirectionTiming[];
 }
 
@@ -248,41 +252,49 @@ export function interpretDirectionStep(
   step: DirectionStep,
   elapsedTicks: number,
   animationFor: (subject: DirectedSubject, animation: string) => AnimationDefinition | undefined,
+  characterMotionComplete: (direction: MotionDirection) => boolean = () => false,
 ): DirectionStepInterpretation {
-  return Object.freeze({
-    elapsedTicks,
-    durationElapsed: step.duration !== undefined && elapsedTicks >= secondsToTicks(step.duration),
-    directions: Object.freeze(step.directions.map((_, index) => {
-      const startTick = directionStartTick(step, index, animationFor);
-      const localTick = elapsedTicks - startTick;
-      return Object.freeze({ index, startTick, localTick, started: localTick >= 0 });
-    })),
-  });
-}
-
-/** Sequence owns completion while World reports Character Motion arrival. */
-export function directionStepComplete(
-  step: DirectionStep,
-  interpretation: DirectionStepInterpretation,
-  animationFor: (subject: DirectedSubject, animation: string) => AnimationDefinition | undefined,
-  characterMotionComplete: (direction: MotionDirection) => boolean,
-): boolean {
-  if (interpretation.durationElapsed) return true;
-  const boundaries = step.directions.flatMap((direction, index) => {
-    const localTick = interpretation.directions[index]!.localTick;
+  const durationElapsed = step.duration !== undefined && elapsedTicks >= secondsToTicks(step.duration);
+  const directions = Object.freeze(step.directions.map((direction, index) => {
+    const startTick = directionStartTick(step, index, animationFor);
+    const localTick = elapsedTicks - startTick;
+    const started = localTick >= 0;
+    let finite = false;
+    let complete = false;
     if (direction.type === "animation") {
       const animation = animationFor(direction.subject, direction.animation);
-      return animation && !animation.loop ? [localTick >= animationDurationTicks(animation)] : [];
+      finite = animation !== undefined && !animation.loop;
+      complete = animation !== undefined && !animation.loop && started &&
+        localTick >= animationDurationTicks(animation);
+    } else if (direction.type === "motion") {
+      finite = true;
+      complete = direction.subject.kind === "character"
+        ? started && characterMotionComplete(direction)
+        : started && localTick >= secondsToTicks(direction.duration!);
+    } else if (direction.mode === "cut") {
+      finite = true;
+      complete = started && localTick >= 1;
+    } else if (direction.duration !== undefined) {
+      finite = true;
+      complete = started && localTick >= secondsToTicks(direction.duration);
     }
-    if (direction.type === "motion") {
-      return direction.subject.kind === "character"
-        ? [localTick >= 0 && characterMotionComplete(direction)]
-        : [localTick >= secondsToTicks(direction.duration!)];
-    }
-    if (direction.mode === "cut") return [localTick >= 1];
-    return direction.duration === undefined ? [] : [localTick >= secondsToTicks(direction.duration)];
+    return Object.freeze({
+      index,
+      startTick,
+      localTick,
+      started,
+      finite,
+      complete,
+      active: started && !complete,
+    });
+  }));
+  const finiteDirections = directions.filter(({ finite }) => finite);
+  return Object.freeze({
+    elapsedTicks,
+    durationElapsed,
+    complete: durationElapsed || finiteDirections.length > 0 && finiteDirections.every(({ complete }) => complete),
+    directions,
   });
-  return boundaries.length > 0 && boundaries.every(Boolean);
 }
 
 export function resolveSequencePath(value: unknown, path: string): unknown {
