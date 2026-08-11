@@ -1,5 +1,6 @@
-import type { GameOperation, Line } from "../game-project";
+import type { GameOperation } from "../game-project";
 import { AuthoringError, type AuthoringDiagnostic } from "../game-project";
+import type { Line } from "../sequence";
 import type {
   Facing,
   HotspotDefinition,

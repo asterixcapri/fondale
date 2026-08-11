@@ -1,10 +1,8 @@
 import type { AuthoringDiagnostic, GameProjectData } from "../game-project";
 import type { GameState } from "../game-session";
 import type {
-  DirectionStep,
-  DirectionStepInterpretation,
-  DirectionTiming,
   DirectedSubject,
+  SequenceDirectionPresentation,
   SequenceDirection,
 } from "../sequence";
 
@@ -302,10 +300,7 @@ export function animationFrameCount(animation: AnimationDefinition): number {
 }
 
 export interface AnimationPresentationContext {
-  readonly direction?: {
-    readonly step: DirectionStep;
-    readonly interpretation: DirectionStepInterpretation;
-  };
+  readonly direction?: SequenceDirectionPresentation;
   readonly line?: { readonly character: string; readonly animation?: string };
 }
 
@@ -482,13 +477,10 @@ function directedSubjectId(subject: DirectedSubject): string {
 
 function* reverseDirectionTimings(context: NonNullable<AnimationPresentationContext["direction"]>): Generator<{
   readonly direction: SequenceDirection;
-  readonly timing: DirectionTiming;
+  readonly timing: SequenceDirectionPresentation["directions"][number]["timing"];
 }> {
-  for (let index = context.step.directions.length - 1; index >= 0; index -= 1) {
-    yield {
-      direction: context.step.directions[index]!,
-      timing: context.interpretation.directions[index]!,
-    };
+  for (let index = context.directions.length - 1; index >= 0; index -= 1) {
+    yield context.directions[index]!;
   }
 }
 

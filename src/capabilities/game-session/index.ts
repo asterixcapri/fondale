@@ -22,9 +22,6 @@ import {
   type GameOperation,
   type GameProject,
   type GameProjectData,
-  type Line,
-  type SequenceDefinition,
-  type SequenceStep,
 } from "../game-project";
 import {
   createSaveSnapshot,
@@ -46,13 +43,18 @@ import {
   type WorldTarget,
 } from "../world";
 import {
-  interpretDirectionStep,
-  resolveSequencePath,
+  createSequence,
   secondsToTicks,
-  type DirectionStep,
   type DirectedSubject,
+  type DirectionStep,
   type MotionDirection,
+  type SequenceActivityState,
+  type SequenceDecision,
+  type SequenceDirectionContext,
+  type SequencePresentation,
 } from "../sequence";
+export type { SequenceActiveState, SequenceActivityState } from "../sequence";
+import type { Line } from "../sequence";
 import {
   appearanceForSubject,
   objectHasAppearance,
@@ -61,19 +63,6 @@ import {
 import { Camera, type CameraPresentation } from "../camera";
 
 export type { CharacterState, ObjectLocation, ObjectState } from "../world";
-
-export type SequenceActiveState =
-  | { kind: "line"; path: string; animationStartedTick: number; choiceText?: string; choiceCharacter?: string }
-  | { kind: "narration"; path: string }
-  | { kind: "choice"; path: string; eligibleAlternatives: number[] }
-  | { kind: "direction"; path: string; elapsedTicks: number };
-
-export interface SequenceActivityState {
-  type: "sequence";
-  sequence: string;
-  pendingPaths: string[];
-  active: SequenceActiveState | null;
-}
 
 export interface LineActivityState {
   type: "line";
@@ -142,6 +131,7 @@ export interface CoreSession {
   availablePassages(): readonly AvailablePassage[];
   world(): WorldPresentation;
   camera(): CameraPresentation;
+  sequence(): SequencePresentation | null;
   stop(): void;
 }
 
@@ -162,6 +152,7 @@ export function createCoreSession(
     canPlaceObject: (scene, point) => world.canPlaceObject(scene, point),
     objectHasAppearance: (object, appearance) => objectHasAppearance(data, object, appearance),
   });
+  const sequenceCapability = createSequence(data.sequences);
   let state = restored ? getValidatedSaveState(restored) : initialState(data, world.initialState());
   let status: "running" | "failed" | "stopped" = "running";
   let failureDiagnostics: readonly AuthoringDiagnostic[] = [];
@@ -242,6 +233,9 @@ export function createCoreSession(
     camera() {
       return cameraPresentation;
     },
+    sequence() {
+      return activeSequencePresentation() ?? null;
+    },
     stop() {
       if (status === "stopped") return;
       status = "stopped";
@@ -271,12 +265,19 @@ export function createCoreSession(
         input.type === "advance-sequence" &&
         (state.activity.active?.kind === "line" || state.activity.active?.kind === "narration")
       ) {
-        state.activity.active = null;
-        advanceSequence();
+        applySequenceDecision(sequenceCapability.continue(
+          state.activity,
+          sequenceRuntimeContext(),
+        ));
       } else if (input.type === "choose" && state.activity.active?.kind === "choice") {
-        chooseAlternative(input.alternative);
-      } else if (input.type === "skip-sequence" && data.sequences[state.activity.sequence]?.skippable) {
-        applySkipOutcome(data.sequences[state.activity.sequence]!);
+        applySequenceDecision(sequenceCapability.choose(
+          state.activity,
+          input.alternative,
+          sequenceRuntimeContext(),
+        ));
+      } else if (input.type === "skip-sequence") {
+        const decision = sequenceCapability.skip(state.activity);
+        if (decision.type === "apply-skip-outcome") applySkipOutcome(decision.operations);
       }
       return;
     }
@@ -374,10 +375,10 @@ export function createCoreSession(
     }
   }
 
-  function applySkipOutcome(sequence: SequenceDefinition): void {
+  function applySkipOutcome(operations: readonly GameOperation[]): void {
     const draft = structuredClone(state);
     try {
-      for (const operation of sequence.skipOutcome ?? []) {
+      for (const operation of operations) {
         applyOperation(draft, operation, { kind: "background" });
       }
     } catch (cause) {
@@ -455,12 +456,7 @@ export function createCoreSession(
     }
     state = { ...state, ...transition.state, activity: null };
     if (transition.arrivalSequence) {
-      state.activity = {
-        type: "sequence",
-        sequence: transition.arrivalSequence,
-        pendingPaths: topLevelPaths(data.sequences[transition.arrivalSequence]!),
-        active: null,
-      };
+      state.activity = sequenceCapability.start(transition.arrivalSequence);
     }
     emitted.push({ type: "scene-changed", scene: state.currentScene });
     if (state.activity?.type === "sequence") advanceSequence();
@@ -523,12 +519,7 @@ export function createCoreSession(
       if (!data.sequences[operation.sequence]) throw new Error(`Unknown Sequence '${operation.sequence}'.`);
       if (data.sequences[operation.sequence]!.scene !== undefined && data.sequences[operation.sequence]!.scene !== draft.currentScene) throw new Error(`Sequence '${operation.sequence}' belongs to another Scene.`);
       if (draft.activity?.type === "sequence") throw new Error("A Sequence cannot start another Sequence.");
-      draft.activity = {
-        type: "sequence",
-        sequence: operation.sequence,
-        pendingPaths: topLevelPaths(data.sequences[operation.sequence]!),
-        active: null,
-      };
+      draft.activity = sequenceCapability.start(operation.sequence);
     } else if (isInventoryOperation(operation)) {
       const result = interaction.applyInventoryOperation(
         operation,
@@ -546,69 +537,53 @@ export function createCoreSession(
   }
 
   function advanceSequence(): void {
-    while (state.activity?.type === "sequence" && state.activity.active === null) {
-      const activity = state.activity;
-      const path = activity.pendingPaths.shift();
-      if (!path) {
-        state.activity = null;
-        emitted.push({ type: "sequence-changed" });
-        return;
-      }
-      const definition = data.sequences[activity.sequence]!;
-      const stepDefinition = resolveSequencePath(definition, path) as SequenceStep;
-      if (stepDefinition.type === "line") {
-        activity.active = { kind: "line", path, animationStartedTick: state.tick + 1 };
-      } else if (stepDefinition.type === "narration") {
-        activity.active = { kind: "narration", path };
-      } else if (stepDefinition.type === "choice") {
-        const eligible = stepDefinition.alternatives
-          .map((alternative, index) => (conditionMatches(alternative.when) ? index : -1))
-          .filter((index) => index >= 0);
-        activity.active = {
-          kind: "choice",
-          path,
-          eligibleAlternatives: eligible.length > 0 ? eligible : [-1],
-        };
-      } else if (stepDefinition.type === "branch") {
-        const branchIndex = stepDefinition.cases.findIndex(({ when }) => conditionMatches(when));
-        const container =
-          branchIndex >= 0 ? `${path}/cases/${branchIndex}/steps` : `${path}/fallback`;
-        activity.pendingPaths.unshift(...pathsForContainer(definition, container));
-      } else if (stepDefinition.type === "operations") {
-        if (!applyOperations(stepDefinition.operations, { kind: "background" })) return;
-      } else if (stepDefinition.type === "direction") {
-        if (!directedSubjectsAreAvailable(stepDefinition)) {
-          failOperation("A directed subject is not available in the Sequence Scene.");
-          return;
-        }
-        activity.active = { kind: "direction", path, elapsedTicks: 0 };
-      }
-      emitted.push({ type: "sequence-changed" });
+    if (state.activity?.type !== "sequence") return;
+    applySequenceDecision(sequenceCapability.advance(
+      state.activity,
+      sequenceRuntimeContext(),
+    ));
+  }
+
+  function applySequenceDecision(decision: SequenceDecision): void {
+    if (decision.type === "invalid") {
+      failOperation(decision.message);
+      return;
     }
+    if (decision.type === "complete") {
+      state.activity = null;
+      emitted.push({ type: "sequence-changed" });
+      return;
+    }
+    state.activity = structuredClone(decision.activity);
+    emitted.push({ type: "sequence-changed" });
+    if (decision.type === "apply-operations") {
+      applyOperations(decision.operations, { kind: "background" });
+    }
+  }
+
+  function sequenceRuntimeContext() {
+    return {
+      tick: state.tick,
+      ...(data.playerCharacter ? { playerCharacter: data.playerCharacter } : {}),
+      conditionMatches,
+      directedSubjectsAreAvailable,
+    };
   }
 
   function advanceDirectedStep(): void {
     const activity = state.activity;
     if (activity?.type !== "sequence" || activity.active?.kind !== "direction") return;
-    const definition = data.sequences[activity.sequence]!;
-    const directionStep = resolveSequencePath(definition, activity.active.path) as DirectionStep;
-    activity.active.elapsedTicks += 1;
-    let interpretation = interpretDirectionStep(
-      directionStep,
-      activity.active.elapsedTicks,
-      directedAnimation,
-      characterMotionComplete,
-    );
-    applyDirectedMotions(directionStep, interpretation.directions.map(({ localTick }) => localTick));
-    interpretation = interpretDirectionStep(
-      directionStep,
-      activity.active.elapsedTicks,
-      directedAnimation,
-      characterMotionComplete,
-    );
-    if (!interpretation.complete) return;
-    activity.active = null;
-    advanceSequence();
+    const ticked = sequenceCapability.tickDirection(activity);
+    state.activity = ticked;
+    let presentation = activeDirectionPresentation();
+    if (!presentation) return;
+    applyDirectedMotions(presentation);
+    presentation = activeDirectionPresentation();
+    if (!presentation?.complete) return;
+    applySequenceDecision(sequenceCapability.completeDirection(
+      ticked,
+      sequenceRuntimeContext(),
+    ));
   }
 
   function directedSubjectsAreAvailable(step: DirectionStep): boolean {
@@ -629,24 +604,21 @@ export function createCoreSession(
     return appearance?.animations[animationName];
   }
 
-  function activeDirectionPresentation(): {
-    readonly step: DirectionStep;
-    readonly interpretation: ReturnType<typeof interpretDirectionStep>;
-  } | undefined {
-    if (state.activity?.type !== "sequence" || state.activity.active?.kind !== "direction") return undefined;
-    const step = resolveSequencePath(
-      data.sequences[state.activity.sequence],
-      state.activity.active.path,
-    ) as DirectionStep;
+  function sequenceDirectionContext(): SequenceDirectionContext {
     return {
-      step,
-      interpretation: interpretDirectionStep(
-        step,
-        state.activity.active.elapsedTicks,
-        directedAnimation,
-        characterMotionComplete,
-      ),
+      animationFor: directedAnimation,
+      characterMotionComplete,
     };
+  }
+
+  function activeSequencePresentation(): SequencePresentation | undefined {
+    if (state.activity?.type !== "sequence") return undefined;
+    return sequenceCapability.presentation(state.activity, sequenceDirectionContext());
+  }
+
+  function activeDirectionPresentation(): Extract<SequencePresentation, { kind: "direction" }> | undefined {
+    const presentation = activeSequencePresentation();
+    return presentation?.kind === "direction" ? presentation : undefined;
   }
 
   function advanceCamera(): void {
@@ -661,11 +633,11 @@ export function createCoreSession(
       viewport: data.logicalResolution,
       sceneSize: scene.size,
       ...(player?.scene === state.currentScene ? { player: player.groundPoint } : {}),
-      directions: active?.step.directions.flatMap((direction, index) =>
+      directions: active?.directions.flatMap(({ direction, timing }) =>
         direction.type === "camera"
           ? [{
               direction,
-              ...active.interpretation.directions[index]!,
+              ...timing,
               ...(direction.mode === "move"
                 ? { durationTicks: secondsToTicks(direction.duration) }
                 : {}),
@@ -681,9 +653,8 @@ export function createCoreSession(
     active: ReturnType<typeof activeDirectionPresentation>,
   ): Point | undefined {
     if (subject.kind === "scenery" && active) {
-      for (let index = active.step.directions.length - 1; index >= 0; index -= 1) {
-        const direction = active.step.directions[index]!;
-        const timing = active.interpretation.directions[index]!;
+      for (let index = active.directions.length - 1; index >= 0; index -= 1) {
+        const { direction, timing } = active.directions[index]!;
         if (direction.type !== "motion" || direction.subject.kind !== "scenery" ||
             direction.subject.scenery !== subject.scenery || !timing.presented) continue;
         return world.motionPoint(direction, {
@@ -695,10 +666,12 @@ export function createCoreSession(
     return world.pointForSubject(state, subject);
   }
 
-  function applyDirectedMotions(step: DirectionStep, localTicks: readonly number[]): void {
-    step.directions.forEach((direction, index) => {
+  function applyDirectedMotions(
+    presentation: Extract<SequencePresentation, { kind: "direction" }>,
+  ): void {
+    presentation.directions.forEach(({ direction, timing }) => {
       if (direction.type !== "motion") return;
-      const localTick = localTicks[index]!;
+      const { localTick } = timing;
       if (localTick <= 0) return;
       const progress = world.advanceMotion(state, direction, {
         localTick,
@@ -712,33 +685,6 @@ export function createCoreSession(
 
   function commitWorldState(worldState: WorldState): void {
     state = { ...state, ...worldState };
-  }
-
-  function chooseAlternative(alternative: number): void {
-    const activity = state.activity;
-    if (activity?.type !== "sequence" || activity.active?.kind !== "choice") return;
-    if (!activity.active.eligibleAlternatives.includes(alternative)) return;
-    const definition = data.sequences[activity.sequence]!;
-    const stepDefinition = resolveSequencePath(definition, activity.active.path) as Extract<SequenceStep, { type: "choice" }>;
-    const container =
-      alternative === -1
-        ? `${activity.active.path}/fallback/steps`
-        : `${activity.active.path}/alternatives/${alternative}/steps`;
-    activity.pendingPaths.unshift(...pathsForContainer(definition, container));
-    const choice = alternative === -1 ? stepDefinition.fallback : stepDefinition.alternatives[alternative]!;
-    if (choice.spoken !== false && data.playerCharacter) {
-      activity.active = {
-        kind: "line",
-        path: activity.active.path,
-        animationStartedTick: state.tick + 1,
-        choiceText: choice.text,
-        choiceCharacter: data.playerCharacter,
-      };
-      emitted.push({ type: "sequence-changed" });
-    } else {
-      activity.active = null;
-      advanceSequence();
-    }
   }
 
   function conditionMatches(condition?: InteractionCondition): boolean {
@@ -772,15 +718,6 @@ function initialState(data: GameProjectData, world: WorldState): GameState {
     activity: null,
     tick: 0,
   };
-}
-
-function topLevelPaths(sequence: SequenceDefinition): string[] {
-  return sequence.steps.map((_, index) => `steps/${index}`);
-}
-
-function pathsForContainer(sequence: SequenceDefinition, path: string): string[] {
-  const steps = resolveSequencePath(sequence, path) as readonly SequenceStep[];
-  return steps.map((_, index) => `${path}/${index}`);
 }
 
 function isInteractionInput(input: CoreInput): input is InteractionInput {

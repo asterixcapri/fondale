@@ -818,7 +818,7 @@ test("directed Character navigation and Object Motion commit their canonical des
   });
 });
 
-function arrivalProject() {
+function arrivalProject(audio?: URL) {
   const square = [
     { x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }, { x: 0, y: 100 },
   ];
@@ -882,7 +882,9 @@ function arrivalProject() {
   });
   const arrival = defineSequence({
     steps: [
-      { type: "narration", text: "A boat appears." },
+      audio === undefined
+        ? { type: "narration", text: "A boat appears." }
+        : { type: "line", character: "player", text: "A boat appears.", audio },
       { type: "operations", operations: [{ type: "set-variable", variable: "arrived", value: true }] },
     ],
   });
@@ -909,6 +911,21 @@ function arrivalProject() {
     ].map((verb) => [verb, { text: "No." }])) as never,
   });
 }
+
+test("CoreSession exposes defensive Sequence Line facts with URL audio", () => {
+  const audio = new URL("https://example.test/arrival.ogg");
+  const session = createTestSession(arrivalProject(audio));
+  session.input({ type: "quick-passage", passage: 0 });
+  session.steps();
+
+  const first = session.sequence();
+  const second = session.sequence();
+  expect(first).toMatchObject({ kind: "line", character: "player", audio });
+  if (first?.kind !== "line" || second?.kind !== "line" ||
+      !(first.audio instanceof URL) || !(second.audio instanceof URL)) return;
+  expect(first.audio).not.toBe(audio);
+  expect(first.audio).not.toBe(second.audio);
+});
 
 test("a Scene arrival starts its Sequence after the passage commit and before player control", () => {
   const session = createTestSession(arrivalProject());

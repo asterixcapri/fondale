@@ -78,6 +78,10 @@ six alternatives are allowed. A skippable Sequence must declare the atomic
 `skipOutcome` applied when its transient direction is interrupted. A directed
 Sequence names one owning Scene and may coordinate Animation, Motion and Camera
 directions, including starts caused by named Animation Cues.
+Sequence owns nested traversal, Choice eligibility, Branch selection, Skip
+Outcome requests, and resumable activity state. Game Session applies requested
+Game Operations atomically, while browser presentation consumes resolved Line,
+Narration, Choice, and Direction facts without resolving authored paths again.
 
 `defineGame` composes a `GameInput` into an opaque immutable `GameProject`.
 Required values are identity, version, Logical Resolution, Scene registry and

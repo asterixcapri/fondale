@@ -115,12 +115,17 @@ test("Animation derives directed presentation facts from immutable session input
     }],
   };
   const direction = {
-    step,
-    interpretation: interpretDirectionStep(
+    kind: "direction" as const,
+    elapsedTicks: 10,
+    complete: false,
+    directions: step.directions.map((direction, index) => ({
+      direction,
+      timing: interpretDirectionStep(
       step,
       10,
       () => appearance.animations.gesture,
-    ),
+      ).directions[index]!,
+    })),
   };
 
   expect(animationPresentationForSubject(

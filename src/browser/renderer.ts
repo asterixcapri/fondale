@@ -16,28 +16,21 @@ import type {
 } from "../capabilities/game-session";
 import {
   animationPresentationForSubject,
-  appearanceForSubject,
   isImageAnimationFrames,
   type AnimationDefinition,
   type AnimationPresentation,
 } from "../capabilities/animation";
-import {
-  interpretDirectionStep,
-  resolveSequencePath,
-  type DirectionStep,
-  type DirectionStepInterpretation,
-  type DirectedSubject,
+import type {
+  DirectedSubject,
+  SequenceDirectionPresentation,
+  SequencePresentation,
 } from "../capabilities/sequence";
 import {
-  characterMotionReachedDestination,
   type Point,
   type SceneryAppearance,
   type WorldPresentation,
 } from "../capabilities/world";
-import type {
-  GameProjectData,
-  SequenceStep,
-} from "../capabilities/game-project";
+import type { GameProjectData } from "../capabilities/game-project";
 import type { InventoryPresentationEntry, Verb } from "../capabilities/interaction";
 import type { AuthoringDiagnostic } from "../capabilities/game-project";
 import type { SaveSnapshot } from "../capabilities/save";
@@ -84,10 +77,7 @@ export class BrowserRenderer {
   private readonly characterViews = new Map<string, CharacterView>();
   private readonly animationViews: AnimationView[] = [];
   private cameraOrigin: Point = { x: 0, y: 0 };
-  private readonly directionInterpretations = new WeakMap<GameState, {
-    step: DirectionStep;
-    interpretation: DirectionStepInterpretation;
-  }>();
+  private sequencePresentation: SequencePresentation | null = null;
   private sceneSignature = "";
 
   constructor(
@@ -124,6 +114,7 @@ export class BrowserRenderer {
       this.frame.dataset.fondaleMovement = movement.fast ? "fast" : "normal";
     }
     const world = this.core.world();
+    this.sequencePresentation = this.core.sequence();
     const signature = worldPresentationSignature(world);
     if (signature !== this.sceneSignature) {
       this.sceneSignature = signature;
@@ -308,36 +299,19 @@ export class BrowserRenderer {
 
   private activeLine(state: GameState): { character: string; animation?: string } | undefined {
     if (state.activity?.type === "line") return state.activity.line;
-    if (state.activity?.type !== "sequence" || state.activity.active?.kind !== "line") return undefined;
-    if (state.activity.active.choiceCharacter) return { character: state.activity.active.choiceCharacter };
-    const sequence = this.data.sequences[state.activity.sequence]!;
-    const step = resolveSequencePath(sequence, state.activity.active.path) as SequenceStep;
-    return step.type === "line" ? { character: step.character, ...(step.animation ? { animation: step.animation } : {}) } : undefined;
+    const presentation = this.sequencePresentation;
+    return presentation?.kind === "line"
+      ? {
+          character: presentation.character,
+          ...(presentation.animation ? { animation: presentation.animation } : {}),
+        }
+      : undefined;
   }
 
-  private activeDirection(state: GameState): {
-    step: DirectionStep;
-    interpretation: DirectionStepInterpretation;
-  } | undefined {
-    if (state.activity?.type !== "sequence" || state.activity.active?.kind !== "direction") return undefined;
-    const cached = this.directionInterpretations.get(state);
-    if (cached) return cached;
-    const step = resolveSequencePath(this.data.sequences[state.activity.sequence], state.activity.active.path) as DirectionStep;
-    const active = {
-      step,
-      interpretation: interpretDirectionStep(
-        step,
-        state.activity.active.elapsedTicks,
-        (subject, animation) => appearanceForSubject(this.data, state, subject)?.animations[animation],
-        (direction) => {
-          if (direction.subject.kind !== "character") return false;
-          const character = state.characters[direction.subject.character];
-          return characterMotionReachedDestination(direction, character?.groundPoint);
-        },
-      ),
-    };
-    this.directionInterpretations.set(state, active);
-    return active;
+  private activeDirection(_state: GameState): SequenceDirectionPresentation | undefined {
+    return this.sequencePresentation?.kind === "direction"
+      ? this.sequencePresentation
+      : undefined;
   }
 
   private animationFrames(
@@ -1051,37 +1025,29 @@ class EngineOverlay {
       );
       return;
     }
-    const sequence = activity;
-    const active = sequence.active;
-    if (!active) return;
-    const definition = this.data.sequences[sequence.sequence]!;
-    const step = resolveSequencePath(definition, active.path) as SequenceStep;
-    if (active.kind === "line") {
-      const isChoiceSpeech = active.choiceText !== undefined;
-      const authoredLine = step.type === "line" ? step : undefined;
-      if (!isChoiceSpeech && !authoredLine) return;
-      const speaker = isChoiceSpeech ? active.choiceCharacter : authoredLine?.character;
-      if (!speaker) return;
+    const presentation = this.core.sequence();
+    if (!presentation) return;
+    if (presentation.kind === "line") {
       this.presentLine(
         state,
-        isChoiceSpeech ? active.choiceText! : authoredLine!.text,
-        speaker,
-        isChoiceSpeech ? undefined : authoredLine?.audio,
+        presentation.text,
+        presentation.character,
+        presentation.audio,
         () => this.core.input({ type: "advance-sequence" }),
       );
-    } else if (active.kind === "narration" && step.type === "narration") {
+    } else if (presentation.kind === "narration") {
       const narration = document.createElement("div");
       narration.dataset.fondaleNarration = "";
       narration.setAttribute("role", "status");
-      narration.textContent = step.text;
+      narration.textContent = presentation.text;
       this.activity.append(narration);
       this.positionLowerText(narration, "narration");
       this.frame.focus({ preventScroll: true });
       this.lineTimer = window.setTimeout(() => {
         this.lineTimer = undefined;
         if (!this.modalKind) this.core.input({ type: "advance-sequence" });
-      }, this.speechDuration(step.text));
-    } else if (active.kind === "choice" && step.type === "choice") {
+      }, this.speechDuration(presentation.text));
+    } else if (presentation.kind === "choice") {
       const list = document.createElement("div");
       list.dataset.fondaleChoice = "";
       list.style.cssText = [
@@ -1098,11 +1064,10 @@ class EngineOverlay {
         : undefined)
         ?? this.data.hudTheme?.colors.text
         ?? "#f4dfb4";
-      active.eligibleAlternatives.forEach((alternative, displayIndex) => {
-        const choice = alternative === -1 ? step.fallback : step.alternatives[alternative]!;
+      presentation.alternatives.forEach((choice, displayIndex) => {
         const button = document.createElement("button");
         button.type = "button";
-        button.dataset.fondaleAlternative = String(alternative);
+        button.dataset.fondaleAlternative = String(choice.index);
         button.style.cssText = [
           "display:block",
           "width:100%",
@@ -1133,7 +1098,10 @@ class EngineOverlay {
           if (document.activeElement !== button) idle();
         });
         button.textContent = `${displayIndex + 1}. ${choice.text}`;
-        button.addEventListener("click", () => this.core.input({ type: "choose", alternative }));
+        button.addEventListener("click", () => this.core.input({
+          type: "choose",
+          alternative: choice.index,
+        }));
         list.append(button);
       });
       this.activity.append(list);
@@ -1310,10 +1278,13 @@ class EngineOverlay {
       } else if (state.activity.active?.kind === "choice") {
         const numeric = Number(event.key);
         if (Number.isInteger(numeric) && numeric >= 1 && numeric <= 6) {
-          const alternative = state.activity.active.eligibleAlternatives[numeric - 1];
-          if (alternative !== undefined) {
+          const alternative = this.core.sequence();
+          const index = alternative?.kind === "choice"
+            ? alternative.alternatives[numeric - 1]?.index
+            : undefined;
+          if (index !== undefined) {
             event.preventDefault();
-            this.core.input({ type: "choose", alternative });
+            this.core.input({ type: "choose", alternative: index });
           }
           return;
         }

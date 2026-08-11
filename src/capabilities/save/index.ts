@@ -1,5 +1,5 @@
 import type { GameState } from "../game-session";
-import { resolveSequencePath } from "../sequence";
+import { createSequence, type Sequence } from "../sequence";
 import { conditionMatchesState } from "../interaction";
 import { commandVerbs, type CommandVerb, type Verb } from "../interaction";
 import { AuthoringError, type AuthoringDiagnostic } from "../game-project";
@@ -7,8 +7,6 @@ import {
   getGameProjectData,
   type GameProject,
   type GameProjectData,
-  type SequenceDefinition,
-  type SequenceStep,
 } from "../game-project";
 import { createWorld, type World } from "../world";
 
@@ -40,6 +38,7 @@ export function validateSaveSnapshot(
 ): SaveSnapshotValidation {
   const data = getGameProjectData(project);
   const world = createWorld(data);
+  const sequence = createSequence(data.sequences);
   const diagnostics: AuthoringDiagnostic[] = [];
   if (!isRecord(value)) {
     diagnostics.push(saveDiagnostic("save.shape", "Save Snapshot must be a JSON object."));
@@ -56,7 +55,7 @@ export function validateSaveSnapshot(
     if (value.projectVersion !== data.version) {
       diagnostics.push(saveDiagnostic("save.project.version", "Save Snapshot uses another Project Version."));
     }
-    if (!validStateShape(value.state, data, world)) {
+    if (!validStateShape(value.state, data, world, sequence)) {
       diagnostics.push(
         invalidCommandStateDiagnostic(value.state, data) ??
         saveDiagnostic("save.state.invalid", "Save Snapshot contains an invalid Game State."),
@@ -94,7 +93,12 @@ export function getValidatedSaveState(snapshot: ValidatedSaveSnapshot): GameStat
   return structuredClone(snapshot.state);
 }
 
-function validStateShape(value: unknown, data: GameProjectData, world: World): value is GameState {
+function validStateShape(
+  value: unknown,
+  data: GameProjectData,
+  world: World,
+  sequence: Sequence,
+): value is GameState {
   if (!isRecord(value) || !hasExactKeys(value, ["currentScene", "characters", "scenery", "objects", "inventory", "command", "variables", "activity", "tick"])) return false;
   if (typeof value.currentScene !== "string" || !(value.currentScene in data.scenes)) return false;
   if (!Number.isInteger(value.tick) || (value.tick as number) < 0) return false;
@@ -143,11 +147,17 @@ function validStateShape(value: unknown, data: GameProjectData, world: World): v
   }
   if (!isRecord(value.variables) || !sameKeys(value.variables, data.variables)) return false;
   if (!Object.values(value.variables).every((variable) => typeof variable === "boolean")) return false;
-  if (!validActivity(value.activity, data, value as unknown as GameState, world)) return false;
+  if (!validActivity(value.activity, data, value as unknown as GameState, world, sequence)) return false;
   return isJsonSafe(value);
 }
 
-function validActivity(value: unknown, data: GameProjectData, state: GameState, world: World): boolean {
+function validActivity(
+  value: unknown,
+  data: GameProjectData,
+  state: GameState,
+  world: World,
+  sequence: Sequence,
+): boolean {
   if (value === null) return true;
   if (!isRecord(value) || typeof value.type !== "string") return false;
   if (value.type === "line") {
@@ -202,58 +212,12 @@ function validActivity(value: unknown, data: GameProjectData, state: GameState, 
     return false;
   }
   if (value.type === "sequence") {
-    if (!hasExactKeys(value, ["type", "sequence", "pendingPaths", "active"])) return false;
-    if (typeof value.sequence !== "string" || !(value.sequence in data.sequences)) return false;
-    const definition = data.sequences[value.sequence]!;
-    if (
-      !Array.isArray(value.pendingPaths) ||
-      !value.pendingPaths.every(
-        (path) => typeof path === "string" && isSequenceStep(resolveSequencePath(definition, path)),
-      )
-    ) return false;
-    if (value.active === null) return false;
-    if (!isRecord(value.active) || typeof value.active.kind !== "string" || typeof value.active.path !== "string") return false;
-    const step = resolveSequencePath(definition, value.active.path);
-    const expectedPending = expectedPendingPaths(definition, value.active.path);
-    if (value.active.kind === "line") {
-      if (!hasExactKeys(value.active, ["kind", "path", "animationStartedTick"], ["choiceText", "choiceCharacter"]) || !validAnimationStartedTick(value.active.animationStartedTick, state.tick)) return false;
-      if (value.active.choiceText !== undefined) {
-        if (typeof value.active.choiceText !== "string" || !isSequenceStep(step) || step.type !== "choice") return false;
-        if (value.active.choiceCharacter !== undefined &&
-            (typeof value.active.choiceCharacter !== "string" || !(value.active.choiceCharacter in data.characters))) return false;
-        return true;
-      }
-      return expectedPending !== null &&
-        sameOrderedStrings(value.pendingPaths as string[], expectedPending) &&
-        isSequenceStep(step) && step.type === "line";
-    }
-    if (value.active.kind === "narration") {
-      return hasExactKeys(value.active, ["kind", "path"]) &&
-        expectedPending !== null &&
-        sameOrderedStrings(value.pendingPaths as string[], expectedPending) &&
-        isSequenceStep(step) && step.type === "narration";
-    }
-    if (value.active.kind === "direction") {
-      return hasExactKeys(value.active, ["kind", "path", "elapsedTicks"]) &&
-        expectedPending !== null &&
-        sameOrderedStrings(value.pendingPaths as string[], expectedPending) &&
-        isSequenceStep(step) && step.type === "direction" &&
-        Number.isInteger(value.active.elapsedTicks) &&
-        (value.active.elapsedTicks as number) >= 0;
-    }
-    if (expectedPending === null || !sameOrderedStrings(value.pendingPaths as string[], expectedPending)) return false;
-    if (
-      value.active.kind !== "choice" ||
-      !hasExactKeys(value.active, ["kind", "path", "eligibleAlternatives"]) ||
-      !isSequenceStep(step) || step.type !== "choice" ||
-      !Array.isArray(value.active.eligibleAlternatives) ||
-      !value.active.eligibleAlternatives.every((index) => Number.isInteger(index))
-    ) return false;
-    const eligible = step.alternatives
-      .map((alternative, index) => conditionMatchesState(alternative.when, state) ? index : -1)
-      .filter((index) => index >= 0);
-    const expected = eligible.length > 0 ? eligible : [-1];
-    return sameNumbers(value.active.eligibleAlternatives as number[], expected);
+    return sequence.isValidActivity(value, {
+      currentTick: state.tick,
+      ...(data.playerCharacter ? { playerCharacter: data.playerCharacter } : {}),
+      characterExists: (character) => character in data.characters,
+      conditionMatches: (condition) => conditionMatchesState(condition, state),
+    });
   }
   return false;
 }
@@ -353,29 +317,6 @@ function isVerb(value: unknown): value is Verb {
   return value === "walk-to" || isCommandVerb(value);
 }
 
-function isSequenceStep(value: unknown): value is SequenceStep {
-  return isRecord(value) && ["line", "narration", "operations", "choice", "branch", "direction"].includes(String(value.type));
-}
-
-function expectedPendingPaths(sequence: SequenceDefinition, activePath: string): string[] | null {
-  const segments = activePath.split("/");
-  const ancestors: { containerPath: string; index: number; steps: readonly SequenceStep[] }[] = [];
-  for (let segmentIndex = 0; segmentIndex < segments.length; segmentIndex += 1) {
-    const index = Number(segments[segmentIndex]);
-    if (!Number.isInteger(index) || String(index) !== segments[segmentIndex]) continue;
-    const containerPath = segments.slice(0, segmentIndex).join("/");
-    const container = resolveSequencePath(sequence, containerPath);
-    if (!Array.isArray(container) || !isSequenceStep(container[index])) continue;
-    ancestors.push({ containerPath, index, steps: container as readonly SequenceStep[] });
-  }
-  if (ancestors.length === 0 || ancestors.at(-1)?.containerPath + `/${ancestors.at(-1)?.index}` !== activePath) {
-    return null;
-  }
-  return ancestors.reverse().flatMap(({ containerPath, index, steps }) =>
-    steps.slice(index + 1).map((_, offset) => `${containerPath}/${index + offset + 1}`),
-  );
-}
-
 function saveDiagnostic(code: string, message: string, path = "Save Snapshot"): AuthoringDiagnostic {
   return { code, family: "save", owner: "save", path, message };
 }
@@ -408,14 +349,6 @@ function sameKeys(left: Record<string, unknown>, right: object): boolean {
 
 function sameValues(left: readonly string[], right: readonly string[]): boolean {
   return left.length === right.length && left.every((value) => right.includes(value));
-}
-
-function sameOrderedStrings(left: readonly string[], right: readonly string[]): boolean {
-  return left.length === right.length && left.every((value, index) => value === right[index]);
-}
-
-function sameNumbers(left: readonly number[], right: readonly number[]): boolean {
-  return left.length === right.length && left.every((value, index) => value === right[index]);
 }
 
 function isJsonSafe(value: unknown, seen = new Set<object>()): boolean {

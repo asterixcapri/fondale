@@ -34,13 +34,9 @@ export {
 } from "./capabilities/animation";
 export {
   defineGame,
-  defineSequence,
   type GameProject,
   type LogicalResolution,
   type GameOperation,
-  type Line,
-  type NarrationStep,
-  type SequenceDefinition,
 } from "./capabilities/game-project";
 export {
   defineCharacter,
@@ -56,12 +52,22 @@ export {
   type SceneSize,
 } from "./capabilities/world";
 export {
+  defineSequence,
   type AnimationDirection,
+  type BranchStep,
+  type ChoiceAlternative,
+  type ChoiceStep,
   type CueStart,
   type DirectionStep,
   type DirectedSubject,
+  type Line,
+  type LineStep,
   type MotionDirection,
+  type NarrationStep,
+  type OperationsStep,
   type SequenceDirection,
+  type SequenceDefinition,
+  type SequenceStep,
 } from "./capabilities/sequence";
 export { type CameraDirection } from "./capabilities/camera";
 export {

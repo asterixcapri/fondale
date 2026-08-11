@@ -56,6 +56,16 @@ Invalid authored Camera coordinates report
 remains outside Save Snapshots, and returns to Player following after a
 Direction Step completes or is skipped.
 
+## Sequence ownership
+
+Sequence definitions and every Sequence Step contract are now exported from
+the package's single root entry point by their owning capability. Sequence
+interprets nested paths, conditions, Choices, branches, operations, skipping,
+and restoration once. This does not change authored step shapes: Game Session
+applies requested Game Operations atomically, and browser presentation receives
+resolved Line, Narration, Choice, and Direction facts instead of interpreting the
+definition independently.
+
 ## World ownership
 
 World now owns Scene, Character, Object, Scenery, Hotspot, Scene Space, entity

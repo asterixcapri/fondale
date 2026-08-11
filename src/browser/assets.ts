@@ -5,10 +5,8 @@ import {
   isImageAnimationFrames,
   type Appearance,
 } from "../capabilities/animation";
-import type {
-  GameProjectData,
-  SequenceStep,
-} from "../capabilities/game-project";
+import type { GameProjectData } from "../capabilities/game-project";
+import { sequenceLines } from "../capabilities/sequence";
 import type { EntityAppearance, Point } from "../capabilities/world";
 
 export interface LoadedAssets {
@@ -55,7 +53,11 @@ export async function loadProjectAssets(data: GameProjectData): Promise<LoadedAs
     add(cursor, `hudTheme.cursors.${direction}`);
   }
   for (const [sequenceId, sequence] of Object.entries(data.sequences)) {
-    collectSequenceAudio(sequence.steps, `sequences.${sequenceId}.steps`, audioReferences);
+    for (const { line, path } of sequenceLines(sequence, `sequences.${sequenceId}.steps`)) {
+      if (!line.audio) continue;
+      const url = assetUrl(line.audio);
+      audioReferences.set(url, [...(audioReferences.get(url) ?? []), `${path}.audio`]);
+    }
   }
 
   const textures = new Map<string, Texture>();
@@ -205,30 +207,6 @@ export async function loadProjectAssets(data: GameProjectData): Promise<LoadedAs
 
   if (diagnostics.length > 0) throw new AuthoringError(diagnostics);
   return { textures, animationFrames, audio };
-}
-
-function collectSequenceAudio(
-  steps: readonly SequenceStep[],
-  path: string,
-  references: Map<string, string[]>,
-): void {
-  steps.forEach((step, index) => {
-    const stepPath = `${path}[${index}]`;
-    if (step.type === "line" && step.audio) {
-      const url = assetUrl(step.audio);
-      references.set(url, [...(references.get(url) ?? []), `${stepPath}.audio`]);
-    } else if (step.type === "choice") {
-      step.alternatives.forEach((alternative, alternativeIndex) =>
-        collectSequenceAudio(alternative.steps, `${stepPath}.alternatives[${alternativeIndex}].steps`, references),
-      );
-      collectSequenceAudio(step.fallback.steps, `${stepPath}.fallback.steps`, references);
-    } else if (step.type === "branch") {
-      step.cases.forEach((branch, branchIndex) =>
-        collectSequenceAudio(branch.steps, `${stepPath}.cases[${branchIndex}].steps`, references),
-      );
-      collectSequenceAudio(step.fallback, `${stepPath}.fallback`, references);
-    }
-  });
 }
 
 function addAppearance(
