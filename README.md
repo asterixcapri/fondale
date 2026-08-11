@@ -14,6 +14,8 @@ Install it with `npm install @asterixcapri/fondale`, then follow the
 [public reference](docs/public/reference.md), and exact
 [Support Baseline](docs/public/support-baseline.md). Authors upgrading from the
 previous alpha should start with the [0.4 migration guide](docs/public/migration-0.4.md).
+Maintainers and new contributors can explore the complete capability-owned flow in
+the self-contained Italian [Engine architecture map](docs/engine-architecture.html).
 
 ## Development
 

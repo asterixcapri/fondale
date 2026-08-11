@@ -4,15 +4,15 @@
 
 **Blocked by:** 15 — Retire horizontal ownership and enforce boundaries.
 
-**Status:** ready-for-agent
+**Status:** ready-for-human
 
-- [ ] A tracked, self-contained HTML document explains the final Engine architecture in Italian while preserving canonical English domain terms.
-- [ ] The visual flow covers Authoring, validation and start, browser input, Game Session ticks, Game State commits, Interaction, World, Sequence, Animation, Camera, HUD, browser presentation, Save and restore.
-- [ ] The document explains CoreSession in plain language and shows that it remains the deterministic Game Session coordinator.
-- [ ] The document distinguishes capability policy, coordination and technical adapters and shows the allowed communication paths.
-- [ ] A visual glossary explains the principal terms needed to follow the diagram without prior architecture knowledge.
-- [ ] The document describes only the final architecture and contains no remote scripts, fonts, stylesheets, images or other network dependencies.
-- [ ] The HTML document is opened and inspected locally in a browser at representative viewport sizes.
-- [ ] Public migration guidance covers renamed or changed alpha contracts, incompatible Save Snapshots and the absence of compatibility shims.
-- [ ] Package metadata and public documentation identify the coherent target as version 0.4.0, without performing an npm publication.
-- [ ] Final acceptance passes at the public package, CoreSession and browser seams, including structural checks, Capri 1535 and offline documentation.
+- [x] A tracked, self-contained HTML document explains the final Engine architecture in Italian while preserving canonical English domain terms.
+- [x] The visual flow covers Authoring, validation and start, browser input, Game Session ticks, Game State commits, Interaction, World, Sequence, Animation, Camera, HUD, browser presentation, Save and restore.
+- [x] The document explains CoreSession in plain language and shows that it remains the deterministic Game Session coordinator.
+- [x] The document distinguishes capability policy, coordination and technical adapters and shows the allowed communication paths.
+- [x] A visual glossary explains the principal terms needed to follow the diagram without prior architecture knowledge.
+- [x] The document describes only the final architecture and contains no remote scripts, fonts, stylesheets, images or other network dependencies.
+- [x] The HTML document is opened and inspected locally in a browser at representative viewport sizes.
+- [x] Public migration guidance covers renamed or changed alpha contracts, incompatible Save Snapshots and the absence of compatibility shims.
+- [x] Package metadata and public documentation identify the coherent target as version 0.4.0, without performing an npm publication.
+- [x] Final acceptance passes at the public package, CoreSession and browser seams, including structural checks, Capri 1535 and offline documentation.

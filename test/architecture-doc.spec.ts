@@ -15,8 +15,9 @@ for (const viewport of [
     await page.goto(architectureUrl);
 
     await expect(page).toHaveTitle("Fondale 0.4 — Architettura dell’Engine");
-    await expect(page.locator("main section")).toHaveCount(7);
+    await expect(page.locator("main section")).toHaveCount(8);
     await expect(page.getByRole("heading", { name: "CoreSession: coordinatore deterministico" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Flussi di comunicazione consentiti" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Save e restore non controllano la sessione" })).toBeVisible();
     expect(remoteRequests).toEqual([]);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
