@@ -994,7 +994,8 @@ export function createSequence(
         return hasExactKeys(active, ["kind", "path", "elapsedTicks"]) &&
           expectedPending !== null && sameOrderedStrings(pending, expectedPending) &&
           isSequenceStep(step) && step.type === "direction" &&
-          Number.isInteger(active.elapsedTicks) && (active.elapsedTicks as number) >= 0;
+          Number.isInteger(active.elapsedTicks) && (active.elapsedTicks as number) >= 0 &&
+          (active.elapsedTicks as number) <= context.currentTick;
       }
       if (active.kind !== "choice" || !hasExactKeys(active, ["kind", "path", "eligibleAlternatives"]) ||
           expectedPending === null || !sameOrderedStrings(pending, expectedPending) ||

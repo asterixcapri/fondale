@@ -24,8 +24,7 @@ import {
   type GameProjectData,
 } from "../game-project";
 import {
-  createSaveSnapshot,
-  getValidatedSaveState,
+  createSave,
   type SaveSnapshot,
   type ValidatedSaveSnapshot,
 } from "../save";
@@ -153,7 +152,10 @@ export function createCoreSession(
     objectHasAppearance: (object, appearance) => objectHasAppearance(data, object, appearance),
   });
   const sequenceCapability = createSequence(data.sequences);
-  let state = restored ? getValidatedSaveState(restored) : initialState(data, world.initialState());
+  const save = createSave(project);
+  let state = restored
+    ? save.restore(restored)
+    : initialState(data, world.initialState());
   let status: "running" | "failed" | "stopped" = "running";
   let failureDiagnostics: readonly AuthoringDiagnostic[] = [];
   const inputs: CoreInput[] = [];
@@ -181,7 +183,7 @@ export function createCoreSession(
     },
     createSaveSnapshot() {
       assertRunning();
-      return createSaveSnapshot(data, state);
+      return save.createSnapshot(state);
     },
     lifecycle: () => status,
     diagnostics: () => failureDiagnostics,

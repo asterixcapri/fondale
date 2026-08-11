@@ -17,6 +17,7 @@ function projectFixture(
   consumeSelectedObject = false,
   duplicateCollection = false,
   includeSecondObject = false,
+  identity = "test.gameplay",
 ) {
   const square = [
     { x: 0, y: 0 },
@@ -213,7 +214,7 @@ function projectFixture(
   });
 
   return defineGame({
-    identity: "test.gameplay",
+    identity,
     version: "1",
     logicalResolution: { width: 100, height: 200 },
     inventoryAppearanceSize: 32,
@@ -391,6 +392,79 @@ test("Save Snapshot validation restores a Command while it approaches its Noun",
   const restored = createTestSession(project, validation.snapshot);
   for (const session of [uninterrupted, restored]) session.steps(20);
   expect(restored.snapshot()).toEqual(uninterrupted.snapshot());
+});
+
+test("Save Snapshot validation rejects an impossible Player Intent destination", () => {
+  const project = projectFixture();
+  const session = createTestSession(project);
+  session.input({ type: "move", point: { x: 80, y: 80 } });
+  session.steps();
+  const snapshot = session.createSaveSnapshot();
+  const activity = snapshot.state.activity;
+  if (activity?.type !== "player-intent") {
+    throw new Error("Expected a Player Intent to be active.");
+  }
+
+  const result = validateSaveSnapshot(project, {
+    ...snapshot,
+    state: {
+      ...snapshot.state,
+      activity: { ...activity, destination: { x: 1_000, y: 1_000 } },
+    },
+  });
+
+  expect(result.ok).toBe(false);
+});
+
+test("Save Snapshot validation binds a Player Intent to its Approach Point", () => {
+  const project = projectFixture();
+  const session = createTestSession(project);
+  session.input({ type: "select-verb", verb: "talk-to" });
+  session.input({ type: "activate-hotspot", hotspot: 0 });
+  session.steps();
+  const snapshot = session.createSaveSnapshot();
+  const activity = snapshot.state.activity;
+  if (activity?.type !== "player-intent") {
+    throw new Error("Expected a Player Intent to be active.");
+  }
+
+  const result = validateSaveSnapshot(project, {
+    ...snapshot,
+    state: {
+      ...snapshot.state,
+      activity: {
+        ...activity,
+        destination: { x: 50, y: 50 },
+        finalFacing: "left",
+      },
+    },
+  });
+
+  expect(result.ok).toBe(false);
+});
+
+test("Save Snapshot validation requires the Player Character for an active Player Intent", () => {
+  const project = projectFixture();
+  const session = createTestSession(project);
+  session.input({ type: "move", point: { x: 80, y: 80 } });
+  session.steps();
+  const snapshot = session.createSaveSnapshot();
+  if (snapshot.state.activity?.type !== "player-intent") {
+    throw new Error("Expected a Player Intent to be active.");
+  }
+
+  const result = validateSaveSnapshot(project, {
+    ...snapshot,
+    state: {
+      ...snapshot.state,
+      characters: {
+        ...snapshot.state.characters,
+        player: { ...snapshot.state.characters.player, scene: "ending" },
+      },
+    },
+  });
+
+  expect(result.ok).toBe(false);
 });
 
 test("selecting a Verb cancels a Player Intent that is still approaching its Noun", () => {
@@ -635,6 +709,23 @@ test("incompatible external save data returns diagnostics instead of throwing", 
   expect(result.diagnostics.map(({ code }) => code)).toContain("save.project.identity");
 });
 
+test("a 0.3 Save Snapshot receives explicit incompatibility diagnostics", () => {
+  const project = projectFixture();
+  const current = createTestSession(project).createSaveSnapshot();
+  const result = validateSaveSnapshot(project, {
+    ...current,
+    formatVersion: 0,
+    projectVersion: "0.3",
+  });
+
+  expect(result.ok).toBe(false);
+  if (!result.ok) {
+    expect(result.diagnostics.map(({ code }) => code)).toEqual(
+      expect.arrayContaining(["save.format.version", "save.project.version"]),
+    );
+  }
+});
+
 test("a contradictory or unexpectedly extended Save Snapshot is rejected", () => {
   const project = projectFixture();
   const session = createTestSession(project);
@@ -654,6 +745,54 @@ test("a contradictory or unexpectedly extended Save Snapshot is rejected", () =>
   expect(result.diagnostics.map(({ code }) => code)).toEqual(
     expect.arrayContaining(["save.fields.unexpected", "save.state.invalid"]),
   );
+});
+
+test("Save Snapshot validation rejects a Character outside its Scene Space", () => {
+  const project = projectFixture();
+  const snapshot = createTestSession(project).createSaveSnapshot();
+  const result = validateSaveSnapshot(project, {
+    ...snapshot,
+    state: {
+      ...snapshot.state,
+      characters: {
+        ...snapshot.state.characters,
+        player: {
+          ...snapshot.state.characters.player,
+          groundPoint: { x: 1_000, y: 1_000 },
+        },
+      },
+    },
+  });
+
+  expect(result.ok).toBe(false);
+  if (!result.ok) {
+    expect(result.diagnostics).toContainEqual(expect.objectContaining({
+      code: "save.state.invalid",
+      owner: "save",
+    }));
+  }
+});
+
+test("Save Snapshot validation rejects an unavailable Line Animation", () => {
+  const project = projectFixture();
+  const snapshot = createTestSession(project).createSaveSnapshot();
+  const result = validateSaveSnapshot(project, {
+    ...snapshot,
+    state: {
+      ...snapshot.state,
+      activity: {
+        type: "line",
+        animationStartedTick: 0,
+        line: {
+          character: "player",
+          text: "This state could not have been committed.",
+          animation: "missing",
+        },
+      },
+    },
+  });
+
+  expect(result.ok).toBe(false);
 });
 
 test("Save Snapshot validation rejects impossible Sequence control state", () => {
@@ -706,4 +845,46 @@ test("a structurally valid but unvalidated snapshot cannot restore a session", (
   const project = projectFixture();
   const raw = createTestSession(project).createSaveSnapshot() as ValidatedSaveSnapshot;
   expect(() => createTestSession(project, raw)).toThrow(/validateSaveSnapshot/);
+});
+
+test("a Save Snapshot validated for one Game Project cannot restore another", () => {
+  const sourceProject = projectFixture();
+  const validation = validateSaveSnapshot(
+    sourceProject,
+    createTestSession(sourceProject).createSaveSnapshot(),
+  );
+  expect(validation.ok).toBe(true);
+  if (!validation.ok) return;
+
+  const otherProject = projectFixture(false, false, false, "test.other-game");
+  expect(() => createTestSession(otherProject, validation.snapshot)).toThrow(
+    /validated for another Game Project/,
+  );
+});
+
+test("restore revalidates a Save Snapshot against the destination Game Project", () => {
+  const sourceProject = projectFixture(false, false, true);
+  const validation = validateSaveSnapshot(
+    sourceProject,
+    createTestSession(sourceProject).createSaveSnapshot(),
+  );
+  expect(validation.ok).toBe(true);
+  if (!validation.ok) return;
+
+  const incompatibleProject = projectFixture();
+  expect(() => createTestSession(incompatibleProject, validation.snapshot)).toThrow(
+    /invalid Game State/,
+  );
+});
+
+test("successful validation isolates restoration from later stored-data mutation", () => {
+  const project = projectFixture();
+  const raw = structuredClone(createTestSession(project).createSaveSnapshot());
+  const validation = validateSaveSnapshot(project, raw);
+  expect(validation.ok).toBe(true);
+  if (!validation.ok) return;
+
+  raw.state.variables.met = true;
+  const restored = createTestSession(project, validation.snapshot);
+  expect(restored.snapshot().variables.met).toBe(false);
 });

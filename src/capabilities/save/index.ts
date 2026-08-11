@@ -1,14 +1,21 @@
 import type { GameState } from "../game-session";
 import { createSequence, type Sequence } from "../sequence";
-import { conditionMatchesState } from "../interaction";
-import { commandVerbs, type CommandVerb, type Verb } from "../interaction";
+import {
+  interactionSaveValidation,
+  type InteractionCondition,
+} from "../interaction";
+import {
+  isValidAnimationState,
+  isValidLineAnimation,
+  type AnimationProjectView,
+} from "../animation";
 import { AuthoringError, type AuthoringDiagnostic } from "../game-project";
 import {
-  getGameProjectData,
+  getSaveCompositionView,
   type GameProject,
-  type GameProjectData,
+  type SaveGameProjectView,
 } from "../game-project";
-import { createWorld, type World } from "../world";
+import { createWorld, type Point, type World } from "../world";
 
 /** JSON-safe representation of the latest committed Game State. */
 export interface SaveSnapshot {
@@ -30,15 +37,87 @@ export type SaveSnapshotValidation =
   | { readonly ok: false; readonly diagnostics: readonly AuthoringDiagnostic[] };
 
 const validatedSnapshots = new WeakSet<object>();
+const projectSaves = new WeakMap<GameProject, Save>();
+
+/** @internal Save-owned snapshot lifecycle behind one immutable module interface. */
+export interface Save {
+  validate(value: unknown): SaveSnapshotValidation;
+  createSnapshot(state: GameState): SaveSnapshot;
+  restore(snapshot: ValidatedSaveSnapshot): GameState;
+}
+
+interface SaveValidationContext {
+  readonly project: SaveGameProjectView;
+  readonly world: World;
+  readonly animation: AnimationProjectView;
+  readonly sequence: Sequence;
+}
+
+/** Creates or returns the Save module composed for one Game Project. */
+export function createSave(project: GameProject): Save {
+  const existing = projectSaves.get(project);
+  if (existing) return existing;
+
+  const views = getSaveCompositionView(project);
+  const context: SaveValidationContext = {
+    project: views.gameProject,
+    world: createWorld(views.world),
+    animation: views.animation,
+    sequence: createSequence(views.sequences),
+  };
+  const save: Save = Object.freeze({
+    validate(value: unknown) {
+      return validateSnapshot(value, context);
+    },
+    createSnapshot(state: GameState) {
+      return deepFreeze({
+        formatVersion: 1 as const,
+        projectIdentity: context.project.identity,
+        projectVersion: context.project.version,
+        state: structuredClone(state),
+      });
+    },
+    restore(snapshot: ValidatedSaveSnapshot) {
+      if (!validatedSnapshots.has(snapshot)) {
+        throw new AuthoringError([
+          saveDiagnostic(
+            "save.validation.required",
+            "Only the successful result of validateSaveSnapshot can restore a Game Session.",
+          ),
+        ]);
+      }
+      if (
+        snapshot.projectIdentity !== context.project.identity ||
+        snapshot.projectVersion !== context.project.version
+      ) {
+        throw new AuthoringError([
+          saveDiagnostic(
+            "save.validation.project",
+            "Save Snapshot was validated for another Game Project.",
+          ),
+        ]);
+      }
+      const validation = validateSnapshot(snapshot, context);
+      if (!validation.ok) throw new AuthoringError(validation.diagnostics);
+      return structuredClone(validation.snapshot.state);
+    },
+  });
+  projectSaves.set(project, save);
+  return save;
+}
 
 /** Validates untrusted stored data without throwing for expected incompatibility. */
 export function validateSaveSnapshot(
   project: GameProject,
   value: unknown,
 ): SaveSnapshotValidation {
-  const data = getGameProjectData(project);
-  const world = createWorld(data);
-  const sequence = createSequence(data.sequences);
+  return createSave(project).validate(value);
+}
+
+function validateSnapshot(
+  value: unknown,
+  context: SaveValidationContext,
+): SaveSnapshotValidation {
   const diagnostics: AuthoringDiagnostic[] = [];
   if (!isRecord(value)) {
     diagnostics.push(saveDiagnostic("save.shape", "Save Snapshot must be a JSON object."));
@@ -49,15 +128,15 @@ export function validateSaveSnapshot(
     if (value.formatVersion !== 1) {
       diagnostics.push(saveDiagnostic("save.format.version", "Save Snapshot format is incompatible."));
     }
-    if (value.projectIdentity !== data.identity) {
+    if (value.projectIdentity !== context.project.identity) {
       diagnostics.push(saveDiagnostic("save.project.identity", "Save Snapshot belongs to another Game Project."));
     }
-    if (value.projectVersion !== data.version) {
+    if (value.projectVersion !== context.project.version) {
       diagnostics.push(saveDiagnostic("save.project.version", "Save Snapshot uses another Project Version."));
     }
-    if (!validStateShape(value.state, data, world, sequence)) {
+    if (!validStateShape(value.state, context)) {
       diagnostics.push(
-        invalidCommandStateDiagnostic(value.state, data) ??
+        invalidCommandStateDiagnostic(value.state) ??
         saveDiagnostic("save.state.invalid", "Save Snapshot contains an invalid Game State."),
       );
     }
@@ -70,153 +149,122 @@ export function validateSaveSnapshot(
   return { ok: true, snapshot };
 }
 
-/** @internal Creates a snapshot only from a committed core state. */
-export function createSaveSnapshot(data: GameProjectData, state: GameState): SaveSnapshot {
-  return deepFreeze({
-    formatVersion: 1 as const,
-    projectIdentity: data.identity,
-    projectVersion: data.version,
-    state: structuredClone(state),
-  });
-}
-
-/** @internal Reads state only from the branded validation result. */
-export function getValidatedSaveState(snapshot: ValidatedSaveSnapshot): GameState {
-  if (!validatedSnapshots.has(snapshot)) {
-    throw new AuthoringError([
-      saveDiagnostic(
-        "save.validation.required",
-        "Only the successful result of validateSaveSnapshot can restore a Game Session.",
-      ),
-    ]);
-  }
-  return structuredClone(snapshot.state);
-}
-
 function validStateShape(
   value: unknown,
-  data: GameProjectData,
-  world: World,
-  sequence: Sequence,
+  context: SaveValidationContext,
 ): value is GameState {
+  const { animation, project, world } = context;
   if (!isRecord(value) || !hasExactKeys(value, ["currentScene", "characters", "scenery", "objects", "inventory", "command", "variables", "activity", "tick"])) return false;
-  if (typeof value.currentScene !== "string" || !(value.currentScene in data.scenes)) return false;
   if (!Number.isInteger(value.tick) || (value.tick as number) < 0) return false;
-  if (!isRecord(value.characters) || !sameKeys(value.characters, data.characters)) return false;
-  for (const [id, character] of Object.entries(value.characters)) {
-    const definition = data.characters[id]!;
-    if (!isRecord(character) || !hasExactKeys(character, ["scene", "groundPoint", "facing", "appearance"])) return false;
-    if (typeof character.scene !== "string" || !(character.scene in data.scenes)) return false;
-    if (!validPoint(character.groundPoint) || !["front", "back", "left", "right"].includes(String(character.facing))) return false;
-    if (typeof character.appearance !== "string" || !(character.appearance in definition.appearances)) return false;
-  }
-  if (!isRecord(value.scenery) || !sameKeys(value.scenery, data.scenes)) return false;
-  for (const [sceneId, selections] of Object.entries(value.scenery)) {
-    if (!isRecord(selections) || !sameKeys(selections, data.scenes[sceneId]!.scenery ?? {})) return false;
-    for (const [sceneryId, appearance] of Object.entries(selections)) {
-      if (typeof appearance !== "string" || !(appearance in data.scenes[sceneId]!.scenery![sceneryId]!.appearances)) return false;
-    }
-  }
-  if (!isRecord(value.objects) || !sameKeys(value.objects, data.objects)) return false;
+  if (!world.isValidState(value) || !isValidAnimationState(animation, value)) return false;
   const inventoryLocations: string[] = [];
   for (const [id, object] of Object.entries(value.objects)) {
-    const definition = data.objects[id]!;
-    if (!isRecord(object) || !hasExactKeys(object, ["location", "appearance"])) return false;
-    if (typeof object.appearance !== "string" || !(object.appearance in definition.appearances)) return false;
-    if (!isRecord(object.location) || typeof object.location.kind !== "string") return false;
     if (object.location.kind === "inventory") {
-      if (!hasExactKeys(object.location, ["kind"])) return false;
       inventoryLocations.push(id);
-    } else if (object.location.kind === "consumed") {
-      if (!hasExactKeys(object.location, ["kind"])) return false;
-    } else if (object.location.kind === "scene") {
-      if (!hasExactKeys(object.location, ["kind", "scene", "groundPoint"])) return false;
-      if (typeof object.location.scene !== "string" || !(object.location.scene in data.scenes) || !validPoint(object.location.groundPoint)) return false;
-    } else return false;
+    }
   }
   if (!isRecord(value.inventory) || !hasExactKeys(value.inventory, ["objects"]) || !Array.isArray(value.inventory.objects)) return false;
-  if (!value.inventory.objects.every((id): id is string => typeof id === "string" && id in data.objects)) return false;
+  if (!value.inventory.objects.every((id): id is string => typeof id === "string" && id in value.objects)) return false;
   if (new Set(value.inventory.objects).size !== value.inventory.objects.length) return false;
   if (!sameValues(value.inventory.objects, inventoryLocations)) return false;
-  if (!isRecord(value.command) || !hasExactKeys(value.command, ["verb", "firstNoun"])) return false;
-  if (!isVerb(value.command.verb)) return false;
-  if (value.command.firstNoun !== null) {
-    if (!isRecord(value.command.firstNoun) || !hasExactKeys(value.command.firstNoun, ["kind", "object"])) return false;
-    if (value.command.firstNoun.kind !== "object" || typeof value.command.firstNoun.object !== "string") return false;
-    if (!value.inventory.objects.includes(value.command.firstNoun.object)) return false;
-  }
-  if (!isRecord(value.variables) || !sameKeys(value.variables, data.variables)) return false;
+  if (!interactionSaveValidation.isCommandState(value.command, value.inventory.objects)) return false;
+  if (!isRecord(value.variables) || !sameKeys(value.variables, project.variables)) return false;
   if (!Object.values(value.variables).every((variable) => typeof variable === "boolean")) return false;
-  if (!validActivity(value.activity, data, value as unknown as GameState, world, sequence)) return false;
+  if (!validActivity(value.activity, value as unknown as GameState, context)) return false;
   return isJsonSafe(value);
 }
 
 function validActivity(
   value: unknown,
-  data: GameProjectData,
   state: GameState,
-  world: World,
-  sequence: Sequence,
+  context: SaveValidationContext,
 ): boolean {
+  const { animation, project, sequence, world } = context;
   if (value === null) return true;
   if (!isRecord(value) || typeof value.type !== "string") return false;
   if (value.type === "line") {
     if (!hasExactKeys(value, ["type", "animationStartedTick", "line"]) || !validAnimationStartedTick(value.animationStartedTick, state.tick) || !isRecord(value.line)) return false;
     if (!hasExactKeys(value.line, ["character", "text"], ["audio", "animation"])) return false;
-    return typeof value.line.character === "string" && value.line.character in data.characters &&
+    return typeof value.line.character === "string" && world.hasCharacter(value.line.character) &&
       typeof value.line.text === "string" && value.line.text.trim().length > 0 &&
       (value.line.audio === undefined || typeof value.line.audio === "string") &&
-      (value.line.animation === undefined || typeof value.line.animation === "string");
+      (value.line.animation === undefined || typeof value.line.animation === "string") &&
+      isValidLineAnimation(animation, state, value.line.character, value.line.animation as string | undefined);
   }
   if (value.type === "player-intent") {
+    if (!project.playerCharacter ||
+        state.characters[project.playerCharacter]?.scene !== state.currentScene) return false;
     if (!hasExactKeys(value, ["type", "animationStartedTick", "destination", "intent"], ["finalFacing", "fast"]) || !validAnimationStartedTick(value.animationStartedTick, state.tick)) return false;
     if (!validPoint(value.destination) || !validOptionalFacing(value.finalFacing)) return false;
+    const destination = value.destination;
+    const canonicalDestination = world.navigationDestination(state, destination);
+    if (Math.hypot(
+      canonicalDestination.x - destination.x,
+      canonicalDestination.y - destination.y,
+    ) > 1e-8) return false;
     if (value.fast !== undefined && value.fast !== true) return false;
     if (!isRecord(value.intent) || typeof value.intent.kind !== "string") return false;
-    if (value.intent.kind === "move") return hasExactKeys(value.intent, ["kind"]);
-    if (value.intent.kind === "interaction") {
-      if (!hasExactKeys(value.intent, ["kind", "scene", "hotspot"], ["command"])) return false;
-      if (value.intent.scene !== state.currentScene || !Number.isInteger(value.intent.hotspot)) return false;
-      const hotspot = data.scenes[state.currentScene]!.hotspots?.[value.intent.hotspot as number];
-      if (!hotspot || !world.isHotspotAvailable(
+    const intent = value.intent;
+    if (intent.kind === "move") {
+      return hasExactKeys(intent, ["kind"]) && value.finalFacing === undefined;
+    }
+    const conditionMatches = (condition: InteractionCondition | undefined) =>
+      interactionSaveValidation.conditionMatches(condition, state);
+    const matchesApproach = (target: Parameters<World["approach"]>[1]): boolean => {
+      const approach = world.approach(state, target, conditionMatches);
+      return approach !== undefined &&
+        samePoint(destination, approach.groundPoint) &&
+        value.finalFacing === approach.facing;
+    };
+    if (intent.kind === "interaction") {
+      if (!hasExactKeys(intent, ["kind", "scene", "hotspot"], ["command"])) return false;
+      if (intent.scene !== state.currentScene || !Number.isInteger(intent.hotspot)) return false;
+      const hotspot = world.hotspots(
         state,
-        hotspot,
-        (condition) => conditionMatchesState(condition, state),
-      )) return false;
-      if (value.intent.command !== undefined) {
-        if (!isRecord(value.intent.command) || !hasExactKeys(value.intent.command, ["verb"], ["firstNoun", "preserveState"])) return false;
-        if (!isCommandVerb(value.intent.command.verb)) return false;
-        if (value.intent.command.preserveState !== undefined && typeof value.intent.command.preserveState !== "boolean") return false;
-        if (value.intent.command.firstNoun !== undefined &&
-            (typeof value.intent.command.firstNoun !== "string" || !state.inventory.objects.includes(value.intent.command.firstNoun))) return false;
+        conditionMatches,
+      ).find(({ index }) => index === intent.hotspot);
+      if (!hotspot || !matchesApproach({ kind: "hotspot", index: intent.hotspot as number })) {
+        return false;
+      }
+      if (intent.command !== undefined) {
+        if (!interactionSaveValidation.isPendingCommand(
+          intent.command,
+          state.inventory.objects,
+        )) return false;
       }
       return true;
     }
-    if (value.intent.kind === "passage-command") {
-      if (!hasExactKeys(value.intent, ["kind", "scene", "passage", "command"])) return false;
-      if (value.intent.scene !== state.currentScene || !Number.isInteger(value.intent.passage)) return false;
-      const passage = data.scenes[state.currentScene]!.passages?.[value.intent.passage as number];
-      if (!passage || !conditionMatchesState(passage.when, state)) return false;
-      if (!isRecord(value.intent.command) || !hasExactKeys(value.intent.command, ["verb"], ["firstNoun", "preserveState"])) return false;
-      if (!isCommandVerb(value.intent.command.verb)) return false;
-      if (value.intent.command.preserveState !== undefined && typeof value.intent.command.preserveState !== "boolean") return false;
-      return value.intent.command.firstNoun === undefined ||
-        typeof value.intent.command.firstNoun === "string" && state.inventory.objects.includes(value.intent.command.firstNoun);
+    if (intent.kind === "passage-command") {
+      if (!hasExactKeys(intent, ["kind", "scene", "passage", "command"])) return false;
+      if (intent.scene !== state.currentScene || !Number.isInteger(intent.passage)) return false;
+      const passage = world.passages(
+        state,
+        conditionMatches,
+      ).find(({ index }) => index === intent.passage);
+      return passage !== undefined &&
+        matchesApproach({ kind: "passage", index: intent.passage as number }) &&
+        interactionSaveValidation.isPendingCommand(
+        intent.command,
+        state.inventory.objects,
+      );
     }
-    if (value.intent.kind === "passage") {
-      if (!hasExactKeys(value.intent, ["kind", "scene", "passage"])) return false;
-      if (value.intent.scene !== state.currentScene || !Number.isInteger(value.intent.passage)) return false;
-      const passage = data.scenes[state.currentScene]!.passages?.[value.intent.passage as number];
-      return passage !== undefined && conditionMatchesState(passage.when, state);
+    if (intent.kind === "passage") {
+      if (!hasExactKeys(intent, ["kind", "scene", "passage"])) return false;
+      if (intent.scene !== state.currentScene || !Number.isInteger(intent.passage)) return false;
+      return world.passages(
+        state,
+        conditionMatches,
+      ).some(({ index }) => index === intent.passage) &&
+        matchesApproach({ kind: "passage", index: intent.passage as number });
     }
     return false;
   }
   if (value.type === "sequence") {
     return sequence.isValidActivity(value, {
       currentTick: state.tick,
-      ...(data.playerCharacter ? { playerCharacter: data.playerCharacter } : {}),
-      characterExists: (character) => character in data.characters,
-      conditionMatches: (condition) => conditionMatchesState(condition, state),
+      ...(project.playerCharacter ? { playerCharacter: project.playerCharacter } : {}),
+      characterExists: (character) => world.hasCharacter(character),
+      conditionMatches: (condition) => interactionSaveValidation.conditionMatches(condition, state),
     });
   }
   return false;
@@ -232,18 +280,18 @@ function validAnimationStartedTick(value: unknown, currentTick: number): boolean
 
 function invalidCommandStateDiagnostic(
   value: unknown,
-  data: GameProjectData,
 ): AuthoringDiagnostic | undefined {
   if (!isRecord(value)) return undefined;
   const command = value.command;
-  if (!isRecord(command) || !hasExactKeys(command, ["verb", "firstNoun"]) || !isVerb(command.verb)) {
+  if (!isRecord(command) || !hasExactKeys(command, ["verb", "firstNoun"]) ||
+      !interactionSaveValidation.isVerb(command.verb)) {
     return saveDiagnostic(
       "save.state.command",
       "Save Snapshot contains a malformed Command State.",
       "Save Snapshot.state.command",
     );
   }
-  if (command.firstNoun === null) return invalidIntentCommandDiagnostic(value, data);
+  if (command.firstNoun === null) return invalidIntentCommandDiagnostic(value);
   if (
     !isRecord(command.firstNoun) ||
     !hasExactKeys(command.firstNoun, ["kind", "object"]) ||
@@ -259,19 +307,19 @@ function invalidCommandStateDiagnostic(
   const inventory = isRecord(value.inventory) && Array.isArray(value.inventory.objects)
     ? value.inventory.objects
     : [];
-  if (!(command.firstNoun.object in data.objects) || !inventory.includes(command.firstNoun.object)) {
+  const objects = isRecord(value.objects) ? value.objects : {};
+  if (!(command.firstNoun.object in objects) || !inventory.includes(command.firstNoun.object)) {
     return saveDiagnostic(
       "save.state.command-noun",
       "Save Snapshot refers to a first Noun that is not available in the Inventory.",
       "Save Snapshot.state.command.firstNoun.object",
     );
   }
-  return invalidIntentCommandDiagnostic(value, data);
+  return invalidIntentCommandDiagnostic(value);
 }
 
 function invalidIntentCommandDiagnostic(
   state: Record<string, unknown>,
-  data: GameProjectData,
 ): AuthoringDiagnostic | undefined {
   const activity = state.activity;
   if (!isRecord(activity) || activity.type !== "player-intent" || !isRecord(activity.intent)) return undefined;
@@ -282,7 +330,7 @@ function invalidIntentCommandDiagnostic(
   if (
     !isRecord(command) ||
     !hasExactKeys(command, ["verb"], ["firstNoun", "preserveState"]) ||
-    !isCommandVerb(command.verb) ||
+    !interactionSaveValidation.isCommandVerb(command.verb) ||
     (command.preserveState !== undefined && typeof command.preserveState !== "boolean")
   ) {
     return saveDiagnostic(
@@ -295,9 +343,10 @@ function invalidIntentCommandDiagnostic(
   const inventory = isRecord(state.inventory) && Array.isArray(state.inventory.objects)
     ? state.inventory.objects
     : [];
+  const objects = isRecord(state.objects) ? state.objects : {};
   if (
     typeof command.firstNoun !== "string" ||
-    !(command.firstNoun in data.objects) ||
+    !(command.firstNoun in objects) ||
     !inventory.includes(command.firstNoun)
   ) {
     return saveDiagnostic(
@@ -309,14 +358,6 @@ function invalidIntentCommandDiagnostic(
   return undefined;
 }
 
-function isCommandVerb(value: unknown): value is CommandVerb {
-  return typeof value === "string" && commandVerbs.some((verb) => verb === value);
-}
-
-function isVerb(value: unknown): value is Verb {
-  return value === "walk-to" || isCommandVerb(value);
-}
-
 function saveDiagnostic(code: string, message: string, path = "Save Snapshot"): AuthoringDiagnostic {
   return { code, family: "save", owner: "save", path, message };
 }
@@ -325,10 +366,14 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
-function validPoint(value: unknown): boolean {
+function validPoint(value: unknown): value is Point {
   return isRecord(value) && hasExactKeys(value, ["x", "y"]) &&
     typeof value.x === "number" && Number.isFinite(value.x) &&
     typeof value.y === "number" && Number.isFinite(value.y);
+}
+
+function samePoint(left: Point, right: Point): boolean {
+  return Math.hypot(left.x - right.x, left.y - right.y) <= 1e-8;
 }
 
 function hasExactKeys(

@@ -708,6 +708,31 @@ test("directed Sequence progress survives Save and restore", () => {
   expect(restored.snapshot().variables.finished).toBe(true);
 });
 
+test("Save Snapshot validation rejects Direction progress beyond the logical tick", () => {
+  const project = directedProject();
+  const session = createTestSession(project);
+  startDirectedSequence(session);
+  session.steps();
+  const snapshot = session.createSaveSnapshot();
+  const activity = snapshot.state.activity;
+  if (activity?.type !== "sequence" || activity.active?.kind !== "direction") {
+    throw new Error("Expected an active Direction Step.");
+  }
+
+  const result = validateSaveSnapshot(project, {
+    ...snapshot,
+    state: {
+      ...snapshot.state,
+      activity: {
+        ...activity,
+        active: { ...activity.active, elapsedTicks: snapshot.state.tick + 1 },
+      },
+    },
+  });
+
+  expect(result.ok).toBe(false);
+});
+
 test("skip before and after a Cue applies the explicit Skip Outcome exactly once", () => {
   for (const progress of [0, 1, 2]) {
     const session = createTestSession(directedProject(true));

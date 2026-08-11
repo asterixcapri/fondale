@@ -414,6 +414,10 @@ test("Options, Help, named Save Slots, and selected Object restore through short
   });
   await frame.focus();
   await page.keyboard.press("Control+l");
-  await expect(frame.locator('[data-fondale-load-slot="1"]')).toBeDisabled();
+  const incompatibleLoad = frame.locator('[data-fondale-load-slot="1"]');
+  await expect(incompatibleLoad).toBeDisabled();
   await expect(frame.locator('[data-fondale-load-diagnostic="1"]')).toContainText("Project Version");
+  await incompatibleLoad.dispatchEvent("click");
+  await expect(frame.locator('[data-fondale-modal="load"]')).toBeVisible();
+  await expect(key).toHaveAttribute("aria-pressed", "true");
 });

@@ -1,5 +1,11 @@
-import type { AuthoringDiagnostic, GameProjectData } from "../game-project";
+import type { AuthoringDiagnostic } from "../game-project";
 import type { GameState } from "../game-session";
+import type {
+  CharacterDefinition,
+  ObjectDefinition,
+  ResolvedSceneDefinition,
+  WorldState,
+} from "../world";
 import type {
   DirectedSubject,
   SequenceDirectionPresentation,
@@ -48,6 +54,14 @@ export interface Appearance {
   readonly animations: Readonly<Record<string, AnimationDefinition>>;
   readonly roles: AnimationRoles;
   readonly visualAnchor?: VisualAnchor;
+}
+
+/** @internal Definitions needed for Animation interpretation and Save validation. */
+export interface AnimationProjectView {
+  readonly characters: Readonly<Record<string, CharacterDefinition>>;
+  readonly objects: Readonly<Record<string, ObjectDefinition>>;
+  readonly scenes: Readonly<Record<string, ResolvedSceneDefinition>>;
+  readonly playerCharacter?: string;
 }
 
 /** Resolves an Engine-selected Animation Role, including the speaking fallback. */
@@ -318,7 +332,7 @@ export interface AnimationPresentation {
 
 /** Derives the active Appearance, Animation, and logical frame for one subject. */
 export function animationPresentationForSubject(
-  data: GameProjectData,
+  data: AnimationProjectView,
   state: Readonly<GameState>,
   subject: DirectedSubject,
   context: AnimationPresentationContext = {},
@@ -410,7 +424,7 @@ function activityAnimationElapsedTicks(
 
 /** Resolves the current Appearance without exposing mutable Game State. */
 export function appearanceForSubject(
-  data: GameProjectData,
+  data: AnimationProjectView,
   state: Readonly<GameState>,
   subject: DirectedSubject,
 ): Appearance | undefined {
@@ -419,7 +433,7 @@ export function appearanceForSubject(
 
 /** Reports whether Animation recognizes an Appearance for one persistent Object. */
 export function objectHasAppearance(
-  data: Pick<GameProjectData, "objects">,
+  data: Pick<AnimationProjectView, "objects">,
   object: string,
   appearance: string,
 ): boolean {
@@ -428,7 +442,7 @@ export function objectHasAppearance(
 
 /** Validates one Object Appearance reference without exposing Animation representation. */
 export function validateObjectAppearanceReference(
-  data: Pick<GameProjectData, "objects">,
+  data: Pick<AnimationProjectView, "objects">,
   object: string,
   appearance: string,
   path: string,
@@ -445,7 +459,7 @@ export function validateObjectAppearanceReference(
 }
 
 function appearanceSelectionForSubject(
-  data: GameProjectData,
+  data: AnimationProjectView,
   state: Readonly<GameState>,
   subject: DirectedSubject,
 ): { readonly appearanceName: string; readonly appearance: Appearance } | undefined {
@@ -463,6 +477,38 @@ function appearanceSelectionForSubject(
   return appearanceName && candidate && "animations" in candidate
     ? { appearanceName, appearance: candidate }
     : undefined;
+}
+
+/** Validates every persistent Appearance selection in restored World state. */
+export function isValidAnimationState(
+  view: AnimationProjectView,
+  state: Readonly<WorldState>,
+): boolean {
+  for (const [character, selection] of Object.entries(state.characters)) {
+    if (!(selection.appearance in (view.characters[character]?.appearances ?? {}))) return false;
+  }
+  for (const [object, selection] of Object.entries(state.objects)) {
+    if (!(selection.appearance in (view.objects[object]?.appearances ?? {}))) return false;
+  }
+  for (const [scene, selections] of Object.entries(state.scenery)) {
+    for (const [scenery, appearance] of Object.entries(selections)) {
+      if (!(appearance in (view.scenes[scene]?.scenery?.[scenery]?.appearances ?? {}))) return false;
+    }
+  }
+  return true;
+}
+
+/** Reports whether a restored Line can use its authored Animation override. */
+export function isValidLineAnimation(
+  view: AnimationProjectView,
+  state: Readonly<WorldState>,
+  character: string,
+  animation: string | undefined,
+): boolean {
+  if (animation === undefined) return character in view.characters;
+  const appearance = state.characters[character]?.appearance;
+  return appearance !== undefined &&
+    animation in (view.characters[character]?.appearances[appearance]?.animations ?? {});
 }
 
 function sameSubject(left: DirectedSubject, right: DirectedSubject): boolean {

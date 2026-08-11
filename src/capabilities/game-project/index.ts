@@ -34,6 +34,7 @@ import {
   type AnimationFrames,
   type AnimationRoles,
   type AnimationStrip,
+  type AnimationProjectView,
   type Appearance,
 } from "../animation";
 import {
@@ -45,6 +46,7 @@ import {
   type ObjectDefinition,
   type Point,
   type ResolvedSceneDefinition,
+  type WorldProjectView,
   type SceneryAppearance,
   type SceneDefinition,
 } from "../world";
@@ -138,6 +140,22 @@ export interface GameProjectData
   readonly variables: Readonly<Record<string, boolean>>;
 }
 
+/** @internal Project-owned identity and variable registry needed by Save. */
+export interface SaveGameProjectView {
+  readonly identity: string;
+  readonly version: string;
+  readonly variables: Readonly<Record<string, boolean>>;
+  readonly playerCharacter?: string;
+}
+
+/** @internal Narrow capability views composed for Save validation. */
+export interface SaveCompositionView {
+  readonly gameProject: SaveGameProjectView;
+  readonly world: WorldProjectView;
+  readonly animation: AnimationProjectView;
+  readonly sequences: Readonly<Record<string, SequenceDefinition>>;
+}
+
 const projectData = new WeakMap<GameProject, GameProjectData>();
 
 /** Composes named definitions into one validated and immutable Game Project. */
@@ -217,6 +235,17 @@ export function getGameProjectData(project: GameProject): GameProjectData {
   const data = projectData.get(project);
   if (!data) throw new TypeError("Expected a Game Project returned by defineGame().");
   return data;
+}
+
+/** @internal Composes the distinct narrow views consumed by Save. */
+export function getSaveCompositionView(project: GameProject): SaveCompositionView {
+  const data = getGameProjectData(project);
+  return Object.freeze({
+    gameProject: data,
+    world: data,
+    animation: data,
+    sequences: data.sequences,
+  });
 }
 
 function deepFreeze<T>(value: T): T {

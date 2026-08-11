@@ -798,6 +798,9 @@ export type PassageTransitionResult =
 /** World-owned spatial policy over one validated Game Project view. */
 export interface World {
   initialState(): WorldState;
+  /** Validates the spatial invariants of restored committed World state. */
+  isValidState(state: unknown): state is WorldState;
+  hasCharacter(character: string): boolean;
   hitTest(state: Readonly<WorldState>, point: Point, matches: WorldConditionMatches): WorldTarget | null;
   isHotspotAvailable(
     state: Readonly<WorldState>,
@@ -900,6 +903,58 @@ export function createWorld(view: WorldProjectView): World {
           ]),
         ),
       };
+    },
+    isValidState(value): value is WorldState {
+      if (!isRecord(value) || typeof value.currentScene !== "string" ||
+          !(value.currentScene in view.scenes) ||
+          !isRecord(value.characters) || !sameRecordKeys(value.characters, view.characters) ||
+          !isRecord(value.scenery) || !sameRecordKeys(value.scenery, view.scenes) ||
+          !isRecord(value.objects) || !sameRecordKeys(value.objects, view.objects)) return false;
+      for (const [characterId, candidate] of Object.entries(value.characters)) {
+        if (!isRecord(candidate) || !hasExactRecordKeys(
+          candidate,
+          ["scene", "groundPoint", "facing", "appearance"],
+        )) return false;
+        const character = candidate as unknown as CharacterState;
+        const scene = view.scenes[character.scene];
+        if (
+          !scene ||
+          typeof character.appearance !== "string" ||
+          !["front", "back", "left", "right"].includes(character.facing) ||
+          !isPoint(character.groundPoint) ||
+          !pointInSceneSize(scene.size, character.groundPoint) ||
+          !pointInPolygonOrBoundary(scene.walkableRegion, character.groundPoint)
+        ) return false;
+        if (!(characterId in view.characters)) return false;
+      }
+      for (const [sceneId, candidate] of Object.entries(value.scenery)) {
+        const definitions = view.scenes[sceneId]?.scenery ?? {};
+        if (!isRecord(candidate) || !sameRecordKeys(candidate, definitions) ||
+            !Object.values(candidate).every((appearance) => typeof appearance === "string")) {
+          return false;
+        }
+      }
+      for (const candidate of Object.values(value.objects)) {
+        if (!isRecord(candidate) || !hasExactRecordKeys(candidate, ["location", "appearance"]) ||
+            typeof candidate.appearance !== "string" || !isRecord(candidate.location) ||
+            typeof candidate.location.kind !== "string") return false;
+        const object = candidate as unknown as ObjectState;
+        if (object.location.kind === "inventory" || object.location.kind === "consumed") {
+          if (!hasExactRecordKeys(candidate.location, ["kind"])) return false;
+          continue;
+        }
+        if (object.location.kind !== "scene" ||
+            !hasExactRecordKeys(candidate.location, ["kind", "scene", "groundPoint"]) ||
+            typeof object.location.scene !== "string" || !isPoint(object.location.groundPoint)) {
+          return false;
+        }
+        const scene = view.scenes[object.location.scene];
+        if (!scene || !pointInSceneSize(scene.size, object.location.groundPoint)) return false;
+      }
+      return true;
+    },
+    hasCharacter(character) {
+      return character in view.characters;
     },
     hitTest(state, point, matches) {
       const hotspot = availableHotspots(state, matches)
@@ -1329,6 +1384,32 @@ function resolvedSceneSize(scene: SceneDefinition, logicalResolution: LogicalRes
 function pointInSceneSize(size: SceneSize, point: Point): boolean {
   return Number.isFinite(point.x) && Number.isFinite(point.y) &&
     point.x >= 0 && point.y >= 0 && point.x <= size.width && point.y <= size.height;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function isPoint(value: unknown): value is Point {
+  return isRecord(value) && hasExactRecordKeys(value, ["x", "y"]) &&
+    typeof value.x === "number" && Number.isFinite(value.x) &&
+    typeof value.y === "number" && Number.isFinite(value.y);
+}
+
+function hasExactRecordKeys(
+  value: Record<string, unknown>,
+  required: readonly string[],
+): boolean {
+  const keys = Object.keys(value);
+  return required.every((key) => keys.includes(key)) &&
+    keys.every((key) => required.includes(key));
+}
+
+function sameRecordKeys(left: Record<string, unknown>, right: object): boolean {
+  const leftKeys = Object.keys(left).sort();
+  const rightKeys = Object.keys(right).sort();
+  return leftKeys.length === rightKeys.length &&
+    leftKeys.every((key, index) => key === rightKeys[index]);
 }
 
 function pointInPolygonOrBoundary(polygon: readonly Point[], point: Point): boolean {

@@ -493,6 +493,51 @@ export interface PendingCommand {
   readonly preserveState?: boolean;
 }
 
+/** @internal Interaction-owned predicates used when Save validates restored state. */
+export interface InteractionSaveValidation {
+  isVerb(value: unknown): value is Verb;
+  isCommandVerb(value: unknown): value is CommandVerb;
+  isCommandState(value: unknown, inventory: readonly string[]): value is CommandState;
+  isPendingCommand(value: unknown, inventory: readonly string[]): value is PendingCommand;
+  conditionMatches(
+    condition: InteractionCondition | undefined,
+    state: InteractionStateView,
+  ): boolean;
+}
+
+export const interactionSaveValidation: InteractionSaveValidation = Object.freeze({
+  isVerb(value: unknown): value is Verb {
+    return value === "walk-to" || isSaveCommandVerb(value);
+  },
+  isCommandVerb(value: unknown): value is CommandVerb {
+    return isSaveCommandVerb(value);
+  },
+  isCommandState(value: unknown, inventory: readonly string[]): value is CommandState {
+    if (!isRecord(value) || !hasExactKeys(value, ["verb", "firstNoun"]) ||
+        !(value.verb === "walk-to" || isSaveCommandVerb(value.verb))) return false;
+    if (value.firstNoun === null) return true;
+    return isRecord(value.firstNoun) &&
+      hasExactKeys(value.firstNoun, ["kind", "object"]) &&
+      value.firstNoun.kind === "object" &&
+      typeof value.firstNoun.object === "string" &&
+      inventory.includes(value.firstNoun.object);
+  },
+  isPendingCommand(value: unknown, inventory: readonly string[]): value is PendingCommand {
+    if (!isRecord(value) || !hasExactKeys(value, ["verb"], ["firstNoun", "preserveState"]) ||
+        !isSaveCommandVerb(value.verb) ||
+        (value.preserveState !== undefined && typeof value.preserveState !== "boolean")) return false;
+    return value.firstNoun === undefined ||
+      typeof value.firstNoun === "string" && inventory.includes(value.firstNoun);
+  },
+  conditionMatches(condition: InteractionCondition | undefined, state: InteractionStateView) {
+    return conditionMatchesState(condition, state);
+  },
+});
+
+function isSaveCommandVerb(value: unknown): value is CommandVerb {
+  return typeof value === "string" && commandVerbs.some((verb) => verb === value);
+}
+
 /** @internal The Game Activity state needed to resume a Player Intent after World movement. */
 export interface PlayerIntentState {
   readonly type: "player-intent";
@@ -1217,6 +1262,20 @@ function interactionReference(
   message: string,
 ): AuthoringDiagnostic {
   return { code, family: "reference", owner: "interaction", path, message };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function hasExactKeys(
+  value: Record<string, unknown>,
+  required: readonly string[],
+  optional: readonly string[] = [],
+): boolean {
+  const keys = Object.keys(value);
+  return required.every((key) => keys.includes(key)) &&
+    keys.every((key) => required.includes(key) || optional.includes(key));
 }
 
 function deepFreeze<T>(value: T): T {
