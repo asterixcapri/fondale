@@ -161,6 +161,12 @@ finish; its exact logical progress belongs to the Game State. It remains within
 the Scene in which it started and cannot direct a Scene transition.
 _Avoid_: Cutscene, multi-Scene sequence, Choreography layer, Dialogue as a separate activity model, nested sequence, scripted async function
 
+**Direction Step**:
+A sequential Sequence step that directs concurrent Animations, Motions, and the
+Camera and completes when all finite directions finish or its authored duration
+elapses.
+_Avoid_: Direct Step, Directed Step, Choreography
+
 **Skip Outcome**:
 The authored Game Operations applied when a skippable Sequence is skipped so
 its logical result remains coherent without executing its remaining steps.

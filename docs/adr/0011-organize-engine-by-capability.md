@@ -1,0 +1,7 @@
+# Organize the Engine by capability
+
+Fondale organizes implementation ownership primarily around vertical Engine Capability modules rather than horizontal Authoring, Runtime, Persistence, and Browser Presentation modules. A glossary term does not receive its own module automatically: a module must own enough policy, lifecycle, or invariants to pass the deletion test. The initial map recognizes Game Project, Game Session, World, Interaction, Sequence, Animation, Camera, HUD, and Save; Game Session owns the logical tick, dominant Game Activity, input dispatch, and atomic Game State commit while delegating capability rules.
+
+A capability module may span definition, validation, runtime interpretation, and derived presentation. Browser-specific dependencies remain behind adapter seams, cross-module imports pass only through the owning module's interface, and no generic shared module bypasses that ownership; this concentrates capability changes and verification, whereas a purely horizontal structure would scatter them across several owners.
+
+The realignment preserves the deterministic CoreSession and canonical Game State model: queued input advances through explicit logical ticks, callers observe defensive snapshots and effects, and Save Snapshots restore committed state. Capability modules move behind that model incrementally; replacing it with a new opaque commit or complete presentation frame requires separate evidence and is not a premise of this refactor.
