@@ -11,8 +11,8 @@ import {
 } from "../animation";
 import type { NounDefinition } from "../interaction";
 import type { PassageDirection } from "../hud";
-import type { DirectedSubject, MotionDirection } from "../sequence";
-import { isInside } from "./geometry";
+import type { DirectionStep, DirectedSubject, MotionDirection } from "../sequence";
+import { isInside, navigationPath, nearestPoint } from "./geometry";
 
 export { isInside, navigationPath, nearestPoint } from "./geometry";
 
@@ -371,8 +371,12 @@ export interface WorldDefinitionQueries {
     availableObjects: ReadonlySet<string>,
   ): boolean;
   pointInScene(scene: string, point: Point): boolean;
-  characterPointIsWalkable(scene: string, point: Point): boolean;
-  sceneryRestingPoint(scene: string, scenery: string): Point | undefined;
+  validateMotion(
+    scene: string,
+    direction: MotionDirection,
+    path: string,
+    context: MotionValidationContext,
+  ): readonly AuthoringDiagnostic[];
   validatePlacement(
     scenes: readonly string[],
     point: Point,
@@ -408,13 +412,53 @@ export function createWorldDefinitionQueries(view: WorldDefinitionView): WorldDe
       return subject.scenery in (view.scenes[scene]?.scenery ?? {});
     },
     pointInScene,
-    characterPointIsWalkable(sceneId, point) {
+    validateMotion(sceneId, direction, path, context) {
+      const diagnostics: AuthoringDiagnostic[] = [];
       const scene = view.scenes[sceneId];
-      return scene !== undefined && pointInPolygonOrBoundary(scene.walkableRegion, point);
-    },
-    sceneryRestingPoint(sceneId, scenery) {
-      const point = view.scenes[sceneId]?.scenery?.[scenery]?.position;
-      return point ? { ...point } : undefined;
+      if (!scene) return diagnostics;
+      if (!context.subjectBelongsToScene) {
+        diagnostics.push(worldReference(
+          "reference.sequence.subject-scene",
+          `${path}.subject`,
+          "A Motion subject must belong to the Sequence Scene.",
+        ));
+      }
+      direction.path.forEach((point, pointIndex) => {
+        if (!pointInScene(sceneId, point)) {
+          diagnostics.push(worldDefinition(
+            "definition.motion.bounds",
+            `${path}.path[${pointIndex}]`,
+            "A Motion path point must remain inside the Sequence Scene Size.",
+          ));
+        } else if (
+          direction.subject.kind === "character" &&
+          !pointInPolygonOrBoundary(scene.walkableRegion, point)
+        ) {
+          diagnostics.push(worldDefinition(
+            "definition.motion.walkable",
+            `${path}.path[${pointIndex}]`,
+            "A Character Motion destination must lie in the Walkable Region.",
+          ));
+        }
+      });
+      if (
+        direction.subject.kind === "scenery" &&
+        !continuesSceneryMotion(direction, context.nextStep)
+      ) {
+        const rest = scene.scenery?.[direction.subject.scenery]?.position;
+        const destination = direction.path.at(-1);
+        if (!rest || !destination || Math.hypot(
+          rest.x - destination.x,
+          rest.y - destination.y,
+        ) > 1e-8) {
+          diagnostics.push(worldDefinition(
+            "definition.motion.scenery-rest",
+            `${path}.path`,
+            "A Scenery Motion must end at its authored resting position.",
+          ));
+        }
+      }
+      return diagnostics;
     },
     validatePlacement(scenes, point, path) {
       return scenes.some((scene) => !pointInScene(scene, point))
@@ -426,6 +470,58 @@ export function createWorldDefinitionQueries(view: WorldDefinitionView): WorldDe
         : [];
     },
   };
+}
+
+export interface MotionValidationContext {
+  readonly subjectBelongsToScene: boolean;
+  readonly nextStep?: DirectionStep;
+}
+
+/** Reports local Motion authoring invariants owned by World. */
+export function validateMotionDirection(
+  direction: MotionDirection,
+  path: string,
+): readonly AuthoringDiagnostic[] {
+  const diagnostics: AuthoringDiagnostic[] = [];
+  direction.path.forEach((point, pointIndex) => {
+    if (!Number.isFinite(point.x) || !Number.isFinite(point.y)) {
+      diagnostics.push(worldDefinition(
+        "definition.point.finite",
+        `${path}.path[${pointIndex}]`,
+        "A Motion path must use finite Scene Space coordinates.",
+      ));
+    }
+  });
+  if (direction.path.length === 0) {
+    diagnostics.push(worldDefinition(
+      "definition.motion.path",
+      `${path}.path`,
+      "A Motion needs at least one destination point.",
+    ));
+  }
+  if (direction.subject.kind === "character") {
+    if (direction.path.length !== 1) {
+      diagnostics.push(worldDefinition(
+        "definition.motion.character-path",
+        `${path}.path`,
+        "A Character Motion declares one navigation destination.",
+      ));
+    }
+    if (direction.duration !== undefined) {
+      diagnostics.push(worldDefinition(
+        "definition.motion.character-duration",
+        `${path}.duration`,
+        "Character Motion duration is derived from navigation and movement speed.",
+      ));
+    }
+  } else if (!Number.isFinite(direction.duration) || direction.duration! <= 0) {
+    diagnostics.push(worldDefinition(
+      "definition.motion.duration",
+      `${path}.duration`,
+      "Object and Scenery Motion needs a positive finite duration.",
+    ));
+  }
+  return diagnostics;
 }
 
 /** Reports composed geometry, membership, and spatial-reference errors owned by World. */
@@ -516,6 +612,30 @@ export function validateWorldProject(view: WorldDefinitionView): readonly Author
         diagnostics.push(worldDefinition("definition.entrance.walkable", path, "A Scene Entrance Ground Point must lie in the Walkable Region."));
       }
     }
+    scene.arrivalSequences?.forEach((rule, ruleIndex) => {
+      const base = `scenes.${sceneId}.arrivalSequences[${ruleIndex}]`;
+      if (rule.entrance !== undefined && !(rule.entrance in (scene.entrances ?? {}))) {
+        diagnostics.push(worldReference(
+          "reference.arrival.entrance",
+          `${base}.entrance`,
+          `Scene Entrance '${rule.entrance}' does not exist.`,
+        ));
+      }
+      scene.arrivalSequences!.slice(0, ruleIndex).forEach((previous, previousIndex) => {
+        const entrancesOverlap = previous.entrance === undefined || rule.entrance === undefined ||
+          previous.entrance === rule.entrance;
+        const conditionsDisjoint = previous.when !== undefined && rule.when !== undefined &&
+          "variable" in previous.when && "variable" in rule.when &&
+          previous.when.variable === rule.when.variable && previous.when.equals !== rule.when.equals;
+        if (entrancesOverlap && !conditionsDisjoint) {
+          diagnostics.push(worldDefinition(
+            "definition.arrival-sequence.ambiguous",
+            base,
+            `Arrival Sequence rules ${previousIndex} and ${ruleIndex} can both apply to the same arrival.`,
+          ));
+        }
+      });
+    });
     scene.hotspots?.forEach((hotspot, index) => {
       const base = `scenes.${sceneId}.hotspots[${index}]`;
       validatePolygonBounds(hotspot.area, `${base}.area`, inScene, diagnostics);
@@ -635,6 +755,47 @@ export interface WorldPresentation {
   readonly characters: readonly WorldCharacterPresentation[];
 }
 
+export interface CharacterAdvanceRequest {
+  readonly character: string;
+  readonly destination: Point;
+  readonly finalFacing?: Facing;
+  readonly speedMultiplier?: number;
+}
+
+export interface CharacterAdvanceResult {
+  readonly state: WorldState;
+  readonly complete: boolean;
+}
+
+export interface MotionTiming {
+  readonly localTick: number;
+  readonly durationTicks: number;
+}
+
+export interface MotionAdvanceResult extends CharacterAdvanceResult {
+  readonly point?: Point;
+}
+
+export interface PassageTransitionRequest {
+  readonly passage: number;
+  readonly character: string;
+}
+
+export type WorldStateConditionMatches = (
+  condition: InteractionCondition | undefined,
+  state: Readonly<WorldState>,
+) => boolean;
+
+export type PassageTransitionResult =
+  | { readonly status: "unavailable" }
+  | { readonly status: "invalid"; readonly message: string }
+  | {
+      readonly status: "transitioned";
+      readonly state: WorldState;
+      readonly scene: string;
+      readonly arrivalSequence?: string;
+    };
+
 /** World-owned spatial policy over one validated Game Project view. */
 export interface World {
   initialState(): WorldState;
@@ -646,6 +807,27 @@ export interface World {
   ): boolean;
   hotspots(state: Readonly<WorldState>, matches: WorldConditionMatches): readonly WorldHotspot[];
   passages(state: Readonly<WorldState>, matches: WorldConditionMatches): readonly WorldPassage[];
+  approach(
+    state: Readonly<WorldState>,
+    target: WorldTarget,
+    matches: WorldConditionMatches,
+  ): ApproachPoint | undefined;
+  navigationDestination(state: Readonly<WorldState>, requested: Point): Point;
+  advanceCharacter(
+    state: Readonly<WorldState>,
+    request: CharacterAdvanceRequest,
+  ): CharacterAdvanceResult;
+  advanceMotion(
+    state: Readonly<WorldState>,
+    direction: MotionDirection,
+    timing: MotionTiming,
+  ): MotionAdvanceResult;
+  motionPoint(direction: MotionDirection, timing: MotionTiming): Point | undefined;
+  transitionPassage(
+    state: Readonly<WorldState>,
+    request: PassageTransitionRequest,
+    matches: WorldStateConditionMatches,
+  ): PassageTransitionResult;
   hasDirectedSubject(state: Readonly<WorldState>, subject: DirectedSubject): boolean;
   pointForSubject(state: Readonly<WorldState>, subject: DirectedSubject): Point | undefined;
   canPlaceObject(scene: string, point: Point): boolean;
@@ -731,6 +913,109 @@ export function createWorld(view: WorldProjectView): World {
     isHotspotAvailable,
     hotspots: availableHotspots,
     passages: availablePassages,
+    approach(state, target, matches) {
+      const entry = target.kind === "hotspot"
+        ? availableHotspots(state, matches).find(({ index }) => index === target.index)
+        : availablePassages(state, matches).find(({ index }) => index === target.index);
+      return entry ? structuredClone(entry.definition.approach) : undefined;
+    },
+    navigationDestination(state, requested) {
+      const scene = view.scenes[state.currentScene];
+      return scene ? nearestPoint(scene.walkableRegion, requested) : { ...requested };
+    },
+    advanceCharacter(state, request) {
+      const next = cloneWorldState(state);
+      const character = next.characters[request.character];
+      const definition = view.characters[request.character];
+      const scene = view.scenes[state.currentScene];
+      if (!character || !definition || !scene || character.scene !== state.currentScene) {
+        return { state: next, complete: false };
+      }
+      const route = navigationPath(scene.walkableRegion, character.groundPoint, request.destination);
+      const waypoint = route[1] ?? request.destination;
+      const dx = waypoint.x - character.groundPoint.x;
+      const dy = waypoint.y - character.groundPoint.y;
+      const distance = Math.hypot(dx, dy);
+      const travel = definition.movementSpeed / 60 * (request.speedMultiplier ?? 1);
+      if (distance > 1e-8) character.facing = facingAlong(dx, dy);
+      if (distance > travel) {
+        character.groundPoint = {
+          x: character.groundPoint.x + dx / distance * travel,
+          y: character.groundPoint.y + dy / distance * travel,
+        };
+        return { state: next, complete: false };
+      }
+      const atDestination = Math.hypot(
+        request.destination.x - waypoint.x,
+        request.destination.y - waypoint.y,
+      ) <= 1e-8;
+      character.groundPoint = atDestination ? { ...request.destination } : { ...waypoint };
+      if (atDestination && request.finalFacing) character.facing = request.finalFacing;
+      return { state: next, complete: atDestination };
+    },
+    advanceMotion(state, direction, timing) {
+      if (timing.localTick <= 0) return { state: cloneWorldState(state), complete: false };
+      if (direction.subject.kind === "character") {
+        return this.advanceCharacter(state, {
+          character: direction.subject.character,
+          destination: direction.path[0]!,
+          ...(direction.facing ? { finalFacing: direction.facing } : {}),
+        });
+      }
+      const point = motionPoint(direction, timing)!;
+      const complete = timing.durationTicks === 0 || timing.localTick >= timing.durationTicks;
+      const next = cloneWorldState(state);
+      if (direction.subject.kind === "object") {
+        const object = next.objects[direction.subject.object];
+        if (object?.location.kind !== "scene" || object.location.scene !== state.currentScene) {
+          return { state: next, complete: false };
+        }
+        object.location.groundPoint = { ...point };
+      }
+      return {
+        state: next,
+        complete,
+        point: { ...point },
+      };
+    },
+    motionPoint,
+    transitionPassage(state, request, matches) {
+      const passage = view.scenes[state.currentScene]?.passages?.[request.passage];
+      if (!passage || !matches(passage.when, state)) return { status: "unavailable" };
+      const destination = view.scenes[passage.destination.scene];
+      const entrance = destination?.entrances?.[passage.destination.entrance];
+      const character = state.characters[request.character];
+      if (!destination || !entrance || !character || character.scene !== state.currentScene) {
+        return {
+          status: "invalid",
+          message: "A Scene Passage destination is not available.",
+        };
+      }
+      const next = cloneWorldState(state);
+      next.currentScene = passage.destination.scene;
+      next.characters[request.character] = {
+        ...character,
+        scene: passage.destination.scene,
+        groundPoint: { ...entrance.groundPoint },
+        facing: entrance.facing,
+      };
+      const arrivals = (destination.arrivalSequences ?? []).filter((rule) =>
+        (rule.entrance === undefined || rule.entrance === passage.destination.entrance) &&
+        matches(rule.when, next),
+      );
+      if (arrivals.length > 1) {
+        return {
+          status: "invalid",
+          message: "More than one Sequence is applicable to this Scene arrival.",
+        };
+      }
+      return {
+        status: "transitioned",
+        state: next,
+        scene: passage.destination.scene,
+        ...(arrivals[0] ? { arrivalSequence: arrivals[0].sequence } : {}),
+      };
+    },
     hasDirectedSubject(state, subject) {
       if (subject.kind === "character") {
         return state.characters[subject.character]?.scene === state.currentScene;
@@ -816,6 +1101,49 @@ export function createWorld(view: WorldProjectView): World {
     const location = state.objects[hotspot.target.object]?.location;
     return location?.kind === "scene" && location.scene === state.currentScene;
   }
+}
+
+function cloneWorldState(state: Readonly<WorldState>): WorldState {
+  return {
+    currentScene: state.currentScene,
+    characters: structuredClone(state.characters),
+    scenery: structuredClone(state.scenery),
+    objects: structuredClone(state.objects),
+  };
+}
+
+function motionPoint(direction: MotionDirection, timing: MotionTiming): Point | undefined {
+  if (direction.subject.kind === "character") return undefined;
+  const progress = timing.durationTicks === 0
+    ? 1
+    : Math.max(0, Math.min(1, timing.localTick / timing.durationTicks));
+  return pointAlongPath(direction.path, progress);
+}
+
+function continuesSceneryMotion(
+  direction: MotionDirection,
+  nextStep: DirectionStep | undefined,
+): boolean {
+  if (direction.subject.kind !== "scenery" || nextStep === undefined) return false;
+  const scenery = direction.subject.scenery;
+  const destination = direction.path.at(-1);
+  if (!destination) return false;
+  return nextStep.directions.some((nextDirection) =>
+    nextDirection.type === "motion" &&
+    nextDirection.startAfter === undefined &&
+    nextDirection.subject.kind === "scenery" &&
+    nextDirection.subject.scenery === scenery &&
+    nextDirection.path[0] !== undefined &&
+    Math.hypot(
+      nextDirection.path[0].x - destination.x,
+      nextDirection.path[0].y - destination.y,
+    ) <= 1e-8,
+  );
+}
+
+function facingAlong(dx: number, dy: number): Facing {
+  if (Math.abs(dx) * 1.4 >= Math.abs(dy)) return dx < 0 ? "left" : "right";
+  return dy > 0 ? "front" : "back";
 }
 
 function cloneSceneryAppearance(appearance: SceneryAppearance): SceneryAppearance {

@@ -31,6 +31,7 @@ import {
 } from "../animation";
 import {
   createWorldDefinitionQueries,
+  validateMotionDirection,
   validateWorldProject,
   type CharacterDefinition,
   type EntityAppearance,
@@ -224,7 +225,16 @@ export function defineSequence(input: SequenceDefinition): SequenceDefinition {
           message: "Narration cannot be empty.",
         });
       } else if (step.type === "direction") {
-        diagnostics.push(...validateDirectionStep(step, `${path}[${index}]`));
+        const stepPath = `${path}[${index}]`;
+        diagnostics.push(...validateDirectionStep(step, stepPath));
+        step.directions.forEach((direction, directionIndex) => {
+          if (direction.type === "motion") {
+            diagnostics.push(...validateMotionDirection(
+              direction,
+              `${stepPath}.directions[${directionIndex}]`,
+            ));
+          }
+        });
       } else if (step.type === "choice") {
         if (maximumEligibleAlternatives(step.alternatives) > 6) {
           diagnostics.push({
@@ -634,20 +644,7 @@ function validateProjectDefinitions(
       const base = `scenes.${sceneId}.arrivalSequences[${ruleIndex}]`;
       if (!(rule.sequence in sequences)) diagnostics.push(referenceDiagnostic("reference.sequence", `${base}.sequence`, `Sequence '${rule.sequence}' does not exist.`));
       else if (sequences[rule.sequence]?.scene !== undefined && sequences[rule.sequence]!.scene !== sceneId) diagnostics.push(referenceDiagnostic("reference.sequence.scene", `${base}.sequence`, `Sequence '${rule.sequence}' belongs to Scene '${sequences[rule.sequence]!.scene}'.`));
-      if (rule.entrance !== undefined && !(rule.entrance in (scene.entrances ?? {}))) diagnostics.push(referenceDiagnostic("reference.entrance", `${base}.entrance`, `Scene Entrance '${rule.entrance}' does not exist.`));
       condition(rule.when, `${base}.when`);
-      scene.arrivalSequences!.slice(0, ruleIndex).forEach((previous, previousIndex) => {
-        const entrancesOverlap = previous.entrance === undefined || rule.entrance === undefined || previous.entrance === rule.entrance;
-        const conditionsDisjoint = previous.when !== undefined && rule.when !== undefined &&
-          "variable" in previous.when && "variable" in rule.when &&
-          previous.when.variable === rule.when.variable && previous.when.equals !== rule.when.equals;
-        if (entrancesOverlap && !conditionsDisjoint) diagnostics.push({
-          code: "definition.arrival-sequence.ambiguous",
-          family: "definition", owner: "sequence",
-          path: base,
-          message: `Arrival Sequence rules ${previousIndex} and ${ruleIndex} can both apply to the same arrival.`,
-        });
-      });
     });
     scene.hotspots?.forEach((hotspot, hotspotIndex) => {
       const base = `scenes.${sceneId}.hotspots[${hotspotIndex}]`;
@@ -754,6 +751,14 @@ function validateProjectDefinitions(
           else objectsInScene.delete(operation.object);
         }
       } else if (step.type === "direction") {
+        step.directions.forEach((direction, directionIndex) => {
+          if (direction.type === "motion") {
+            diagnostics.push(...validateMotionDirection(
+              direction,
+              `${base}.directions[${directionIndex}]`,
+            ));
+          }
+        });
         diagnostics.push(...validateDirectionStepReferences(step, base, {
           hasScene: sceneId !== undefined,
           appearancesForSubject: (subject) => appearancesForSubject(subject, sceneId),
@@ -761,25 +766,17 @@ function validateProjectDefinitions(
             world.hasDirectedSubject(sceneId, subject, objectsInScene),
           cameraSubjectExists: (subject) => world.hasSubject(sceneId, subject),
           pointInScene: (point) => sceneId !== undefined && world.pointInScene(sceneId, point),
-          characterPointIsWalkable: (point) => sceneId !== undefined &&
-            world.characterPointIsWalkable(sceneId, point),
-          sceneryRestingPoint: (scenery) => sceneId === undefined
-            ? undefined
-            : world.sceneryRestingPoint(sceneId, scenery),
-          continuesSceneryMotion: (scenery, destination) => {
+          validateMotion: (direction, directionPath) => {
+            if (sceneId === undefined) return [];
             const next = steps[index + 1];
-            if (next?.type !== "direction") return false;
-            return next.directions.some((direction) =>
-              direction.type === "motion" &&
-              direction.startAfter === undefined &&
-              direction.subject.kind === "scenery" &&
-              direction.subject.scenery === scenery &&
-              direction.path[0] !== undefined &&
-              Math.hypot(
-                direction.path[0].x - destination.x,
-                direction.path[0].y - destination.y,
-              ) <= 1e-8,
-            );
+            return world.validateMotion(sceneId, direction, directionPath, {
+              subjectBelongsToScene: world.hasDirectedSubject(
+                sceneId,
+                direction.subject,
+                objectsInScene,
+              ),
+              ...(next?.type === "direction" ? { nextStep: next } : {}),
+            });
           },
         }));
       } else if (step.type === "choice") {

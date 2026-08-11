@@ -87,17 +87,9 @@ export function validateDirectionStep(
     }
     if (direction.type === "animation") return;
     if (direction.type === "motion") {
-      direction.path.forEach((point, pointIndex) => {
-        if (!Number.isFinite(point.x) || !Number.isFinite(point.y)) diagnostics.push({ code: "definition.point.finite", family: "definition", owner: "world", path: `${directionPath}.path[${pointIndex}]`, message: "A Motion path must use finite Scene Space coordinates." });
-      });
-      if (direction.path.length === 0) diagnostics.push({ code: "definition.motion.path", family: "definition", owner: "world", path: `${directionPath}.path`, message: "A Motion needs at least one destination point." });
       if (direction.subject.kind === "character") {
-        if (direction.path.length !== 1) diagnostics.push({ code: "definition.motion.character-path", family: "definition", owner: "world", path: `${directionPath}.path`, message: "A Character Motion declares one navigation destination." });
-        if (direction.duration !== undefined) diagnostics.push({ code: "definition.motion.character-duration", family: "definition", owner: "world", path: `${directionPath}.duration`, message: "Character Motion duration is derived from navigation and movement speed." });
         hasFiniteBoundary = true;
-      } else if (!Number.isFinite(direction.duration) || direction.duration! <= 0) {
-        diagnostics.push({ code: "definition.motion.duration", family: "definition", owner: "world", path: `${directionPath}.duration`, message: "Object and Scenery Motion needs a positive finite duration." });
-      } else hasFiniteBoundary = true;
+      } else if (Number.isFinite(direction.duration) && direction.duration! > 0) hasFiniteBoundary = true;
       return;
     }
     diagnostics.push(...validateCameraDirection(direction, directionPath));
@@ -118,9 +110,10 @@ export interface DirectionStepReferenceContext {
   readonly subjectBelongsToScene: (subject: DirectedSubject) => boolean;
   readonly cameraSubjectExists: (subject: DirectedSubject) => boolean;
   readonly pointInScene: (point: Point) => boolean;
-  readonly characterPointIsWalkable: (point: Point) => boolean;
-  readonly sceneryRestingPoint: (scenery: string) => Point | undefined;
-  readonly continuesSceneryMotion: (scenery: string, destination: Point) => boolean;
+  readonly validateMotion: (
+    direction: MotionDirection,
+    path: string,
+  ) => readonly AuthoringDiagnostic[];
 }
 
 /** Validates composed Direction Step references through a narrow Game Project view. */
@@ -138,7 +131,11 @@ export function validateDirectionStepReferences(
       if (appearances.length === 0) {
         diagnostics.push({ code: "reference.sequence.subject", family: "reference", owner: "sequence", path: `${directionPath}.subject`, message: "Directed subject does not exist or has no animated Appearance." });
       }
-      if (context.hasScene && !context.subjectBelongsToScene(direction.subject)) {
+      if (
+        direction.type !== "motion" &&
+        context.hasScene &&
+        !context.subjectBelongsToScene(direction.subject)
+      ) {
         diagnostics.push({ code: "reference.sequence.subject-scene", family: "reference", owner: "sequence", path: `${directionPath}.subject`, message: "A directed subject must belong to the Sequence Scene." });
       }
       if (direction.type === "animation") {
@@ -156,25 +153,7 @@ export function validateDirectionStepReferences(
         if (direction.subject.kind === "character" && appearances.some((appearance) => !appearance.roles.walking)) {
           diagnostics.push({ code: "reference.animation.walking-role", family: "reference", owner: "animation", path: `${directionPath}.subject`, message: "Character Motion requires a walking Animation Role in every Appearance." });
         }
-        if (context.hasScene) {
-          direction.path.forEach((point, pointIndex) => {
-            if (!context.pointInScene(point)) {
-              diagnostics.push({ code: "definition.motion.bounds", family: "definition", owner: "world", path: `${directionPath}.path[${pointIndex}]`, message: "A Motion path point must remain inside the Sequence Scene Size." });
-            } else if (direction.subject.kind === "character" && !context.characterPointIsWalkable(point)) {
-              diagnostics.push({ code: "definition.motion.walkable", family: "definition", owner: "world", path: `${directionPath}.path[${pointIndex}]`, message: "A Character Motion destination must lie in the Walkable Region." });
-            }
-          });
-          if (
-            direction.subject.kind === "scenery" &&
-            !context.continuesSceneryMotion(direction.subject.scenery, direction.path.at(-1)!)
-          ) {
-            const rest = context.sceneryRestingPoint(direction.subject.scenery);
-            const destination = direction.path.at(-1);
-            if (!rest || !destination || Math.hypot(rest.x - destination.x, rest.y - destination.y) > 1e-8) {
-              diagnostics.push({ code: "definition.motion.scenery-rest", family: "definition", owner: "world", path: `${directionPath}.path`, message: "A Scenery Motion must end at its authored resting position." });
-            }
-          }
-        }
+        if (context.hasScene) diagnostics.push(...context.validateMotion(direction, directionPath));
       }
     }
     if (direction.type === "camera") {

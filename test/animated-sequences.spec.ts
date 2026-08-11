@@ -352,6 +352,7 @@ test("an Object placed earlier in a Sequence may be directed in its owning Scene
     expect(error).toBeInstanceOf(AuthoringError);
     expect((error as AuthoringError).diagnostics).toContainEqual(expect.objectContaining({
       code: "reference.sequence.subject-scene",
+      owner: "world",
       path: "sequences.unavailable.steps[0].directions[0].subject",
     }));
   }

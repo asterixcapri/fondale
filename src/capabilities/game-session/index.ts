@@ -29,9 +29,6 @@ import {
 import {
   characterMotionReachedDestination,
   createWorld,
-  navigationPath,
-  nearestPoint,
-  pointAlongPath,
   type CharacterState,
   type Facing,
   type HotspotDefinition,
@@ -335,6 +332,12 @@ export function createCoreSession(
       const scene = data.scenes[state.currentScene]!;
       const hotspot = scene.hotspots?.[input.hotspot];
       if (hotspot && hotspotAvailable(hotspot)) {
+        const approach = world.approach(
+          state,
+          { kind: "hotspot", index: input.hotspot },
+          conditionMatches,
+        );
+        if (!approach) return;
         const noun = hotspotNoun(state.currentScene, hotspot);
         if (
           input.type === "activate-hotspot" &&
@@ -342,7 +345,7 @@ export function createCoreSession(
           !state.command.firstNoun
         ) return;
         if (input.type === "activate-hotspot" && state.command.verb === "walk-to") {
-          beginIntent({ kind: "move" }, hotspot.approach.groundPoint, hotspot.approach.facing);
+          beginIntent({ kind: "move" }, approach.groundPoint, approach.facing);
           return;
         }
         const quickVerb = input.type === "quick-hotspot"
@@ -355,7 +358,7 @@ export function createCoreSession(
           ? preferredFirstNoun(noun, quickVerb, state.command.firstNoun?.object, state)
           : state.command.firstNoun?.object;
         if (quickVerb === "walk-to") {
-          beginIntent({ kind: "move" }, hotspot.approach.groundPoint, hotspot.approach.facing);
+          beginIntent({ kind: "move" }, approach.groundPoint, approach.facing);
           return;
         }
         beginIntent(
@@ -371,8 +374,8 @@ export function createCoreSession(
               ...(quickVerb ? { preserveState: true } : {}),
             },
           },
-          hotspot.approach.groundPoint,
-          hotspot.approach.facing,
+          approach.groundPoint,
+          approach.facing,
         );
       }
     } else if (
@@ -383,6 +386,12 @@ export function createCoreSession(
       const scene = data.scenes[state.currentScene]!;
       const passage = scene.passages?.[input.passage];
       if (passage && conditionMatches(passage.when)) {
+        const approach = world.approach(
+          state,
+          { kind: "passage", index: input.passage },
+          conditionMatches,
+        );
+        if (!approach) return;
         if (
           input.type === "activate-passage" &&
           state.command.verb === "give" &&
@@ -420,8 +429,8 @@ export function createCoreSession(
             };
         beginIntent(
           intent,
-          passage.approach.groundPoint,
-          passage.approach.facing,
+          approach.groundPoint,
+          approach.facing,
           input.type === "activate-passage" && input.fast,
         );
       }
@@ -494,8 +503,7 @@ export function createCoreSession(
     finalFacing?: Facing,
     fast = false,
   ): void {
-    const scene = data.scenes[state.currentScene]!;
-    const destination = nearestPoint(scene.walkableRegion, requested);
+    const destination = world.navigationDestination(state, requested);
     state.activity = {
       type: "player-intent",
       animationStartedTick: state.tick + 1,
@@ -517,35 +525,18 @@ export function createCoreSession(
     const playerId = data.playerCharacter;
     const player = playerId ? state.characters[playerId] : undefined;
     const definition = playerId ? data.characters[playerId] : undefined;
-    if (!player || !definition) {
+    if (!playerId || !player || !definition) {
       state.activity = null;
       return;
     }
-    const scene = data.scenes[state.currentScene]!;
-    const path = navigationPath(scene.walkableRegion, player.groundPoint, activity.destination);
-    const waypoint = path[1] ?? activity.destination;
-    const dx = waypoint.x - player.groundPoint.x;
-    const dy = waypoint.y - player.groundPoint.y;
-    const distance = Math.hypot(dx, dy);
-    const travel = (definition.movementSpeed / 60) * (activity.fast ? 3 : 1);
-    if (distance > travel) {
-      player.facing = facingAlong(dx, dy);
-      player.groundPoint = {
-        x: player.groundPoint.x + (dx / distance) * travel,
-        y: player.groundPoint.y + (dy / distance) * travel,
-      };
-      return;
-    }
-    if (Math.hypot(
-      activity.destination.x - waypoint.x,
-      activity.destination.y - waypoint.y,
-    ) > 1e-8) {
-      player.groundPoint = { ...waypoint };
-      return;
-    }
-
-    player.groundPoint = { ...activity.destination };
-    if (activity.finalFacing) player.facing = activity.finalFacing;
+    const progress = world.advanceCharacter(state, {
+      character: playerId,
+      destination: activity.destination,
+      ...(activity.finalFacing ? { finalFacing: activity.finalFacing } : {}),
+      ...(activity.fast ? { speedMultiplier: 3 } : {}),
+    });
+    commitWorldState(progress.state);
+    if (!progress.complete) return;
     state.activity = null;
     emitted.push({ type: "movement-finished", destination: { ...activity.destination } });
     if (activity.intent.kind === "interaction") resolveInteraction(activity.intent);
@@ -641,42 +632,30 @@ export function createCoreSession(
 
   function resolvePassage(intent: Extract<PlayerIntentState["intent"], { kind: "passage" }>): void {
     if (intent.scene !== state.currentScene) return;
-    const passage = data.scenes[intent.scene]?.passages?.[intent.passage];
-    if (!passage || !conditionMatches(passage.when)) return;
-    const destination = data.scenes[passage.destination.scene];
-    const entrance = destination?.entrances?.[passage.destination.entrance];
     const playerId = data.playerCharacter;
-    if (!destination || !entrance || !playerId || !state.characters[playerId]) {
+    if (!playerId) {
       failOperation("A Scene Passage destination is not available.");
       return;
     }
-    const next = structuredClone(state);
-    next.currentScene = passage.destination.scene;
-    next.characters[playerId] = {
-      ...next.characters[playerId]!,
-      scene: passage.destination.scene,
-      groundPoint: { ...entrance.groundPoint },
-      facing: entrance.facing,
-    };
-    next.activity = null;
-    const arrivalRules = (destination.arrivalSequences ?? []).filter((rule) =>
-      (rule.entrance === undefined || rule.entrance === passage.destination.entrance) &&
-      conditionMatchesState(rule.when, next),
+    const transition = world.transitionPassage(
+      state,
+      { passage: intent.passage, character: playerId },
+      (condition, worldState) => conditionMatchesState(condition, { ...state, ...worldState }),
     );
-    if (arrivalRules.length > 1) {
-      failOperation("More than one Sequence is applicable to this Scene arrival.");
+    if (transition.status === "unavailable") return;
+    if (transition.status === "invalid") {
+      failOperation(transition.message);
       return;
     }
-    const arrival = arrivalRules[0];
-    if (arrival) {
-      next.activity = {
+    state = { ...state, ...transition.state, activity: null };
+    if (transition.arrivalSequence) {
+      state.activity = {
         type: "sequence",
-        sequence: arrival.sequence,
-        pendingPaths: topLevelPaths(data.sequences[arrival.sequence]!),
+        sequence: transition.arrivalSequence,
+        pendingPaths: topLevelPaths(data.sequences[transition.arrivalSequence]!),
         active: null,
       };
     }
-    state = next;
     emitted.push({ type: "scene-changed", scene: state.currentScene });
     if (state.activity?.type === "sequence") advanceSequence();
   }
@@ -930,10 +909,10 @@ export function createCoreSession(
         const timing = active.interpretation.directions[index]!;
         if (direction.type !== "motion" || direction.subject.kind !== "scenery" ||
             direction.subject.scenery !== subject.scenery || !timing.presented) continue;
-        return pointAlongPath(
-          direction.path,
-          Math.min(1, timing.localTick / secondsToTicks(direction.duration!)),
-        );
+        return world.motionPoint(direction, {
+          localTick: timing.localTick,
+          durationTicks: secondsToTicks(direction.duration!),
+        });
       }
     }
     return world.pointForSubject(state, subject);
@@ -944,39 +923,18 @@ export function createCoreSession(
       if (direction.type !== "motion") return;
       const localTick = localTicks[index]!;
       if (localTick <= 0) return;
-      if (direction.subject.kind === "character") {
-        advanceDirectedCharacter(direction);
-      } else if (direction.subject.kind === "object") {
-        const object = state.objects[direction.subject.object];
-        if (object?.location.kind !== "scene" || object.location.scene !== state.currentScene) return;
-        object.location.groundPoint = pointAlongPath(
-          direction.path,
-          Math.min(1, localTick / secondsToTicks(direction.duration!)),
-        );
-      }
+      const progress = world.advanceMotion(state, direction, {
+        localTick,
+        durationTicks: direction.subject.kind === "character"
+          ? 0
+          : secondsToTicks(direction.duration!),
+      });
+      commitWorldState(progress.state);
     });
   }
 
-  function advanceDirectedCharacter(direction: MotionDirection): void {
-    if (direction.subject.kind !== "character") return;
-    const character = state.characters[direction.subject.character];
-    const definition = data.characters[direction.subject.character];
-    const destination = direction.path[0];
-    if (!character || !definition || !destination || character.scene !== state.currentScene) return;
-    const scene = data.scenes[state.currentScene]!;
-    const route = navigationPath(scene.walkableRegion, character.groundPoint, destination);
-    const waypoint = route[1] ?? destination;
-    const dx = waypoint.x - character.groundPoint.x;
-    const dy = waypoint.y - character.groundPoint.y;
-    const distance = Math.hypot(dx, dy);
-    const travel = definition.movementSpeed / 60;
-    if (distance > travel) {
-      character.facing = facingAlong(dx, dy);
-      character.groundPoint = { x: character.groundPoint.x + dx / distance * travel, y: character.groundPoint.y + dy / distance * travel };
-    } else {
-      character.groundPoint = { ...waypoint };
-      if (Math.hypot(destination.x - waypoint.x, destination.y - waypoint.y) <= 1e-8 && direction.facing) character.facing = direction.facing;
-    }
+  function commitWorldState(worldState: WorldState): void {
+    state = { ...state, ...worldState };
   }
 
   function chooseAlternative(alternative: number): void {
@@ -1050,9 +1008,4 @@ function topLevelPaths(sequence: SequenceDefinition): string[] {
 function pathsForContainer(sequence: SequenceDefinition, path: string): string[] {
   const steps = resolveSequencePath(sequence, path) as readonly SequenceStep[];
   return steps.map((_, index) => `${path}/${index}`);
-}
-
-function facingAlong(dx: number, dy: number): Facing {
-  if (Math.abs(dx) * 1.4 >= Math.abs(dy)) return dx < 0 ? "left" : "right";
-  return dy > 0 ? "front" : "back";
 }
