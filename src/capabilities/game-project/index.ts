@@ -13,6 +13,13 @@ import {
   validateCommandResponse,
 } from "../interaction";
 import type { HUDTheme, PassageDirection } from "../hud";
+import {
+  cloneDirectionStep,
+  validateDirectionStep,
+  validateDirectionStepReferences,
+  type DirectionStep,
+  type DirectedSubject,
+} from "../sequence";
 
 /** A point measured in logical Scene Space pixels. */
 export interface Point {
@@ -461,51 +468,6 @@ export interface BranchStep {
   readonly fallback: readonly SequenceStep[];
 }
 
-/** A Character, Object, or current-Scene Scenery directed by a Sequence. */
-export type DirectedSubject =
-  | { readonly kind: "character"; readonly character: string }
-  | { readonly kind: "object"; readonly object: string }
-  | { readonly kind: "scenery"; readonly scenery: string };
-
-/** Starts this direction when a named Cue occurs in an earlier Animation direction. */
-export interface CueStart {
-  readonly direction: number;
-  readonly cue: string;
-}
-
-export interface AnimationDirection {
-  readonly type: "animation";
-  readonly subject: DirectedSubject;
-  readonly animation: string;
-  readonly startAfter?: CueStart;
-}
-
-export interface MotionDirection {
-  readonly type: "motion";
-  readonly subject: DirectedSubject;
-  /** Character destinations contain one point; Object and Scenery paths may contain several. */
-  readonly path: readonly Point[];
-  readonly duration?: number;
-  readonly facing?: Facing;
-  readonly startAfter?: CueStart;
-}
-
-export type CameraDirection =
-  | { readonly type: "camera"; readonly mode: "cut"; readonly point: Point; readonly startAfter?: CueStart }
-  | { readonly type: "camera"; readonly mode: "move"; readonly from: Point; readonly to: Point; readonly duration: number; readonly startAfter?: CueStart }
-  | { readonly type: "camera"; readonly mode: "hold"; readonly point: Point; readonly duration?: number; readonly startAfter?: CueStart }
-  | { readonly type: "camera"; readonly mode: "follow"; readonly subject: DirectedSubject; readonly duration?: number; readonly startAfter?: CueStart };
-
-export type SequenceDirection = AnimationDirection | MotionDirection | CameraDirection;
-
-/** One sequential Sequence step containing concurrent visual directions. */
-export interface DirectionStep {
-  readonly type: "direction";
-  readonly directions: readonly SequenceDirection[];
-  /** Optional finite boundary for loops and held/following Camera direction, in logical seconds. */
-  readonly duration?: number;
-}
-
 export type SequenceStep = LineStep | NarrationStep | OperationsStep | ChoiceStep | BranchStep | DirectionStep;
 
 /** A finite, root-level Sequence definition. */
@@ -574,7 +536,7 @@ export function defineSequence(input: SequenceDefinition): SequenceDefinition {
           message: "Narration cannot be empty.",
         });
       } else if (step.type === "direction") {
-        validateDirectionStep(step, `${path}[${index}]`, diagnostics);
+        diagnostics.push(...validateDirectionStep(step, `${path}[${index}]`));
       } else if (step.type === "choice") {
         if (maximumEligibleAlternatives(step.alternatives) > 6) {
           diagnostics.push({
@@ -614,7 +576,8 @@ function cloneSequenceSteps(steps: readonly SequenceStep[]): SequenceStep[] {
         ...(step.audio instanceof URL ? { audio: new URL(step.audio.href) } : {}),
       };
     }
-    if (step.type === "narration" || step.type === "operations" || step.type === "direction") return structuredClone(step);
+    if (step.type === "direction") return cloneDirectionStep(step);
+    if (step.type === "narration" || step.type === "operations") return structuredClone(step);
     if (step.type === "choice") {
       return {
         ...step,
@@ -631,57 +594,6 @@ function cloneSequenceSteps(steps: readonly SequenceStep[]): SequenceStep[] {
       fallback: cloneSequenceSteps(step.fallback),
     };
   });
-}
-
-function validateDirectionStep(
-  step: DirectionStep,
-  path: string,
-  diagnostics: AuthoringDiagnostic[],
-): void {
-  if (step.directions.length === 0) {
-    diagnostics.push({ code: "definition.sequence.direction.empty", family: "definition", owner: "sequence", path: `${path}.directions`, message: "A Direction Step needs at least one direction." });
-  }
-  if (step.duration !== undefined && (!Number.isFinite(step.duration) || step.duration <= 0)) {
-    diagnostics.push({ code: "definition.sequence.duration", family: "definition", owner: "sequence", path: `${path}.duration`, message: "A Sequence duration must be a positive finite number of logical seconds." });
-  }
-  let hasFiniteBoundary = step.duration !== undefined && step.duration > 0;
-  step.directions.forEach((direction, index) => {
-    const directionPath = `${path}.directions[${index}]`;
-    if (direction.startAfter) {
-      if (!Number.isInteger(direction.startAfter.direction) || direction.startAfter.direction < 0 || direction.startAfter.direction >= index) {
-        diagnostics.push({ code: "definition.sequence.cue-order", family: "definition", owner: "sequence", path: `${directionPath}.startAfter.direction`, message: "A direction can wait only for an earlier Animation direction in the same step." });
-      }
-      if (!direction.startAfter.cue.trim()) {
-        diagnostics.push({ code: "definition.sequence.cue-name", family: "definition", owner: "sequence", path: `${directionPath}.startAfter.cue`, message: "A Cue reference cannot be empty." });
-      }
-    }
-    if (direction.type === "animation") return;
-    if (direction.type === "motion") {
-      direction.path.forEach((point, pointIndex) => {
-        if (!Number.isFinite(point.x) || !Number.isFinite(point.y)) diagnostics.push({ code: "definition.point.finite", family: "definition", owner: "world", path: `${directionPath}.path[${pointIndex}]`, message: "A Motion path must use finite Scene Space coordinates." });
-      });
-      if (direction.path.length === 0) diagnostics.push({ code: "definition.motion.path", family: "definition", owner: "world", path: `${directionPath}.path`, message: "A Motion needs at least one destination point." });
-      if (direction.subject.kind === "character") {
-        if (direction.path.length !== 1) diagnostics.push({ code: "definition.motion.character-path", family: "definition", owner: "world", path: `${directionPath}.path`, message: "A Character Motion declares one navigation destination." });
-        if (direction.duration !== undefined) diagnostics.push({ code: "definition.motion.character-duration", family: "definition", owner: "world", path: `${directionPath}.duration`, message: "Character Motion duration is derived from navigation and movement speed." });
-        hasFiniteBoundary = true;
-      } else if (!Number.isFinite(direction.duration) || direction.duration! <= 0) {
-        diagnostics.push({ code: "definition.motion.duration", family: "definition", owner: "world", path: `${directionPath}.duration`, message: "Object and Scenery Motion needs a positive finite duration." });
-      } else hasFiniteBoundary = true;
-      return;
-    }
-    if ("duration" in direction && direction.duration !== undefined) {
-      if (!Number.isFinite(direction.duration) || direction.duration <= 0) diagnostics.push({ code: "definition.camera.duration", family: "definition", owner: "camera", path: `${directionPath}.duration`, message: "A Camera duration must be positive and finite." });
-      else hasFiniteBoundary = true;
-    }
-    for (const [pointName, point] of [["point", "point" in direction ? direction.point : undefined], ["from", "from" in direction ? direction.from : undefined], ["to", "to" in direction ? direction.to : undefined]] as const) {
-      if (point && (!Number.isFinite(point.x) || !Number.isFinite(point.y))) diagnostics.push({ code: "definition.point.finite", family: "definition", owner: "world", path: `${directionPath}.${pointName}`, message: "A Camera point must use finite Scene Space coordinates." });
-    }
-    if (direction.mode === "cut") hasFiniteBoundary = true;
-  });
-  if (!hasFiniteBoundary && step.directions.length > 0 && step.directions.every((direction) => direction.type !== "animation")) {
-    diagnostics.push({ code: "definition.sequence.direction.unbounded", family: "definition", owner: "sequence", path, message: "A Direction Step needs a finite completion boundary." });
-  }
 }
 
 function maximumEligibleAlternatives(alternatives: readonly ChoiceAlternative[]): number {
@@ -1257,123 +1169,6 @@ function validateProjectDefinitions(
           : [];
     return candidates.flatMap((appearance) => "animations" in appearance ? [appearance] : []);
   };
-  const validateDirections = (
-    step: DirectionStep,
-    path: string,
-    sceneId?: string,
-    availableObjects: ReadonlySet<string> = new Set(),
-    continuesSceneryMotion: (scenery: string, destination: Point) => boolean = () => false,
-  ) => {
-    let hasFiniteBoundary = step.duration !== undefined;
-    step.directions.forEach((direction, directionIndex) => {
-      const directionPath = `${path}.directions[${directionIndex}]`;
-      if (direction.type !== "camera") {
-        const appearances = appearancesForSubject(direction.subject, sceneId);
-        if (appearances.length === 0) {
-          diagnostics.push(referenceDiagnostic("reference.sequence.subject", `${directionPath}.subject`, "Directed subject does not exist or has no animated Appearance."));
-        }
-        if (sceneId && !subjectBelongsToScene(direction.subject, sceneId, input.playerCharacter, characters, objects, input.scenes, availableObjects)) {
-          diagnostics.push(referenceDiagnostic(
-            "reference.sequence.subject-scene",
-            `${directionPath}.subject`,
-            "A directed subject must belong to the Sequence Scene.",
-          ));
-        }
-        if (direction.type === "animation") {
-          const animations = appearances.map((appearance) => appearance.animations[direction.animation]);
-          if (animations.length === 0 || animations.some((animation) => animation === undefined)) {
-            diagnostics.push(referenceDiagnostic("reference.animation", `${directionPath}.animation`, `Animation '${direction.animation}' is not available in every Appearance of the subject.`));
-          }
-          if (animations.some((animation) => animation !== undefined && !animation.loop)) hasFiniteBoundary = true;
-        } else {
-          hasFiniteBoundary = true;
-          if (direction.subject.kind === "character" && appearances.some((appearance) => !appearance.roles.walking)) {
-            diagnostics.push(referenceDiagnostic("reference.animation.walking-role", `${directionPath}.subject`, "Character Motion requires a walking Animation Role in every Appearance."));
-          }
-          if (sceneId) {
-            const scene = input.scenes[sceneId];
-            direction.path.forEach((point, pointIndex) => {
-              if (!scene || !pointInScene(scene, point)) {
-                diagnostics.push({
-                  code: "definition.motion.bounds",
-                  family: "definition", owner: "world",
-                  path: `${directionPath}.path[${pointIndex}]`,
-                  message: "A Motion path point must remain inside the Sequence Scene Size.",
-                });
-              } else if (
-                direction.subject.kind === "character" &&
-                !pointInPolygonOrBoundary(scene.walkableRegion, point)
-              ) {
-                diagnostics.push({
-                  code: "definition.motion.walkable",
-                  family: "definition", owner: "world",
-                  path: `${directionPath}.path[${pointIndex}]`,
-                  message: "A Character Motion destination must lie in the Walkable Region.",
-                });
-              }
-            });
-            if (
-              direction.subject.kind === "scenery" &&
-              scene &&
-              !continuesSceneryMotion(direction.subject.scenery, direction.path.at(-1)!)
-            ) {
-              const rest = scene.scenery?.[direction.subject.scenery]?.position;
-              const destination = direction.path.at(-1);
-              if (
-                !rest || !destination ||
-                Math.hypot(rest.x - destination.x, rest.y - destination.y) > 1e-8
-              ) {
-                diagnostics.push({
-                  code: "definition.motion.scenery-rest",
-                  family: "definition", owner: "world",
-                  path: `${directionPath}.path`,
-                  message: "A Scenery Motion must end at its authored resting position.",
-                });
-              }
-            }
-          }
-        }
-      }
-      if (direction.type === "camera") {
-        if (direction.mode === "cut" || direction.duration !== undefined) hasFiniteBoundary = true;
-        if (direction.mode === "follow") {
-          const sceneryId = direction.subject.kind === "scenery" ? direction.subject.scenery : undefined;
-          const exists = direction.subject.kind === "character"
-            ? direction.subject.character in characters
-            : direction.subject.kind === "object"
-              ? direction.subject.object in objects
-              : sceneId !== undefined && sceneryId! in (input.scenes[sceneId]?.scenery ?? {});
-          if (!exists) diagnostics.push(referenceDiagnostic("reference.camera.subject", `${directionPath}.subject`, "Camera follow subject does not exist."));
-          else if (sceneId && !subjectBelongsToScene(direction.subject, sceneId, input.playerCharacter, characters, objects, input.scenes, availableObjects)) {
-            diagnostics.push(referenceDiagnostic(
-              "reference.camera.subject-scene",
-              `${directionPath}.subject`,
-              "A Camera follow subject must belong to the Sequence Scene.",
-            ));
-          }
-        }
-        const cameraPoints = [
-          ["point", "point" in direction ? direction.point : undefined],
-          ["from", "from" in direction ? direction.from : undefined],
-          ["to", "to" in direction ? direction.to : undefined],
-        ] as const;
-        for (const [pointName, point] of cameraPoints) {
-          if (point && sceneId && !pointInScene(input.scenes[sceneId]!, point)) diagnostics.push({ code: "definition.camera.bounds", family: "definition", owner: "camera", path: `${directionPath}.${pointName}`, message: "A Camera destination must remain inside the Sequence Scene Size." });
-        }
-      }
-      if (direction.startAfter) {
-        const source = step.directions[direction.startAfter.direction];
-        if (source?.type === "animation") {
-          const animations = appearancesForSubject(source.subject, sceneId).map((appearance) => appearance.animations[source.animation]);
-          if (animations.length === 0 || animations.some((animation) => animation?.cues?.[direction.startAfter!.cue] === undefined)) {
-            diagnostics.push(referenceDiagnostic("reference.animation.cue", `${directionPath}.startAfter.cue`, `Animation Cue '${direction.startAfter.cue}' is not available in every Appearance of the source subject.`));
-          }
-        }
-      }
-    });
-    if (!hasFiniteBoundary) diagnostics.push({ code: "definition.sequence.direction.unbounded", family: "definition", owner: "sequence", path, message: "A Direction Step containing only loops needs a finite completion boundary." });
-  };
-
   const visitSteps = (
     steps: readonly SequenceStep[],
     path: string,
@@ -1398,12 +1193,28 @@ function validateProjectDefinitions(
           else objectsInScene.delete(operation.object);
         }
       } else if (step.type === "direction") {
-        validateDirections(
-          step,
-          base,
-          sceneId,
-          objectsInScene,
-          (scenery, destination) => {
+        const scene = sceneId === undefined ? undefined : input.scenes[sceneId];
+        diagnostics.push(...validateDirectionStepReferences(step, base, {
+          hasScene: sceneId !== undefined,
+          appearancesForSubject: (subject) => appearancesForSubject(subject, sceneId),
+          subjectBelongsToScene: (subject) => sceneId !== undefined && subjectBelongsToScene(
+            subject,
+            sceneId,
+            input.playerCharacter,
+            characters,
+            objects,
+            input.scenes,
+            objectsInScene,
+          ),
+          cameraSubjectExists: (subject) => subject.kind === "character"
+            ? subject.character in characters
+            : subject.kind === "object"
+              ? subject.object in objects
+              : scene !== undefined && subject.scenery in (scene.scenery ?? {}),
+          pointInScene: (point) => scene !== undefined && pointInScene(scene, point),
+          characterPointIsWalkable: (point) => scene !== undefined && pointInPolygonOrBoundary(scene.walkableRegion, point),
+          sceneryRestingPoint: (scenery) => scene?.scenery?.[scenery]?.position,
+          continuesSceneryMotion: (scenery, destination) => {
             const next = steps[index + 1];
             if (next?.type !== "direction") return false;
             return next.directions.some((direction) =>
@@ -1418,7 +1229,7 @@ function validateProjectDefinitions(
               ) <= 1e-8,
             );
           },
-        );
+        }));
       } else if (step.type === "choice") {
         const branchObjects: Set<string>[] = [];
         step.alternatives.forEach((alternative, alternativeIndex) => {

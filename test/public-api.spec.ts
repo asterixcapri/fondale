@@ -22,6 +22,35 @@ const coordinatedDirectionStep = {
 
 void coordinatedDirectionStep;
 
+test("defineSequence diagnoses a Cue dependency on a non-Animation direction", () => {
+  try {
+    defineSequence({
+      steps: [{
+        type: "direction",
+        directions: [{
+          type: "motion",
+          subject: { kind: "scenery", scenery: "boat" },
+          path: [{ x: 10, y: 10 }],
+          duration: 1,
+        }, {
+          type: "camera",
+          mode: "cut",
+          point: { x: 10, y: 10 },
+          startAfter: { direction: 0, cue: "arrival" },
+        }],
+      }],
+    });
+    throw new Error("expected defineSequence to reject the Cue dependency");
+  } catch (error) {
+    expect(error).toBeInstanceOf(AuthoringError);
+    expect((error as AuthoringError).diagnostics).toContainEqual(expect.objectContaining({
+      code: "definition.sequence.cue-source",
+      owner: "sequence",
+      path: "steps[0].directions[1].startAfter.direction",
+    }));
+  }
+});
+
 function assertHotspotTypeContract(noun: ReturnType<typeof defineNoun>) {
   const area = [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 0, y: 10 }];
   const approach = { groundPoint: { x: 5, y: 5 }, facing: "front" as const };

@@ -544,6 +544,13 @@ function directedProject(skippable = false, directionDuration?: number) {
             startAfter: { direction: 0, cue: "contact" },
           },
           { type: "camera", mode: "hold", point: { x: 50, y: 50 }, duration: 2 / 60 },
+          {
+            type: "animation",
+            subject: { kind: "scenery", scenery: "marker" },
+            animation: "idle",
+          },
+          { type: "camera", mode: "hold", point: { x: 50, y: 50 } },
+          { type: "camera", mode: "follow", subject: { kind: "character", character: "actor" } },
         ],
       },
       {
@@ -611,7 +618,7 @@ function startDirectedSequence(session: ReturnType<typeof createTestSession>): v
   session.steps();
 }
 
-test("a directed Sequence waits for all finite directions and blocks normal input", () => {
+test("a directed Sequence completes mixed finite, looping, held, and following directions", () => {
   const session = createTestSession(directedProject());
   startDirectedSequence(session);
   expect(session.snapshot().activity).toMatchObject({

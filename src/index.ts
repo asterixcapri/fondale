@@ -37,15 +37,9 @@ export {
   type AnimationStrip,
   type Appearance,
   type ArrivalSequenceRule,
-  type AnimationDirection,
-  type CameraDirection,
-  type CueStart,
-  type DirectionStep,
-  type DirectedSubject,
   type Facing,
   type GameProject,
   type LogicalResolution,
-  type MotionDirection,
   type GameOperation,
   type HotspotDefinition,
   type InteractionCondition,
@@ -56,8 +50,16 @@ export {
   type SceneDefinition,
   type SceneSize,
   type SequenceDefinition,
-  type SequenceDirection,
 } from "./capabilities/game-project";
+export {
+  type AnimationDirection,
+  type CameraDirection,
+  type CueStart,
+  type DirectionStep,
+  type DirectedSubject,
+  type MotionDirection,
+  type SequenceDirection,
+} from "./capabilities/sequence";
 export {
   startGame,
   type GameSession,

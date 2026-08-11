@@ -2,10 +2,10 @@ import type {
   AnimationDefinition,
   AnimationFrames,
   Appearance,
-  DirectedSubject,
   GameProjectData,
 } from "../game-project";
 import type { GameState } from "../game-session";
+import type { DirectedSubject } from "../sequence";
 
 /** Animation-owned finite duration used by Sequence and browser presentation. */
 export function animationDurationTicks(animation: AnimationDefinition): number {

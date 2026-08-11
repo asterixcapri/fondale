@@ -25,14 +25,15 @@ import {
   interpretDirectionStep,
   resolveSequencePath,
   secondsToTicks,
+  type DirectionStep,
+  type DirectionStepInterpretation,
+  type DirectedSubject,
 } from "../capabilities/sequence";
 import { pointAlongPath } from "../capabilities/world";
 import type {
   EntityAppearance,
   AnimationDefinition,
   Appearance,
-  DirectionStep,
-  DirectedSubject,
   GameProjectData,
   Point,
   SceneryAppearance,
@@ -88,6 +89,10 @@ export class BrowserRenderer {
   private readonly camera = new Camera();
   private cameraOrigin: Point = { x: 0, y: 0 };
   private cameraDirected = false;
+  private readonly directionInterpretations = new WeakMap<GameState, {
+    step: DirectionStep;
+    interpretation: DirectionStepInterpretation;
+  }>();
   private currentScene = "";
   private sceneSignature = "";
 
@@ -340,20 +345,22 @@ export class BrowserRenderer {
       for (let index = active.step.directions.length - 1; index >= 0; index -= 1) {
         const direction = active.step.directions[index]!;
         if (direction.type !== "animation" || !sameSubject(direction.subject, subject)) continue;
-        const elapsedTicks = active.elapsedTicks - this.cueStartTick(state, active.step, index);
+        const timing = active.interpretation.directions[index]!;
         const animation = appearance.animations[direction.animation];
-        if (!animation || elapsedTicks < 0) continue;
-        if (animation.loop || elapsedTicks < animationDurationTicks(animation)) {
-          return { name: direction.animation, elapsedTicks };
+        if (!animation || !timing.started) continue;
+        if (animation.loop || timing.localTick < animationDurationTicks(animation)) {
+          return { name: direction.animation, elapsedTicks: timing.localTick };
         }
       }
-      if (
-        subject.kind === "character" &&
-        active.step.directions.some((direction, index) =>
-          direction.type === "motion" && sameSubject(direction.subject, subject) &&
-          active.elapsedTicks >= this.cueStartTick(state, active.step, index),
-        ) && appearance.roles.walking
-      ) return { name: appearance.roles.walking, elapsedTicks: active.elapsedTicks, loop: true };
+      if (subject.kind === "character" && appearance.roles.walking) {
+        for (let index = active.step.directions.length - 1; index >= 0; index -= 1) {
+          const direction = active.step.directions[index]!;
+          const timing = active.interpretation.directions[index]!;
+          if (direction.type === "motion" && sameSubject(direction.subject, subject) && timing.started) {
+            return { name: appearance.roles.walking, elapsedTicks: timing.localTick, loop: true };
+          }
+        }
+      }
     }
     const line = this.activeLine(state);
     if (subject.kind === "character" && line?.character === subject.character) {
@@ -377,18 +384,24 @@ export class BrowserRenderer {
     return step.type === "line" ? { character: step.character, ...(step.animation ? { animation: step.animation } : {}) } : undefined;
   }
 
-  private activeDirection(state: GameState): { step: DirectionStep; elapsedTicks: number } | undefined {
+  private activeDirection(state: GameState): {
+    step: DirectionStep;
+    interpretation: DirectionStepInterpretation;
+  } | undefined {
     if (state.activity?.type !== "sequence" || state.activity.active?.kind !== "direction") return undefined;
+    const cached = this.directionInterpretations.get(state);
+    if (cached) return cached;
     const step = resolveSequencePath(this.data.sequences[state.activity.sequence], state.activity.active.path) as DirectionStep;
-    return { step, elapsedTicks: state.activity.active.elapsedTicks };
-  }
-
-  private cueStartTick(state: GameState, step: DirectionStep, index: number): number {
-    return interpretDirectionStep(
+    const active = {
       step,
-      this.activeDirection(state)?.elapsedTicks ?? 0,
-      (subject, animation) => appearanceForSubject(this.data, state, subject)?.animations[animation],
-    ).directions[index]!.startTick;
+      interpretation: interpretDirectionStep(
+        step,
+        state.activity.active.elapsedTicks,
+        (subject, animation) => appearanceForSubject(this.data, state, subject)?.animations[animation],
+      ),
+    };
+    this.directionInterpretations.set(state, active);
+    return active;
   }
 
   private directedSceneryPoint(state: GameState, scenery: string): Point | undefined {
@@ -397,9 +410,9 @@ export class BrowserRenderer {
     for (let index = active.step.directions.length - 1; index >= 0; index -= 1) {
       const direction = active.step.directions[index]!;
       if (direction.type !== "motion" || direction.subject.kind !== "scenery" || direction.subject.scenery !== scenery) continue;
-      const elapsed = active.elapsedTicks - this.cueStartTick(state, active.step, index);
-      if (elapsed < 0) continue;
-      return pointAlongPath(direction.path, Math.min(1, elapsed / secondsToTicks(direction.duration!)));
+      const timing = active.interpretation.directions[index]!;
+      if (!timing.started) continue;
+      return pointAlongPath(direction.path, Math.min(1, timing.localTick / secondsToTicks(direction.duration!)));
     }
     return undefined;
   }
@@ -410,11 +423,11 @@ export class BrowserRenderer {
     for (let index = active.step.directions.length - 1; index >= 0; index -= 1) {
       const direction = active.step.directions[index]!;
       if (direction.type !== "camera") continue;
-      const elapsed = active.elapsedTicks - this.cueStartTick(state, active.step, index);
-      if (elapsed < 0) continue;
+      const timing = active.interpretation.directions[index]!;
+      if (!timing.started) continue;
       if (direction.mode === "cut" || direction.mode === "hold") return direction.point;
       if (direction.mode === "move") {
-        const progress = Math.min(1, elapsed / secondsToTicks(direction.duration));
+        const progress = Math.min(1, timing.localTick / secondsToTicks(direction.duration));
         return { x: direction.from.x + (direction.to.x - direction.from.x) * progress, y: direction.from.y + (direction.to.y - direction.from.y) * progress };
       }
       return this.subjectPoint(state, direction.subject);

@@ -22,9 +22,6 @@ import {
   type Line,
   type Point,
   type AnimationDefinition,
-  type DirectionStep,
-  type DirectedSubject,
-  type MotionDirection,
   type SequenceDefinition,
   type SequenceStep,
 } from "../game-project";
@@ -40,6 +37,9 @@ import {
   interpretDirectionStep,
   resolveSequencePath,
   secondsToTicks,
+  type DirectionStep,
+  type DirectedSubject,
+  type MotionDirection,
 } from "../sequence";
 import { appearanceForSubject } from "../animation";
 import { pointAlongPath } from "../world";

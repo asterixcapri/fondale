@@ -31,6 +31,10 @@ all finite directions finish or when that duration expires, whichever happens
 first. Looping Animations and held/following Camera directions do not create a
 finite boundary by themselves.
 
+A `startAfter` Cue dependency must identify an earlier Animation direction.
+Fondale reports `definition.sequence.cue-source` when the index instead names
+a Motion or Camera direction.
+
 ## Authoring Diagnostic attribution
 
 Every `AuthoringDiagnostic` now includes an `owner` identifying the capability
