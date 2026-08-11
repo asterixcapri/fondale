@@ -26,7 +26,7 @@ await run({
   promptArgs: {
     ISSUES_PATH: issuesPath,
   },
-  maxIterations: 3,
+  maxIterations: 100,
   branchStrategy: { type: "head" },
   logging: {
     type: "stdout",
