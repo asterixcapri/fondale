@@ -29,11 +29,11 @@ export const harbourArrival = defineSequence({
   ],
   steps: [
     {
-      type: "direct",
+      type: "direction",
       directions: [{ type: "camera", mode: "cut", point: { x: 300, y: 100 } }],
     },
     {
-      type: "direct",
+      type: "direction",
       directions: [
         { type: "animation", subject: { kind: "character", character: "player" }, animation: "signal" },
         {

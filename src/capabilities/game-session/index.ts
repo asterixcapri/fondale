@@ -1,5 +1,15 @@
-import { AuthoringError, type AuthoringDiagnostic } from "../public/diagnostics";
-import type { CommandResponse, CommandVerb, NounDefinition, Verb } from "../public/commands";
+import { AuthoringError, type AuthoringDiagnostic } from "../game-project/diagnostics";
+import {
+  conditionalOptionalValue,
+  conditionalValue,
+  contextualVerb,
+  preferredFirstNoun,
+  resolveCommandDefinition,
+  type CommandResponse,
+  type CommandVerb,
+  type NounDefinition,
+  type Verb,
+} from "../interaction";
 import {
   getGameProjectData,
   type Facing,
@@ -12,28 +22,28 @@ import {
   type Line,
   type Point,
   type AnimationDefinition,
-  type DirectStep,
+  type DirectionStep,
   type DirectedSubject,
   type MotionDirection,
   type SequenceDefinition,
   type SequenceStep,
-} from "../public/definitions";
+} from "../game-project";
 import {
   createSaveSnapshot,
   getValidatedSaveState,
   type SaveSnapshot,
   type ValidatedSaveSnapshot,
-} from "../public/save";
-import { isInside, navigationPath, nearestPoint } from "./geometry";
+} from "../save";
+import { isInside, navigationPath, nearestPoint } from "../world";
 import {
-  animationDurationTicks,
-  appearanceForSubject,
-  directionStartTick,
-  pointAlongPath,
+  directionStepComplete,
+  interpretDirectionStep,
   resolveSequencePath,
   secondsToTicks,
-} from "./sequence-directions";
-import { conditionMatchesState, hotspotAvailableInState } from "./state-queries";
+} from "../sequence";
+import { appearanceForSubject } from "../animation";
+import { pointAlongPath } from "../world";
+import { conditionMatchesState, hotspotAvailableInState } from "../interaction";
 
 export interface CharacterState {
   scene: string;
@@ -78,7 +88,7 @@ export type SequenceActiveState =
   | { kind: "line"; path: string; choiceText?: string; choiceCharacter?: string }
   | { kind: "narration"; path: string }
   | { kind: "choice"; path: string; eligibleAlternatives: number[] }
-  | { kind: "direct"; path: string; elapsedTicks: number };
+  | { kind: "direction"; path: string; elapsedTicks: number };
 
 export interface SequenceActivityState {
   type: "sequence";
@@ -236,10 +246,10 @@ export function createCoreSession(
       return (scene.hotspots ?? []).flatMap((hotspot, index) => {
         if (!hotspotAvailable(hotspot)) return [];
         const noun = hotspotNoun(state.currentScene, hotspot);
-        const label = conditionalValue(noun.labels).text;
-        const preferredVerb = conditionalValue(noun.preferredVerbs).verb;
-        const secondaryVerb = conditionalOptionalValue(noun.secondaryVerbs)?.verb;
-        const objectVerb = conditionalOptionalValue(noun.objectVerbs)?.verb;
+        const label = conditionalValue(noun.labels, state).text;
+        const preferredVerb = conditionalValue(noun.preferredVerbs, state).verb;
+        const secondaryVerb = conditionalOptionalValue(noun.secondaryVerbs, state)?.verb;
+        const objectVerb = conditionalOptionalValue(noun.objectVerbs, state)?.verb;
         return [{
           index,
           area: hotspot.area.map((point) => ({ ...point })),
@@ -254,11 +264,11 @@ export function createCoreSession(
       return state.inventory.objects.flatMap((object) => {
         const noun = data.objects[object]?.noun;
         if (!noun) return [];
-        const secondaryVerb = conditionalOptionalValue(noun.secondaryVerbs)?.verb;
+        const secondaryVerb = conditionalOptionalValue(noun.secondaryVerbs, state)?.verb;
         return [{
           object,
-          label: conditionalValue(noun.labels).text,
-          preferredVerb: conditionalValue(noun.preferredVerbs).verb,
+          label: conditionalValue(noun.labels, state).text,
+          preferredVerb: conditionalValue(noun.preferredVerbs, state).verb,
           ...(secondaryVerb ? { secondaryVerb } : {}),
         }];
       });
@@ -267,13 +277,13 @@ export function createCoreSession(
       const scene = data.scenes[state.currentScene]!;
       return (scene.passages ?? []).flatMap((passage, index) => {
         if (!conditionMatches(passage.when)) return [];
-        const secondaryVerb = conditionalOptionalValue(passage.noun.secondaryVerbs)?.verb;
-        const objectVerb = conditionalOptionalValue(passage.noun.objectVerbs)?.verb;
+        const secondaryVerb = conditionalOptionalValue(passage.noun.secondaryVerbs, state)?.verb;
+        const objectVerb = conditionalOptionalValue(passage.noun.objectVerbs, state)?.verb;
         return [{
           index,
           area: passage.area.map((point) => ({ ...point })),
-          label: conditionalValue(passage.noun.labels).text,
-          preferredVerb: conditionalValue(passage.noun.preferredVerbs).verb,
+          label: conditionalValue(passage.noun.labels, state).text,
+          preferredVerb: conditionalValue(passage.noun.preferredVerbs, state).verb,
           ...(secondaryVerb ? { secondaryVerb } : {}),
           ...(objectVerb ? { objectVerb } : {}),
           direction: passage.direction,
@@ -342,13 +352,13 @@ export function createCoreSession(
           return;
         }
         const quickVerb = input.type === "quick-hotspot"
-          ? input.verb ?? conditionalValue(noun.preferredVerbs).verb
+          ? input.verb ?? conditionalValue(noun.preferredVerbs, state).verb
           : input.type === "contextual-hotspot"
-            ? contextualVerb(noun, input.action)
+            ? contextualVerb(noun, input.action, state.command.firstNoun?.object, state)
             : undefined;
         if (input.type === "contextual-hotspot" && !quickVerb) return;
         const commandFirstNoun = quickVerb
-          ? preferredFirstNoun(noun, quickVerb)
+          ? preferredFirstNoun(noun, quickVerb, state.command.firstNoun?.object, state)
           : state.command.firstNoun?.object;
         if (quickVerb === "walk-to") {
           beginIntent({ kind: "move" }, hotspot.approach.groundPoint, hotspot.approach.facing);
@@ -385,13 +395,18 @@ export function createCoreSession(
           !state.command.firstNoun
         ) return;
         const preferredVerb = input.type === "quick-passage"
-          ? input.verb ?? conditionalValue(passage.noun.preferredVerbs).verb
+          ? input.verb ?? conditionalValue(passage.noun.preferredVerbs, state).verb
           : input.type === "contextual-passage"
-            ? contextualVerb(passage.noun, input.action)
+            ? contextualVerb(passage.noun, input.action, state.command.firstNoun?.object, state)
             : undefined;
         if (input.type === "contextual-passage" && !preferredVerb) return;
         const commandFirstNoun = preferredVerb
-          ? preferredFirstNoun(passage.noun, preferredVerb)
+          ? preferredFirstNoun(
+              passage.noun,
+              preferredVerb,
+              state.command.firstNoun?.object,
+              state,
+            )
           : state.command.firstNoun?.object;
         const shouldWalk = input.type === "activate-passage" &&
           (input.forceWalk || state.command.verb === "walk-to") || preferredVerb === "walk-to";
@@ -433,7 +448,7 @@ export function createCoreSession(
           : { verb: "use", firstNoun: { kind: "object", object: input.object } };
         return;
       }
-      const verb = conditionalOptionalValue(noun.secondaryVerbs)?.verb;
+      const verb = conditionalOptionalValue(noun.secondaryVerbs, state)?.verb;
       if (!verb || verb === "walk-to") return;
       resolveCommand(noun, verb, { kind: "object", object: input.object }, true);
     } else if (input.type === "activate-object") {
@@ -499,29 +514,6 @@ export function createCoreSession(
       destination: { ...destination },
       ...(fast ? { fast: true as const } : {}),
     });
-  }
-
-  function preferredFirstNoun(noun: NounDefinition, verb: Verb): string | undefined {
-    const firstNoun = state.command.firstNoun?.object;
-    if (!firstNoun || verb === "walk-to") return undefined;
-    if (verb === "give") return firstNoun;
-    if (verb !== "use") return undefined;
-    return noun.cases.some((candidate) =>
-      candidate.verb === "use" &&
-      candidate.firstNoun === firstNoun &&
-      conditionMatches(candidate.when)
-    ) ? firstNoun : undefined;
-  }
-
-  function contextualVerb(noun: NounDefinition, action: "primary" | "secondary"): Verb | undefined {
-    if (state.command.firstNoun) {
-      return action === "primary"
-        ? conditionalOptionalValue(noun.objectVerbs)?.verb ?? "use"
-        : conditionalValue(noun.preferredVerbs).verb;
-    }
-    return action === "primary"
-      ? conditionalValue(noun.preferredVerbs).verb
-      : conditionalOptionalValue(noun.secondaryVerbs)?.verb;
   }
 
   function advancePlayerIntent(): void {
@@ -605,36 +597,23 @@ export function createCoreSession(
     preserveState: boolean,
     firstNoun?: string,
   ): void {
-    if (firstNoun && !state.inventory.objects.includes(firstNoun)) {
-      if (!preserveState) state.command = { verb: "walk-to", firstNoun: null };
-      const response = noun.fallbacks?.[verb]?.response ?? data.commandFallbacks?.[verb];
-      if (response) emitted.push({ type: "interaction-response", text: response.text, response });
-      return;
-    }
-    const candidate = noun.cases.find((value) =>
-      value.verb === verb && value.firstNoun === firstNoun && conditionMatches(value.when),
-    );
-    const fallback = candidate ? undefined : noun.fallbacks?.[verb];
-    const globalFallback = candidate || fallback ? undefined : data.commandFallbacks?.[verb];
+    const resolution = resolveCommandDefinition({
+      noun,
+      verb,
+      ...(firstNoun ? { firstNoun } : {}),
+      state,
+      projectFallbacks: data.commandFallbacks,
+    });
     if (!preserveState) state.command = { verb: "walk-to", firstNoun: null };
-    if (globalFallback) {
-      emitted.push({ type: "interaction-response", text: globalFallback.text, response: globalFallback });
-      return;
-    }
-    const resolution = candidate ?? fallback;
     if (!resolution) return;
-    const requested = [
-      ...(resolution.operations ?? []),
-      ...(resolution.sequence ? [{ type: "start-sequence" as const, sequence: resolution.sequence }] : []),
-    ];
-    if (!applyOperations(requested, target, firstNoun)) return;
+    if (!applyOperations(resolution.operations, target, firstNoun)) return;
     if (resolution.response) {
       emitted.push({
         type: "interaction-response",
         text: resolution.response.text,
         response: resolution.response,
       });
-    } else if ("line" in resolution && resolution.line) {
+    } else if (resolution.line) {
       const { audio, ...line } = resolution.line;
       state.activity = {
         type: "line",
@@ -851,12 +830,12 @@ export function createCoreSession(
         activity.pendingPaths.unshift(...pathsForContainer(definition, container));
       } else if (stepDefinition.type === "operations") {
         if (!applyOperations(stepDefinition.operations, { kind: "background" })) return;
-      } else if (stepDefinition.type === "direct") {
+      } else if (stepDefinition.type === "direction") {
         if (!directedSubjectsAreAvailable(stepDefinition)) {
           failOperation("A directed subject is not available in the Sequence Scene.");
           return;
         }
-        activity.active = { kind: "direct", path, elapsedTicks: 0 };
+        activity.active = { kind: "direction", path, elapsedTicks: 0 };
       }
       emitted.push({ type: "sequence-changed" });
     }
@@ -864,17 +843,27 @@ export function createCoreSession(
 
   function advanceDirectedStep(): void {
     const activity = state.activity;
-    if (activity?.type !== "sequence" || activity.active?.kind !== "direct") return;
+    if (activity?.type !== "sequence" || activity.active?.kind !== "direction") return;
     const definition = data.sequences[activity.sequence]!;
-    const direct = resolveSequencePath(definition, activity.active.path) as DirectStep;
+    const directionStep = resolveSequencePath(definition, activity.active.path) as DirectionStep;
     activity.active.elapsedTicks += 1;
-    applyDirectedMotions(direct, activity.active.elapsedTicks);
-    if (!directStepComplete(direct, activity.active.elapsedTicks)) return;
+    const interpretation = interpretDirectionStep(
+      directionStep,
+      activity.active.elapsedTicks,
+      directedAnimation,
+    );
+    applyDirectedMotions(directionStep, interpretation.directions.map(({ localTick }) => localTick));
+    if (!directionStepComplete(
+      directionStep,
+      interpretation,
+      directedAnimation,
+      characterMotionComplete,
+    )) return;
     activity.active = null;
     advanceSequence();
   }
 
-  function directedSubjectsAreAvailable(step: DirectStep): boolean {
+  function directedSubjectsAreAvailable(step: DirectionStep): boolean {
     return step.directions.every((direction) => {
       if (direction.type === "camera" && direction.mode !== "follow") return true;
       const subject = direction.subject;
@@ -889,44 +878,14 @@ export function createCoreSession(
     });
   }
 
-  function directStepComplete(step: DirectStep, elapsedTicks: number): boolean {
-    const boundaries: boolean[] = [];
-    if (step.duration !== undefined) {
-      boundaries.push(elapsedTicks >= secondsToTicks(step.duration));
-    }
-    step.directions.forEach((direction, index) => {
-      const localTick = elapsedTicks - directionStartTick(step, index, directedAnimation);
-      if (direction.type === "animation") {
-        const animation = directedAnimation(direction.subject, direction.animation);
-        if (animation && !animation.loop) {
-          boundaries.push(localTick >= animationDurationTicks(animation));
-        }
-        return;
-      }
-      if (direction.type === "motion") {
-        if (direction.subject.kind === "character") {
-          const character = state.characters[direction.subject.character];
-          const destination = direction.path[0];
-          boundaries.push(
-            localTick >= 0 &&
-            character !== undefined &&
-            destination !== undefined &&
-            Math.hypot(
-              destination.x - character.groundPoint.x,
-              destination.y - character.groundPoint.y,
-            ) <= 1e-8,
-          );
-          return;
-        }
-        boundaries.push(localTick >= secondsToTicks(direction.duration!));
-        return;
-      }
-      if (direction.mode === "cut") boundaries.push(localTick >= 1);
-      else if (direction.duration !== undefined) {
-        boundaries.push(localTick >= secondsToTicks(direction.duration));
-      }
-    });
-    return boundaries.length > 0 && boundaries.every(Boolean);
+  function characterMotionComplete(direction: MotionDirection): boolean {
+    if (direction.subject.kind !== "character") return false;
+    const character = state.characters[direction.subject.character];
+    const destination = direction.path[0];
+    return character !== undefined && destination !== undefined && Math.hypot(
+      destination.x - character.groundPoint.x,
+      destination.y - character.groundPoint.y,
+    ) <= 1e-8;
   }
 
   function directedAnimation(subject: DirectedSubject, animationName: string): AnimationDefinition | undefined {
@@ -934,10 +893,10 @@ export function createCoreSession(
     return appearance?.animations[animationName];
   }
 
-  function applyDirectedMotions(step: DirectStep, elapsedTicks: number): void {
+  function applyDirectedMotions(step: DirectionStep, localTicks: readonly number[]): void {
     step.directions.forEach((direction, index) => {
       if (direction.type !== "motion") return;
-      const localTick = elapsedTicks - directionStartTick(step, index, directedAnimation);
+      const localTick = localTicks[index]!;
       if (localTick <= 0) return;
       if (direction.subject.kind === "character") {
         advanceDirectedCharacter(direction);
@@ -1004,16 +963,6 @@ export function createCoreSession(
     return conditionMatchesState(condition, state);
   }
 
-  function conditionalValue<T extends { readonly when?: InteractionCondition }>(values: readonly T[]): T {
-    return values.find((value) => conditionMatches(value.when)) ?? values.at(-1)!;
-  }
-
-  function conditionalOptionalValue<T extends { readonly when?: InteractionCondition }>(
-    values: readonly T[] | undefined,
-  ): T | undefined {
-    return values?.find((value) => conditionMatches(value.when)) ?? values?.at(-1);
-  }
-
   function hotspotAvailable(hotspot: HotspotDefinition): boolean {
     return hotspotAvailableInState(hotspot, state);
   }
@@ -1024,7 +973,7 @@ export function createCoreSession(
     failureDiagnostics = [
       {
         code: "state.operation.invalid",
-        family: "state",
+        family: "state", owner: "game-session",
         path: "Game Session.operation",
         message,
         cause,

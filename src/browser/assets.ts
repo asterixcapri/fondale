@@ -1,6 +1,6 @@
 import { Assets, Rectangle, Texture } from "pixi.js";
 
-import { AuthoringError, type AuthoringDiagnostic } from "../public/diagnostics";
+import { AuthoringError, type AuthoringDiagnostic } from "../capabilities/game-project";
 import type {
   EntityAppearance,
   GameProjectData,
@@ -8,7 +8,7 @@ import type {
   Appearance,
   Point,
   SequenceStep,
-} from "../public/definitions";
+} from "../capabilities/game-project";
 
 export interface LoadedAssets {
   readonly textures: ReadonlyMap<string, Texture>;
@@ -69,7 +69,7 @@ export async function loadProjectAssets(data: GameProjectData): Promise<LoadedAs
         for (const path of paths) {
           diagnostics.push({
             code: "asset.load.failed",
-            family: "asset",
+            family: "asset", owner: "browser",
             path,
             message: `PNG asset '${url}' could not be loaded and decoded.`,
             cause,
@@ -91,7 +91,7 @@ export async function loadProjectAssets(data: GameProjectData): Promise<LoadedAs
       for (const path of paths) {
         diagnostics.push({
           code: "asset.audio.load.failed",
-          family: "asset",
+          family: "asset", owner: "browser",
           path,
           message: `Audio asset '${url}' could not be loaded and decoded.`,
         });
@@ -111,7 +111,7 @@ export async function loadProjectAssets(data: GameProjectData): Promise<LoadedAs
     ) {
       diagnostics.push({
         code: "asset.background.dimensions",
-        family: "asset",
+        family: "asset", owner: "browser",
         path: `scenes.${sceneId}.background`,
         message: `Background is ${background.width}×${background.height}; expected ${scene.size.width}×${scene.size.height}.`,
         suggestion: "Export the PNG at the Scene's exact Scene Size.",
@@ -127,7 +127,7 @@ export async function loadProjectAssets(data: GameProjectData): Promise<LoadedAs
     ) {
       diagnostics.push({
         code: "asset.inventory-appearance.dimensions",
-        family: "asset",
+        family: "asset", owner: "browser",
         path: `objects.${objectId}.inventoryAppearance`,
         message: `Inventory Appearance is ${icon.width}×${icon.height}; expected ${data.inventoryAppearanceSize}×${data.inventoryAppearanceSize}.`,
       });
@@ -138,7 +138,7 @@ export async function loadProjectAssets(data: GameProjectData): Promise<LoadedAs
     if (texture && (texture.width > 64 || texture.height > 64 || texture.width < 1 || texture.height < 1)) {
       diagnostics.push({
         code: "asset.cursor.dimensions",
-        family: "asset",
+        family: "asset", owner: "browser",
         path: `hudTheme.cursors.${direction}`,
         message: "A HUD cursor must fit within 64×64 pixels.",
       });
@@ -154,7 +154,7 @@ export async function loadProjectAssets(data: GameProjectData): Promise<LoadedAs
     } catch (cause) {
       diagnostics.push({
         code: "asset.font.load.failed",
-        family: "asset",
+        family: "asset", owner: "browser",
         path: "hudTheme.font.source",
         message: "The HUD Theme font could not be loaded.",
         cause,
@@ -283,7 +283,7 @@ function validateAnimatedAppearance(
       if (texture.width % strip.count !== 0) {
         diagnostics.push({
           code: "asset.animation-strip.frames",
-          family: "asset",
+          family: "asset", owner: "browser",
           path: `${animationPath}.frames.${direction}`,
           message: "An Animation strip width must divide into its frame count.",
         });
@@ -301,7 +301,7 @@ function validateAnimatedAppearance(
       if (expected && size.height !== expected.height) {
         diagnostics.push({
           code: "asset.animation-strip.dimensions",
-          family: "asset",
+          family: "asset", owner: "browser",
           path: `${animationPath}.frames.${size.direction}`,
           message: "Directional Animation strips must produce frames with matching heights.",
         });
@@ -324,7 +324,7 @@ function validateAnchor(
   if (anchor.x < 0 || anchor.y < 0 || anchor.x > texture.width || anchor.y > texture.height) {
     diagnostics.push({
       code: "asset.visual-anchor.bounds",
-      family: "asset",
+      family: "asset", owner: "browser",
       path: `${path}.visualAnchor`,
       message: "Visual Anchor must lie inside its PNG frame.",
     });

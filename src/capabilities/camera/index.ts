@@ -1,4 +1,4 @@
-import type { LogicalResolution, Point, SceneSize } from "../public/definitions";
+import type { LogicalResolution, Point, SceneSize } from "../game-project";
 
 export interface CameraInput {
   readonly viewport: LogicalResolution;

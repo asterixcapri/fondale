@@ -15,32 +15,34 @@ import type {
   CoreEffect,
   CoreSession,
   GameState,
-} from "../internal/core";
+} from "../capabilities/game-session";
 import {
   animationDurationTicks,
   appearanceForSubject,
-  directionStartTick,
   isImageAnimationFrames,
-  pointAlongPath,
+} from "../capabilities/animation";
+import {
+  interpretDirectionStep,
   resolveSequencePath,
   secondsToTicks,
-} from "../internal/sequence-directions";
+} from "../capabilities/sequence";
+import { pointAlongPath } from "../capabilities/world";
 import type {
   EntityAppearance,
   AnimationDefinition,
   Appearance,
-  DirectStep,
+  DirectionStep,
   DirectedSubject,
   GameProjectData,
   Point,
   SceneryAppearance,
   SequenceStep,
-} from "../public/definitions";
-import type { Verb } from "../public/commands";
-import type { AuthoringDiagnostic } from "../public/diagnostics";
-import type { SaveSnapshot } from "../public/save";
+} from "../capabilities/game-project";
+import type { Verb } from "../capabilities/interaction";
+import type { AuthoringDiagnostic } from "../capabilities/game-project";
+import type { SaveSnapshot } from "../capabilities/save";
 import { assetUrl, type LoadedAssets } from "./assets";
-import { Camera } from "./camera";
+import { Camera } from "../capabilities/camera";
 
 interface CharacterView {
   readonly container: Container;
@@ -333,7 +335,7 @@ export class BrowserRenderer {
     appearance: EntityAppearance | SceneryAppearance,
   ): AnimationSelection | undefined {
     if (!("animations" in appearance)) return undefined;
-    const active = this.activeDirect(state);
+    const active = this.activeDirection(state);
     if (active) {
       for (let index = active.step.directions.length - 1; index >= 0; index -= 1) {
         const direction = active.step.directions[index]!;
@@ -375,22 +377,22 @@ export class BrowserRenderer {
     return step.type === "line" ? { character: step.character, ...(step.animation ? { animation: step.animation } : {}) } : undefined;
   }
 
-  private activeDirect(state: GameState): { step: DirectStep; elapsedTicks: number } | undefined {
-    if (state.activity?.type !== "sequence" || state.activity.active?.kind !== "direct") return undefined;
-    const step = resolveSequencePath(this.data.sequences[state.activity.sequence], state.activity.active.path) as DirectStep;
+  private activeDirection(state: GameState): { step: DirectionStep; elapsedTicks: number } | undefined {
+    if (state.activity?.type !== "sequence" || state.activity.active?.kind !== "direction") return undefined;
+    const step = resolveSequencePath(this.data.sequences[state.activity.sequence], state.activity.active.path) as DirectionStep;
     return { step, elapsedTicks: state.activity.active.elapsedTicks };
   }
 
-  private cueStartTick(state: GameState, step: DirectStep, index: number): number {
-    return directionStartTick(
+  private cueStartTick(state: GameState, step: DirectionStep, index: number): number {
+    return interpretDirectionStep(
       step,
-      index,
+      this.activeDirection(state)?.elapsedTicks ?? 0,
       (subject, animation) => appearanceForSubject(this.data, state, subject)?.animations[animation],
-    );
+    ).directions[index]!.startTick;
   }
 
   private directedSceneryPoint(state: GameState, scenery: string): Point | undefined {
-    const active = this.activeDirect(state);
+    const active = this.activeDirection(state);
     if (!active) return undefined;
     for (let index = active.step.directions.length - 1; index >= 0; index -= 1) {
       const direction = active.step.directions[index]!;
@@ -403,7 +405,7 @@ export class BrowserRenderer {
   }
 
   private directedCameraFocus(state: GameState): Point | undefined {
-    const active = this.activeDirect(state);
+    const active = this.activeDirection(state);
     if (!active) return undefined;
     for (let index = active.step.directions.length - 1; index >= 0; index -= 1) {
       const direction = active.step.directions[index]!;

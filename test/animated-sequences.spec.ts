@@ -12,7 +12,7 @@ import {
   validateSaveSnapshot,
   type Appearance,
 } from "../src/index";
-import { createTestSession } from "../src/internal/core";
+import { createTestSession } from "../src/capabilities/game-session";
 
 const staticAppearance = (image: string): Appearance => ({
   animations: {
@@ -128,7 +128,7 @@ test("composition validates Command Line overrides and directed subject locality
   const action = defineSequence({
     scene: "room",
     steps: [{
-      type: "direct",
+      type: "direction",
       directions: [{
         type: "camera",
         mode: "follow",
@@ -216,7 +216,7 @@ test("composition requires the final Scenery Motion to end at its resting positi
   const action = defineSequence({
     scene: "room",
     steps: [{
-      type: "direct",
+      type: "direction",
       directions: [{
         type: "motion",
         subject: { kind: "scenery", scenery: "marker" },
@@ -238,7 +238,7 @@ test("composition requires the final Scenery Motion to end at its resting positi
   const interrupted = defineSequence({
     scene: "room",
     steps: [action.steps[0]!, { type: "narration", text: "A visible pause." }, {
-      type: "direct",
+      type: "direction",
       directions: [{
         type: "motion",
         subject: { kind: "scenery", scenery: "marker" },
@@ -259,7 +259,7 @@ test("composition requires the final Scenery Motion to end at its resting positi
   const delayedContinuation = defineSequence({
     scene: "room",
     steps: [action.steps[0]!, {
-      type: "direct",
+      type: "direction",
       directions: [{
         type: "animation",
         subject: { kind: "scenery", scenery: "marker" },
@@ -305,7 +305,7 @@ test("an Object placed earlier in a Sequence may be directed in its owning Scene
         groundPoint: { x: 20, y: 20 },
       }],
     }, {
-      type: "direct",
+      type: "direction",
       directions: [{
         type: "motion",
         subject: { kind: "object", object: "prop" },
@@ -436,7 +436,7 @@ test("composition diagnoses nested directed Sequences and Motion outside their S
       cases: [{
         when: { variable: "enabled", equals: true },
         steps: [{
-          type: "direct",
+          type: "direction",
           directions: [{
             type: "motion",
             subject: { kind: "scenery", scenery: "marker" },
@@ -482,7 +482,7 @@ test("composition diagnoses nested directed Sequences and Motion outside their S
 
 export { staticAppearance };
 
-function directedProject(skippable = false) {
+function directedProject(skippable = false, directionDuration?: number) {
   const square = [
     { x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }, { x: 0, y: 100 },
   ];
@@ -523,7 +523,8 @@ function directedProject(skippable = false) {
     } : {}),
     steps: [
       {
-        type: "direct",
+        type: "direction",
+        ...(directionDuration === undefined ? {} : { duration: directionDuration }),
         directions: [
           {
             type: "animation",
@@ -615,14 +616,14 @@ test("a directed Sequence waits for all finite directions and blocks normal inpu
   startDirectedSequence(session);
   expect(session.snapshot().activity).toMatchObject({
     type: "sequence",
-    active: { kind: "direct", elapsedTicks: 0 },
+    active: { kind: "direction", elapsedTicks: 0 },
   });
 
   session.input({ type: "move", point: { x: 90, y: 90 } });
   session.steps(2);
   expect(session.snapshot().activity).toMatchObject({
     type: "sequence",
-    active: { kind: "direct", elapsedTicks: 2 },
+    active: { kind: "direction", elapsedTicks: 2 },
   });
   expect(session.snapshot().variables.finished).toBe(false);
 
@@ -630,6 +631,16 @@ test("a directed Sequence waits for all finite directions and blocks normal inpu
   expect(session.snapshot().activity).toBeNull();
   expect(session.snapshot().variables.finished).toBe(true);
   expect(session.snapshot().characters.actor!.groundPoint).toEqual({ x: 10, y: 10 });
+});
+
+test("an authored Direction Step duration completes before longer finite directions", () => {
+  const session = createTestSession(directedProject(false, 1 / 60));
+  startDirectedSequence(session);
+
+  session.steps();
+
+  expect(session.snapshot().activity).toBeNull();
+  expect(session.snapshot().variables.finished).toBe(true);
 });
 
 test("directed Sequence progress survives Save and restore", () => {
@@ -695,7 +706,7 @@ test("directed Character navigation and Object Motion commit their canonical des
   const action = defineSequence({
     scene: "room",
     steps: [{
-      type: "direct",
+      type: "direction",
       directions: [{
         type: "motion",
         subject: { kind: "character", character: "actor" },

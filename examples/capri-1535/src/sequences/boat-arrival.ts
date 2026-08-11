@@ -15,7 +15,7 @@ export const boatArrival = defineSequence({
   skipOutcome: outcome,
   steps: [
     {
-      type: "direct",
+      type: "direction",
       directions: [
         {
           type: "animation",
@@ -32,7 +32,7 @@ export const boatArrival = defineSequence({
       ],
     },
     {
-      type: "direct",
+      type: "direction",
       directions: [
         {
           type: "animation",
@@ -55,7 +55,7 @@ export const boatArrival = defineSequence({
       ],
     },
     {
-      type: "direct",
+      type: "direction",
       directions: [
         {
           type: "animation",
@@ -72,7 +72,7 @@ export const boatArrival = defineSequence({
       ],
     },
     {
-      type: "direct",
+      type: "direction",
       directions: [
         {
           type: "animation",

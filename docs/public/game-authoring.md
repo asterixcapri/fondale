@@ -232,7 +232,7 @@ from the owning Background. Named Appearance changes belong to Game State,
 while current frames and loop phase remain derived presentation.
 
 A Sequence is a finite modal progression of Character Lines, Narrations,
-Choices, automatic branches, operation groups, and directed steps containing
+Choices, automatic branches, operation groups, and Direction Steps containing
 concurrent Animation, Motion, and Camera directions. A Cue in one Animation may
 start later directions; the Core advances after every finite direction ends.
 Skippable Sequences declare an explicit Skip Outcome. Choices may conditionally

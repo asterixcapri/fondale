@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { createTestSession } from "../src/internal/core";
+import { createTestSession } from "../src/capabilities/game-session";
 import {
   defineCharacter,
   defineCommandLexicon,

@@ -1,8 +1,8 @@
 # Public reference
 
 Every public symbol is imported from `@asterixcapri/fondale`; deep imports are
-not supported. This is the normative Fondale 0.2 alpha contract. The npm
-package version is `0.3.0`; it is independent from an Author's Project Version
+not supported. This is the normative Fondale 0.4 alpha contract. The npm
+package version is `0.4.0`; it is independent from an Author's Project Version
 and from Fondale's Save Snapshot format version.
 
 ## Commands and HUD
@@ -69,7 +69,7 @@ every registered Scene Size.
 
 `defineSequence` validates a finite `SequenceDefinition`. `SequenceStep` is a
 Character-bound Line, explicit Narration, Choice, Branch, atomic Operations
-group, or concurrent Direct step. A Line may declare an audio asset and an
+group, or concurrent Direction Step. A Line may declare an audio asset and an
 Animation override; its playback duration participates in
 automatic advancement. Narration contains narrator prose and never identifies
 a Character. A `ChoiceAlternative` has
@@ -122,9 +122,10 @@ input, Character speech, and revealed Hotspots are projected; Engine-owned HUD
 controls remain in viewport space.
 
 `AuthoringError` contains stably ordered `AuthoringDiagnostic` values. Each has
-stable `code`, `family`, `path`, `message`, optional `suggestion`, and optional
-`cause`. `AuthoringDiagnosticFamily` is definition, reference, state, save,
-asset, or environment.
+stable `code`, `family`, capability `owner`, `path`, `message`, optional
+`suggestion`, and optional `cause`. `AuthoringDiagnosticFamily` is definition,
+reference, state, save, asset, or environment. `AuthoringDiagnosticOwner`
+identifies the capability or browser adapter responsible for the rule.
 
 ## Structural contract index
 
@@ -169,9 +170,9 @@ asset, or environment.
 | `AnimationDirection` | explicit transient playback | subject, Animation name and optional Cue start | finite playback blocks; loops need another boundary | Animation/Cue diagnostics | [Sequence](recipes/sequence.ts) |
 | `MotionDirection` | transient Scene Space movement | subject, path, optional Character facing or non-Character duration | Character uses navigation; Scenery position remains derived | Motion/subject diagnostics | [Sequence](recipes/sequence.ts) |
 | `CameraDirection` | transient framing | cut, move, hold or follow | clamped to owning Scene and returns to Player following | Camera/subject diagnostics | [Sequence](recipes/sequence.ts) |
-| `SequenceDirection` | concurrent direction | Animation, Motion, or Camera | starts with its direct step or Cue | direction diagnostics | [Sequence](recipes/sequence.ts) |
-| `DirectStep` | concurrent directed beat | directions and optional duration | waits for all finite boundaries; loops do not block alone | finite-boundary diagnostics | [Sequence](recipes/sequence.ts) |
-| `SequenceStep` | finite step union | Line, Narration, Choice, Branch, Operations, Direct | nested starts forbidden | Sequence diagnostics | [Sequence](recipes/sequence.ts) |
+| `SequenceDirection` | concurrent direction | Animation, Motion, or Camera | starts with its Direction Step or Cue | direction diagnostics | [Sequence](recipes/sequence.ts) |
+| `DirectionStep` | concurrent directed beat | directions and optional duration | all finite boundaries or authored duration, whichever is first | finite-boundary diagnostics | [Sequence](recipes/sequence.ts) |
+| `SequenceStep` | finite step union | Line, Narration, Choice, Branch, Operations, Direction | nested starts forbidden | Sequence diagnostics | [Sequence](recipes/sequence.ts) |
 | `SequenceDefinition` | root modal flow | finite steps, optional owning Scene, skippable and Skip Outcome | directed flows remain in one Scene | cycle/reference/direction diagnostics | [Sequence](recipes/sequence.ts) |
 | `GameInput` | project composition | identity, version, resolution, registries, commands, theme | empty registries; black letterbox | aggregated diagnostics | [Scene](recipes/first-scene.ts) |
 | `GameProject` | validated opaque project | only returned by defineGame | immutable and fieldless | forged project rejected | [Scene](recipes/first-scene.ts) |
@@ -188,7 +189,8 @@ asset, or environment.
 | `PassageDirection` | Passage cursor direction | left, right, up, down, enter | every Passage declares one | cursor/reference diagnostics | [Scene](recipes/first-scene.ts) |
 | `HUDTheme` | project visual language | font, colours, opacity, width, cursors, speech colours | complete local asset set | theme/asset diagnostics | [HUD Theme](recipes/hud-theme.ts) |
 | `AuthoringDiagnosticFamily` | rejecting layer | six stable category strings | category is always present | no independent failure | [Scene](recipes/first-scene.ts) |
-| `AuthoringDiagnostic` | one author-facing issue | code, family, path, message, suggestion, cause | stable code/path ordering | describes owning failure | [Scene](recipes/first-scene.ts) |
+| `AuthoringDiagnosticOwner` | rule owner | nine capabilities or browser adapter | owner is always present | no independent failure | [Scene](recipes/first-scene.ts) |
+| `AuthoringDiagnostic` | one author-facing issue | code, family, owner, path, message, suggestion, cause | stable code/path ordering | describes owning failure | [Scene](recipes/first-scene.ts) |
 | `AuthoringError` | aggregate failure | read-only diagnostics | one error per validation layer | thrown by helpers/startup | [Scene](recipes/first-scene.ts) |
 | `SaveSnapshot` | JSON-safe committed state | format, project identities and state | exact fields only | save validation diagnostics | [Save](recipes/save-snapshot.ts) |
 | `ValidatedSaveSnapshot` | restoration capability | successfully validated snapshot | runtime brand cannot be authored | validation-required diagnostic | [Save](recipes/save-snapshot.ts) |
@@ -250,9 +252,9 @@ Definition codes: `definition.approach.bounds`,
 `definition.sequence.cycle`, `definition.sequence.nested`,
 `definition.sequence.skip-outcome`, `definition.sequence.skip-outcome.unused`,
 `definition.sequence.selected-object-operation`,
-`definition.sequence.direct.empty`, `definition.sequence.duration`,
+`definition.sequence.direction.empty`, `definition.sequence.duration`,
 `definition.sequence.cue-order`, `definition.sequence.cue-name`,
-`definition.sequence.direct.unbounded`, `definition.motion.path`,
+`definition.sequence.direction.unbounded`, `definition.motion.path`,
 `definition.motion.character-path`, `definition.motion.character-duration`,
 `definition.motion.duration`, `definition.motion.bounds`,
 `definition.motion.walkable`, `definition.camera.duration`,

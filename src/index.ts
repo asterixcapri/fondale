@@ -2,7 +2,8 @@ export {
   AuthoringError,
   type AuthoringDiagnostic,
   type AuthoringDiagnosticFamily,
-} from "./public/diagnostics";
+  type AuthoringDiagnosticOwner,
+} from "./capabilities/game-project/diagnostics";
 export {
   commandVerbs,
   defineCommandLexicon,
@@ -17,12 +18,12 @@ export {
   type PreferredVerbCase,
   type SelectedObjectVerbCase,
   type Verb,
-} from "./public/commands";
+} from "./capabilities/interaction";
 export {
   defineHUDTheme,
   type HUDTheme,
   type PassageDirection,
-} from "./public/hud-theme";
+} from "./capabilities/hud";
 export {
   defineGame,
   defineCharacter,
@@ -39,7 +40,7 @@ export {
   type AnimationDirection,
   type CameraDirection,
   type CueStart,
-  type DirectStep,
+  type DirectionStep,
   type DirectedSubject,
   type Facing,
   type GameProject,
@@ -56,7 +57,7 @@ export {
   type SceneSize,
   type SequenceDefinition,
   type SequenceDirection,
-} from "./public/definitions";
+} from "./capabilities/game-project";
 export {
   startGame,
   type GameSession,
@@ -67,4 +68,4 @@ export {
   type SaveSnapshot,
   type SaveSnapshotValidation,
   type ValidatedSaveSnapshot,
-} from "./public/save";
+} from "./capabilities/save";

@@ -1,6 +1,6 @@
 {
   "name": "@asterixcapri/fondale",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "A web-native, TypeScript-first point-and-click adventure engine.",
   "license": "MIT",
   "type": "module",
@@ -23,7 +23,9 @@
     "prototype:capri-return-style": "npm --prefix examples/capri-1535 run prototype:hud",
     "typecheck": "tsc --noEmit",
     "build:package": "vite build --config vite.lib.config.ts && tsc -p tsconfig.declarations.json",
-    "build": "npm run build:package && npm run typecheck && npm run verify:docs",
+    "build": "npm run build:package && npm run typecheck && npm run verify:architecture && npm run verify:architecture-doc && npm run verify:docs",
+    "verify:architecture": "node tools/verify-architecture.mjs",
+    "verify:architecture-doc": "node tools/verify-architecture-doc.mjs",
     "verify:docs": "node tools/verify-docs.mjs",
     "verify": "playwright test"
   },

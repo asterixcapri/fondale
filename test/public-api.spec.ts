@@ -10,8 +10,17 @@ import {
   defineObject,
   defineScene,
   defineSequence,
+  type DirectionStep,
   type HotspotDefinition,
 } from "../src/index";
+
+const coordinatedDirectionStep = {
+  type: "direction",
+  directions: [],
+  duration: 1,
+} satisfies DirectionStep;
+
+void coordinatedDirectionStep;
 
 function assertHotspotTypeContract(noun: ReturnType<typeof defineNoun>) {
   const area = [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 0, y: 10 }];
@@ -73,6 +82,7 @@ test("defineGame reports one owner Noun diagnostic for repeated Object Hotspots"
     expect((error as AuthoringError).diagnostics).toEqual([
       expect.objectContaining({
         code: "definition.hotspot.target-noun.required",
+        owner: "interaction",
         path: "objects.key.noun",
       }),
     ]);

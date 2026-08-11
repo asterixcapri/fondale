@@ -1,4 +1,4 @@
-import type { Point } from "../public/definitions";
+import type { Point } from "../game-project";
 
 export function isInside(polygon: readonly Point[], point: Point): boolean {
   let inside = false;

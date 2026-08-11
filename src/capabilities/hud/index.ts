@@ -1,4 +1,4 @@
-import { AuthoringError, type AuthoringDiagnostic } from "./diagnostics";
+import { AuthoringError, type AuthoringDiagnostic } from "../game-project/diagnostics";
 
 export type PassageDirection = "left" | "right" | "up" | "down" | "enter";
 
@@ -63,7 +63,7 @@ export function defineHUDTheme(input: HUDTheme): HUDTheme {
 }
 
 function themeDiagnostic(code: string, path: string, message: string): AuthoringDiagnostic {
-  return { code, family: "definition", path, message };
+  return { code, family: "definition", owner: "hud", path, message };
 }
 
 function cssColor(value: string): boolean {

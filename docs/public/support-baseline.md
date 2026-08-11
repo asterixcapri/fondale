@@ -1,6 +1,6 @@
 # Support Baseline
 
-Fondale 0.2 alpha is verified against the latest stable Google Chrome desktop with
+Fondale 0.4 alpha is verified against the latest stable Google Chrome desktop with
 WebGL. A regression there is a Fondale bug.
 
 - The mouse controls world Nouns, Inventory, Lines, Narrations, Command

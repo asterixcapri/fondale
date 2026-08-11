@@ -1,15 +1,15 @@
-import type { GameState } from "../internal/core";
-import { resolveSequencePath } from "../internal/sequence-directions";
-import { conditionMatchesState, hotspotAvailableInState } from "../internal/state-queries";
-import { commandVerbs, type CommandVerb, type Verb } from "./commands";
-import { AuthoringError, type AuthoringDiagnostic } from "./diagnostics";
+import type { GameState } from "../game-session";
+import { resolveSequencePath } from "../sequence";
+import { conditionMatchesState, hotspotAvailableInState } from "../interaction";
+import { commandVerbs, type CommandVerb, type Verb } from "../interaction";
+import { AuthoringError, type AuthoringDiagnostic } from "../game-project/diagnostics";
 import {
   getGameProjectData,
   type GameProject,
   type GameProjectData,
   type SequenceDefinition,
   type SequenceStep,
-} from "./definitions";
+} from "../game-project";
 
 /** JSON-safe representation of the latest committed Game State. */
 export interface SaveSnapshot {
@@ -227,11 +227,11 @@ function validActivity(value: unknown, data: GameProjectData, state: GameState):
         sameOrderedStrings(value.pendingPaths as string[], expectedPending) &&
         isSequenceStep(step) && step.type === "narration";
     }
-    if (value.active.kind === "direct") {
+    if (value.active.kind === "direction") {
       return hasExactKeys(value.active, ["kind", "path", "elapsedTicks"]) &&
         expectedPending !== null &&
         sameOrderedStrings(value.pendingPaths as string[], expectedPending) &&
-        isSequenceStep(step) && step.type === "direct" &&
+        isSequenceStep(step) && step.type === "direction" &&
         Number.isInteger(value.active.elapsedTicks) &&
         (value.active.elapsedTicks as number) >= 0;
     }
@@ -344,7 +344,7 @@ function isVerb(value: unknown): value is Verb {
 }
 
 function isSequenceStep(value: unknown): value is SequenceStep {
-  return isRecord(value) && ["line", "narration", "operations", "choice", "branch", "direct"].includes(String(value.type));
+  return isRecord(value) && ["line", "narration", "operations", "choice", "branch", "direction"].includes(String(value.type));
 }
 
 function expectedPendingPaths(sequence: SequenceDefinition, activePath: string): string[] | null {
@@ -367,7 +367,7 @@ function expectedPendingPaths(sequence: SequenceDefinition, activePath: string):
 }
 
 function saveDiagnostic(code: string, message: string, path = "Save Snapshot"): AuthoringDiagnostic {
-  return { code, family: "save", path, message };
+  return { code, family: "save", owner: "save", path, message };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

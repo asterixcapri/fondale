@@ -1,13 +1,13 @@
 import { Application, TexturePool } from "pixi.js";
 
-import { createCoreSession, type CoreSession } from "../internal/core";
-import { AuthoringError, type AuthoringDiagnostic } from "../public/diagnostics";
-import { getGameProjectData, type GameProject } from "../public/definitions";
+import { createCoreSession, type CoreSession } from "../capabilities/game-session";
+import { AuthoringError, type AuthoringDiagnostic } from "../capabilities/game-project";
+import { getGameProjectData, type GameProject } from "../capabilities/game-project";
 import {
   validateSaveSnapshot,
   type SaveSnapshot,
   type ValidatedSaveSnapshot,
-} from "../public/save";
+} from "../capabilities/save";
 import { loadProjectAssets } from "./assets";
 import { FixedStepClock } from "./fixed-step-clock";
 import {
@@ -52,7 +52,7 @@ export async function startGame(
     throw new AuthoringError([
       {
         code: "environment.target.occupied",
-        family: "environment",
+        family: "environment", owner: "browser",
         path: "startGame.target",
         message: "The target already belongs to a running Game Session.",
         suggestion: "Stop the existing Game Session or provide another target.",
@@ -92,7 +92,7 @@ export async function startGame(
       throw new AuthoringError([
         {
           code: "environment.webgl.unavailable",
-          family: "environment",
+          family: "environment", owner: "browser",
           path: "startGame",
           message: "Fondale requires WebGL in the current Chrome desktop Support Baseline.",
         },
@@ -113,7 +113,7 @@ export async function startGame(
       throw new AuthoringError([
         {
           code: "environment.webgl.unavailable",
-          family: "environment",
+          family: "environment", owner: "browser",
           path: "startGame",
           message: "Fondale requires WebGL in the current Chrome desktop Support Baseline.",
           cause,
@@ -208,7 +208,7 @@ export async function startGame(
     throw new AuthoringError([
       {
         code: "environment.start.failed",
-        family: "environment",
+        family: "environment", owner: "browser",
         path: "startGame",
         message: "The Game Session could not start.",
         cause: error,

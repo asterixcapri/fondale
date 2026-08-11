@@ -22,7 +22,7 @@ export const winchInstallation = defineSequence({
   skipOutcome: outcome,
   steps: [
     {
-      type: "direct",
+      type: "direction",
       directions: [
         {
           type: "animation",

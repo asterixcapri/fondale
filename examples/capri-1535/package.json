@@ -13,7 +13,7 @@
     "verify": "playwright test"
   },
   "dependencies": {
-    "@asterixcapri/fondale": "file:vendor/asterixcapri-fondale-0.3.0.tgz"
+    "@asterixcapri/fondale": "file:vendor/asterixcapri-fondale-0.4.0.tgz"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",

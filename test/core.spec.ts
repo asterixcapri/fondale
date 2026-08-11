@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
-import { createTestSession } from "../src/internal/core";
-import { isInside } from "../src/internal/geometry";
+import { createTestSession } from "../src/capabilities/game-session";
+import { isInside } from "../src/capabilities/world";
 import { defineCharacter, defineGame, defineScene } from "../src/index";
 
 const scene = defineScene({

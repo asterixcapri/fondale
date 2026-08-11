@@ -31,7 +31,7 @@ An **Object** exists in exactly one place: a Scene, the acquisition-ordered
 **Command Case** values resolve specific outcomes, then local and global
 fallbacks guarantee visible feedback. A **Sequence** is a finite, modal path
 of Character-bound Lines, explicit Narrations, Choices, branches, operation
-groups, and directed steps. One directed step may start concurrent
+groups, and Direction Steps. One Direction Step may start concurrent
 **Animation**, **Motion**, and Camera directions and waits for every finite
 boundary. An **Appearance** owns named Animations and semantic default,
 speaking, and walking **Animation Roles**; only the selected Appearance is

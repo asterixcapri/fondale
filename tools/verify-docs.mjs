@@ -15,11 +15,11 @@ if (undocumented.length > 0) {
 }
 
 const contractSources = [
-  "src/public/definitions.ts",
-  "src/public/commands.ts",
-  "src/public/hud-theme.ts",
-  "src/public/diagnostics.ts",
-  "src/public/save.ts",
+  "src/capabilities/game-project/index.ts",
+  "src/capabilities/interaction/index.ts",
+  "src/capabilities/hud/index.ts",
+  "src/capabilities/game-project/diagnostics.ts",
+  "src/capabilities/save/index.ts",
   "src/browser/start-game.ts",
 ];
 const contractNames = new Set();
@@ -60,7 +60,7 @@ for (const name of contractNames) {
 }
 
 const sourceText = contractSources
-  .concat(["src/browser/assets.ts", "src/internal/core.ts"])
+  .concat(["src/browser/assets.ts", "src/capabilities/game-session/index.ts"])
   .map((path) => readFileSync(join(repository, path), "utf8"))
   .join("\n");
 const diagnosticCodes = [...sourceText.matchAll(/(?:code:\s*|Diagnostic\()\s*["']([a-z][a-z0-9.-]+)["']/g)]

@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fondale 0.4 — Architettura dell’Engine</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --ink: #f4eedf;
+      --muted: #b8b2a6;
+      --paper: #111a1d;
+      --panel: #182428;
+      --panel-2: #203137;
+      --line: #527078;
+      --gold: #e6b85c;
+      --blue: #70bad0;
+      --green: #7fc6a4;
+      --rose: #d58a91;
+      --shadow: 0 18px 50px #05090b80;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at 80% 0%, #243b42 0, transparent 34rem),
+        linear-gradient(135deg, #0c1315, var(--paper) 48%, #0c1619);
+      color: var(--ink);
+      font: 16px/1.55 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    a { color: var(--blue); }
+    header, main, footer { width: min(1180px, calc(100% - 32px)); margin-inline: auto; }
+    header { padding: 64px 0 32px; }
+    .eyebrow { color: var(--gold); font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
+    h1 { margin: 8px 0 12px; max-width: 900px; font: 800 clamp(2.4rem, 7vw, 5.6rem)/.95 Georgia, serif; }
+    h2 { margin: 0 0 20px; font: 700 clamp(1.6rem, 3vw, 2.4rem)/1.1 Georgia, serif; }
+    h3 { margin: 0 0 8px; font-size: 1rem; }
+    p { margin: 0 0 12px; }
+    .lede { max-width: 820px; color: var(--muted); font-size: 1.16rem; }
+    nav { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 28px; }
+    nav a { padding: 7px 11px; border: 1px solid var(--line); border-radius: 999px; text-decoration: none; }
+    section { margin: 28px 0; padding: clamp(22px, 4vw, 40px); border: 1px solid #385057; border-radius: 24px; background: #142024e8; box-shadow: var(--shadow); }
+    .legend { display: flex; flex-wrap: wrap; gap: 12px 20px; color: var(--muted); font-size: .9rem; }
+    .key::before { content: ""; display: inline-block; width: 10px; height: 10px; margin-right: 7px; border-radius: 3px; background: var(--key); }
+    .flow { display: grid; gap: 10px; margin-top: 26px; }
+    .stage { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 14px; align-items: stretch; }
+    .number { display: grid; place-items: center; align-self: center; width: 38px; height: 38px; border-radius: 50%; color: #101618; background: var(--gold); font-weight: 900; }
+    .stage-body { padding: 18px; border-left: 4px solid var(--accent, var(--blue)); border-radius: 12px; background: var(--panel); }
+    .stage-body p { color: var(--muted); }
+    .exchange { display: inline-block; margin-top: 5px; padding: 3px 8px; border-radius: 6px; background: #0c1417; color: var(--green); font: .82rem/1.5 ui-monospace, monospace; }
+    .arrow { height: 18px; margin-left: 18px; border-left: 2px dashed var(--line); }
+    .session { border: 2px solid var(--gold); }
+    .session-grid, .cap-grid, .adapter-grid, .glossary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+    .card { min-width: 0; padding: 17px; border: 1px solid #405a62; border-radius: 14px; background: var(--panel); }
+    .card p { color: var(--muted); font-size: .92rem; }
+    .card code { color: var(--green); }
+    .session-grid .card { background: #261f19; border-color: #705b37; }
+    .cap-grid .card { border-top: 4px solid var(--blue); }
+    .adapter-grid .card { border-top: 4px solid var(--rose); }
+    .rules { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    .rule { padding: 18px; border-radius: 14px; background: var(--panel-2); }
+    .rule strong { color: var(--gold); }
+    .timeline { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; margin-top: 18px; border-radius: 12px; overflow: hidden; }
+    .tick { min-height: 105px; padding: 13px; background: #22343a; }
+    .tick b { display: block; color: var(--gold); }
+    .save-loop { display: grid; grid-template-columns: 1fr auto 1fr; gap: 16px; align-items: center; }
+    .save-loop .loop-arrow { color: var(--gold); font-size: 2rem; }
+    .glossary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .term { border-top: 1px solid var(--line); padding-top: 12px; }
+    .term dt { color: var(--gold); font-weight: 800; }
+    .term dd { margin: 4px 0 0; color: var(--muted); }
+    footer { padding: 24px 0 56px; color: var(--muted); text-align: center; }
+    @media (max-width: 780px) {
+      header { padding-top: 38px; }
+      .session-grid, .cap-grid, .adapter-grid, .rules, .glossary, .save-loop { grid-template-columns: 1fr; }
+      .save-loop .loop-arrow { transform: rotate(90deg); justify-self: center; }
+      .timeline { grid-template-columns: 1fr; }
+      .stage { grid-template-columns: 34px minmax(0, 1fr); }
+      .number { width: 30px; height: 30px; }
+    }
+    @media print {
+      :root { color-scheme: light; --ink: #142024; --muted: #44585e; --paper: #fff; --panel: #f4f7f6; --panel-2: #eef3f2; }
+      body { background: #fff; }
+      section { box-shadow: none; break-inside: avoid; }
+      nav { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="eyebrow">Fondale 0.4 · mappa offline</div>
+    <h1>Come una definizione diventa un’avventura giocabile</h1>
+    <p class="lede">L’Engine è organizzato per <strong>Engine Capability</strong>: ogni modulo possiede le regole del proprio dominio dall’authoring al runtime. <strong>CoreSession</strong> coordina tempo e stato; browser e storage restano adapter tecnici.</p>
+    <nav aria-label="Indice">
+      <a href="#flusso">Flusso completo</a><a href="#sessione">CoreSession</a><a href="#capability">Capability</a><a href="#direction">Direction Step</a><a href="#save">Save</a><a href="#regole">Dipendenze</a><a href="#glossario">Glossario</a>
+    </nav>
+  </header>
+
+  <main>
+    <section id="flusso">
+      <h2>Il flusso completo</h2>
+      <div class="legend">
+        <span class="key" style="--key:var(--green)">dati immutabili</span>
+        <span class="key" style="--key:var(--gold)">coordinamento</span>
+        <span class="key" style="--key:var(--blue)">policy di capability</span>
+        <span class="key" style="--key:var(--rose)">adapter tecnico</span>
+      </div>
+      <div class="flow">
+        <article class="stage"><div class="number">1</div><div class="stage-body" style="--accent:var(--green)"><h3>Authoring → Game Project</h3><p>L’Author usa builder focalizzati come <code>defineCharacter</code>, <code>defineScene</code> e <code>defineSequence</code>. <strong>Game Project</strong> compone Project Identity, Project Version e definizioni senza esporre la propria rappresentazione completa.</p><span class="exchange">Game Definition + Game Settings</span></div></article>
+        <div class="arrow"></div>
+        <article class="stage"><div class="number">2</div><div class="stage-body" style="--accent:var(--blue)"><h3>Validazione distribuita → Authoring Diagnostic</h3><p>Ogni capability verifica i propri invarianti. Game Project aggrega i risultati in ordine deterministico; ogni diagnostica dichiara <code>owner</code>, <code>code</code>, <code>path</code> e messaggio.</p><span class="exchange">narrow validation views → diagnostics[]</span></div></article>
+        <div class="arrow"></div>
+        <article class="stage"><div class="number">3</div><div class="stage-body session" style="--accent:var(--gold)"><h3>startGame → CoreSession</h3><p><code>startGame</code> carica asset e crea gli adapter browser. <strong>CoreSession</strong> crea o ripristina il Game State canonico e avvia il logical tick.</p><span class="exchange">validated project + optional ValidatedSaveSnapshot</span></div></article>
+        <div class="arrow"></div>
+        <article class="stage"><div class="number">4</div><div class="stage-body" style="--accent:var(--rose)"><h3>Input fisico → intenzione dichiarata</h3><p>Pointer e tastiera vengono tradotti in input di sessione o intenzioni HUD. L’adapter non sceglie Command Case, percorsi, conseguenze o avanzamento di Sequence.</p><span class="exchange">DOM / pointer / keyboard → CoreInput</span></div></article>
+        <div class="arrow"></div>
+        <article class="stage"><div class="number">5</div><div class="stage-body session" style="--accent:var(--gold)"><h3>Tick → decisione → commit atomico</h3><p>CoreSession consuma la coda in ordine, determina la Game Activity dominante, chiede decisioni alle capability e applica tutte le Game Operation insieme. Un fallimento conserva lo stato precedente.</p><span class="exchange">immutable state views → decisions → next Game State</span></div></article>
+        <div class="arrow"></div>
+        <article class="stage"><div class="number">6</div><div class="stage-body" style="--accent:var(--blue)"><h3>Fatti derivati → presentazione</h3><p>World, Animation, Camera e HUD producono fatti coerenti dallo stesso stato. PixiJS e DOM costruiscono sprite e controlli accessibili senza reinterpretare la Game Definition.</p><span class="exchange">snapshot + CoreEffect + presentation facts</span></div></article>
+      </div>
+    </section>
+
+    <section id="sessione">
+      <h2>CoreSession: coordinatore deterministico</h2>
+      <div class="session-grid">
+        <article class="card"><h3>Possiede</h3><p>Game State canonico, logical tick, coda input, ciclo di vita, Game Activity dominante e commit atomico.</p></article>
+        <article class="card"><h3>Delega</h3><p>Command resolution a Interaction, movimento a World, flusso temporale a Sequence, visual facts alle capability di presentazione.</p></article>
+        <article class="card"><h3>Garantisce</h3><p>Snapshot ed effetti difensivi, ordine riproducibile, restore esatto e nessun riferimento mutabile allo stato globale.</p></article>
+      </div>
+      <div class="timeline" aria-label="Un logical tick in quattro fasi">
+        <div class="tick"><b>1 · Queue</b>Input copiati e accodati.</div>
+        <div class="tick"><b>2 · Route</b>La Game Activity decide chi riceve l’input.</div>
+        <div class="tick"><b>3 · Decide</b>Le capability restituiscono risultati espliciti.</div>
+        <div class="tick"><b>4 · Commit</b>Il nuovo Game State sostituisce il precedente in modo atomico.</div>
+      </div>
+    </section>
+
+    <section id="capability">
+      <h2>Chi possiede che cosa</h2>
+      <div class="cap-grid">
+        <article class="card"><h3>Game Project</h3><p>Composizione, Project Identity/Version e aggregazione degli Authoring Diagnostic.</p></article>
+        <article class="card"><h3>World</h3><p>Scene Space, presenza, geometria, navigazione, Motion e Scene Passage.</p></article>
+        <article class="card"><h3>Interaction</h3><p>Noun, Command, condizioni, Player Intent, Inventory e conseguenze.</p></article>
+        <article class="card"><h3>Sequence</h3><p>Step, ordine, concorrenza, Cue, Line, Narration, Choice, branch e Skip Outcome.</p></article>
+        <article class="card"><h3>Animation</h3><p>Appearance, Animation Role, frame, durata, Cue visuali e Visual Anchor.</p></article>
+        <article class="card"><h3>Camera</h3><p>Follow del Player e regia cut/move/hold/follow indipendente da PixiJS.</p></article>
+        <article class="card"><h3>HUD</h3><p>Contextual Action, Command Preview, Inventory, Choice, narrative e overlay di sistema.</p></article>
+        <article class="card"><h3>Save</h3><p>Snapshot logico, compatibilità, validazione e restore; non possiede localStorage.</p></article>
+        <article class="card"><h3>Game Session</h3><p>CoreSession e il coordinamento deterministico, senza duplicare policy specialistiche.</p></article>
+      </div>
+    </section>
+
+    <section id="direction">
+      <h2>Direction Step: una regia, più proprietari</h2>
+      <p class="lede">Sequence calcola una sola timeline locale. Animation, World e Camera ricevono la stessa interpretazione e applicano il significato delle rispettive direzioni.</p>
+      <div class="rules">
+        <div class="rule"><strong>Sequence coordina “quando”.</strong><br>Cue, start tick, local tick e completamento sono indipendenti dal browser.</div>
+        <div class="rule"><strong>Le capability decidono “che cosa”.</strong><br>Animation seleziona frame e durata; World governa Motion; Camera produce il focus.</div>
+        <div class="rule"><strong>Concorrenza esplicita.</strong><br>Animation, Motion e Camera possono essere attive nello stesso step con lo stesso tempo locale.</div>
+        <div class="rule"><strong>Fine deterministica.</strong><br>Lo step termina quando finiscono tutte le direzioni finite oppure scade la durata authored, al primo dei due eventi.</div>
+      </div>
+    </section>
+
+    <section id="save">
+      <h2>Save e restore non controllano la sessione</h2>
+      <div class="save-loop">
+        <article class="card"><h3>Game State committed</h3><p>CoreSession espone una copia difensiva dei fatti canonici necessari.</p></article>
+        <div class="loop-arrow" aria-hidden="true">⇄</div>
+        <article class="card"><h3>Save Snapshot validato</h3><p>Save verifica formato, Project Identity, Project Version e attività in corso prima di creare una nuova sessione. localStorage resta nel browser.</p></article>
+      </div>
+      <p style="margin-top:16px;color:var(--muted)">Uno snapshot incompatibile viene rifiutato con diagnostica strutturata; non esiste restore parziale né migratore automatico dei salvataggi alpha 0.3.</p>
+    </section>
+
+    <section id="regole">
+      <h2>Dipendenze consentite</h2>
+      <div class="rules">
+        <div class="rule"><strong>Interfacce, non dettagli.</strong><br>Una capability importa un’altra capability soltanto dal suo <code>index.ts</code> dichiarato.</div>
+        <div class="rule"><strong>Viste strette e immutabili.</strong><br>Nessun modulo riceve la rappresentazione mutabile completa del Game Project o del Game State.</div>
+        <div class="rule"><strong>Niente contenitore shared.</strong><br>La policy resta presso il proprietario; il controllo strutturale impedisce scorciatoie orizzontali.</div>
+        <div class="rule"><strong>Un solo package root.</strong><br>L’Author importa da <code>@asterixcapri/fondale</code>; la struttura interna non diventa contratto pubblico.</div>
+      </div>
+      <h3 style="margin-top:28px">Adapter tecnici</h3>
+      <div class="adapter-grid">
+        <article class="card"><h3>PixiJS</h3><p>Texture, sprite, canvas e applicazione dei world/camera facts.</p></article>
+        <article class="card"><h3>DOM e input</h3><p>Controlli accessibili, focus, pointer, tastiera, timer e preferenze locali.</p></article>
+        <article class="card"><h3>Asset e storage</h3><p>Caricamento, audio e localStorage; errori tecnici diventano diagnostic, non regole di dominio.</p></article>
+      </div>
+    </section>
+
+    <section id="glossario">
+      <h2>Glossario visuale minimo</h2>
+      <dl class="glossary">
+        <div class="term"><dt>Game Project</dt><dd>Il contenuto e le impostazioni che definiscono una singola avventura.</dd></div>
+        <div class="term"><dt>Game Session</dt><dd>Una esecuzione isolata del progetto, coordinata da CoreSession.</dd></div>
+        <div class="term"><dt>Game State</dt><dd>I fatti canonici committed che determinano come il mondo può evolvere.</dd></div>
+        <div class="term"><dt>Game Activity</dt><dd>L’attività dominante: Player Intent, Sequence o risposta temporanea.</dd></div>
+        <div class="term"><dt>Game Operation</dt><dd>Una richiesta validata che cambia lo stato in modo atomico.</dd></div>
+        <div class="term"><dt>Player Intent</dt><dd>L’esecuzione di un Command, incluso l’eventuale avvicinamento.</dd></div>
+        <div class="term"><dt>Direction Step</dt><dd>Uno step sequenziale che dirige più Animation, Motion e Camera concorrenti.</dd></div>
+        <div class="term"><dt>Presentation fact</dt><dd>Un dato derivato e immutabile che un adapter può disegnare senza policy.</dd></div>
+        <div class="term"><dt>Authoring Diagnostic</dt><dd>Una spiegazione strutturata, attribuita al proprietario della regola.</dd></div>
+        <div class="term"><dt>Adapter</dt><dd>L’integrazione tecnica sostituibile posta a un seam dichiarato.</dd></div>
+      </dl>
+    </section>
+  </main>
+  <footer>Fondale 0.4 · Documento autonomo, senza font, script o risorse di rete.</footer>
+</body>
+</html>

@@ -1,5 +1,5 @@
-import type { GameState } from "./core";
-import type { HotspotDefinition, InteractionCondition } from "../public/definitions";
+import type { GameState } from "../game-session";
+import type { HotspotDefinition, InteractionCondition } from "../game-project";
 
 /** Pure availability rules shared by runtime decisions and save validation. */
 export function conditionMatchesState(
