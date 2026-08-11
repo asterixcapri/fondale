@@ -13,6 +13,7 @@ declare global {
       session: GameSession;
       target: HTMLElement;
       trySecondStart(): Promise<string>;
+      restart(): Promise<GameSession>;
     };
     __startError?: string;
   }
@@ -49,6 +50,7 @@ try {
         return error instanceof AuthoringError ? error.diagnostics[0]!.code : String(error);
       }
     },
+    restart: () => startGame(project, { target }),
   };
 } catch (error) {
   window.__startError = error instanceof AuthoringError ? error.diagnostics[0]!.code : String(error);

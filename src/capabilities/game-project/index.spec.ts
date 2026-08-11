@@ -59,7 +59,7 @@ test("Game Project supplies immutable consumer-specific composition views", () =
   expect(session.world.scenes.opening).toBeDefined();
   expect(session.animation.playerCharacter).toBe("player");
   expect(browser.startup.identity).toBe("example.composed-project");
-  expect(browser.presentation.playerCharacter).toBe("player");
+  expect(Object.keys(browser.presentation).sort()).toEqual(["identity", "logicalResolution"]);
   expect(browser.assets.scenes.opening).toBeDefined();
   expect(save.gameProject.version).toBe("2");
   expect([

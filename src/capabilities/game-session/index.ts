@@ -60,10 +60,12 @@ import {
 export type { SequenceActiveState, SequenceActivityState } from "../sequence";
 import type { Line } from "../sequence";
 import {
+  animationPresentationForSubject,
   appearanceForSubject,
   objectHasAppearance,
   validateAppearanceOperationReference,
   type AnimationDefinition,
+  type AnimationPresentation,
 } from "../animation";
 import { Camera, type CameraPresentation } from "../camera";
 
@@ -115,6 +117,7 @@ export interface CoreSession {
   hud(facts?: HUDAdapterFacts): HUDPresentation;
   hudInput(input: HUDInput, facts?: HUDAdapterFacts): HUDInputResult;
   world(): WorldPresentation;
+  animation(subject: DirectedSubject): AnimationPresentation | undefined;
   camera(): CameraPresentation;
   sequence(): SequencePresentation | null;
   stop(): void;
@@ -193,6 +196,14 @@ export function createCoreSession(
         { kind: "scenery", scenery },
         activeDirectionPresentation(),
       ));
+    },
+    animation(subject) {
+      const direction = activeDirectionPresentation();
+      const line = activeLineAnimation();
+      return animationPresentationForSubject(projectViews.animation, state, subject, {
+        ...(direction ? { direction } : {}),
+        ...(line ? { line } : {}),
+      });
     },
     camera() {
       return cameraPresentation;
@@ -661,6 +672,17 @@ export function createCoreSession(
   function activeSequencePresentation(): SequencePresentation | undefined {
     if (state.activity?.type !== "sequence") return undefined;
     return sequenceCapability.presentation(state.activity, sequenceDirectionContext());
+  }
+
+  function activeLineAnimation(): { readonly character: string; readonly animation?: string } | undefined {
+    if (state.activity?.type === "line") return state.activity.line;
+    const presentation = activeSequencePresentation();
+    return presentation?.kind === "line"
+      ? {
+          character: presentation.character,
+          ...(presentation.animation ? { animation: presentation.animation } : {}),
+        }
+      : undefined;
   }
 
   function activeDirectionPresentation(): Extract<SequencePresentation, { kind: "direction" }> | undefined {

@@ -148,6 +148,50 @@ test("CoreSession exposes defensive Camera presentation facts", () => {
   expect(session.snapshot().characters.player!.groundPoint).toEqual({ x: 10, y: 10 });
 });
 
+test("CoreSession exposes Animation presentation facts without browser interpretation", () => {
+  const animatedPlayer = defineCharacter({
+    ...player,
+    appearances: {
+      idle: {
+        animations: {
+          idle: { frames: ["idle.png"], framesPerSecond: 1, loop: true },
+          walking: { frames: ["walk-1.png", "walk-2.png"], framesPerSecond: 2, loop: true },
+        },
+        roles: { default: "idle", walking: "walking" },
+      },
+    },
+  });
+  const animatedProject = defineGame({
+    identity: "test.core-animation-presentation",
+    version: "1",
+    logicalResolution: { width: 100, height: 100 },
+    scenes: { opening: scene },
+    characters: { player: animatedPlayer },
+    playerCharacter: "player",
+    initialScene: "opening",
+  });
+  const session = createTestSession(animatedProject);
+  const subject = { kind: "character", character: "player" } as const;
+
+  expect(session.animation(subject)).toMatchObject({
+    appearanceName: "idle",
+    animationName: "idle",
+    elapsedTicks: 0,
+    frameIndex: 0,
+  });
+
+  session.input({ type: "move", point: { x: 80, y: 10 } });
+  session.steps();
+
+  expect(session.animation(subject)).toMatchObject({
+    appearanceName: "idle",
+    animationName: "walking",
+    elapsedTicks: 0,
+    frameIndex: 0,
+    loop: true,
+  });
+});
+
 test("Camera facts do not depend on how often a consumer reads them", () => {
   const panoramicScene = defineScene({
     background: "panorama.png",

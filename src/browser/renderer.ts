@@ -10,18 +10,14 @@ import {
 import type {
   CoreEffect,
   CoreSession,
-  GameState,
 } from "../capabilities/game-session";
 import {
-  animationPresentationForSubject,
   isImageAnimationFrames,
   type AnimationDefinition,
   type AnimationPresentation,
 } from "../capabilities/animation";
 import type {
   DirectedSubject,
-  SequenceDirectionPresentation,
-  SequencePresentation,
 } from "../capabilities/sequence";
 import {
   sameWorldTarget,
@@ -41,11 +37,9 @@ import type {
   PlayerPreferences,
   HUDPresentation,
   HUDCommandResponsePresentation,
-  HUDSaveSlotFacts,
 } from "../capabilities/hud";
-import type { AuthoringDiagnostic } from "../capabilities/game-project";
-import type { SaveSnapshot } from "../capabilities/save";
 import { assetUrl, type LoadedAssets } from "./assets";
+import type { BrowserSessionControls } from "./save-slots";
 
 interface AnimationView {
   readonly sprite: Sprite;
@@ -64,29 +58,13 @@ const commandResponseFontSize = "8px";
 const speechFontSize = "9px";
 const speechTextShadow = "-2px -2px #000,0 -2px #000,2px -2px #000,-2px 0 #000,2px 0 #000,-2px 2px #000,0 2px #000,2px 2px #000,-1px -1px #000,1px -1px #000,-1px 1px #000,1px 1px #000,3px 3px #000";
 
-export interface BrowserSaveSlot extends HUDSaveSlotFacts {
-  readonly name: string;
-  readonly savedAt: string;
-  readonly snapshot: SaveSnapshot | unknown;
-}
-
-export interface BrowserSessionControls {
-  slots(): readonly BrowserSaveSlot[];
-  save(name: string): void;
-  load(index: number): { readonly ok: true } | {
-    readonly ok: false;
-    readonly diagnostics: readonly AuthoringDiagnostic[];
-  };
-}
-
-/** Realizes committed snapshots without becoming an owner of Game State. */
+/** Applies capability presentation facts to PixiJS, DOM, audio, and physical input. */
 export class BrowserRenderer {
   private readonly world = new Container();
   private readonly overlay: EngineOverlay;
   private readonly characterViews = new Map<string, CharacterView>();
   private readonly animationViews: AnimationView[] = [];
   private cameraOrigin: Point = { x: 0, y: 0 };
-  private sequencePresentation: SequencePresentation | null = null;
   private sceneSignature = "";
 
   constructor(
@@ -104,6 +82,7 @@ export class BrowserRenderer {
       assets,
       core,
       controls,
+      () => [...this.characterViews.keys()],
       (character) => this.characterViews.get(character)?.container.getBounds().minY,
       (point) => this.sceneToViewport(point),
     );
@@ -116,25 +95,24 @@ export class BrowserRenderer {
     application.canvas.addEventListener("pointerleave", this.onPointerLeave);
   }
 
-  render(state: GameState, effects: readonly CoreEffect[]): void {
-    this.frame.dataset.fondaleScene = state.currentScene;
+  render(effects: readonly CoreEffect[]): void {
     const movement = [...effects].reverse().find(({ type }) => type === "movement-started");
     if (movement?.type === "movement-started") {
       this.frame.dataset.fondaleMovement = movement.fast ? "fast" : "normal";
     }
     const world = this.core.world();
-    this.sequencePresentation = this.core.sequence();
+    this.frame.dataset.fondaleScene = world.scene;
     const signature = worldPresentationSignature(world);
     if (signature !== this.sceneSignature) {
       this.sceneSignature = signature;
-      this.rebuildWorld(state, world);
+      this.rebuildWorld(world);
     }
     this.updateCharacters(world);
-    this.updateAnimations(state);
+    this.updateAnimations();
     this.world.sortChildren();
     this.cameraOrigin = this.core.camera().origin;
     this.world.position.set(-this.cameraOrigin.x, -this.cameraOrigin.y);
-    this.overlay.render(state, effects);
+    this.overlay.render();
     this.application.renderer.render(this.application.stage);
   }
 
@@ -151,7 +129,7 @@ export class BrowserRenderer {
     this.animationViews.length = 0;
   }
 
-  private rebuildWorld(state: GameState, world: WorldPresentation): void {
+  private rebuildWorld(world: WorldPresentation): void {
     this.world.removeChildren();
     this.characterViews.clear();
     this.animationViews.length = 0;
@@ -166,7 +144,7 @@ export class BrowserRenderer {
         backgroundTexture,
         `scenes.${world.scene}.scenery.${scenery.id}.appearances.${scenery.appearanceName}`,
         { kind: "scenery", scenery: scenery.id },
-        this.animationPresentation(state, { kind: "scenery", scenery: scenery.id }),
+        this.animationPresentation({ kind: "scenery", scenery: scenery.id }),
       );
       view.label = `scenery:${scenery.id}`;
       view.zIndex = scenery.baseline;
@@ -178,7 +156,7 @@ export class BrowserRenderer {
 
     for (const object of world.objects) {
       const view = this.createCharacter(
-        this.animationPresentation(state, { kind: "object", object: object.id })!,
+        this.animationPresentation({ kind: "object", object: object.id })!,
         `objects.${object.id}.appearances.${object.appearanceName}`,
         { kind: "object", object: object.id },
         "front",
@@ -193,7 +171,7 @@ export class BrowserRenderer {
     for (const character of world.characters) {
       const direction = character.facing === "left" || character.facing === "right" ? "side" : character.facing;
       const view = this.createCharacter(
-        this.animationPresentation(state, { kind: "character", character: character.id })!,
+        this.animationPresentation({ kind: "character", character: character.id })!,
         `characters.${character.id}.appearances.${character.appearanceName}`,
         { kind: "character", character: character.id },
         direction,
@@ -258,9 +236,9 @@ export class BrowserRenderer {
     }
   }
 
-  private updateAnimations(state: GameState): void {
+  private updateAnimations(): void {
     for (const view of this.animationViews) {
-      const presentation = this.animationPresentation(state, view.subject);
+      const presentation = this.animationPresentation(view.subject);
       if (!presentation) continue;
       const frames = this.animationFrames(
         view.path,
@@ -295,32 +273,9 @@ export class BrowserRenderer {
   }
 
   private animationPresentation(
-    state: GameState,
     subject: DirectedSubject,
   ): AnimationPresentation | undefined {
-    const direction = this.activeDirection(state);
-    const line = this.activeLine(state);
-    return animationPresentationForSubject(this.data, state, subject, {
-      ...(direction ? { direction } : {}),
-      ...(line ? { line } : {}),
-    });
-  }
-
-  private activeLine(state: GameState): { character: string; animation?: string } | undefined {
-    if (state.activity?.type === "line") return state.activity.line;
-    const presentation = this.sequencePresentation;
-    return presentation?.kind === "line"
-      ? {
-          character: presentation.character,
-          ...(presentation.animation ? { animation: presentation.animation } : {}),
-        }
-      : undefined;
-  }
-
-  private activeDirection(_state: GameState): SequenceDirectionPresentation | undefined {
-    return this.sequencePresentation?.kind === "direction"
-      ? this.sequencePresentation
-      : undefined;
+    return this.core.animation(subject);
   }
 
   private animationFrames(
@@ -487,6 +442,7 @@ class EngineOverlay {
     private readonly assets: LoadedAssets,
     private readonly core: CoreSession,
     private readonly controls: BrowserSessionControls,
+    private readonly characterIds: () => readonly string[],
     private readonly characterSilhouetteTop: (character: string) => number | undefined,
     private readonly sceneToViewport: (point: Point) => Point,
   ) {
@@ -734,7 +690,7 @@ class EngineOverlay {
     return this.currentHUD.system.blocksWorldInput;
   }
 
-  render(_state: GameState, _effects: readonly CoreEffect[]): void {
+  render(): void {
     const inventoryWasOpen = this.currentHUD.inventory.open;
     const previousResponseId = this.currentHUD.commandResponse?.id ?? null;
     this.currentHUD = this.core.hud(this.adapterFacts());
@@ -1401,7 +1357,7 @@ class EngineOverlay {
       audioAvailable: this.assets.audio.size > 0,
       saveSlots: this.controls.slots(),
       speakerSilhouetteTops: Object.fromEntries(
-        Object.keys(this.data.characters).flatMap((character) => {
+        this.characterIds().flatMap((character) => {
           const top = this.characterSilhouetteTop(character);
           return top === undefined ? [] : [[character, top]];
         }),

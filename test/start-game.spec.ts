@@ -12,6 +12,19 @@ test("startGame resolves after drawing a pixel-scaled Scene with letterbox", asy
   await expect(frame.locator("canvas")).toHaveCount(1);
 });
 
+test("the browser frame refits when its display target is resized", async ({ page }) => {
+  await page.setViewportSize({ width: 1000, height: 700 });
+  await page.goto("/test/fixtures/start-game.html");
+  await page.waitForFunction(() => window.__startTest !== undefined);
+  const frame = page.locator("[data-fondale-frame]");
+
+  await expect(frame).toHaveCSS("width", "852px");
+  await page.setViewportSize({ width: 700, height: 700 });
+
+  await expect(frame).toHaveCSS("width", "426px");
+  await expect(frame).toHaveCSS("height", "240px");
+});
+
 test("a Game Session owns its target and stop is idempotent and terminal", async ({ page }) => {
   await page.goto("/test/fixtures/start-game.html");
   await page.waitForFunction(() => window.__startTest !== undefined);
@@ -27,6 +40,30 @@ test("a Game Session owns its target and stop is idempotent and terminal", async
   expect(message.children).toBe(0);
   expect(message.status).toBe("stopped");
   expect(message.occupied).toContain("environment.target.occupied");
+});
+
+test("stop releases the target for a new independent Game Session", async ({ page }) => {
+  await page.goto("/test/fixtures/start-game.html");
+  await page.waitForFunction(() => window.__startTest !== undefined);
+
+  const result = await page.evaluate(async () => {
+    const fixture = window.__startTest!;
+    fixture.session.stop();
+    const replacement = await fixture.restart();
+    const mountedChildren = fixture.target.childElementCount;
+    replacement.stop();
+    return {
+      mountedChildren,
+      replacementStatus: replacement.getStatus(),
+      finalChildren: fixture.target.childElementCount,
+    };
+  });
+
+  expect(result).toEqual({
+    mountedChildren: 1,
+    replacementStatus: "stopped",
+    finalChildren: 0,
+  });
 });
 
 test("asset dimension failure is diagnostic and leaves no partial mount", async ({ page }) => {

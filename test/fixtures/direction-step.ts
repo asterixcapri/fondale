@@ -17,7 +17,7 @@ import {
   startGame,
   type GameSession,
 } from "../../src/index";
-import { BrowserRenderer, type BrowserSessionControls } from "../../src/browser/renderer";
+import { BrowserRenderer } from "../../src/browser/renderer";
 import { loadProjectAssets } from "../../src/browser/assets";
 import { createCoreSession } from "../../src/capabilities/game-session";
 import { getBrowserProjectView } from "../../src/capabilities/game-project";
@@ -198,10 +198,10 @@ try {
     document.body.append(frame);
 
     const core = createCoreSession(project);
-    const controls: BrowserSessionControls = {
+    const controls = {
       slots: () => [],
       save: () => undefined,
-      load: () => ({ ok: false, diagnostics: [] }),
+      load: () => ({ ok: false as const, diagnostics: [] }),
     };
     const renderer = new BrowserRenderer(
       application,
@@ -211,15 +211,15 @@ try {
       core,
       controls,
     );
-    renderer.render(core.snapshot(), []);
+    renderer.render([]);
     core.input({ type: "quick-hotspot", hotspot: 0, verb: "use" });
     core.steps();
-    renderer.render(core.snapshot(), core.takeEffects());
+    renderer.render(core.takeEffects());
 
     window.__directionStepTest = {
       advance(ticks) {
         core.steps(ticks);
-        renderer.render(core.snapshot(), core.takeEffects());
+        renderer.render(core.takeEffects());
       },
       elapsedTicks() {
         const activity = core.snapshot().activity;

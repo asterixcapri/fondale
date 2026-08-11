@@ -202,10 +202,6 @@ export interface BrowserStartProjectView {
 export interface BrowserPresentationProjectView {
   readonly identity: string;
   readonly logicalResolution: LogicalResolution;
-  readonly playerCharacter?: string;
-  readonly characters: Readonly<Record<string, CharacterDefinition>>;
-  readonly objects: Readonly<Record<string, ObjectDefinition>>;
-  readonly scenes: Readonly<Record<string, ResolvedSceneDefinition>>;
   readonly hudTheme?: HUDTheme;
   readonly inventoryAppearanceSize?: number;
 }
@@ -342,10 +338,6 @@ export function getBrowserProjectView(project: GameProject): BrowserProjectView 
     presentation: Object.freeze({
       identity: data.identity,
       logicalResolution: data.logicalResolution,
-      ...(data.playerCharacter === undefined ? {} : { playerCharacter: data.playerCharacter }),
-      characters: data.characters,
-      objects: data.objects,
-      scenes: data.scenes,
       ...(data.hudTheme === undefined ? {} : { hudTheme: data.hudTheme }),
       ...(data.inventoryAppearanceSize === undefined
         ? {}
