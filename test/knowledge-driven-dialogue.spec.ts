@@ -806,6 +806,33 @@ test("Save restores an authored Conversation continuation without provider memor
   expect(restored.conversation()).toMatchObject({ character: "antonio", status: "ready" });
 });
 
+test("Save rejects a forged Conversation continuation without an authored resume handoff", async () => {
+  const project = conversationHandoffProject("resume");
+  const provider = new FakeDialogueProvider({
+    interpretations: { "Were you aboard?": "santa-lucia" },
+    verbalizations: { denial: "I was never aboard that ship." },
+  });
+  const session = createTestSession(project, undefined, provider);
+  openAntonioConversation(session);
+  await session.submitDialogue("Were you aboard?");
+  session.steps();
+  session.input({ type: "advance-conversation-line" });
+  session.steps();
+  session.input({ type: "advance-conversation-line" });
+  session.steps();
+  const snapshot = session.createSaveSnapshot();
+
+  const validation = validateTestSaveSnapshot(project, {
+    ...snapshot,
+    state: {
+      ...snapshot.state,
+      conversationContinuation: { type: "conversation", character: "player" },
+    },
+  });
+
+  expect(validation.ok).toBe(false);
+});
+
 test("skipping an authored handoff Sequence applies its outcome before resuming", async () => {
   const base = conversationHandoffProject("resume");
   const project = {

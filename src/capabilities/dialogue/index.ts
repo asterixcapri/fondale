@@ -385,6 +385,7 @@ export interface KnowledgeDrivenDialogue {
     character: string,
     conditionMatches: (condition: InteractionCondition) => boolean,
   ): ConversationHandoffDefinition | undefined;
+  hasResumableHandoff(character: string, sequence: string): boolean;
   respond(
     state: KnowledgeDrivenDialogueState & { readonly variables: Record<string, boolean> },
     input: {
@@ -457,6 +458,11 @@ export function createKnowledgeDrivenDialogue(
         conditionMatches(when)
       );
       return handoff ? structuredClone(handoff) : undefined;
+    },
+    hasResumableHandoff(character: string, sequence: string) {
+      return project.characters[character]?.dialogue?.handoffs?.some((handoff) =>
+        handoff.sequence === sequence && handoff.after === "resume"
+      ) ?? false;
     },
     async respond(
       state: KnowledgeDrivenDialogueState & { readonly variables: Record<string, boolean> },

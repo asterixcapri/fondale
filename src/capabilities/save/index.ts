@@ -1,4 +1,4 @@
-import type { GameState } from "../game-session";
+import type { ConversationActivityState, GameState } from "../game-session";
 import { createSequence, type Sequence } from "../sequence";
 import {
   interactionSaveValidation,
@@ -177,8 +177,14 @@ function validStateShape(
     testimonies: value.testimonies,
   })) return false;
   if (value.conversationContinuation !== undefined) {
-    if (!validConversationActivity(value.conversationContinuation, context) ||
-        !isRecord(value.activity) || value.activity.type !== "sequence") return false;
+    const continuation = value.conversationContinuation;
+    if (!validConversationActivity(continuation, context) ||
+        !isRecord(value.activity) || value.activity.type !== "sequence" ||
+        typeof value.activity.sequence !== "string" ||
+        !context.dialogue.hasResumableHandoff(
+          continuation.character,
+          value.activity.sequence,
+        )) return false;
   }
   if (!validActivity(value.activity, value as unknown as GameState, context)) return false;
   return isJsonSafe(value);
@@ -286,7 +292,7 @@ function validActivity(
 function validConversationActivity(
   value: unknown,
   context: Pick<SaveValidationContext, "world" | "dialogue">,
-): boolean {
+): value is ConversationActivityState {
   return isRecord(value) && hasExactKeys(value, ["type", "character"]) &&
     value.type === "conversation" && typeof value.character === "string" &&
     context.world.hasCharacter(value.character) && context.dialogue.hasProfile(value.character);
