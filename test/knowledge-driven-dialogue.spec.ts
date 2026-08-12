@@ -684,16 +684,16 @@ test("leaving a pending Conversation cancels its unique turn and ignores a late 
   expect(context?.turnId).toMatch(/^dialogue-turn-/);
 
   session.input({ type: "escape" });
-  session.steps();
+  expect(context?.signal.aborted).toBe(true);
+  finishInterpretation({ factId: "santa-lucia" });
 
   await expect(pending).resolves.toEqual({
     ok: false,
     message: "Dialogue Turn was cancelled.",
   });
-  expect(context?.signal.aborted).toBe(true);
+  session.steps();
   expect(session.conversation()).toBeNull();
 
-  finishInterpretation({ factId: "santa-lucia" });
   await Promise.resolve();
   session.steps();
   expect(session.snapshot()).toEqual({ ...before, activity: null, tick: before.tick + 2 });
@@ -733,6 +733,25 @@ test("Save cancels a pending Dialogue Turn without persisting provider-owned dat
   await Promise.resolve();
   session.steps();
   expect(session.snapshot().testimonies).toEqual([]);
+});
+
+test("Save discards a completed Dialogue Turn before its logical commit", async () => {
+  const project = coverStoryProject();
+  const provider = new FakeDialogueProvider({
+    interpretations: { "Were you aboard?": "santa-lucia" },
+    verbalizations: { denial: "I was never aboard that ship." },
+  });
+  const session = createTestSession(project, undefined, provider);
+  openAntonioConversation(session);
+
+  await expect(session.submitDialogue("Were you aboard?")).resolves.toEqual({ ok: true });
+  const snapshot = session.createSaveSnapshot();
+  session.steps();
+
+  expect(snapshot.state.testimonies).toEqual([]);
+  expect(session.snapshot().testimonies).toEqual([]);
+  expect(session.hud().narrative).toBeNull();
+  expect(session.conversation()).toMatchObject({ status: "ready" });
 });
 
 test("failed Dialogue Turn phases leave Game State unchanged and allow a retry", async () => {

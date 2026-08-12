@@ -213,10 +213,15 @@ export function createCoreSession(
     readonly turnId: string;
     readonly controller: AbortController;
   } | null = null;
+  let dialogueTurnSequence = 0;
 
   const session: CoreSession = {
     input(input) {
-      if (status === "running") inputs.push(structuredClone(input));
+      if (status !== "running") return;
+      if (input.type === "escape" && state.activity?.type === "conversation") {
+        invalidateDialogueTurn();
+      }
+      inputs.push(structuredClone(input));
     },
     steps(count = 1) {
       assertRunning();
@@ -234,7 +239,7 @@ export function createCoreSession(
     },
     createSaveSnapshot() {
       assertRunning();
-      cancelPendingDialogueTurn();
+      invalidateDialogueTurn();
       return save.createSnapshot(state);
     },
     lifecycle: () => status,
@@ -293,9 +298,10 @@ export function createCoreSession(
       conversationStatus = "pending";
       conversationError = undefined;
       const currentTurn = {
-        turnId: `dialogue-turn-${crypto.randomUUID()}`,
+        turnId: `dialogue-turn-${dialogueTurnSequence += 1}`,
         controller: new AbortController(),
       };
+      const cancelled = { ok: false as const, message: "Dialogue Turn was cancelled." };
       pendingDialogueTurn = currentTurn;
       try {
         const turn = await dialogue.respond(state, {
@@ -306,10 +312,7 @@ export function createCoreSession(
           turnId: currentTurn.turnId,
           signal: currentTurn.controller.signal,
         });
-        if (pendingDialogueTurn !== currentTurn || currentTurn.controller.signal.aborted) {
-          return { ok: false, message: "Dialogue Turn was cancelled." };
-        }
-        pendingDialogueTurn = null;
+        if (dialogueTurnWasCancelled(currentTurn)) return cancelled;
         dialogueCompletion = {
           character: activity.character,
           playerInput: turn.playerInput,
@@ -319,9 +322,7 @@ export function createCoreSession(
         };
         return { ok: true };
       } catch (cause) {
-        if (pendingDialogueTurn !== currentTurn || currentTurn.controller.signal.aborted) {
-          return { ok: false, message: "Dialogue Turn was cancelled." };
-        }
+        if (dialogueTurnWasCancelled(currentTurn)) return cancelled;
         pendingDialogueTurn = null;
         const message = cause instanceof Error ? cause.message : String(cause);
         conversationStatus = "error";
@@ -331,8 +332,7 @@ export function createCoreSession(
     },
     stop() {
       if (status === "stopped") return;
-      cancelPendingDialogueTurn();
-      dialogueCompletion = null;
+      invalidateDialogueTurn();
       status = "stopped";
       inputs.length = 0;
     },
@@ -342,15 +342,20 @@ export function createCoreSession(
     if (status !== "running") throw new Error(`Game Session is ${status}.`);
   }
 
-  function cancelPendingDialogueTurn(): void {
+  function invalidateDialogueTurn(): void {
     const pending = pendingDialogueTurn;
-    if (!pending) return;
     pendingDialogueTurn = null;
-    pending.controller.abort();
-    if (state.activity?.type === "conversation") {
+    pending?.controller.abort();
+    const completion = dialogueCompletion;
+    dialogueCompletion = null;
+    if ((pending || completion) && state.activity?.type === "conversation") {
       conversationStatus = "ready";
       conversationError = undefined;
     }
+  }
+
+  function dialogueTurnWasCancelled(turn: NonNullable<typeof pendingDialogueTurn>): boolean {
+    return pendingDialogueTurn !== turn || turn.controller.signal.aborted;
   }
 
   function hudContext(facts: HUDAdapterFacts = {}): HUDPresentationContext {
@@ -459,6 +464,7 @@ export function createCoreSession(
     const completion = dialogueCompletion;
     if (!completion) return;
     dialogueCompletion = null;
+    pendingDialogueTurn = null;
     if (state.activity?.type !== "conversation" ||
         state.activity.character !== completion.character) return;
     const draft = structuredClone(state);
@@ -478,9 +484,8 @@ export function createCoreSession(
   function handleInput(input: CoreInput): void {
     if (state.activity?.type === "conversation") {
       if (input.type === "escape") {
-        cancelPendingDialogueTurn();
+        invalidateDialogueTurn();
         dialogueTurn = null;
-        dialogueCompletion = null;
         state.activity = null;
         emitted.push({ type: "conversation-changed" });
       } else if (input.type === "advance-conversation-line" && dialogueTurn) {

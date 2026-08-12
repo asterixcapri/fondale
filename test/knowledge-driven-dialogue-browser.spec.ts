@@ -1,11 +1,7 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
-test("the browser fixture completes an open-fact Conversation without external dependencies", async ({
-  page,
-}) => {
+async function openAntonioConversation(page: Page): Promise<void> {
   await page.goto("/test/fixtures/knowledge-driven-dialogue.html");
-  await page.locator("[data-fondale-frame]").waitFor();
-
   const canvas = page.locator("[data-fondale-frame] canvas");
   const bounds = await canvas.boundingBox();
   if (!bounds) throw new Error("Fondale canvas is not visible.");
@@ -13,6 +9,12 @@ test("the browser fixture completes an open-fact Conversation without external d
     bounds.x + (315 / 426) * bounds.width,
     bounds.y + (150 / 240) * bounds.height,
   );
+}
+
+test("the browser fixture completes an open-fact Conversation without external dependencies", async ({
+  page,
+}) => {
+  await openAntonioConversation(page);
 
   const input = page.locator("[data-fondale-dialogue-input]");
   await expect(input).toBeVisible();
@@ -54,14 +56,7 @@ test("the browser fixture completes an open-fact Conversation without external d
 test("the Player can leave a pending Conversation and its late response stays invisible", async ({
   page,
 }) => {
-  await page.goto("/test/fixtures/knowledge-driven-dialogue.html");
-  const canvas = page.locator("[data-fondale-frame] canvas");
-  const bounds = await canvas.boundingBox();
-  if (!bounds) throw new Error("Fondale canvas is not visible.");
-  await page.mouse.click(
-    bounds.x + (315 / 426) * bounds.width,
-    bounds.y + (150 / 240) * bounds.height,
-  );
+  await openAntonioConversation(page);
 
   const conversation = page.locator("[data-fondale-conversation]");
   const input = conversation.locator("[data-fondale-dialogue-input]");
@@ -87,14 +82,7 @@ test("the Player can leave a pending Conversation and its late response stays in
 });
 
 test("Load resets provider memory before restoring an active Conversation", async ({ page }) => {
-  await page.goto("/test/fixtures/knowledge-driven-dialogue.html");
-  const canvas = page.locator("[data-fondale-frame] canvas");
-  const bounds = await canvas.boundingBox();
-  if (!bounds) throw new Error("Fondale canvas is not visible.");
-  await page.mouse.click(
-    bounds.x + (315 / 426) * bounds.width,
-    bounds.y + (150 / 240) * bounds.height,
-  );
+  await openAntonioConversation(page);
   const conversation = page.locator("[data-fondale-conversation]");
   const input = conversation.locator("[data-fondale-dialogue-input]");
   await expect(input).toBeVisible();
