@@ -1,4 +1,4 @@
-import { defineGame } from "@asterixcapri/fondale";
+import { type GameProject } from "@asterixcapri/fondale";
 
 import { michele } from "./characters/michele";
 import { raffaele } from "./characters/raffaele";
@@ -16,7 +16,7 @@ import { raffaeleConversation } from "./sequences/raffaele-conversation";
 import { boatArrival } from "./sequences/boat-arrival";
 import { winchInstallation } from "./sequences/winch-installation";
 
-export const project = defineGame({
+export const project = ({
   identity: "org.asterixcapri.capri-1535-example",
   version: "5",
   logicalResolution: { width: 426, height: 240 },
@@ -44,4 +44,4 @@ export const project = defineGame({
     boatLanded: false,
   },
   initialScene: "townSquare",
-});
+} satisfies GameProject);

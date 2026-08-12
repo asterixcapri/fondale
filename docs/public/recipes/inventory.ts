@@ -1,6 +1,6 @@
-import { defineNoun, defineObject, type CommandCase } from "@asterixcapri/fondale";
+import { type NounDefinition, type ObjectDefinition, type CommandCase } from "@asterixcapri/fondale";
 
-export const key = defineObject({
+export const key = ({
   initialScene: "opening",
   initialGroundPoint: { x: 40, y: 30 },
   initialAppearance: "unused",
@@ -9,7 +9,7 @@ export const key = defineObject({
     used: { animations: { idle: { frames: [new URL("./used-key.png", import.meta.url)], framesPerSecond: 1, loop: true } }, roles: { default: "idle" } },
   },
   inventoryAppearance: new URL("./key-inventory-32.png", import.meta.url),
-  noun: defineNoun({
+  noun: ({
     labels: [{ text: "Key" }],
     preferredVerbs: [{ verb: "pick-up" }],
     cases: [{
@@ -17,8 +17,8 @@ export const key = defineObject({
       response: { text: "The key enters the Inventory." },
       operations: [{ type: "collect-target-object" }],
     }],
-  }),
-});
+  } satisfies NounDefinition),
+} satisfies ObjectDefinition);
 
 export const successfulUse: CommandCase = {
   verb: "use",

@@ -50,12 +50,15 @@ export class BrowserFrame {
     return this.frameElement;
   }
 
-  async mount(): Promise<void> {
+  /** Verifies browser requirements before any Runtime Asset work begins. */
+  checkEnvironment(): void {
     const capabilityCanvas = document.createElement("canvas");
     if (!capabilityCanvas.getContext("webgl2") && !capabilityCanvas.getContext("webgl")) {
       throw webGLUnavailable();
     }
+  }
 
+  async mount(): Promise<void> {
     const application = new Application();
     try {
       await application.init({

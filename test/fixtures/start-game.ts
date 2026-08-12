@@ -1,8 +1,8 @@
 import backgroundUrl from "./background.png";
 import {
   AuthoringError,
-  defineGame,
-  defineScene,
+  type GameProject,
+  type SceneDefinition,
   startGame,
   type GameSession,
 } from "../../src/index";
@@ -14,12 +14,13 @@ declare global {
       target: HTMLElement;
       trySecondStart(): Promise<string>;
       restart(): Promise<GameSession>;
+      mutateProject(): void;
     };
     __startError?: string;
   }
 }
 
-const scene = defineScene({
+const scene = ({
   background: backgroundUrl,
   walkableRegion: [
     { x: 55, y: 239 },
@@ -27,15 +28,17 @@ const scene = defineScene({
     { x: 228, y: 146 },
     { x: 352, y: 239 },
   ],
-});
-const project = defineGame({
+} satisfies SceneDefinition);
+const variables = { changedAfterStart: false };
+const project = ({
   identity: "test.start-game",
   version: "1",
   logicalResolution: { width: 426, height: 240 },
   scenes: { opening: scene },
+  variables,
   initialScene: "opening",
   letterboxColor: "#241b2f",
-});
+} satisfies GameProject);
 const target = document.querySelector<HTMLElement>("#game")!;
 try {
   const session = await startGame(project, { target });
@@ -51,6 +54,9 @@ try {
       }
     },
     restart: () => startGame(project, { target }),
+    mutateProject: () => {
+      variables.changedAfterStart = true;
+    },
   };
 } catch (error) {
   window.__startError = error instanceof AuthoringError ? error.diagnostics[0]!.code : String(error);

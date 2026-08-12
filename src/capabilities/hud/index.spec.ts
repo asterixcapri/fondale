@@ -1,9 +1,10 @@
 import { expect, test } from "@playwright/test";
 
 import {
-  defineNoun,
+  type NounDefinition,
   type CommandLexicon,
   type InventoryPresentation,
+  validateNounDefinition,
 } from "../interaction";
 import {
   createHUD,
@@ -11,6 +12,15 @@ import {
   type HUDPresentationContext,
   type HUDTheme,
 } from "./index";
+import { validateTestDefinition } from "../../../test/definition-support";
+
+function validateTestNounDefinition<T extends NounDefinition>(value: T): T {
+  return validateTestDefinition(value, validateNounDefinition);
+}
+
+function validateTestHUDTheme<T extends HUDTheme>(value: T): T {
+  return validateTestDefinition(value, validateHUDTheme);
+}
 
 const lexicon: CommandLexicon = {
   verbs: {
@@ -46,19 +56,19 @@ const inventory: InventoryPresentation = {
   }],
 };
 
-const door = defineNoun({
+const door = (validateTestNounDefinition({
   labels: [{ text: "Door" }],
   preferredVerbs: [{ verb: "look-at" }],
   secondaryVerbs: [{ verb: "talk-to" }],
   objectVerbs: [{ verb: "use" }],
   cases: [],
-});
+} satisfies NounDefinition));
 
-const passage = defineNoun({
+const passage = (validateTestNounDefinition({
   labels: [{ text: "Outside" }],
   preferredVerbs: [{ verb: "walk-to" }],
   cases: [],
-});
+} satisfies NounDefinition));
 
 const context: HUDPresentationContext = {
   state: {

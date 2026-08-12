@@ -1,5 +1,4 @@
 import {
-  AuthoringError,
   type AuthoringDiagnostic,
   type LogicalResolution,
 } from "../game-project";
@@ -40,7 +39,7 @@ export interface BackgroundRegionAppearance {
 export type EntityAppearance = Appearance;
 export type SceneryAppearance = Appearance | BackgroundRegionAppearance;
 
-/** A locally validated persistent Character definition. */
+/** Declarative persistent Character data accepted by Game Project authoring. */
 export interface CharacterDefinition {
   readonly initialScene: string;
   readonly initialGroundPoint: Point;
@@ -51,12 +50,9 @@ export interface CharacterDefinition {
   readonly noun?: NounDefinition;
 }
 
-/** Input accepted by {@link defineCharacter}. */
-export interface CharacterInput extends CharacterDefinition {}
-
 /** Reports every local Character Authoring Diagnostic without a Game Project. */
 export function validateCharacterDefinition(
-  input: CharacterInput,
+  input: CharacterDefinition,
   path = "",
 ): readonly AuthoringDiagnostic[] {
   const diagnostics: AuthoringDiagnostic[] = [];
@@ -85,17 +81,6 @@ export function validateCharacterDefinition(
     subject: "Character",
   }));
   return diagnostics;
-}
-
-/** Creates and freezes one persistent Character definition. */
-export function defineCharacter(input: CharacterInput): CharacterDefinition {
-  const diagnostics = validateCharacterDefinition(input);
-  if (diagnostics.length > 0) throw new AuthoringError(diagnostics);
-  return deepFreeze({
-    ...input,
-    initialGroundPoint: { ...input.initialGroundPoint },
-    appearances: { ...input.appearances },
-  });
 }
 
 /** A persistent collectible Object definition. */
@@ -128,17 +113,6 @@ export function validateObjectDefinition(
     subject: "Object",
   }));
   return diagnostics;
-}
-
-/** Creates and freezes one Object that initially belongs to a Scene. */
-export function defineObject(input: ObjectDefinition): ObjectDefinition {
-  const diagnostics = validateObjectDefinition(input);
-  if (diagnostics.length > 0) throw new AuthoringError(diagnostics);
-  return deepFreeze({
-    ...input,
-    initialGroundPoint: { ...input.initialGroundPoint },
-    appearances: { ...input.appearances },
-  });
 }
 
 export type HotspotTarget =
@@ -218,8 +192,8 @@ export interface PerspectiveScaleStop {
   readonly scale: number;
 }
 
-/** The minimal input accepted by {@link defineScene}. */
-export interface SceneInput {
+/** Declarative Scene data accepted by Game Project authoring. */
+export interface SceneDefinition {
   readonly background: URL | string;
   readonly size?: SceneSize;
   readonly walkableRegion: readonly Point[];
@@ -231,9 +205,6 @@ export interface SceneInput {
   readonly arrivalSequences?: readonly ArrivalSequenceRule[];
 }
 
-/** A locally validated Scene definition. Its registry key supplies its identity. */
-export interface SceneDefinition extends SceneInput {}
-
 /** A Scene whose default Size has been resolved during composition. */
 export interface ResolvedSceneDefinition extends Omit<SceneDefinition, "size"> {
   readonly size: SceneSize;
@@ -241,7 +212,7 @@ export interface ResolvedSceneDefinition extends Omit<SceneDefinition, "size"> {
 
 /** Reports every local Scene Authoring Diagnostic without a Game Project. */
 export function validateSceneDefinition(
-  input: SceneInput,
+  input: SceneDefinition,
   path = "",
 ): readonly AuthoringDiagnostic[] {
   const diagnostics: AuthoringDiagnostic[] = [];
@@ -428,25 +399,6 @@ export function validateSceneDefinition(
   });
 
   return diagnostics;
-}
-
-/** Creates and freezes one Scene after validating its local geometry. */
-export function defineScene(input: SceneInput): SceneDefinition {
-  const diagnostics = validateSceneDefinition(input);
-
-  if (diagnostics.length > 0) throw new AuthoringError(diagnostics);
-
-  return deepFreeze({
-    ...input,
-    background: input.background instanceof URL ? new URL(input.background.href) : input.background,
-    ...(input.size ? { size: { ...input.size } } : {}),
-    walkableRegion: input.walkableRegion.map((point) => ({ ...point })),
-    scenery: { ...(input.scenery ?? {}) },
-    hotspots: [...(input.hotspots ?? [])],
-    entrances: { ...(input.entrances ?? {}) },
-    passages: [...(input.passages ?? [])],
-    arrivalSequences: [...(input.arrivalSequences ?? [])],
-  });
 }
 
 export interface CharacterState {
@@ -1623,12 +1575,4 @@ function segmentsIntersect(a: Point, b: Point, c: Point, d: Point): boolean {
   const cross = (p: Point, q: Point, r: Point) =>
     Math.sign((q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x));
   return cross(a, b, c) !== cross(a, b, d) && cross(c, d, a) !== cross(c, d, b);
-}
-
-function deepFreeze<T>(value: T): T {
-  if (value && typeof value === "object" && !(value instanceof URL) && !Object.isFrozen(value)) {
-    Object.freeze(value);
-    for (const child of Object.values(value)) deepFreeze(child);
-  }
-  return value;
 }

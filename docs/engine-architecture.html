@@ -114,11 +114,11 @@
         <span class="key" style="--key:var(--rose)">adapter tecnico</span>
       </div>
       <div class="flow">
-        <article class="stage"><div class="number">1</div><div class="stage-body" style="--accent:var(--green)"><h3>Authoring → Game Project</h3><p>L’Author usa builder focalizzati come <code>defineCharacter</code>, <code>defineScene</code> e <code>defineSequence</code>. <strong>Game Project</strong> compone Project Identity, Project Version e definizioni senza esporre la propria rappresentazione completa.</p><span class="exchange">Game Definition + Game Settings</span></div></article>
+        <article class="stage"><div class="number">1</div><div class="stage-body" style="--accent:var(--green)"><h3>Authoring → Game Project</h3><p>L’Author compone normali dati TypeScript in file focalizzati, usando i type pubblici e <code>satisfies</code>. Non esistono builder <code>defineX</code>: <strong>Game Project</strong> è la raccolta dichiarativa di Project Identity, Project Version, Game Definition e Game Setting.</p><span class="exchange">typed Game Definition + Game Settings</span></div></article>
         <div class="arrow"></div>
-        <article class="stage"><div class="number">2</div><div class="stage-body" style="--accent:var(--blue)"><h3>Validazione distribuita → Authoring Diagnostic</h3><p>Ogni capability verifica i propri invarianti. Game Project aggrega i risultati in ordine deterministico; ogni diagnostica dichiara <code>owner</code>, <code>code</code>, <code>path</code> e messaggio.</p><span class="exchange">narrow validation views → diagnostics[]</span></div></article>
+        <article class="stage"><div class="number">2</div><div class="stage-body" style="--accent:var(--blue)"><h3>startGame → validazione e compilazione</h3><p><code>startGame</code> innesca la validazione distribuita: ogni capability verifica i propri invarianti e Game Project aggrega gli Authoring Diagnostic. Un risultato valido applica i default e crea una copia privata profondamente immutabile, senza modificare i dati dell’Author.</p><span class="exchange">Game Project → private compiled project</span></div></article>
         <div class="arrow"></div>
-        <article class="stage"><div class="number">3</div><div class="stage-body session" style="--accent:var(--gold)"><h3>startGame → CoreSession</h3><p><code>startGame</code> carica asset e crea gli adapter browser. <strong>CoreSession</strong> crea o ripristina il Game State canonico e avvia il logical tick.</p><span class="exchange">validated project + optional ValidatedSaveSnapshot</span></div></article>
+        <article class="stage"><div class="number">3</div><div class="stage-body session" style="--accent:var(--gold)"><h3>Avvio → CoreSession</h3><p>Dopo la compilazione, <code>startGame</code> valida l’eventuale Save Snapshot non fidato, controlla browser e Runtime Asset e crea gli adapter. <strong>CoreSession</strong> crea o ripristina il Game State canonico e avvia il logical tick.</p><span class="exchange">compiled project + optional unknown snapshot</span></div></article>
         <div class="arrow"></div>
         <article class="stage"><div class="number">4</div><div class="stage-body" style="--accent:var(--rose)"><h3>Input fisico → intenzione dichiarata</h3><p>Pointer e tastiera vengono tradotti in input di sessione o intenzioni HUD. L’adapter non sceglie Command Case, percorsi, conseguenze o avanzamento di Sequence.</p><span class="exchange">DOM / pointer / keyboard → CoreInput</span></div></article>
         <div class="arrow"></div>
@@ -146,7 +146,7 @@
     <section id="capability">
       <h2>Chi possiede che cosa</h2>
       <div class="cap-grid">
-        <article class="card"><h3>Game Project</h3><p>Composizione, Project Identity/Version e aggregazione degli Authoring Diagnostic.</p></article>
+        <article class="card"><h3>Game Project</h3><p>Dati dichiarativi dell’Author; internamente coordina compilazione, Project Identity/Version e aggregazione degli Authoring Diagnostic.</p></article>
         <article class="card"><h3>World</h3><p>Scene Space, presenza, geometria, navigazione, Motion e Scene Passage.</p></article>
         <article class="card"><h3>Interaction</h3><p>Noun, Command, condizioni, Player Intent, Inventory e conseguenze.</p></article>
         <article class="card"><h3>Sequence</h3><p>Step, ordine, concorrenza, Cue, Line, Narration, Choice, branch e Skip Outcome.</p></article>
@@ -167,7 +167,7 @@
         <li class="route"><span class="route-path">Sequence → Animation / World / Camera</span><p>Sequence condivide la timeline del Direction Step; ciascuna capability conserva la propria semantica.</p><span class="route-data">direction timing · Animation Cue · local tick</span></li>
         <li class="route"><span class="route-path">Capability → browser adapter</span><p>World, Animation, Camera e HUD espongono fatti già risolti che PixiJS e DOM si limitano a presentare.</p><span class="route-data">presentation facts · CoreEffect</span></li>
         <li class="route"><span class="route-path">Game Session ↔ Save</span><p>La sessione consegna stato committed; Save produce o valida uno snapshot. Il restore crea uno stato completo soltanto dopo una validazione riuscita.</p><span class="route-data">Game State · Save Snapshot · validation result</span></li>
-        <li class="route"><span class="route-path">Game Project ↔ capability validators</span><p>Game Project distribuisce viste strette delle definizioni e aggrega gli Authoring Diagnostic attribuiti, senza duplicare le regole.</p><span class="route-data">validation view · Authoring Diagnostic[]</span></li>
+        <li class="route"><span class="route-path">startGame → Game Project ↔ capability validators</span><p>L’avvio innesca la compilazione interna; Game Project distribuisce viste strette delle definizioni e aggrega gli Authoring Diagnostic attribuiti, senza duplicare le regole.</p><span class="route-data">validation view · Authoring Diagnostic[] · compiled copy</span></li>
       </ol>
     </section>
 
@@ -196,7 +196,7 @@
       <h2>Dipendenze consentite</h2>
       <div class="rules">
         <div class="rule"><strong>Interfacce, non dettagli.</strong><br>Una capability importa un’altra capability soltanto dal suo <code>index.ts</code> dichiarato.</div>
-        <div class="rule"><strong>Viste strette e immutabili.</strong><br>Nessun modulo riceve la rappresentazione mutabile completa del Game Project o del Game State.</div>
+        <div class="rule"><strong>Viste strette e immutabili.</strong><br><code>startGame</code> copia e congela il Game Project valido; ogni modulo interno riceve soltanto la propria vista e nessun riferimento mutabile dell’Author o del Game State.</div>
         <div class="rule"><strong>Niente contenitore shared.</strong><br>La policy resta presso il proprietario; il controllo strutturale impedisce scorciatoie orizzontali.</div>
         <div class="rule"><strong>Un solo package root.</strong><br>L’Author importa da <code>@asterixcapri/fondale</code>; la struttura interna non diventa contratto pubblico.</div>
       </div>

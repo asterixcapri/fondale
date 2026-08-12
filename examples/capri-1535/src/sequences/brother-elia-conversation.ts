@@ -1,6 +1,6 @@
-import { defineSequence } from "@asterixcapri/fondale";
+import { type SequenceDefinition } from "@asterixcapri/fondale";
 
-export const brotherEliaConversation = defineSequence({
+export const brotherEliaConversation = ({
   steps: [{
     type: "line",
     character: "brotherElia",
@@ -18,4 +18,4 @@ export const brotherEliaConversation = defineSequence({
     }] }],
     fallback: { text: "Provo a sistemarlo.", steps: [] },
   }],
-});
+} satisfies SequenceDefinition);

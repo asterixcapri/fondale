@@ -1,11 +1,11 @@
-import { defineNoun, defineScene } from "@asterixcapri/fondale";
+import { type NounDefinition, type SceneDefinition } from "@asterixcapri/fondale";
 
 import { rectangle } from "../../geometry";
 import alleyBackgroundUrl from "./background.png";
 import lockedGateUrl from "./gate-locked.png";
 import unlockedMarkerUrl from "./gate-unlocked.png";
 
-export const alley = defineScene({
+export const alley = ({
   background: alleyBackgroundUrl,
   walkableRegion: rectangle(55, 146, 352, 180),
   perspectiveScale: [{ y: 146, scale: 0.55 }, { y: 180, scale: 0.82 }],
@@ -22,7 +22,7 @@ export const alley = defineScene({
         },
         unlocked: { animations: { idle: { frames: [unlockedMarkerUrl], framesPerSecond: 1, loop: true } }, roles: { default: "idle" } },
       },
-      noun: defineNoun({
+      noun: ({
         labels: [
           { when: { variable: "gateOpen", equals: true }, text: "Cancello aperto" },
           { text: "Cancello chiuso" },
@@ -53,19 +53,19 @@ export const alley = defineScene({
             ],
           },
         ],
-      }),
+      } satisfies NounDefinition),
     },
   },
   hotspots: [{
     target: { kind: "background" }, area: rectangle(280, 116, 310, 176),
     approach: { groundPoint: { x: 278, y: 176 }, facing: "right" },
-    noun: defineNoun({
+    noun: ({
       labels: [{ text: "Viandante" }],
       preferredVerbs: [{ verb: "talk-to" }],
       secondaryVerbs: [{ verb: "look-at" }],
       objectVerbs: [{ verb: "give" }],
       cases: [{ verb: "talk-to", sequence: "conversation" }],
-    }),
+    } satisfies NounDefinition),
   }, {
     target: { kind: "object", object: "key" }, area: rectangle(104, 150, 132, 179),
     approach: { groundPoint: { x: 137, y: 175 }, facing: "left" },
@@ -78,12 +78,12 @@ export const alley = defineScene({
   passages: [{
     area: rectangle(183, 116, 235, 166), approach: { groundPoint: { x: 208, y: 150 }, facing: "back" },
     when: { variable: "gateOpen", equals: true },
-    noun: defineNoun({
+    noun: ({
       labels: [{ text: "Verso la piazza" }],
       preferredVerbs: [{ verb: "walk-to" }],
       cases: [],
-    }),
+    } satisfies NounDefinition),
     direction: "up",
     destination: { scene: "townSquare", entrance: "fromAlley" },
   }],
-});
+} satisfies SceneDefinition);

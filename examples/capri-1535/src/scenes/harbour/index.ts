@@ -1,4 +1,4 @@
-import { defineNoun, defineScene } from "@asterixcapri/fondale";
+import { type NounDefinition, type SceneDefinition } from "@asterixcapri/fondale";
 
 import { rectangle } from "../../geometry";
 import backgroundUrl from "./background.png";
@@ -6,7 +6,7 @@ import winchLubricatedUrl from "./winch-lubricated.png";
 import winchRepairedUrl from "./winch-repaired.png";
 import winchStuckUrl from "./winch-stuck.png";
 
-export const harbour = defineScene({
+export const harbour = ({
   background: backgroundUrl,
   size: { width: 640, height: 240 },
   walkableRegion: rectangle(8, 162, 632, 230),
@@ -37,7 +37,7 @@ export const harbour = defineScene({
           visualAnchor: { x: 37, y: 57 },
         },
       },
-      noun: defineNoun({
+      noun: ({
         labels: [{ text: "Argano del porto" }],
         preferredVerbs: [{ verb: "look-at" }],
         cases: [{
@@ -52,7 +52,7 @@ export const harbour = defineScene({
           firstNoun: "winchHandle",
           sequence: "winchInstallation",
         }],
-      }),
+      } satisfies NounDefinition),
     },
   },
   hotspots: [{
@@ -76,23 +76,23 @@ export const harbour = defineScene({
   passages: [{
     area: rectangle(588, 90, 640, 228),
     approach: { groundPoint: { x: 602, y: 210 }, facing: "right" },
-    noun: defineNoun({
+    noun: ({
       labels: [{ text: "Salita verso la piazza" }],
       preferredVerbs: [{ verb: "walk-to" }],
       cases: [],
-    }),
+    } satisfies NounDefinition),
     direction: "right",
     destination: { scene: "townSquare", entrance: "fromHarbour" },
   }, {
     area: rectangle(0, 112, 180, 228),
     approach: { groundPoint: { x: 160, y: 208 }, facing: "left" },
     when: { variable: "boatReady", equals: true },
-    noun: defineNoun({
+    noun: ({
       labels: [{ text: "Gozzo per la torre" }],
       preferredVerbs: [{ verb: "walk-to" }],
       cases: [],
-    }),
+    } satisfies NounDefinition),
     direction: "left",
     destination: { scene: "coastalFortification", entrance: "fromHarbour" },
   }],
-});
+} satisfies SceneDefinition);

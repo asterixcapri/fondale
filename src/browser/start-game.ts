@@ -1,7 +1,13 @@
 import { createCoreSession, type CoreSession } from "../capabilities/game-session";
-import { AuthoringError, type AuthoringDiagnostic } from "../capabilities/game-project";
-import { getBrowserProjectView, type GameProject } from "../capabilities/game-project";
 import {
+  AuthoringError,
+  compileGameProject,
+  getBrowserProjectView,
+  type AuthoringDiagnostic,
+  type GameProject,
+} from "../capabilities/game-project";
+import {
+  createSave,
   type SaveSnapshot,
   type ValidatedSaveSnapshot,
 } from "../capabilities/save";
@@ -15,8 +21,8 @@ import { createBrowserSessionControls, type BrowserSessionControls } from "./sav
 export interface StartGameOptions {
   /** A currently unowned element that will contain the entire logical frame. */
   readonly target: HTMLElement;
-  /** An optional snapshot returned by {@link validateSaveSnapshot}. */
-  readonly snapshot?: ValidatedSaveSnapshot;
+  /** Optional untrusted Save Snapshot data to validate and restore at startup. */
+  readonly snapshot?: unknown;
 }
 
 /** The public lifecycle and persistence controls of one running Game Session. */
@@ -39,7 +45,16 @@ export async function startGame(
   project: GameProject,
   options: StartGameOptions,
 ): Promise<GameSession> {
-  const projectView = getBrowserProjectView(project);
+  const compilation = compileGameProject(project);
+  if (!compilation.ok) throw new AuthoringError(compilation.diagnostics);
+  const compiledProject = compilation.project;
+  let restored: ValidatedSaveSnapshot | undefined;
+  if (options.snapshot !== undefined) {
+    const validation = createSave(compiledProject).validate(options.snapshot);
+    if (!validation.ok) throw new AuthoringError(validation.diagnostics);
+    restored = validation.snapshot;
+  }
+  const projectView = getBrowserProjectView(compiledProject);
   let frame: BrowserFrame | undefined;
   let loop: BrowserLoop | undefined;
   let renderer: BrowserRenderer | undefined;
@@ -54,10 +69,11 @@ export async function startGame(
 
   try {
     frame = new BrowserFrame(options.target, projectView.startup);
+    frame.checkEnvironment();
     const assets = await loadProjectAssets(projectView.assets);
     await frame.mount();
 
-    core = createCoreSession(project, options.snapshot);
+    core = createCoreSession(compiledProject, restored);
     let controls: BrowserSessionControls;
     const mountRenderer = (session: CoreSession): BrowserRenderer => {
       const next = new BrowserRenderer(
@@ -74,11 +90,11 @@ export async function startGame(
     const replaceCore = (snapshot: ValidatedSaveSnapshot) => {
       renderer!.destroy();
       core!.stop();
-      core = createCoreSession(project, snapshot);
+      core = createCoreSession(compiledProject, snapshot);
       renderer = mountRenderer(core);
       loop!.reset();
     };
-    controls = createBrowserSessionControls(project, () => core!, replaceCore);
+    controls = createBrowserSessionControls(compiledProject, () => core!, replaceCore);
     renderer = mountRenderer(core);
     loop = new BrowserLoop(frame.application, () => core!, () => renderer!);
     await loop.start();

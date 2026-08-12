@@ -1,10 +1,10 @@
-import { defineNoun, defineObject } from "@asterixcapri/fondale";
+import { type NounDefinition, type ObjectDefinition } from "@asterixcapri/fondale";
 
 import installedUrl from "./installed.png";
 import inventoryUrl from "./inventory.png";
 import sceneUrl from "./scene.png";
 
-export const winchHandle = defineObject({
+export const winchHandle = ({
   initialScene: "cloister",
   initialGroundPoint: { x: 575, y: 211 },
   initialAppearance: "loose",
@@ -13,7 +13,7 @@ export const winchHandle = defineObject({
     installed: { animations: { idle: { frames: [installedUrl], framesPerSecond: 1, loop: true } }, roles: { default: "idle" } },
   },
   inventoryAppearance: inventoryUrl,
-  noun: defineNoun({
+  noun: ({
     labels: [{ text: "Manovella" }],
     preferredVerbs: [{ verb: "pick-up" }],
     secondaryVerbs: [{ verb: "look-at" }],
@@ -33,5 +33,5 @@ export const winchHandle = defineObject({
         response: { text: "La manovella dell'argano, promossa temporaneamente a manovella del pozzo." },
       },
     ],
-  }),
-});
+  } satisfies NounDefinition),
+} satisfies ObjectDefinition);

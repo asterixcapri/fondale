@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { findObsoleteAuthoringContract } from "./obsolete-authoring-contract.mjs";
 
 const architecturePath = "docs/engine-architecture.html";
 const requiredTerms = [
@@ -34,6 +35,10 @@ export function verifyArchitectureDocument(html) {
   }
   if (!/<html lang="it">/.test(html) || !/@media \(max-width: 780px\)/.test(html)) {
     throw new Error(`${architecturePath}: missing Italian-language or responsive-document contract.`);
+  }
+  const obsolete = findObsoleteAuthoringContract(html);
+  if (obsolete) {
+    throw new Error(`${architecturePath}: obsolete authoring contract: ${obsolete}.`);
   }
 }
 

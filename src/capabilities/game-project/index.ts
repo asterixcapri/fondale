@@ -72,14 +72,10 @@ import {
   type SceneDefinition,
 } from "../world";
 export {
-  defineCharacter,
-  defineObject,
-  defineScene,
   type ApproachPoint,
   type ArrivalSequenceRule,
   type BackgroundRegionAppearance,
   type CharacterDefinition,
-  type CharacterInput,
   type EntityAppearance,
   type Facing,
   type HotspotDefinition,
@@ -92,7 +88,6 @@ export {
   type SceneryDefinition,
   type SceneDefinition,
   type SceneEntrance,
-  type SceneInput,
   type ScenePassage,
   type SceneSize,
 } from "../world";
@@ -124,8 +119,8 @@ export type GameOperation =
   | { readonly type: "start-sequence"; readonly sequence: string }
   | InventoryOperation;
 
-/** Input accepted by {@link defineGame}. Registry keys are definition identities. */
-export interface GameInput {
+/** Ordinary declarative Game Project data. Registry keys are definition identities. */
+export interface GameProject {
   readonly identity: string;
   readonly version: string;
   readonly logicalResolution: LogicalResolution;
@@ -143,16 +138,16 @@ export interface GameInput {
   readonly hudTheme?: HUDTheme;
 }
 
-declare const gameProjectBrand: unique symbol;
+declare const compiledGameProjectBrand: unique symbol;
 
-/** An opaque, immutable, fully validated Game Project. */
-export interface GameProject {
-  readonly [gameProjectBrand]: true;
+/** @internal An isolated, immutable, fully validated Game Project snapshot. */
+export interface CompiledGameProject {
+  readonly [compiledGameProjectBrand]: true;
 }
 
 /** Fully expanded representation kept inside the Game Project implementation. */
 interface GameProjectData
-  extends Omit<GameInput, "scenes" | "characters" | "objects" | "sequences" | "variables"> {
+  extends Omit<GameProject, "scenes" | "characters" | "objects" | "sequences" | "variables"> {
   readonly scenes: Readonly<Record<string, ResolvedSceneDefinition>>;
   readonly letterboxColor: string;
   readonly characters: Readonly<Record<string, CharacterDefinition>>;
@@ -224,15 +219,15 @@ export interface BrowserProjectView {
   readonly presentation: BrowserPresentationProjectView;
 }
 
-const projectData = new WeakMap<GameProject, GameProjectData>();
+const projectData = new WeakMap<CompiledGameProject, GameProjectData>();
 
 /** @internal Ordinary result of compiling one authored Game Project snapshot. */
 export type GameProjectCompilation =
-  | { readonly ok: true; readonly project: GameProject }
+  | { readonly ok: true; readonly project: CompiledGameProject }
   | { readonly ok: false; readonly diagnostics: readonly AuthoringDiagnostic[] };
 
 /** @internal Validates and compiles one browser-independent Game Project snapshot. */
-export function compileGameProject(input: GameInput): GameProjectCompilation {
+export function compileGameProject(input: GameProject): GameProjectCompilation {
   const diagnostics: AuthoringDiagnostic[] = [];
   const characters = input.characters ?? {};
   const objects = input.objects ?? {};
@@ -311,26 +306,19 @@ export function compileGameProject(input: GameInput): GameProjectCompilation {
     variables: cloned.variables ?? {},
     letterboxColor: cloned.letterboxColor ?? "#000000",
   });
-  const project = Object.freeze({}) as GameProject;
+  const project = Object.freeze({}) as CompiledGameProject;
   projectData.set(project, data);
   return Object.freeze({ ok: true, project });
 }
 
-/** Composes named definitions into one validated and immutable Game Project. */
-export function defineGame(input: GameInput): GameProject {
-  const compilation = compileGameProject(input);
-  if (!compilation.ok) throw new AuthoringError(compilation.diagnostics);
-  return compilation.project;
-}
-
-function requireGameProjectData(project: GameProject): GameProjectData {
+function requireGameProjectData(project: CompiledGameProject): GameProjectData {
   const data = projectData.get(project);
-  if (!data) throw new TypeError("Expected a Game Project returned by defineGame().");
+  if (!data) throw new TypeError("Expected a compiled Game Project.");
   return data;
 }
 
 /** @internal Composes the capability views needed by Game Session. */
-export function getGameSessionCompositionView(project: GameProject): GameSessionCompositionView {
+export function getGameSessionCompositionView(project: CompiledGameProject): GameSessionCompositionView {
   const data = requireGameProjectData(project);
   const world = Object.freeze({
     logicalResolution: data.logicalResolution,
@@ -361,7 +349,7 @@ export function getGameSessionCompositionView(project: GameProject): GameSession
 }
 
 /** @internal Composes distinct views for browser technical adapters. */
-export function getBrowserProjectView(project: GameProject): BrowserProjectView {
+export function getBrowserProjectView(project: CompiledGameProject): BrowserProjectView {
   const data = requireGameProjectData(project);
   return Object.freeze({
     startup: Object.freeze({
@@ -391,7 +379,7 @@ export function getBrowserProjectView(project: GameProject): BrowserProjectView 
 }
 
 /** @internal Composes the distinct narrow views consumed by Save. */
-export function getSaveCompositionView(project: GameProject): SaveCompositionView {
+export function getSaveCompositionView(project: CompiledGameProject): SaveCompositionView {
   const data = requireGameProjectData(project);
   return Object.freeze({
     gameProject: Object.freeze({
@@ -486,7 +474,7 @@ function immutableURLMutation(): never {
 }
 
 function validateProjectDefinitions(
-  input: GameInput,
+  input: GameProject,
   characters: Readonly<Record<string, CharacterDefinition>>,
   objects: Readonly<Record<string, ObjectDefinition>>,
   sequences: Readonly<Record<string, SequenceDefinition>>,

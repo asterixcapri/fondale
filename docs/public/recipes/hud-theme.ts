@@ -1,6 +1,6 @@
-import { defineHUDTheme } from "@asterixcapri/fondale";
+import { type HUDTheme } from "@asterixcapri/fondale";
 
-export const exampleHUDTheme = defineHUDTheme({
+export const exampleHUDTheme = ({
   font: { family: "Example Serif", source: "./example-serif.woff2" },
   colors: {
     text: "#f4dfb4",
@@ -20,4 +20,4 @@ export const exampleHUDTheme = defineHUDTheme({
     enter: "./cursor-enter.svg",
   },
   speechColors: { host: "#f2ad62" },
-});
+} satisfies HUDTheme);

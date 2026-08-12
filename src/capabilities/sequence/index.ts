@@ -1,4 +1,4 @@
-import { AuthoringError, type AuthoringDiagnostic, type GameOperation } from "../game-project";
+import type { AuthoringDiagnostic, GameOperation } from "../game-project";
 import type { InteractionCondition } from "../interaction";
 import {
   validateMotionDirection,
@@ -303,17 +303,6 @@ export function validateSequenceDefinition(
     childPath(path, "skipOutcome"),
   ));
   return diagnostics;
-}
-
-/** Creates and freezes a finite Sequence of Lines, Narrations, Choices, branches and operations. */
-export function defineSequence(input: SequenceDefinition): SequenceDefinition {
-  const diagnostics = validateSequenceDefinition(input);
-  if (diagnostics.length > 0) throw new AuthoringError(diagnostics);
-  return deepFreeze({
-    ...input,
-    steps: cloneSequenceSteps(input.steps),
-    ...(input.skipOutcome ? { skipOutcome: structuredClone(input.skipOutcome) } : {}),
-  });
 }
 
 /** Clones Author-owned input before Game Project composition freezes it. */
@@ -1110,34 +1099,6 @@ export function createSequence(
   return sequence;
 }
 
-function cloneSequenceSteps(steps: readonly SequenceStep[]): SequenceStep[] {
-  return steps.map((step) => {
-    if (step.type === "line") {
-      return {
-        ...step,
-        ...(step.audio instanceof URL ? { audio: new URL(step.audio.href) } : {}),
-      };
-    }
-    if (step.type === "direction") return cloneDirectionStep(step);
-    if (step.type === "narration" || step.type === "operations") return structuredClone(step);
-    if (step.type === "choice") {
-      return {
-        ...step,
-        alternatives: step.alternatives.map((alternative) => ({
-          ...alternative,
-          steps: cloneSequenceSteps(alternative.steps),
-        })),
-        fallback: { ...step.fallback, steps: cloneSequenceSteps(step.fallback.steps) },
-      };
-    }
-    return {
-      ...step,
-      cases: step.cases.map((branch) => ({ ...branch, steps: cloneSequenceSteps(branch.steps) })),
-      fallback: cloneSequenceSteps(step.fallback),
-    };
-  });
-}
-
 function maximumEligibleAlternatives(alternatives: readonly ChoiceAlternative[]): number {
   let simultaneouslyEligible = 0;
   const variableCases = new Map<string, { true: number; false: number }>();
@@ -1269,12 +1230,4 @@ function intersectSets(sets: readonly Set<string>[]): Set<string> {
   return new Set([...(first ?? new Set<string>())].filter((value) =>
     rest.every((set) => set.has(value)),
   ));
-}
-
-function deepFreeze<T>(value: T): T {
-  if (value && typeof value === "object" && !(value instanceof URL) && !Object.isFrozen(value)) {
-    Object.freeze(value);
-    for (const child of Object.values(value)) deepFreeze(child);
-  }
-  return value;
 }

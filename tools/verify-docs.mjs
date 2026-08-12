@@ -1,12 +1,13 @@
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import ts from "typescript";
+import { findObsoleteAuthoringContract } from "./obsolete-authoring-contract.mjs";
 
 const repository = resolve(import.meta.dirname, "..");
 const referencePath = join(repository, "docs/public/reference.md");
 const reference = readFileSync(referencePath, "utf8");
 const entry = readFileSync(join(repository, "src/index.ts"), "utf8");
-const publicNames = [...entry.matchAll(/\b(?:type\s+)?([A-Z]\w+|define\w+|startGame|validateSaveSnapshot),?/g)]
+const publicNames = [...entry.matchAll(/\b(?:type\s+)?([A-Z]\w+|startGame),?/g)]
   .map((match) => match[1])
   .filter((name, index, names) => names.indexOf(name) === index);
 const undocumented = publicNames.filter((name) => !reference.includes(`\`${name}\``));
@@ -97,6 +98,20 @@ for (const obsoleteFixedSceneClaim of [
   }
 }
 
+const authoringDocumentation = [
+  ...docs,
+  ...readdirSync(join(repository, "docs/public/recipes"))
+    .filter((name) => name.endsWith(".ts"))
+    .map((name) => join(repository, "docs/public/recipes", name)),
+];
+for (const file of authoringDocumentation) {
+  const source = readFileSync(file, "utf8");
+  const obsolete = findObsoleteAuthoringContract(source);
+  if (obsolete) {
+    throw new Error(`${file}: obsolete authoring contract: ${obsolete}`);
+  }
+}
+
 for (const file of docs) {
   const markdown = readFileSync(file, "utf8");
   for (const match of markdown.matchAll(/\[[^\]]+\]\(([^)]+)\)/g)) {
@@ -140,7 +155,7 @@ for (const requiredBehavior of [
   "interactionScene",
   "greeting",
   "successfulUse",
-  "validateSaveSnapshot",
+  "snapshot: raw",
   "Open Door",
   "eligible branch",
   "inventoryKey",
@@ -154,15 +169,7 @@ const recipeSource = readdirSync(join(repository, "docs/public/recipes"))
   .filter((name) => name.endsWith(".ts"))
   .map((name) => readFileSync(join(repository, "docs/public/recipes", name), "utf8"))
   .join("\n");
-for (const callable of [
-  "defineGame",
-  "defineCharacter",
-  "defineScene",
-  "defineObject",
-  "defineSequence",
-  "startGame",
-  "validateSaveSnapshot",
-]) {
+for (const callable of ["startGame"]) {
   if (!new RegExp(`\\b${callable}\\s*\\(`).test(recipeSource)) {
     throw new Error(`Public callable has no compiled recipe example: ${callable}`);
   }

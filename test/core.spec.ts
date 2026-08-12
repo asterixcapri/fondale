@@ -1,15 +1,17 @@
 import { expect, test } from "@playwright/test";
 
-import { createTestSession } from "../src/capabilities/game-session";
+import {
+  createTestSession,
+  validateTestSaveSnapshot,
+} from "./support";
 import { isInside } from "../src/capabilities/world";
 import {
-  defineCharacter,
-  defineGame,
-  defineScene,
-  validateSaveSnapshot,
+  type CharacterDefinition,
+  type GameProject,
+  type SceneDefinition,
 } from "../src/index";
 
-const scene = defineScene({
+const scene = ({
   background: "scene.png",
   walkableRegion: [
     { x: 0, y: 0 },
@@ -17,16 +19,16 @@ const scene = defineScene({
     { x: 100, y: 100 },
     { x: 0, y: 100 },
   ],
-});
-const player = defineCharacter({
+} satisfies SceneDefinition);
+const player = ({
   initialScene: "opening",
   initialGroundPoint: { x: 10, y: 10 },
   initialFacing: "front",
   initialAppearance: "idle",
   appearances: { idle: { animations: { idle: { frames: ["player.png"], framesPerSecond: 1, loop: true } }, roles: { default: "idle", walking: "idle" } } },
   movementSpeed: 60,
-});
-const project = defineGame({
+} satisfies CharacterDefinition);
+const project = ({
   identity: "test.core",
   version: "1",
   logicalResolution: { width: 100, height: 100 },
@@ -34,7 +36,7 @@ const project = defineGame({
   characters: { player },
   playerCharacter: "player",
   initialScene: "opening",
-});
+} satisfies GameProject);
 
 test("the deterministic core clamps a world destination and never teleports", () => {
   const session = createTestSession(project);
@@ -104,7 +106,7 @@ test("restored CoreSession replays the same future inputs exactly", () => {
   uninterrupted.steps(13);
   uninterrupted.takeEffects();
 
-  const validation = validateSaveSnapshot(
+  const validation = validateTestSaveSnapshot(
     project,
     structuredClone(uninterrupted.createSaveSnapshot()),
   );
@@ -149,7 +151,7 @@ test("CoreSession exposes defensive Camera presentation facts", () => {
 });
 
 test("CoreSession exposes Animation presentation facts without browser interpretation", () => {
-  const animatedPlayer = defineCharacter({
+  const animatedPlayer = ({
     ...player,
     appearances: {
       idle: {
@@ -160,8 +162,8 @@ test("CoreSession exposes Animation presentation facts without browser interpret
         roles: { default: "idle", walking: "walking" },
       },
     },
-  });
-  const animatedProject = defineGame({
+  } satisfies CharacterDefinition);
+  const animatedProject = ({
     identity: "test.core-animation-presentation",
     version: "1",
     logicalResolution: { width: 100, height: 100 },
@@ -169,7 +171,7 @@ test("CoreSession exposes Animation presentation facts without browser interpret
     characters: { player: animatedPlayer },
     playerCharacter: "player",
     initialScene: "opening",
-  });
+  } satisfies GameProject);
   const session = createTestSession(animatedProject);
   const subject = { kind: "character", character: "player" } as const;
 
@@ -193,7 +195,7 @@ test("CoreSession exposes Animation presentation facts without browser interpret
 });
 
 test("Camera facts do not depend on how often a consumer reads them", () => {
-  const panoramicScene = defineScene({
+  const panoramicScene = ({
     background: "panorama.png",
     size: { width: 300, height: 100 },
     walkableRegion: [
@@ -202,12 +204,12 @@ test("Camera facts do not depend on how often a consumer reads them", () => {
       { x: 300, y: 100 },
       { x: 0, y: 100 },
     ],
-  });
-  const panoramicPlayer = defineCharacter({
+  } satisfies SceneDefinition);
+  const panoramicPlayer = ({
     ...player,
     initialGroundPoint: { x: 50, y: 50 },
-  });
-  const panoramicProject = defineGame({
+  } satisfies CharacterDefinition);
+  const panoramicProject = ({
     identity: "test.core-camera-polling",
     version: "1",
     logicalResolution: { width: 100, height: 100 },
@@ -215,7 +217,7 @@ test("Camera facts do not depend on how often a consumer reads them", () => {
     characters: { player: panoramicPlayer },
     playerCharacter: "player",
     initialScene: "opening",
-  });
+  } satisfies GameProject);
   const eager = createTestSession(panoramicProject);
   const lazy = createTestSession(panoramicProject);
 
@@ -251,16 +253,16 @@ test("movement follows a route inside a concave Walkable Region", () => {
     { x: 100, y: 100 },
     { x: 0, y: 100 },
   ];
-  const concaveScene = defineScene({ background: "scene.png", walkableRegion: region });
-  const concavePlayer = defineCharacter({
+  const concaveScene = ({ background: "scene.png", walkableRegion: region } satisfies SceneDefinition);
+  const concavePlayer = ({
     initialScene: "opening",
     initialGroundPoint: { x: 10, y: 10 },
     initialFacing: "front",
     initialAppearance: "idle",
     appearances: { idle: { animations: { idle: { frames: ["player.png"], framesPerSecond: 1, loop: true } }, roles: { default: "idle", walking: "idle" } } },
     movementSpeed: 60,
-  });
-  const concaveProject = defineGame({
+  } satisfies CharacterDefinition);
+  const concaveProject = ({
     identity: "test.concave-navigation",
     version: "1",
     logicalResolution: { width: 100, height: 100 },
@@ -268,7 +270,7 @@ test("movement follows a route inside a concave Walkable Region", () => {
     characters: { player: concavePlayer },
     playerCharacter: "player",
     initialScene: "opening",
-  });
+  } satisfies GameProject);
   const session = createTestSession(concaveProject);
   session.input({ type: "move", point: { x: 90, y: 90 } });
 

@@ -6,27 +6,31 @@ Install Fondale in a TypeScript web project:
 npm install @asterixcapri/fondale
 ```
 
-Import only from the package root. Define a Scene, compose the named registry
-into an immutable Game Project, and await its first rendered frame:
+Import only from the package root. Author ordinary typed data, pass the complete
+Game Project to `startGame`, and await its first rendered frame:
 
 ```ts
-import { defineGame, defineScene, startGame } from "@asterixcapri/fondale";
+import {
+  startGame,
+  type GameProject,
+  type SceneDefinition,
+} from "@asterixcapri/fondale";
 
-const opening = defineScene({
+const opening = {
   background: new URL("./opening.png", import.meta.url),
   walkableRegion: [
     { x: 0, y: 0 }, { x: 320, y: 0 },
     { x: 320, y: 180 }, { x: 0, y: 180 },
   ],
-});
+} satisfies SceneDefinition;
 
-const project = defineGame({
+const project = {
   identity: "com.example.first-adventure",
   version: "1",
   logicalResolution: { width: 320, height: 180 },
   scenes: { opening },
   initialScene: "opening",
-});
+} satisfies GameProject;
 
 const session = await startGame(project, {
   target: document.querySelector<HTMLElement>("#game")!,

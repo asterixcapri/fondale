@@ -12,7 +12,7 @@ import {
 import { AuthoringError, type AuthoringDiagnostic } from "../game-project";
 import {
   getSaveCompositionView,
-  type GameProject,
+  type CompiledGameProject,
   type SaveGameProjectView,
 } from "../game-project";
 import { createWorld, type Point, type World } from "../world";
@@ -27,17 +27,18 @@ export interface SaveSnapshot {
 
 declare const validatedSaveSnapshotBrand: unique symbol;
 
-/** A Save Snapshot proven compatible with one Game Project. */
+/** @internal A Save Snapshot proven compatible with one compiled Game Project. */
 export interface ValidatedSaveSnapshot extends SaveSnapshot {
   readonly [validatedSaveSnapshotBrand]: true;
 }
 
+/** @internal Ordinary result of validating one untrusted Save Snapshot. */
 export type SaveSnapshotValidation =
   | { readonly ok: true; readonly snapshot: ValidatedSaveSnapshot }
   | { readonly ok: false; readonly diagnostics: readonly AuthoringDiagnostic[] };
 
 const validatedSnapshots = new WeakSet<object>();
-const projectSaves = new WeakMap<GameProject, Save>();
+const projectSaves = new WeakMap<CompiledGameProject, Save>();
 
 /** @internal Save-owned snapshot lifecycle behind one immutable module interface. */
 export interface Save {
@@ -54,7 +55,7 @@ interface SaveValidationContext {
 }
 
 /** Creates or returns the Save module composed for one Game Project. */
-export function createSave(project: GameProject): Save {
+export function createSave(project: CompiledGameProject): Save {
   const existing = projectSaves.get(project);
   if (existing) return existing;
 
@@ -82,7 +83,7 @@ export function createSave(project: GameProject): Save {
         throw new AuthoringError([
           saveDiagnostic(
             "save.validation.required",
-            "Only the successful result of validateSaveSnapshot can restore a Game Session.",
+            "Only a Save Snapshot validated during startup can restore a Game Session.",
           ),
         ]);
       }
@@ -107,13 +108,6 @@ export function createSave(project: GameProject): Save {
 }
 
 /** Validates untrusted stored data without throwing for expected incompatibility. */
-export function validateSaveSnapshot(
-  project: GameProject,
-  value: unknown,
-): SaveSnapshotValidation {
-  return createSave(project).validate(value);
-}
-
 function validateSnapshot(
   value: unknown,
   context: SaveValidationContext,

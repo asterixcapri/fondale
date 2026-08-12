@@ -6,16 +6,16 @@ from `@asterixcapri/fondale`.
 
 ## Game Project composition
 
-`GameInput` is exported from the package root for Authors who want to type a
-project input before passing it to `defineGame`. Focused builders such as
-`defineCharacter`, `defineObject`, `defineScene`, and `defineSequence` remain
-the supported way to prepare definitions before composing their registries.
+Remove every authoring builder call. Export ordinary objects checked with the
+focused package-root types and `satisfies`, then compose them into an object
+that `satisfies GameProject`. Pass that declarative project directly to
+`startGame`.
 
-`defineGame` still returns an opaque, deeply immutable `GameProject`. Its
-complete representation is not an interface for Engine capabilities: Game
-Session, Save, and browser adapters receive only their declared immutable
-views. Invalid composition throws one `AuthoringError` containing the complete,
-deterministically ordered diagnostics returned by the owning capabilities.
+`startGame` now validates and compiles a private deeply immutable snapshot.
+Invalid composition rejects with one `AuthoringError` containing complete,
+deterministically ordered diagnostics before browser work. The authored object
+remains mutable and unfrozen; a running session observes only its isolated
+startup snapshot.
 
 ## Direction Step
 
@@ -110,10 +110,10 @@ Code that serializes diagnostics should retain this field.
 ## Save Snapshot compatibility
 
 Fondale does not migrate 0.3 Save Snapshots. Give the 0.4 Game Project a new
-Project Version and treat a failed `validateSaveSnapshot` result as an
-incompatible save. Validation returns Save-owned structured diagnostics before
-a `CoreSession` is created or changed, so a failed restore cannot partially
-mutate play.
+Project Version and pass stored data as `unknown` in the `snapshot` startup
+option. `startGame` rejects incompatible data with Save-owned structured
+diagnostics before a Game Session or browser adapter is created, so a failed
+restore cannot partially mutate play.
 
 Update definitions, fixtures, recipes, and any vendored package together. A
 successful migration passes `npm run build` and `npm run verify` against the

@@ -1,4 +1,4 @@
-import { defineSequence, type GameOperation } from "@asterixcapri/fondale";
+import { type SequenceDefinition, type GameOperation } from "@asterixcapri/fondale";
 
 const outcome: readonly GameOperation[] = [
   { type: "set-variable", variable: "boatReady", value: true },
@@ -16,7 +16,7 @@ const outcome: readonly GameOperation[] = [
   },
 ];
 
-export const winchInstallation = defineSequence({
+export const winchInstallation = ({
   scene: "harbour",
   skippable: true,
   skipOutcome: outcome,
@@ -40,4 +40,4 @@ export const winchInstallation = defineSequence({
     { type: "operations", operations: outcome },
     { type: "line", character: "michele", text: "La manovella gira. Il gozzo per la torre può salpare." },
   ],
-});
+} satisfies SequenceDefinition);

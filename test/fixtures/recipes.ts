@@ -1,10 +1,9 @@
 import {
-  defineCharacter,
-  defineGame,
-  defineNoun,
-  defineScene,
+  type CharacterDefinition,
+  type GameProject,
+  type NounDefinition,
+  type SceneDefinition,
   startGame,
-  validateSaveSnapshot,
   type GameSession,
 } from "@asterixcapri/fondale";
 
@@ -21,16 +20,16 @@ import { key, successfulUse } from "../../docs/public/recipes/inventory";
 import { greeting } from "../../docs/public/recipes/sequence";
 
 const sceneUrl = new URL("../../docs/public/recipes/scene.png", import.meta.url);
-const player = defineCharacter({
+const player = ({
   initialScene: "opening",
   initialGroundPoint: { x: 50, y: 35 },
   initialFacing: "front",
   initialAppearance: "idle",
   movementSpeed: 600,
   appearances: { idle: { animations: { idle: { frames: [new URL("../../docs/public/recipes/key.png", import.meta.url)], framesPerSecond: 1, loop: true } }, roles: { default: "idle", walking: "idle" } } },
-});
+} satisfies CharacterDefinition);
 
-const interactionProject = defineGame({
+const interactionProject = ({
   identity: "recipes.interaction",
   version: "1",
   logicalResolution: { width: 100, height: 100 },
@@ -42,9 +41,9 @@ const interactionProject = defineGame({
   commandLexicon: englishCommandLexicon,
   commandFallbacks: englishCommandFallbacks,
   initialScene: "opening",
-});
+} satisfies GameProject);
 
-const sequenceInventoryScene = defineScene({
+const sequenceInventoryScene = ({
   background: sceneUrl,
   walkableRegion: [
     { x: 0, y: 0 }, { x: 100, y: 0 },
@@ -55,11 +54,11 @@ const sequenceInventoryScene = defineScene({
       target: { kind: "background" },
       area: [{ x: 10, y: 10 }, { x: 30, y: 10 }, { x: 30, y: 30 }, { x: 10, y: 30 }],
       approach: { groundPoint: { x: 20, y: 35 }, facing: "back" },
-      noun: defineNoun({
+      noun: ({
         labels: [{ text: "Greeting" }],
         preferredVerbs: [{ verb: "talk-to" }],
         cases: [{ verb: "talk-to", sequence: "greeting" }],
-      }),
+      } satisfies NounDefinition),
     },
     {
       target: { kind: "object", object: "key" },
@@ -70,16 +69,16 @@ const sequenceInventoryScene = defineScene({
       target: { kind: "background" },
       area: [{ x: 70, y: 20 }, { x: 90, y: 20 }, { x: 90, y: 38 }, { x: 70, y: 38 }],
       approach: { groundPoint: { x: 70, y: 35 }, facing: "front" },
-      noun: defineNoun({
+      noun: ({
         labels: [{ text: "Receptacle" }],
         preferredVerbs: [{ verb: "look-at" }],
         cases: [{ verb: "look-at", response: { text: "An empty receptacle." } }, successfulUse],
-      }),
+      } satisfies NounDefinition),
     },
   ],
-});
+} satisfies SceneDefinition);
 
-const sequenceInventoryProject = defineGame({
+const sequenceInventoryProject = ({
   identity: "recipes.sequence-inventory",
   version: "1",
   logicalResolution: { width: 100, height: 100 },
@@ -92,7 +91,7 @@ const sequenceInventoryProject = defineGame({
   commandLexicon: englishCommandLexicon,
   commandFallbacks: englishCommandFallbacks,
   initialScene: "opening",
-});
+} satisfies GameProject);
 
 const interactionTarget = document.querySelector<HTMLElement>('[data-recipe-target="interaction"]')!;
 const sequenceInventoryTarget = document.querySelector<HTMLElement>('[data-recipe-target="sequence-inventory"]')!;
@@ -103,11 +102,9 @@ let sequenceInventorySession: GameSession = await startGame(sequenceInventoryPro
 
 document.querySelector<HTMLButtonElement>("#restore-choice")!.addEventListener("click", async () => {
   const raw: unknown = JSON.parse(JSON.stringify(sequenceInventorySession.createSaveSnapshot()));
-  const validation = validateSaveSnapshot(sequenceInventoryProject, raw);
-  if (!validation.ok) throw new Error("Recipe snapshot did not validate.");
   sequenceInventorySession.stop();
   sequenceInventorySession = await startGame(sequenceInventoryProject, {
     target: sequenceInventoryTarget,
-    snapshot: validation.snapshot,
+    snapshot: raw,
   });
 });

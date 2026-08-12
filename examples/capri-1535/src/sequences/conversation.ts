@@ -1,6 +1,6 @@
-import { defineSequence } from "@asterixcapri/fondale";
+import { type SequenceDefinition } from "@asterixcapri/fondale";
 
-export const conversation = defineSequence({
+export const conversation = ({
   steps: [
     { type: "narration", text: "La vecchia serratura sbarra la strada verso il porto." },
     {
@@ -32,4 +32,4 @@ export const conversation = defineSequence({
       fallback: { text: "Ricordo la promessa che ho fatto.", steps: [] },
     },
   ],
-});
+} satisfies SequenceDefinition);

@@ -1,6 +1,6 @@
-import { defineSequence } from "@asterixcapri/fondale";
+import { type SequenceDefinition } from "@asterixcapri/fondale";
 
-export const raffaeleConversation = defineSequence({
+export const raffaeleConversation = ({
   steps: [
     {
       type: "operations",
@@ -37,4 +37,4 @@ export const raffaeleConversation = defineSequence({
       text: "Prendi l'ampolla accanto alle reti, libera il pozzo e riportami la manovella. Poi salirai alla torre.",
     },
   ],
-});
+} satisfies SequenceDefinition);

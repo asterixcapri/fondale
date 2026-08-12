@@ -1,8 +1,8 @@
 import type { CoreSession } from "../capabilities/game-session";
-import type { AuthoringDiagnostic, GameProject } from "../capabilities/game-project";
+import type { AuthoringDiagnostic, CompiledGameProject } from "../capabilities/game-project";
 import type { HUDSaveSlotFacts } from "../capabilities/hud";
 import {
-  validateSaveSnapshot,
+  createSave,
   type SaveSnapshot,
   type ValidatedSaveSnapshot,
 } from "../capabilities/save";
@@ -32,7 +32,7 @@ const saveSlotsKey = "fondale.save-slots";
 
 /** Adapts Save-owned snapshots and compatibility decisions to localStorage. */
 export function createBrowserSessionControls(
-  project: GameProject,
+  project: CompiledGameProject,
   currentCore: () => CoreSession,
   replaceCore: (snapshot: ValidatedSaveSnapshot) => void,
 ): BrowserSessionControls {
@@ -54,8 +54,9 @@ export function createBrowserSessionControls(
   const write = (slots: readonly StoredSaveSlot[]) => {
     localStorage.setItem(saveSlotsKey, JSON.stringify(slots));
   };
+  const saveCapability = createSave(project);
   const describe = (slot: StoredSaveSlot): BrowserSaveSlot => {
-    const validation = validateSaveSnapshot(project, slot.snapshot);
+    const validation = saveCapability.validate(slot.snapshot);
     return {
       ...slot,
       compatible: validation.ok,
@@ -79,7 +80,7 @@ export function createBrowserSessionControls(
     },
     load(index) {
       const slot = read()[index];
-      const validation = validateSaveSnapshot(project, slot?.snapshot);
+      const validation = saveCapability.validate(slot?.snapshot);
       if (!validation.ok) return { ok: false, diagnostics: validation.diagnostics };
       replaceCore(validation.snapshot);
       return { ok: true };

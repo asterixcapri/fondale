@@ -66,6 +66,24 @@ test("stop releases the target for a new independent Game Session", async ({ pag
   });
 });
 
+test("each startGame call captures an isolated project snapshot", async ({ page }) => {
+  await page.goto("/test/fixtures/start-game.html");
+  await page.waitForFunction(() => window.__startTest !== undefined);
+
+  const result = await page.evaluate(async () => {
+    const fixture = window.__startTest!;
+    fixture.mutateProject();
+    const first = fixture.session.createSaveSnapshot().state.variables.changedAfterStart;
+    fixture.session.stop();
+    const secondSession = await fixture.restart();
+    const second = secondSession.createSaveSnapshot().state.variables.changedAfterStart;
+    secondSession.stop();
+    return { first, second };
+  });
+
+  expect(result).toEqual({ first: false, second: true });
+});
+
 test("asset dimension failure is diagnostic and leaves no partial mount", async ({ page }) => {
   await page.goto("/test/fixtures/invalid-asset.html");
   await page.waitForFunction(() => window.__invalidAsset !== undefined);
@@ -97,4 +115,30 @@ test("WebGL absence rejects startup and cleans the target", async ({ page }) => 
   await page.waitForFunction(() => window.__startError !== undefined);
   expect(await page.evaluate(() => window.__startError)).toBe("environment.webgl.unavailable");
   expect(await page.locator("#game").evaluate((target) => target.childElementCount)).toBe(0);
+});
+
+test("environment checks precede Runtime Asset loading", async ({ page }) => {
+  await page.addInitScript(() => {
+    const original = HTMLCanvasElement.prototype.getContext;
+    const callOriginal = original as unknown as (
+      this: HTMLCanvasElement,
+      contextId: string,
+      ...arguments_: unknown[]
+    ) => unknown;
+    HTMLCanvasElement.prototype.getContext = function (
+      this: HTMLCanvasElement,
+      contextId: string,
+      ...arguments_: unknown[]
+    ) {
+      if (contextId === "webgl" || contextId === "webgl2") return null;
+      return callOriginal.call(this, contextId, ...arguments_);
+    } as typeof original;
+  });
+  await page.goto("/test/fixtures/invalid-asset.html");
+  await page.waitForFunction(() => window.__invalidAsset !== undefined);
+  expect(await page.evaluate(() => window.__invalidAsset)).toEqual({
+    code: "environment.webgl.unavailable",
+    message: "Fondale requires WebGL in the current Chrome desktop Support Baseline.",
+    children: 0,
+  });
 });

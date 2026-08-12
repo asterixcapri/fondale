@@ -1,4 +1,7 @@
-import { AuthoringError, type AuthoringDiagnostic } from "../game-project";
+import {
+  AuthoringError,
+  type AuthoringDiagnostic,
+} from "../game-project";
 import {
   createInteraction,
   conditionMatchesState,
@@ -25,7 +28,7 @@ import {
 import {
   getGameSessionCompositionView,
   type GameOperation,
-  type GameProject,
+  type CompiledGameProject,
   type GameSessionGameProjectView,
 } from "../game-project";
 import {
@@ -123,15 +126,8 @@ export interface CoreSession {
   stop(): void;
 }
 
-export function createTestSession(
-  project: GameProject,
-  restored?: ValidatedSaveSnapshot,
-): CoreSession {
-  return createCoreSession(project, restored);
-}
-
 export function createCoreSession(
-  project: GameProject,
+  project: CompiledGameProject,
   restored?: ValidatedSaveSnapshot,
 ): CoreSession {
   const projectViews = getGameSessionCompositionView(project);

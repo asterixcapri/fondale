@@ -1,9 +1,9 @@
-import { defineNoun, defineScene } from "@asterixcapri/fondale";
+import { type NounDefinition, type SceneDefinition } from "@asterixcapri/fondale";
 
 import { rectangle } from "../../geometry";
 import backgroundUrl from "./background.png";
 
-export const tavern = defineScene({
+export const tavern = ({
   background: backgroundUrl,
   walkableRegion: rectangle(30, 145, 396, 180),
   hotspots: [{
@@ -12,34 +12,34 @@ export const tavern = defineScene({
   }, {
     target: { kind: "background" }, area: rectangle(54, 62, 112, 154),
     approach: { groundPoint: { x: 120, y: 170 }, facing: "left" },
-    noun: defineNoun({
+    noun: ({
       labels: [{ text: "Porta chiusa" }],
       preferredVerbs: [{ verb: "look-at" }],
       cases: [{
         verb: "look-at",
         response: { text: "La porta a sinistra è chiusa e non sembra destinata agli ospiti." },
       }],
-    }),
+    } satisfies NounDefinition),
   }, {
     target: { kind: "background" }, area: rectangle(325, 80, 395, 155),
     approach: { groundPoint: { x: 320, y: 170 }, facing: "right" },
-    noun: defineNoun({
+    noun: ({
       labels: [{ text: "Sala della taverna" }],
       preferredVerbs: [{ verb: "look-at" }],
       cases: [{
         verb: "look-at",
         response: { text: "Legno scuro, brocche e storie che migliorano a ogni bicchiere." },
       }],
-    }),
+    } satisfies NounDefinition),
   }],
   entrances: { fromHarbour: { groundPoint: { x: 210, y: 170 }, facing: "front" } },
   passages: [{
     area: rectangle(175, 62, 245, 154), approach: { groundPoint: { x: 210, y: 170 }, facing: "back" },
-    noun: defineNoun({
+    noun: ({
       labels: [{ text: "Portone per il porto" }],
       preferredVerbs: [{ verb: "walk-to" }],
       cases: [],
-    }),
+    } satisfies NounDefinition),
     direction: "enter", destination: { scene: "harbour", entrance: "fromTavern" },
   }],
-});
+} satisfies SceneDefinition);

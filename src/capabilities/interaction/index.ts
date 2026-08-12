@@ -1,5 +1,5 @@
 import type { GameOperation } from "../game-project";
-import { AuthoringError, type AuthoringDiagnostic } from "../game-project";
+import type { AuthoringDiagnostic } from "../game-project";
 import type { Line } from "../sequence";
 import type {
   Facing,
@@ -217,27 +217,6 @@ export function validateNounDefinition(
   return diagnostics;
 }
 
-/** Creates and freezes one locally valid Noun Definition. */
-export function defineNoun(input: NounDefinition): NounDefinition {
-  const diagnostics = validateNounDefinition(input);
-  if (diagnostics.length > 0) throw new AuthoringError(diagnostics);
-  const cloned = structuredClone(input);
-  return deepFreeze({
-    ...cloned,
-    cases: cloned.cases.map((candidate, index) => {
-      const sourceLine = input.cases[index]?.line;
-      return sourceLine
-        ? {
-            ...candidate,
-            line: {
-              ...sourceLine,
-              ...(sourceLine.audio instanceof URL ? { audio: new URL(sourceLine.audio.href) } : {}),
-            },
-          }
-        : candidate;
-    }),
-  });
-}
 
 /** @internal Collects semantic Command Response diagnostics for composed definitions. */
 export function validateCommandResponse(
@@ -461,13 +440,6 @@ export function validateCommandLexicon(
   validatePattern(input.patterns.give, ["{verb}", "{first}", "{second}"], childPath(path, "patterns.give"), diagnostics);
   validatePattern(input.patterns.use, ["{verb}", "{first}", "{second}"], childPath(path, "patterns.use"), diagnostics);
   return diagnostics;
-}
-
-/** Creates and freezes the localized labels and sentence patterns for Commands. */
-export function defineCommandLexicon(input: CommandLexicon): CommandLexicon {
-  const diagnostics = validateCommandLexicon(input);
-  if (diagnostics.length > 0) throw new AuthoringError(diagnostics);
-  return deepFreeze(structuredClone(input));
 }
 
 /** @internal */
@@ -1296,12 +1268,4 @@ function hasExactKeys(
   const keys = Object.keys(value);
   return required.every((key) => keys.includes(key)) &&
     keys.every((key) => required.includes(key) || optional.includes(key));
-}
-
-function deepFreeze<T>(value: T): T {
-  if (value && typeof value === "object" && !Object.isFrozen(value)) {
-    Object.freeze(value);
-    for (const child of Object.values(value)) deepFreeze(child);
-  }
-  return value;
 }

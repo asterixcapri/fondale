@@ -1,10 +1,10 @@
-import { defineNoun, defineScene } from "@asterixcapri/fondale";
+import { type NounDefinition, type SceneDefinition } from "@asterixcapri/fondale";
 
 import { rectangle } from "../../geometry";
 import backgroundUrl from "./background.png";
 import boatRockingUrl from "./boat-rocking.png";
 
-export const coastalFortification = defineScene({
+export const coastalFortification = ({
   background: backgroundUrl,
   size: { width: 640, height: 1137 },
   walkableRegion: [
@@ -66,7 +66,7 @@ export const coastalFortification = defineScene({
     target: { kind: "background" },
     area: rectangle(350, 8, 560, 330),
     approach: { groundPoint: { x: 410, y: 306 }, facing: "back" },
-    noun: defineNoun({
+    noun: ({
       labels: [{ text: "Mare dalla torre" }],
       preferredVerbs: [{ verb: "look-at" }],
       cases: [{
@@ -77,7 +77,7 @@ export const coastalFortification = defineScene({
         verb: "look-at",
         sequence: "prologueConclusion",
       }],
-    }),
+    } satisfies NounDefinition),
   }],
   entrances: {
     fromHarbour: { groundPoint: { x: 230, y: 1080 }, facing: "back" },
@@ -90,12 +90,12 @@ export const coastalFortification = defineScene({
   passages: [{
     area: rectangle(32, 970, 470, 1137),
     approach: { groundPoint: { x: 190, y: 1060 }, facing: "left" },
-    noun: defineNoun({
+    noun: ({
       labels: [{ text: "Sentiero verso il gozzo" }],
       preferredVerbs: [{ verb: "walk-to" }],
       cases: [],
-    }),
+    } satisfies NounDefinition),
     direction: "left",
     destination: { scene: "harbour", entrance: "fromFortification" },
   }],
-});
+} satisfies SceneDefinition);

@@ -1,17 +1,15 @@
 import { expect, test } from "@playwright/test";
 
-import { AuthoringError } from "./diagnostics";
-import { defineCharacter, defineScene } from "../world";
+import { type CharacterDefinition, type SceneDefinition } from "../world";
 import {
   compileGameProject,
-  defineGame,
   getBrowserProjectView,
   getGameSessionCompositionView,
   getSaveCompositionView,
-  type GameInput,
+  type GameProject,
 } from ".";
 
-const opening = defineScene({
+const opening = ({
   background: "opening.png",
   walkableRegion: [
     { x: 0, y: 0 },
@@ -19,7 +17,7 @@ const opening = defineScene({
     { x: 320, y: 180 },
     { x: 0, y: 180 },
   ],
-});
+} satisfies SceneDefinition);
 
 test("Game Project compilation returns ordered diagnostics without throwing", () => {
   const result = compileGameProject({
@@ -261,7 +259,7 @@ test("Game Project compilation severs every supported authored alias", () => {
       cursors: { left: cursor, right: cursor, up: cursor, down: cursor, enter: cursor },
       speechColors: { player: "#fff" },
     },
-  } satisfies GameInput;
+  } satisfies GameProject;
 
   const compilation = compileGameProject(input);
 
@@ -338,7 +336,7 @@ test("Game Project compilation creates independent snapshots from each call", ()
 test("Game Project supplies immutable consumer-specific composition views", () => {
   const variables = { gateOpen: false };
   const scenes = { opening };
-  const player = defineCharacter({
+  const player = ({
     initialScene: "opening",
     initialGroundPoint: { x: 160, y: 90 },
     initialFacing: "front",
@@ -353,8 +351,8 @@ test("Game Project supplies immutable consumer-specific composition views", () =
       },
     },
     movementSpeed: 60,
-  });
-  const project = defineGame({
+  } satisfies CharacterDefinition);
+  const authoredProject = ({
     identity: "example.composed-project",
     version: "2",
     logicalResolution: { width: 320, height: 180 },
@@ -363,7 +361,11 @@ test("Game Project supplies immutable consumer-specific composition views", () =
     playerCharacter: "player",
     variables,
     initialScene: "opening",
-  });
+  } satisfies GameProject);
+  const compilation = compileGameProject(authoredProject);
+  expect(compilation.ok).toBe(true);
+  if (!compilation.ok) return;
+  const project = compilation.project;
 
   variables.gateOpen = true;
   delete (scenes as Partial<typeof scenes>).opening;
@@ -395,8 +397,7 @@ test("Game Project supplies immutable consumer-specific composition views", () =
 });
 
 test("Game Project delegates every local definition to capability validators", () => {
-  try {
-    defineGame({
+  const result = compileGameProject({
       identity: "example.invalid-local-definition",
       version: "1",
       logicalResolution: { width: 320, height: 180 },
@@ -420,11 +421,10 @@ test("Game Project delegates every local definition to capability validators", (
       sequences: {
         opening: { steps: [{ type: "narration", text: "" }] },
       },
-    });
-    throw new Error("expected invalid local definitions to be rejected");
-  } catch (error) {
-    expect(error).toBeInstanceOf(AuthoringError);
-    expect((error as AuthoringError).diagnostics).toEqual(expect.arrayContaining([
+  });
+  expect(result.ok).toBe(false);
+  if (!result.ok) {
+    expect(result.diagnostics).toEqual(expect.arrayContaining([
       expect.objectContaining({ owner: "world", path: "scenes.opening.walkableRegion[0]" }),
       expect.objectContaining({ owner: "world", path: "characters.player.movementSpeed" }),
       expect.objectContaining({ owner: "animation", path: "characters.player.initialAppearance" }),

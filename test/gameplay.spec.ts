@@ -1,16 +1,17 @@
 import { expect, test } from "@playwright/test";
 
-import { createTestSession } from "../src/capabilities/game-session";
 import {
-  defineCharacter,
-  defineCommandLexicon,
-  defineGame,
-  defineNoun,
-  defineObject,
-  defineScene,
-  defineSequence,
-  validateSaveSnapshot,
-  type ValidatedSaveSnapshot,
+  createTestSession,
+  validateTestSaveSnapshot,
+} from "./support";
+import {
+  type CharacterDefinition,
+  type CommandLexicon,
+  type GameProject,
+  type NounDefinition,
+  type ObjectDefinition,
+  type SceneDefinition,
+  type SequenceDefinition,
 } from "../src/index";
 
 function projectFixture(
@@ -25,7 +26,7 @@ function projectFixture(
     { x: 100, y: 100 },
     { x: 0, y: 100 },
   ];
-  const opening = defineScene({
+  const opening = ({
     background: "opening.png",
     walkableRegion: square,
     scenery: {
@@ -36,7 +37,7 @@ function projectFixture(
           closed: { kind: "background-region", area: square },
           open: { kind: "background-region", area: square },
         },
-        noun: defineNoun({
+        noun: ({
           labels: [{ text: "Gate" }],
           preferredVerbs: [{ verb: "look-at" }],
           cases: [{
@@ -62,7 +63,7 @@ function projectFixture(
                   } as const]),
             ],
           }],
-        }),
+        } satisfies NounDefinition),
       },
     },
     hotspots: [
@@ -88,22 +89,22 @@ function projectFixture(
         area: square,
         approach: { groundPoint: { x: 90, y: 90 }, facing: "back" },
         when: { variable: "gateOpen", equals: true },
-        noun: defineNoun({
+        noun: ({
           labels: [{ text: "Ending" }],
           preferredVerbs: [{ verb: "walk-to" }],
           cases: [],
-        }),
+        } satisfies NounDefinition),
         direction: "right",
         destination: { scene: "ending", entrance: "fromOpening" },
       },
     ],
-  });
-  const ending = defineScene({
+  } satisfies SceneDefinition);
+  const ending = ({
     background: "ending.png",
     walkableRegion: square,
     entrances: { fromOpening: { groundPoint: { x: 5, y: 5 }, facing: "right" } },
-  });
-  const player = defineCharacter({
+  } satisfies SceneDefinition);
+  const player = ({
     initialScene: "opening",
     initialGroundPoint: { x: 10, y: 10 },
     initialFacing: "front",
@@ -113,7 +114,7 @@ function projectFixture(
       happy: { animations: { idle: { frames: ["happy.png"], framesPerSecond: 1, loop: true } }, roles: { default: "idle", walking: "idle" } },
     },
     movementSpeed: 600,
-    noun: defineNoun({
+    noun: ({
       labels: [{ text: "Player" }],
       preferredVerbs: [{ verb: "talk-to" }],
       cases: [{
@@ -125,9 +126,9 @@ function projectFixture(
         verb: "talk-to",
         sequence: "conversation",
       }],
-    }),
-  });
-  const key = defineObject({
+    } satisfies NounDefinition),
+  } satisfies CharacterDefinition);
+  const key = ({
     initialScene: "opening",
     initialGroundPoint: { x: 40, y: 40 },
     initialAppearance: "new",
@@ -136,7 +137,7 @@ function projectFixture(
       used: { animations: { idle: { frames: ["used-key.png"], framesPerSecond: 1, loop: true } }, roles: { default: "idle" } },
     },
     inventoryAppearance: "key-inventory.png",
-    noun: defineNoun({
+    noun: ({
       labels: [
         { when: { variable: "keyCleaned", equals: true }, text: "Clean key" },
         { text: "Dirty key" },
@@ -158,9 +159,9 @@ function projectFixture(
         response: { text: "A small key." },
         operations: [{ type: "set-variable", variable: "keyCleaned", value: true }],
       }],
-    }),
-  });
-  const coin = defineObject({
+    } satisfies NounDefinition),
+  } satisfies ObjectDefinition);
+  const coin = ({
     initialScene: "opening",
     initialGroundPoint: { x: 30, y: 30 },
     initialAppearance: "new",
@@ -169,7 +170,7 @@ function projectFixture(
       polished: { animations: { idle: { frames: ["polished-coin.png"], framesPerSecond: 1, loop: true } }, roles: { default: "idle" } },
     },
     inventoryAppearance: "coin-inventory.png",
-    noun: defineNoun({
+    noun: ({
       labels: [{ text: "Coin" }],
       preferredVerbs: [{ verb: "pick-up" }],
       cases: [{
@@ -177,9 +178,9 @@ function projectFixture(
         response: { text: "You take the coin." },
         operations: [{ type: "collect-target-object" }],
       }],
-    }),
-  });
-  const conversation = defineSequence({
+    } satisfies NounDefinition),
+  } satisfies ObjectDefinition);
+  const conversation = ({
     skippable: true,
     skipOutcome: [],
     steps: [
@@ -211,9 +212,9 @@ function projectFixture(
       { type: "narration", text: "The road still waits." },
       { type: "line", character: "player", text: "The conversation ends." },
     ],
-  });
+  } satisfies SequenceDefinition);
 
-  return defineGame({
+  return ({
     identity,
     version: "1",
     logicalResolution: { width: 100, height: 200 },
@@ -224,7 +225,7 @@ function projectFixture(
     objects: { key, ...(includeSecondObject ? { coin } : {}) },
     sequences: { conversation },
     variables: { met: false, gateOpen: false, behaviorRan: false, keyCleaned: false },
-    commandLexicon: defineCommandLexicon({
+    commandLexicon: ({
       inventory: { select: "Hold {noun}", deselect: "Put back {noun}" },
       verbs: {
         open: "Open", "pick-up": "Pick up", push: "Push", close: "Close",
@@ -233,12 +234,12 @@ function projectFixture(
       patterns: {
         unary: "{verb} {noun}", give: "{verb} {first} to {second}", use: "{verb} {first} with {second}",
       },
-    }),
+    } satisfies CommandLexicon),
     commandFallbacks: Object.fromEntries([
       "open", "pick-up", "push", "close", "look-at", "pull", "give", "talk-to", "use",
     ].map((verb) => [verb, { text: "That does not help." }])) as never,
     initialScene: "opening",
-  });
+  } satisfies GameProject);
 }
 
 function interact(session: ReturnType<typeof createTestSession>, hotspot: number) {
@@ -281,7 +282,7 @@ test("a modal Sequence exposes a resumable Line and Choice, then commits its bra
   expect(session.snapshot().variables.met).toBe(true);
   expect(session.snapshot().characters.player!.appearance).toBe("happy");
 
-  const validation = validateSaveSnapshot(
+  const validation = validateTestSaveSnapshot(
     projectFixture(),
     JSON.parse(JSON.stringify(session.createSaveSnapshot())) as unknown,
   );
@@ -309,7 +310,7 @@ test("Save Snapshot validation restores the exact active Choice", () => {
   uninterrupted.steps();
 
   const raw = JSON.parse(JSON.stringify(uninterrupted.createSaveSnapshot())) as unknown;
-  const validation = validateSaveSnapshot(project, raw);
+  const validation = validateTestSaveSnapshot(project, raw);
   expect(validation.ok).toBe(true);
   if (!validation.ok) return;
   const restored = createTestSession(project, validation.snapshot);
@@ -350,7 +351,7 @@ test("Save round trip preserves Inventory order, Object location, selection, and
     },
   };
 
-  const validation = validateSaveSnapshot(project, raw);
+  const validation = validateTestSaveSnapshot(project, raw);
   expect(validation.ok).toBe(true);
   if (!validation.ok) throw new Error("Expected the Inventory Save Snapshot to be valid.");
   const restored = createTestSession(project, validation.snapshot);
@@ -383,7 +384,7 @@ test("Save Snapshot validation restores a Command while it approaches its Noun",
   uninterrupted.input({ type: "activate-hotspot", hotspot: 0 });
   uninterrupted.steps();
 
-  const validation = validateSaveSnapshot(
+  const validation = validateTestSaveSnapshot(
     project,
     JSON.parse(JSON.stringify(uninterrupted.createSaveSnapshot())) as unknown,
   );
@@ -405,7 +406,7 @@ test("Save Snapshot validation rejects an impossible Player Intent destination",
     throw new Error("Expected a Player Intent to be active.");
   }
 
-  const result = validateSaveSnapshot(project, {
+  const result = validateTestSaveSnapshot(project, {
     ...snapshot,
     state: {
       ...snapshot.state,
@@ -428,7 +429,7 @@ test("Save Snapshot validation binds a Player Intent to its Approach Point", () 
     throw new Error("Expected a Player Intent to be active.");
   }
 
-  const result = validateSaveSnapshot(project, {
+  const result = validateTestSaveSnapshot(project, {
     ...snapshot,
     state: {
       ...snapshot.state,
@@ -453,7 +454,7 @@ test("Save Snapshot validation requires the Player Character for an active Playe
     throw new Error("Expected a Player Intent to be active.");
   }
 
-  const result = validateSaveSnapshot(project, {
+  const result = validateTestSaveSnapshot(project, {
     ...snapshot,
     state: {
       ...snapshot.state,
@@ -484,7 +485,7 @@ test("selecting a Verb cancels a Player Intent that is still approaching its Nou
 test("Save Snapshot validation rejects malformed or unavailable Command Nouns", () => {
   const project = projectFixture();
   const snapshot = createTestSession(project).createSaveSnapshot();
-  const result = validateSaveSnapshot(project, {
+  const result = validateTestSaveSnapshot(project, {
     ...snapshot,
     state: {
       ...snapshot.state,
@@ -512,7 +513,7 @@ test("Save Snapshot validation identifies an unavailable pending Command Noun", 
   const activity = structuredClone(snapshot.state.activity) as unknown as Record<string, unknown>;
   const intent = activity.intent as Record<string, unknown>;
   intent.command = { ...(intent.command as object), firstNoun: "missing" };
-  const result = validateSaveSnapshot(project, {
+  const result = validateTestSaveSnapshot(project, {
     ...snapshot,
     state: { ...snapshot.state, activity },
   });
@@ -536,7 +537,7 @@ test("Save Snapshot validation identifies malformed pending Command metadata", (
   const activity = structuredClone(snapshot.state.activity) as unknown as Record<string, unknown>;
   const intent = activity.intent as Record<string, unknown>;
   intent.command = { ...(intent.command as object), preserveState: "yes" };
-  const result = validateSaveSnapshot(project, {
+  const result = validateTestSaveSnapshot(project, {
     ...snapshot,
     state: { ...snapshot.state, activity },
   });
@@ -684,7 +685,7 @@ test("a declarative Command commits operations and an enabled passage transition
     type: "line",
     line: { character: "player", text: "The way is open." },
   });
-  const lineSave = validateSaveSnapshot(
+  const lineSave = validateTestSaveSnapshot(
     projectFixture(),
     JSON.parse(JSON.stringify(session.createSaveSnapshot())) as unknown,
   );
@@ -708,7 +709,7 @@ test("a declarative Command commits operations and an enabled passage transition
 });
 
 test("incompatible external save data returns diagnostics instead of throwing", () => {
-  const result = validateSaveSnapshot(projectFixture(), {
+  const result = validateTestSaveSnapshot(projectFixture(), {
     formatVersion: 1,
     projectIdentity: "another.game",
   });
@@ -720,7 +721,7 @@ test("incompatible external save data returns diagnostics instead of throwing", 
 test("a 0.3 Save Snapshot receives explicit incompatibility diagnostics", () => {
   const project = projectFixture();
   const current = createTestSession(project).createSaveSnapshot();
-  const result = validateSaveSnapshot(project, {
+  const result = validateTestSaveSnapshot(project, {
     ...current,
     formatVersion: 0,
     projectVersion: "0.3",
@@ -747,7 +748,7 @@ test("a contradictory or unexpectedly extended Save Snapshot is rejected", () =>
     },
   };
 
-  const result = validateSaveSnapshot(project, corrupted);
+  const result = validateTestSaveSnapshot(project, corrupted);
   expect(result.ok).toBe(false);
   if (result.ok) return;
   expect(result.diagnostics.map(({ code }) => code)).toEqual(
@@ -758,7 +759,7 @@ test("a contradictory or unexpectedly extended Save Snapshot is rejected", () =>
 test("Save Snapshot validation rejects a Character outside its Scene Space", () => {
   const project = projectFixture();
   const snapshot = createTestSession(project).createSaveSnapshot();
-  const result = validateSaveSnapshot(project, {
+  const result = validateTestSaveSnapshot(project, {
     ...snapshot,
     state: {
       ...snapshot.state,
@@ -784,7 +785,7 @@ test("Save Snapshot validation rejects a Character outside its Scene Space", () 
 test("Save Snapshot validation rejects an unavailable Line Animation", () => {
   const project = projectFixture();
   const snapshot = createTestSession(project).createSaveSnapshot();
-  const result = validateSaveSnapshot(project, {
+  const result = validateTestSaveSnapshot(project, {
     ...snapshot,
     state: {
       ...snapshot.state,
@@ -814,7 +815,7 @@ test("Save Snapshot validation rejects impossible Sequence control state", () =>
   expect(activity).toMatchObject({ type: "sequence", active: { kind: "choice" } });
   if (activity?.type !== "sequence" || activity.active?.kind !== "choice") return;
 
-  const result = validateSaveSnapshot(project, {
+  const result = validateTestSaveSnapshot(project, {
     ...snapshot,
     state: {
       ...snapshot.state,
@@ -838,7 +839,7 @@ test("Save Snapshot validation rejects a structurally real but rewound Sequence 
   const activity = snapshot.state.activity;
   if (activity?.type !== "sequence" || activity.active?.kind !== "choice") return;
 
-  const result = validateSaveSnapshot(project, {
+  const result = validateTestSaveSnapshot(project, {
     ...snapshot,
     state: {
       ...snapshot.state,
@@ -849,15 +850,15 @@ test("Save Snapshot validation rejects a structurally real but rewound Sequence 
   if (!result.ok) expect(result.diagnostics.map(({ code }) => code)).toContain("save.state.invalid");
 });
 
-test("a structurally valid but unvalidated snapshot cannot restore a session", () => {
+test("restore accepts a structurally valid untrusted snapshot", () => {
   const project = projectFixture();
-  const raw = createTestSession(project).createSaveSnapshot() as ValidatedSaveSnapshot;
-  expect(() => createTestSession(project, raw)).toThrow(/validateSaveSnapshot/);
+  const raw: unknown = structuredClone(createTestSession(project).createSaveSnapshot());
+  expect(() => createTestSession(project, raw)).not.toThrow();
 });
 
 test("a Save Snapshot validated for one Game Project cannot restore another", () => {
   const sourceProject = projectFixture();
-  const validation = validateSaveSnapshot(
+  const validation = validateTestSaveSnapshot(
     sourceProject,
     createTestSession(sourceProject).createSaveSnapshot(),
   );
@@ -866,13 +867,13 @@ test("a Save Snapshot validated for one Game Project cannot restore another", ()
 
   const otherProject = projectFixture(false, false, false, "test.other-game");
   expect(() => createTestSession(otherProject, validation.snapshot)).toThrow(
-    /validated for another Game Project/,
+    /belongs to another Game Project/,
   );
 });
 
 test("restore revalidates a Save Snapshot against the destination Game Project", () => {
   const sourceProject = projectFixture(false, false, true);
-  const validation = validateSaveSnapshot(
+  const validation = validateTestSaveSnapshot(
     sourceProject,
     createTestSession(sourceProject).createSaveSnapshot(),
   );
@@ -888,7 +889,7 @@ test("restore revalidates a Save Snapshot against the destination Game Project",
 test("successful validation isolates restoration from later stored-data mutation", () => {
   const project = projectFixture();
   const raw = structuredClone(createTestSession(project).createSaveSnapshot());
-  const validation = validateSaveSnapshot(project, raw);
+  const validation = validateTestSaveSnapshot(project, raw);
   expect(validation.ok).toBe(true);
   if (!validation.ok) return;
 

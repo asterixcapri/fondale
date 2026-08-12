@@ -2,7 +2,15 @@ import { expect, test } from "@playwright/test";
 
 import { Camera } from "./index";
 import { AuthoringError } from "../game-project";
-import { defineSequence } from "../sequence";
+import { validateTestDefinition } from "../../../test/definition-support";
+import {
+  type SequenceDefinition,
+  validateSequenceDefinition,
+} from "../sequence";
+
+function validateTestSequenceDefinition<T extends SequenceDefinition>(value: T): T {
+  return validateTestDefinition(value, validateSequenceDefinition);
+}
 
 test("Camera derives a clamped Player-following presentation from logical facts", () => {
   const camera = new Camera();
@@ -168,7 +176,7 @@ test("Camera snaps Player following on Scene transitions", () => {
 
 test("Camera owns diagnostics for its authored points", () => {
   try {
-    defineSequence({
+    (validateTestSequenceDefinition({
       scene: "room",
       steps: [{
         type: "direction",
@@ -186,7 +194,7 @@ test("Camera owns diagnostics for its authored points", () => {
           },
         ],
       }],
-    });
+    } satisfies SequenceDefinition));
     throw new Error("Expected Camera authoring to be rejected.");
   } catch (error) {
     expect(error).toBeInstanceOf(AuthoringError);

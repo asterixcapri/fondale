@@ -1,6 +1,6 @@
-import { defineSequence } from "@asterixcapri/fondale";
+import { type SequenceDefinition } from "@asterixcapri/fondale";
 
-export const prologueConclusion = defineSequence({
+export const prologueConclusion = ({
   steps: [{
     type: "narration",
     text: "Sotto la torre, oltre gli scogli, una piccola barca alla deriva avanza senza vela e senza timoniere.",
@@ -12,4 +12,4 @@ export const prologueConclusion = defineSequence({
     type: "operations",
     operations: [{ type: "set-variable", variable: "driftingBoatSeen", value: true }],
   }],
-});
+} satisfies SequenceDefinition);

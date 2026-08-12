@@ -1,11 +1,11 @@
 import wrongSizeUrl from "./background.png";
-import { AuthoringError, defineGame, defineScene, startGame } from "../../src/index";
+import { AuthoringError, type GameProject, type SceneDefinition, startGame } from "../../src/index";
 
 declare global {
   interface Window { __invalidAsset?: { code: string; message: string; children: number } }
 }
 
-const scene = defineScene({
+const scene = ({
   background: wrongSizeUrl,
   size: { width: 640, height: 360 },
   walkableRegion: [
@@ -14,14 +14,14 @@ const scene = defineScene({
     { x: 426, y: 240 },
     { x: 0, y: 240 },
   ],
-});
-const project = defineGame({
+} satisfies SceneDefinition);
+const project = ({
   identity: "test.invalid-asset",
   version: "1",
   logicalResolution: { width: 426, height: 240 },
   scenes: { opening: scene },
   initialScene: "opening",
-});
+} satisfies GameProject);
 const target = document.querySelector<HTMLElement>("#game")!;
 try {
   await startGame(project, { target });

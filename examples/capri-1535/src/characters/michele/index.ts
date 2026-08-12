@@ -1,10 +1,10 @@
-import { defineCharacter } from "@asterixcapri/fondale";
+import { type CharacterDefinition } from "@asterixcapri/fondale";
 
 import walkBackUrl from "./walk-back.png";
 import walkFrontUrl from "./walk-front.png";
 import walkSideUrl from "./walk-side.png";
 
-export const michele = defineCharacter({
+export const michele = ({
   initialScene: "townSquare",
   initialGroundPoint: { x: 92, y: 210 },
   initialFacing: "right",
@@ -42,4 +42,4 @@ export const michele = defineCharacter({
     },
   },
   movementSpeed: 150,
-});
+} satisfies CharacterDefinition);

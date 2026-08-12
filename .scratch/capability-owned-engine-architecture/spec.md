@@ -20,6 +20,16 @@ Game Session rimane il coordinatore deterministico. Possiede il Game State canon
 
 Il browser resta un confine tecnico separato. PixiJS, DOM, dispositivi di input, caricamento degli asset e localStorage consumano fatti e comandi dell'Engine, senza diventare proprietari delle regole di Sequence, Animation, Camera, HUD o Save.
 
+L'Author compone il Game Project come normali dati TypeScript, organizzabili in
+file focalizzati e verificabili staticamente con i type pubblici e `satisfies`.
+Non esistono builder pubblici `defineX`: `startGame` è l'unica operazione
+pubblica che avvia la validazione e la compilazione del progetto. Game Project
+coordina internamente i validatori delle capability, aggrega gli Authoring
+Diagnostic e, quando il progetto è valido, applica i default e crea una copia
+privata profondamente immutabile. Soltanto allora proseguono la validazione
+dell'eventuale Save Snapshot non fidato, i controlli del browser, il caricamento
+degli asset e la creazione della Game Session.
+
 La migrazione procede per sezioni verticali complete, mantenendo `main` compilabile e verificabile dopo ogni passaggio. Il primo tracer è Direction Step: il precedente nome pubblico DirectStep viene sostituito, e definizione, validazione, semantica temporale, coordinamento delle direzioni e test vengono ricondotti al modulo Sequence. CoreSession e browser consumano la stessa interpretazione semantica, eliminando i percorsi duplicati senza introdurre un nuovo modello opaco di frame o commit.
 
 La riscrittura può cambiare i contratti pubblici quando il cambiamento migliora responsabilità, coerenza del dominio o facilità d'uso. Ogni rottura aggiorna nello stesso incremento Capri 1535, documentazione, esempi e test, con indicazioni di migrazione. Non vengono mantenuti adattatori temporanei per i vecchi contratti alpha. Durante la transizione non viene pubblicata una versione npm ibrida; l'insieme coerente diventa la versione 0.4.0 al termine della riscrittura.
@@ -57,7 +67,7 @@ Il risultato finale comprende una pagina HTML autonoma e tracciata nel repositor
 27. Come maintainer dell'Engine, voglio che il completamento di un Direction Step dipenda dalla fine di tutte le direzioni finite o dalla durata dichiarata dall'Author, così da rendere la semantica temporale precisa e verificabile.
 28. Come maintainer dell'Engine, voglio eliminare il nome DirectStep in favore del termine canonico Direction Step, così da rendere il contratto pubblico coerente con il modello di dominio.
 29. Come Author, voglio importare tutte le API pubbliche da un unico entry point del package, così da non dipendere dalla struttura interna dei moduli.
-30. Come Author, voglio continuare a comporre il gioco con builder focalizzati come defineCharacter, defineScene e defineSequence, così da non dover inserire ogni definizione direttamente in defineGame.
+30. Come Author, voglio comporre il Game Project come normali dati TypeScript in file focalizzati, usando i type pubblici e `satisfies` senza dover chiamare builder `defineX`.
 31. Come Author, voglio che un Direction Step consenta di dirigere insieme Animation, Motion e Camera, così da descrivere una scena coordinata con un solo passo sequenziale.
 32. Come Author, voglio ricevere Authoring Diagnostic strutturati e riferiti alla capacità responsabile, così da capire quale definizione correggere e perché.
 33. Come Author, voglio che gli errori di Project Identity e Project Version siano espliciti, così da distinguere un salvataggio incompatibile da un problema generico di caricamento.
@@ -113,7 +123,10 @@ Il risultato finale comprende una pagina HTML autonoma e tracciata nel repositor
 - Ogni capacità valida le definizioni e le relazioni che possiede e produce Authoring Diagnostic strutturati. Game Project coordina l'esecuzione dei validatori e combina i risultati mantenendo attribuzione e contesto.
 - Il browser è un adapter area separato. Integra PixiJS, DOM, dispositivi di input, caricamento asset e localStorage; non contiene una seconda implementazione delle regole delle capacità.
 - Il package conserva un solo entry point pubblico. La riorganizzazione interna non introduce import pubblici per singolo capability module.
-- I builder di authoring focalizzati restano parte del modello d'uso. La composizione non viene compressa in un'unica chiamata monolitica a defineGame.
+- Il Game Project pubblico è una struttura dichiarativa TypeScript. I type focalizzati di Character, Object, Scene, Sequence, Noun, Command Lexicon e HUD Theme restano pubblici per consentire file modulari e controlli statici con `satisfies`; i builder `defineX`, incluso `defineGame`, vengono rimossi.
+- `startGame` è l'unica operazione pubblica che avvia la compilazione del Game Project. La compilazione resta browser-independent, delega le regole ai capability owner, aggrega gli Authoring Diagnostic e interrompe l'avvio prima di qualunque effetto browser quando il progetto è invalido.
+- Una compilazione riuscita applica i default e crea una copia privata profondamente immutabile. Non modifica né congela i dati dell'Author, e ogni Game Session osserva una fotografia indipendente acquisita dalla propria chiamata a `startGame`.
+- `startGame` accetta l'eventuale Save Snapshot come dato non fidato e lo valida contro il progetto compilato prima dei controlli browser e degli asset. La rappresentazione compilata, i validatori e la validazione separata dei Save Snapshot non fanno parte del contratto pubblico finché un consumer headless concreto non ne dimostra la necessità.
 - Poiché il progetto è in alpha, un contratto pubblico può cambiare quando il beneficio è concreto in termini di ownership, coerenza del dominio o semplicità. Non si introducono rotture prive di tale beneficio.
 - Quando cambia un contratto pubblico, nello stesso incremento vengono aggiornati Capri 1535, documentazione, ricette, esempi e test, insieme a indicazioni di migrazione. Non vengono conservati adattatori di compatibilità per i vecchi Game Project.
 - I Save Snapshot incompatibili con la nuova struttura possono essere invalidati. Il rifiuto usa Project Identity e Project Version e produce diagnostica strutturata; non viene costruito un migratore monouso per i salvataggi alpha precedenti.
@@ -126,13 +139,14 @@ Il risultato finale comprende una pagina HTML autonoma e tracciata nel repositor
 ## Testing Decisions
 
 - I test privilegiano comportamento osservabile e contratti stabili. Non devono fallire soltanto perché un dettaglio privato viene spostato all'interno del proprio capability module.
-- Il primo confine di test è il package pubblico. Le verifiche importano esclusivamente dall'entry point principale e coprono defineGame, defineSequence, gli altri builder pubblici, i contratti TypeScript, la nuova forma DirectionStep e i relativi Authoring Diagnostic.
+- Il primo confine di test è il package pubblico. Le verifiche importano esclusivamente dall'entry point principale e coprono i contratti TypeScript dichiarativi, `startGame`, la nuova forma DirectionStep e gli Authoring Diagnostic osservabili durante l'avvio.
 - Il secondo confine di test è CoreSession. Le verifiche esercitano input, tick, Game State, Game Activity, CoreEffect, snapshot difensivi e restore tramite l'API di sessione esistente e i supporti di test già pubblicamente adottati dal repository.
 - Il terzo confine di test è startGame nel browser. Le verifiche Playwright osservano input reale, presentazione, Animation, Camera, HUD, salvataggio e ripristino attraverso fixture browser e Capri 1535.
 - Il tracer Direction Step deve dimostrare con test di integrazione che più direzioni concorrenti condividono lo stesso tempo locale, che Cue e completamento avvengono una sola volta e che la durata dichiarata prevale quando termina prima delle direzioni finite.
 - Il tracer Direction Step deve coprire anche direzioni con durate differenti, assenza di una o più categorie di direzione, riferimenti non validi, combinazioni non valide e comportamento di skip applicabile.
 - I test del tracer devono provare che CoreSession e presentazione browser consumano lo stesso risultato semantico per Animation, Motion e Camera. Non è sufficiente duplicare le stesse aspettative su due interpreti separati.
 - La migrazione di ciascuna capacità aggiunge o sposta vicino al modulo i test delle sue policy e invarianti. I test trasversali restano ai confini del package, della sessione e del browser.
+- Le singole regole di authoring vengono verificate direttamente presso il validatore interno della capability che le possiede. I test di composizione verificano aggregazione e path completi; pochi test pubblici di `startGame` verificano il rifiuto complessivo e l'assenza di effetti browser parziali.
 - Una verifica strutturale automatica rifiuta import diretti nei file privati di un altro capability module. La regola consente dipendenze soltanto attraverso l'interfaccia dichiarata del proprietario.
 - La verifica strutturale rifiuta anche la reintroduzione delle categorie orizzontali come destinazione di nuove regole di dominio e la creazione di un contenitore shared usato per eludere l'ownership.
 - I test di regressione conservano il comportamento osservabile di Capri 1535 durante gli incrementi, salvo cambiamenti pubblici esplicitamente documentati e approvati dalla spec.
@@ -153,6 +167,7 @@ Il risultato finale comprende una pagina HTML autonoma e tracciata nel repositor
 - Aggiungere nuove capacità di gameplay o modificare intenzionalmente il comportamento del Player in Capri 1535.
 - Pubblicare subpath pubblici per i singoli capability module.
 - Aggiungere API pubbliche o hook usati soltanto dai test.
+- Esporre un builder, compilatore o validatore headless del Game Project senza un consumer esterno concreto distinto da `startGame`.
 - Mantenere shim o adattatori di compatibilità per i precedenti contratti alpha dei Game Project.
 - Costruire migrazioni monouso per i Save Snapshot della versione 0.3.
 - Pubblicare versioni npm intermedie mentre vecchia e nuova architettura convivono.
@@ -161,7 +176,7 @@ Il risultato finale comprende una pagina HTML autonoma e tracciata nel repositor
 
 ## Further Notes
 
-- Questa specifica deriva dalle decisioni confermate durante il grilling architetturale e va letta insieme ad ADR-0011 e al linguaggio canonico di CONTEXT.md.
+- Questa specifica deriva dalle decisioni confermate durante il grilling architetturale e va letta insieme ad ADR-0011, ADR-0012 e al linguaggio canonico di CONTEXT.md.
 - Il nome richiesto per il documento visuale conclusivo è `docs/engine-architecture.html`.
 - Le spiegazioni umane e la pagina visuale possono essere in italiano; ubiquitous language, interfacce pubbliche, codice e commenti restano in inglese.
 - “Direction Step” è il termine canonico. “Direct Step”, “Directed Step” e “Choreography” non devono essere reintrodotti come sinonimi nel contratto o nella documentazione.

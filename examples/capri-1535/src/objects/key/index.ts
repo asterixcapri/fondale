@@ -1,9 +1,9 @@
-import { defineNoun, defineObject } from "@asterixcapri/fondale";
+import { type NounDefinition, type ObjectDefinition } from "@asterixcapri/fondale";
 
 import keyInventoryUrl from "./inventory.png";
 import keyUrl from "./scene.png";
 
-export const key = defineObject({
+export const key = ({
   initialScene: "alley",
   initialGroundPoint: { x: 118, y: 170 },
   initialAppearance: "unused",
@@ -12,7 +12,7 @@ export const key = defineObject({
     used: { animations: { idle: { frames: [keyUrl], framesPerSecond: 1, loop: true } }, roles: { default: "idle" } },
   },
   inventoryAppearance: keyInventoryUrl,
-  noun: defineNoun({
+  noun: ({
     labels: [{ text: "Chiave d'ottone" }],
     preferredVerbs: [{ verb: "pick-up" }],
     secondaryVerbs: [{ verb: "look-at" }],
@@ -27,5 +27,5 @@ export const key = defineObject({
         response: { text: "Ottone pesante, denti consumati e ancora un po' di sale nella scanalatura." },
       },
     ],
-  }),
-});
+  } satisfies NounDefinition),
+} satisfies ObjectDefinition);

@@ -1,6 +1,6 @@
-import { defineSequence } from "@asterixcapri/fondale";
+import { type SequenceDefinition } from "@asterixcapri/fondale";
 
-export const greeting = defineSequence({
+export const greeting = ({
   steps: [
     { type: "line", character: "player", text: "The tide is turning." },
     { type: "narration", text: "A finite conversation begins." },
@@ -14,9 +14,9 @@ export const greeting = defineSequence({
       fallback: { text: "Leave", steps: [] },
     },
   ],
-});
+} satisfies SequenceDefinition);
 
-export const harbourArrival = defineSequence({
+export const harbourArrival = ({
   scene: "harbour",
   skippable: true,
   skipOutcome: [
@@ -54,4 +54,4 @@ export const harbourArrival = defineSequence({
     },
     { type: "operations", operations: [{ type: "set-variable", variable: "arrived", value: true }] },
   ],
-});
+} satisfies SequenceDefinition);

@@ -6,8 +6,6 @@ export {
 } from "./capabilities/game-project";
 export {
   commandVerbs,
-  defineCommandLexicon,
-  defineNoun,
   type CommandCase,
   type CommandFallback,
   type CommandLexicon,
@@ -21,7 +19,6 @@ export {
   type Verb,
 } from "./capabilities/interaction";
 export {
-  defineHUDTheme,
   type HUDTheme,
   type PassageDirection,
 } from "./capabilities/hud";
@@ -33,16 +30,11 @@ export {
   type Appearance,
 } from "./capabilities/animation";
 export {
-  defineGame,
-  type GameInput,
   type GameProject,
   type LogicalResolution,
   type GameOperation,
 } from "./capabilities/game-project";
 export {
-  defineCharacter,
-  defineObject,
-  defineScene,
   type ArrivalSequenceRule,
   type CharacterDefinition,
   type Facing,
@@ -53,7 +45,6 @@ export {
   type SceneSize,
 } from "./capabilities/world";
 export {
-  defineSequence,
   type AnimationDirection,
   type BranchStep,
   type ChoiceAlternative,
@@ -76,9 +67,4 @@ export {
   type GameSession,
   type StartGameOptions,
 } from "./browser/start-game";
-export {
-  validateSaveSnapshot,
-  type SaveSnapshot,
-  type SaveSnapshotValidation,
-  type ValidatedSaveSnapshot,
-} from "./capabilities/save";
+export { type SaveSnapshot } from "./capabilities/save";

@@ -11,7 +11,7 @@ and from Fondale's Save Snapshot format version.
 `close`, `look-at`, `pull`, `give`, `talk-to`, `use`. `CommandVerb` is that union and
 `Verb` also includes implicit `walk-to`.
 
-`defineNoun` validates and freezes a `NounDefinition`. Its `labels` and
+`NounDefinition` describes `labels` and
 `preferredVerbs` are ordered conditional variants with exactly one
 unconditional final fallback. Optional `secondaryVerbs` and `objectVerbs` use
 the same conditional contract. They advertise the right-button action at rest
@@ -22,13 +22,13 @@ case may provide exactly one textual outcome: a direct Character `line`, a
 neutral `CommandResponse`, or a `sequence`. Allowed `GameOperation` values may
 accompany that outcome. `fallbacks` map a Verb to a local `CommandFallback`.
 
-`defineCommandLexicon` validates and freezes a `CommandLexicon`: all nine semantic Verb
+`CommandLexicon` declares all nine semantic Verb
 labels, localized `inventory` `select`/`deselect` phrases, plus explicit `unary`, `give`, and `use` sentence patterns. The required
 placeholders are `{verb}`, `{noun}`, `{first}`, and `{second}` as appropriate.
-`defineGame` rejects Nouns without a lexicon and rejects any complete Command
+Startup rejects Nouns without a lexicon and rejects any complete Command
 that lacks a specific case, local fallback, or response-only global fallback.
 
-`defineHUDTheme` validates and freezes a `HUDTheme`. It supplies one local font,
+`HUDTheme` supplies one local font,
 six CSS-hex colours, HUD `opacity`, `maxSpeechWidth`, five directional cursor
 assets, and Character-keyed `speechColors`. `PassageDirection` is `left`,
 `right`, `up`, `down`, or `enter`. Theme data styles the stable Engine-owned
@@ -37,7 +37,7 @@ controls or structure.
 
 ## Definitions
 
-`defineScene` validates and freezes a `SceneDefinition`. A Scene has a PNG
+`SceneDefinition` describes a Scene with a PNG
 `background`, optional `size`, finite simple `walkableRegion`, optional `perspectiveScale`,
 named Scenery, ordered Hotspots, named Entrances, and ordered Passages.
 Omission means scale `1`. A Hotspot requires `target`, polygon `area`,
@@ -47,19 +47,19 @@ Hotspots reject `noun` and resolve the target owner's Noun at use time. A
 Passage additionally requires its own Noun,
 `PassageDirection`, and a destination Scene/Entrance. The Scene has no region
 reserved for the HUD; authored geometry may use the complete Scene Size.
-Scene Size has positive-integer width and height. During `defineGame`, omission
+Scene Size has positive-integer width and height. During startup compilation, omission
 defaults Scene Size to Logical Resolution and every declared axis must be at
 least as large as the corresponding viewport axis. The Background must exactly
 match the resolved Scene Size; its startup diagnostic reports actual and
 expected dimensions.
 
-`defineCharacter` validates a persistent Character with initial Scene, Ground
+`CharacterDefinition` describes a persistent Character with initial Scene, Ground
 Point, Facing, Appearance, positive `movementSpeed`, optional Noun, and named
 Appearances. Every Appearance owns named Animations and a required default
 Animation Role. The Player Character also requires a walking Role; directional
 walking uses side/front/back strips and mirrors the side strip when facing left.
 
-`defineObject` validates an Object with initial Scene, Ground Point, Appearance,
+`ObjectDefinition` describes an Object with initial Scene, Ground Point, Appearance,
 named animated Appearances, square `inventoryAppearance`, and optional Noun. An
 Object is in one Scene, in Inventory, or consumed. Its one Noun governs both
 world and Inventory interactions. A `place-selected-object` Ground Point must
@@ -67,7 +67,7 @@ fit every Scene in which its owning Noun or Sequence can execute; portable
 Objects, Player Character Nouns, and Sequences are therefore checked against
 every registered Scene Size.
 
-`defineSequence` validates a finite `SequenceDefinition`. `SequenceStep` is a
+`SequenceDefinition` declares a finite flow. `SequenceStep` is a
 Character-bound Line, explicit Narration, Choice, Branch, atomic Operations
 group, or concurrent Direction Step. A Line may declare an audio asset and an
 Animation override; its playback duration participates in
@@ -83,15 +83,16 @@ Outcome requests, and resumable activity state. Game Session applies requested
 Game Operations atomically, while browser presentation consumes resolved Line,
 Narration, Choice, and Direction facts without resolving authored paths again.
 
-`defineGame` composes a `GameInput` into an opaque immutable `GameProject`.
-Required values are identity, version, Logical Resolution, Scene registry and
-initial Scene. Optional registries default empty; letterbox has default
+`GameProject` is ordinary declarative TypeScript data, commonly checked with
+`satisfies`. Required values are identity, version, Logical Resolution, Scene
+registry and initial Scene. `startGame` validates and creates a private deeply
+immutable snapshot. Optional registries default empty; letterbox has default
 `#000000` (that is, default `#000000`). Registry keys are identities. Cross-references, geometry,
 conditions, operation targets, Nouns, fallbacks and assets are validated before
 play.
 
 A Character, Object, or Scenery may omit its Noun when it is not interactive.
-If a Hotspot references such an owner, `defineGame` reports one
+If a Hotspot references such an owner, startup reports one
 `definition.hotspot.target-noun.required` diagnostic at the owner path (for
 example `objects.key.noun`), even when several Hotspots reference it. A missing
 target remains the distinct `reference.hotspot.target` failure.
@@ -111,17 +112,17 @@ the destination in Scene Space.
 
 ## Runtime and persistence
 
-`startGame` resolves to `GameSession` after assets validate,
+`startGame` first compiles an isolated project snapshot and validates any
+untrusted Save Snapshot, then resolves to `GameSession` after assets validate,
 WebGL starts, and the first frame is drawn. `StartGameOptions` contains an
-unowned `target` and optional validated snapshot. `GameSession` exposes
+unowned `target` and optional unknown `snapshot`. `GameSession` exposes
 `createSaveSnapshot`, `getStatus`, `getDiagnostics`, and idempotent terminal
 `stop`.
 
-`validateSaveSnapshot` returns
-`SaveSnapshotValidation`; expected bad external data does not throw. A
-`SaveSnapshot` records format/project identity/project version and canonical
-state, including an incomplete Command. Only the branded
-`ValidatedSaveSnapshot` from successful validation may restore a session.
+A `SaveSnapshot` records format/project identity/project version and canonical
+state, including an incomplete Command. Stored values are passed as `unknown`
+to `startGame`; malformed, incompatible or semantically invalid values reject
+with Save-owned diagnostics before browser effects.
 Camera position, hover, pointer position and Player Preferences are not saved.
 On oversized Scenes the internal Camera normally follows the visible Player
 Character, eases ordinary walking, snaps on startup, restoration and Scene
@@ -154,7 +155,6 @@ identifies the capability or browser adapter responsible for the rule.
 | `SceneryAppearance` | Scenery visual condition | animated Appearance or Background Region | Background Regions remain tied to their Scene | Appearance/polygon diagnostics | [Scene](recipes/first-scene.ts) |
 | `BackgroundRegionAppearance` | Background cut-out | background-region and polygon | belongs to owning Background | polygon and bounds diagnostics | [Scene](recipes/first-scene.ts) |
 | `CharacterDefinition` | persistent Character | initial values, appearances, speed, noun | initial point is walkable | Character/reference diagnostics | [Character](recipes/character-walking.ts) |
-| `CharacterInput` | Character helper input | Character definition fields | no additional defaults | helper aggregates failures | [Character](recipes/character-walking.ts) |
 | `ObjectDefinition` | persistent Object | initial values, appearances, Inventory PNG, noun | begins in one Scene | Object/asset diagnostics | [Inventory](recipes/inventory.ts) |
 | `InteractionCondition` | state predicate | variable equality or held Object | omission is unconditional | missing-reference diagnostics | [Command](recipes/command-case.ts) |
 | `InventoryOperation` | Inventory and Object lifecycle change | collect target, place selected, place named, consume selected | World owns placement validity; Animation owns Appearance validity | Interaction/World/Animation diagnostics | [Inventory](recipes/inventory.ts) |
@@ -167,8 +167,7 @@ identifies the capability or browser adapter responsible for the rule.
 | `ScenePassage` | directional transition | area, approach, noun, direction, destination | transition is atomic | passage diagnostics | [Scene](recipes/first-scene.ts) |
 | `ArrivalSequenceRule` | post-Passage direction transfer | Sequence, optional Entrance and condition | at most one rule may apply; startup/restore are not arrivals | ambiguity/reference diagnostics | [Sequence](recipes/sequence.ts) |
 | `PerspectiveScaleStop` | depth-scale sample | Scene Space y and positive scale | stops interpolate linearly | perspective diagnostic | [Scene](recipes/first-scene.ts) |
-| `SceneInput` | Scene helper input | Background, optional size, region and optional structures | size defaults to Logical Resolution; optional collections are empty | helper and composition diagnostics | [Scene](recipes/first-scene.ts) |
-| `SceneDefinition` | frozen local Scene | same values as SceneInput | registry key supplies identity | project adds references | [Scene](recipes/first-scene.ts) |
+| `SceneDefinition` | declarative Scene | Background, optional size, region and optional structures | size defaults to Logical Resolution; registry key supplies identity | Scene/composition diagnostics | [Scene](recipes/first-scene.ts) |
 | `Line` | Character-spoken phrase | text, Character, optional audio and Animation override | speaking role falls back to default | Line/Character/Animation diagnostics | [Command](recipes/command-case.ts) |
 | `LineStep` | modal Character speech | line type plus Line fields | waits for advance and audio duration | Line/Character/asset diagnostics | [Sequence](recipes/sequence.ts) |
 | `NarrationStep` | narrator prose | narration type and non-empty text | lower warm presentation | Narration diagnostics | [Sequence](recipes/sequence.ts) |
@@ -185,8 +184,7 @@ identifies the capability or browser adapter responsible for the rule.
 | `DirectionStep` | concurrent directed beat | directions and optional duration | all finite boundaries or authored duration, whichever is first | finite-boundary diagnostics | [Sequence](recipes/sequence.ts) |
 | `SequenceStep` | finite step union | Line, Narration, Choice, Branch, Operations, Direction | nested starts forbidden | Sequence diagnostics | [Sequence](recipes/sequence.ts) |
 | `SequenceDefinition` | root modal flow | finite steps, optional owning Scene, skippable and Skip Outcome | directed flows remain in one Scene | cycle/reference/direction diagnostics | [Sequence](recipes/sequence.ts) |
-| `GameInput` | project composition | identity, version, resolution, registries, commands, theme | empty registries; black letterbox | aggregated diagnostics | [Scene](recipes/first-scene.ts) |
-| `GameProject` | validated opaque project | only returned by defineGame | immutable and fieldless | forged project rejected | [Scene](recipes/first-scene.ts) |
+| `GameProject` | declarative project authoring | identity, version, resolution, registries, commands, theme | startup captures an isolated immutable snapshot | aggregated startup diagnostics | [Scene](recipes/first-scene.ts) |
 | `NounLabel` | conditional visible name | text and optional condition | one final unconditional label | conditional/text diagnostics | [Interaction](recipes/interaction.ts) |
 | `PreferredVerbCase` | conditional contextual action | Verb and optional condition | one final unconditional Verb per declared set | conditional diagnostic | [Interaction](recipes/interaction.ts) |
 | `SelectedObjectVerbCase` | Object-first contextual action | Give or Use and optional condition | one final unconditional Verb when declared | conditional diagnostic | [Inventory](recipes/inventory.ts) |
@@ -202,10 +200,8 @@ identifies the capability or browser adapter responsible for the rule.
 | `AuthoringDiagnosticFamily` | rejecting layer | six stable category strings | category is always present | no independent failure | [Scene](recipes/first-scene.ts) |
 | `AuthoringDiagnosticOwner` | rule owner | nine capabilities or browser adapter | owner is always present | no independent failure | [Scene](recipes/first-scene.ts) |
 | `AuthoringDiagnostic` | one author-facing issue | code, family, owner, path, message, suggestion, cause | stable code/path ordering | describes owning failure | [Scene](recipes/first-scene.ts) |
-| `AuthoringError` | aggregate failure | read-only diagnostics | one error per validation layer | thrown by helpers/startup | [Scene](recipes/first-scene.ts) |
+| `AuthoringError` | aggregate failure | read-only diagnostics | one error per startup layer | thrown by startup | [Scene](recipes/first-scene.ts) |
 | `SaveSnapshot` | JSON-safe committed state | format, project identities and state | exact fields only | save validation diagnostics | [Save](recipes/save-snapshot.ts) |
-| `ValidatedSaveSnapshot` | restoration capability | successfully validated snapshot | runtime brand cannot be authored | validation-required diagnostic | [Save](recipes/save-snapshot.ts) |
-| `SaveSnapshotValidation` | validation result union | ok snapshot or diagnostics | never repairs bad input | save diagnostics | [Save](recipes/save-snapshot.ts) |
 | `StartGameOptions` | browser mount options | target and optional snapshot | omitted snapshot starts fresh | environment/save diagnostics | [Save](recipes/save-snapshot.ts) |
 | `GameSession` | running lifecycle handle | save, status, diagnostics, stop | stop idempotent and terminal | lifecycle diagnostics | [Save](recipes/save-snapshot.ts) |
 

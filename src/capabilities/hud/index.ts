@@ -1,5 +1,4 @@
 import {
-  AuthoringError,
   type AuthoringDiagnostic,
   type LogicalResolution,
 } from "../game-project";
@@ -725,24 +724,6 @@ export function validateHUDTheme(
   return diagnostics;
 }
 
-/** Creates and freezes one complete local HUD Theme. */
-export function defineHUDTheme(input: HUDTheme): HUDTheme {
-  const diagnostics = validateHUDTheme(input);
-  if (diagnostics.length > 0) throw new AuthoringError(diagnostics);
-  return deepFreeze({
-    ...input,
-    font: { ...input.font, source: cloneAsset(input.font.source) },
-    colors: { ...input.colors },
-    cursors: {
-      left: cloneAsset(input.cursors.left),
-      right: cloneAsset(input.cursors.right),
-      up: cloneAsset(input.cursors.up),
-      down: cloneAsset(input.cursors.down),
-      enter: cloneAsset(input.cursors.enter),
-    },
-    speechColors: { ...input.speechColors },
-  });
-}
 
 /** Validates HUD Theme references that can be resolved only during Game Project composition. */
 export function validateHUDProjectReferences(

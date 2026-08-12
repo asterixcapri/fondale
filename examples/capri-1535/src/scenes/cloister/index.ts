@@ -1,9 +1,9 @@
-import { defineNoun, defineScene } from "@asterixcapri/fondale";
+import { type NounDefinition, type SceneDefinition } from "@asterixcapri/fondale";
 
 import { rectangle } from "../../geometry";
 import backgroundUrl from "./background.png";
 
-export const cloister = defineScene({
+export const cloister = ({
   background: backgroundUrl,
   size: { width: 640, height: 240 },
   walkableRegion: rectangle(8, 158, 632, 230),
@@ -20,7 +20,7 @@ export const cloister = defineScene({
     target: { kind: "background" },
     area: rectangle(505, 118, 548, 230),
     approach: { groundPoint: { x: 505, y: 210 }, facing: "right" },
-    noun: defineNoun({
+    noun: ({
       labels: [{ text: "Pozzo del chiostro" }],
       preferredVerbs: [{ verb: "look-at" }],
       cases: [{
@@ -39,7 +39,7 @@ export const cloister = defineScene({
           { type: "consume-selected-object" },
         ],
       }],
-    }),
+    } satisfies NounDefinition),
   }],
   entrances: {
     fromTownSquare: { groundPoint: { x: 58, y: 208 }, facing: "right" },
@@ -47,12 +47,12 @@ export const cloister = defineScene({
   passages: [{
     area: rectangle(0, 78, 180, 228),
     approach: { groundPoint: { x: 160, y: 208 }, facing: "left" },
-    noun: defineNoun({
+    noun: ({
       labels: [{ text: "Uscita verso la piazza" }],
       preferredVerbs: [{ verb: "walk-to" }],
       cases: [],
-    }),
+    } satisfies NounDefinition),
     direction: "left",
     destination: { scene: "townSquare", entrance: "fromCloister" },
   }],
-});
+} satisfies SceneDefinition);

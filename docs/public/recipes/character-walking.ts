@@ -1,6 +1,6 @@
-import { defineCharacter } from "@asterixcapri/fondale";
+import { type CharacterDefinition } from "@asterixcapri/fondale";
 
-export const player = defineCharacter({
+export const player = ({
   initialScene: "opening",
   initialGroundPoint: { x: 160, y: 140 },
   initialFacing: "front",
@@ -31,4 +31,4 @@ export const player = defineCharacter({
       visualAnchor: { x: 8, y: 24 },
     },
   },
-});
+} satisfies CharacterDefinition);

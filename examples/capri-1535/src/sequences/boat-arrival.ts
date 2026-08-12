@@ -1,4 +1,4 @@
-import { defineSequence, type GameOperation } from "@asterixcapri/fondale";
+import { type SequenceDefinition, type GameOperation } from "@asterixcapri/fondale";
 
 const outcome: readonly GameOperation[] = [
   { type: "set-variable", variable: "boatLanded", value: true },
@@ -9,7 +9,7 @@ const outcome: readonly GameOperation[] = [
   },
 ];
 
-export const boatArrival = defineSequence({
+export const boatArrival = ({
   scene: "coastalFortification",
   skippable: true,
   skipOutcome: outcome,
@@ -94,4 +94,4 @@ export const boatArrival = defineSequence({
     },
     { type: "operations", operations: outcome },
   ],
-});
+} satisfies SequenceDefinition);

@@ -3,14 +3,13 @@ import cameraScrollingHorizontalUrl from "./camera-scrolling-horizontal.png";
 import playerUrl from "./invalid-inventory.png";
 import {
   commandVerbs,
-  defineCharacter,
-  defineCommandLexicon,
-  defineGame,
-  defineNoun,
-  defineScene,
+  type CharacterDefinition,
+  type CommandLexicon,
+  type GameProject,
+  type NounDefinition,
+  type SceneDefinition,
   startGame,
   type GameSession,
-  validateSaveSnapshot,
 } from "../../src/index";
 
 declare global {
@@ -29,7 +28,7 @@ const sceneId = horizontal ? "horizontal" : "fortification";
 const sceneHeight = horizontal ? 240 : 992;
 const hotspotTop = horizontal ? 100 : 760;
 const hotspotBottom = horizontal ? 160 : 820;
-const scene = defineScene({
+const scene = ({
   background: horizontal ? cameraScrollingHorizontalUrl : cameraScrollingUrl,
   size: { width: 1586, height: sceneHeight },
   walkableRegion: [
@@ -47,7 +46,7 @@ const scene = defineScene({
       { x: 480, y: hotspotBottom },
     ],
     approach: { groundPoint: { x: 520, y: hotspotBottom }, facing: "back" },
-    noun: defineNoun({
+    noun: ({
       labels: [{ text: "Fortification marker" }],
       preferredVerbs: [{ verb: "look-at" }],
       secondaryVerbs: [{ verb: "talk-to" }],
@@ -58,10 +57,10 @@ const scene = defineScene({
         verb: "talk-to",
         line: { character: "guide", text: "The Camera still follows the Player." },
       }],
-    }),
+    } satisfies NounDefinition),
   }],
-});
-const player = defineCharacter({
+} satisfies SceneDefinition);
+const player = ({
   initialScene: sceneId,
   initialGroundPoint: { x: 213, y: horizontal ? 180 : 850 },
   initialFacing: "front",
@@ -70,8 +69,8 @@ const player = defineCharacter({
     idle: { animations: { idle: { frames: [playerUrl], framesPerSecond: 1, loop: true } }, roles: { default: "idle", walking: "idle" }, visualAnchor: { x: 10, y: 20 } },
   },
   movementSpeed: 240,
-});
-const guide = defineCharacter({
+} satisfies CharacterDefinition);
+const guide = ({
   initialScene: sceneId,
   initialGroundPoint: { x: 520, y: horizontal ? 130 : 790 },
   initialFacing: "front",
@@ -80,16 +79,16 @@ const guide = defineCharacter({
     idle: { animations: { idle: { frames: [playerUrl], framesPerSecond: 1, loop: true } }, roles: { default: "idle" }, visualAnchor: { x: 10, y: 20 } },
   },
   movementSpeed: 60,
-});
+} satisfies CharacterDefinition);
 const noPlayer = parameters.has("noPlayer");
-const project = defineGame({
+const project = ({
   identity: "test.camera-scrolling",
   version: "1",
   logicalResolution: { width: 426, height: 240 },
   scenes: { [sceneId]: scene },
-  characters: noPlayer ? { guide } : { player, guide },
+  characters: { ...(noPlayer ? {} : { player }), guide },
   ...(noPlayer ? {} : { playerCharacter: "player" }),
-  commandLexicon: defineCommandLexicon({
+  commandLexicon: ({
     inventory: { select: "Hold {noun}", deselect: "Put away {noun}" },
     verbs: {
       open: "Open", "pick-up": "Pick up", push: "Push", close: "Close",
@@ -98,12 +97,12 @@ const project = defineGame({
     patterns: {
       unary: "{verb} {noun}", give: "{verb} {first} to {second}", use: "{verb} {first} with {second}",
     },
-  }),
+  } satisfies CommandLexicon),
   commandFallbacks: Object.fromEntries(
     commandVerbs.map((verb) => [verb, { text: "Nothing happens." }]),
   ) as never,
   initialScene: sceneId,
-});
+} satisfies GameProject);
 
 try {
   const target = document.querySelector<HTMLElement>("#game")!;
@@ -116,10 +115,8 @@ try {
       if (point && stored.state.characters.player) {
         stored.state.characters.player.groundPoint = { ...point };
       }
-      const validation = validateSaveSnapshot(project, stored);
-      if (!validation.ok) throw new Error(validation.diagnostics[0]?.message);
       fixture.session.stop();
-      fixture.session = await startGame(project, { target, snapshot: validation.snapshot });
+      fixture.session = await startGame(project, { target, snapshot: stored });
     },
   };
   window.__cameraTest = fixture;

@@ -1,310 +1,120 @@
-# Authoring a Game Project
+# Game Project authoring
 
-Fondale exposes every supported Engine Capability from
-`@asterixcapri/fondale`. A game imports only that package root and describes its
-world as immutable, validated Game Definitions. The focused sources under
-[`recipes/`](recipes/README.md) compile against the same distributable package
-and are the smallest executable examples of each capability.
-
-## Compose the world
-
-A Game Project declares its identity and Project Version, one Logical
-Resolution, named registries, the initial Scene, and optional presentation and
-Command settings:
+Fondale games are ordinary declarative TypeScript data. Import public types
+from the package root, organize definitions in focused files, and use
+`satisfies` to check each definition without changing its inferred type.
 
 ```ts
-const project = defineGame({
-  identity: "com.example.adventure",
-  version: "1",
-  logicalResolution: { width: 320, height: 180 },
-  scenes: { alley, harbour },
-  characters: { player, host },
-  playerCharacter: "player",
-  objects: { key },
-  sequences: { hostConversation },
-  variables: { gateOpen: false },
-  commandLexicon,
-  commandFallbacks,
-  hudTheme,
-  initialScene: "alley",
-});
-```
+import {
+  startGame,
+  type GameProject,
+  type SceneDefinition,
+} from "@asterixcapri/fondale";
 
-Registry keys are definition identities and all cross-references remain those
-declarative strings. `GameInput` is available from the package root when an
-Author wants to type this input separately. `defineGame` asks each capability
-to validate the definitions and relationships it owns, combines every
-diagnostic deterministically, and returns an opaque, deeply immutable Game
-Project. See the compiled [first Scene recipe](recipes/first-scene.ts).
-
-## Define Scene space and navigation
-
-`defineScene` owns the Background, optional Scene Size, Walkable Region,
-optional Perspective Scale, Scenery, Hotspots, Entrances, and Scene Passages.
-Logical Resolution is the fixed viewport. Scene Size is the complete Scene
-Space extent and defaults to Logical Resolution; each declared axis must be a
-positive integer no smaller than the corresponding viewport axis. Every Scene
-coordinate and the Background's exact pixel dimensions use the resolved Scene
-Size. Character Ground Points must remain in the Walkable Region, while Object
-Ground Points must remain inside the Scene Size. Scenery uses its Baseline and
-optional position for depth.
-An Object placement authored on a portable Object, the Player Character, or a
-Sequence must fit every registered Scene Size because it can execute in any
-current Scene. Scene-local Nouns validate placements only against their owning
-Scene.
-
-```ts
-const harbour = defineScene({
+export const harbour = {
   background: new URL("./harbour.png", import.meta.url),
   size: { width: 640, height: 360 },
-  walkableRegion: harbourFloor,
-  perspectiveScale: [{ y: 120, scale: 0.7 }, { y: 180, scale: 1 }],
-  entrances: {
-    fromAlley: { groundPoint: { x: 30, y: 165 }, facing: "right" },
-  },
-  passages: [{
-    area: alleyExitArea,
-    approach: { groundPoint: { x: 20, y: 165 }, facing: "left" },
-    noun: defineNoun({
-      labels: [{ text: "To the alley" }],
-      preferredVerbs: [{ verb: "walk-to" }],
-      cases: [],
-    }),
-    direction: "left",
-    destination: { scene: "alley", entrance: "fromHarbour" },
-  }],
-});
-```
-
-When `size` is omitted, a 320×180 project expects a 320×180 Background and
-keeps the fixed view at origin. In the panoramic example above, Fondale expects
-a 640×360 Background, follows the Player Character automatically, clamps the
-Camera at the Scene edges, and keeps Camera position out of Save Snapshots.
-Camera coordinates remain internal derived facts. A Sequence can author cut,
-logical-time move, hold, and subject-follow directions; zoom, edge scrolling,
-and Author-controlled easing are not part of the contract.
-
-A Scene Passage owns its Noun and direction because it is itself the semantic
-navigation target. Holding Tab reveals available Hotspots and Passages.
-
-## Give interactive targets one Noun
-
-A Character, Object, or Scenery owns at most one Noun Definition. Every
-Hotspot that identifies that target uses the owner's labels, contextual Verbs,
-Command Cases, responses, Lines, Sequences, and Game Operations.
-The complete compiled [Interaction recipe](recipes/interaction.ts) defines one
-Character, Object, Scenery, and Background Hotspot together and composes their
-required owners through `defineGame` in the recipe tests.
-
-An Object Noun drives both its world Hotspot and Inventory entry:
-
-```ts
-const key = defineObject({
-  initialScene: "alley",
-  initialGroundPoint: { x: 118, y: 170 },
-  initialAppearance: "unused",
-  appearances: { unused: { animations: { idle: { frames: [keyImage], framesPerSecond: 1, loop: true } }, roles: { default: "idle" } } },
-  inventoryAppearance: keyInventoryImage,
-  noun: defineNoun({
-    labels: [
-      { when: { variable: "keyCleaned", equals: true }, text: "Clean key" },
-      { text: "Dirty key" },
-    ],
-    preferredVerbs: [
-      { when: { hasObject: "key" }, verb: "use" },
-      { verb: "pick-up" },
-    ],
-    secondaryVerbs: [{ verb: "look-at" }],
-    cases: [{
-      verb: "pick-up",
-      response: { text: "You take the key." },
-      operations: [{ type: "collect-target-object" }],
-    }],
-  }),
-});
-
-const alley = defineScene({
-  // Background and Walkable Region omitted here.
-  hotspots: [{
-    target: { kind: "object", object: "key" },
-    area: keyArea,
-    approach: keyApproach,
-  }],
-});
-```
-
-Characters and Scenery follow the same ownership rule:
-
-```ts
-const host = defineCharacter({
-  // Initial Scene, Ground Point, Facing, Appearance and movementSpeed omitted.
-  noun: defineNoun({
-    labels: [{ text: "Host" }],
-    preferredVerbs: [{ verb: "talk-to" }],
-    objectVerbs: [{ verb: "give" }],
-    cases: [{ verb: "talk-to", sequence: "hostConversation" }],
-  }),
-});
-
-const tavern = defineScene({
-  // ...
-  scenery: {
-    gate: {
-      baseline: 150,
-      initialAppearance: "closed",
-      appearances: { closed: { kind: "background-region", area: gateArea } },
-      noun: defineNoun({
-        labels: [{ text: "Gate" }],
-        preferredVerbs: [{ verb: "open" }],
-        cases: [{ verb: "open", response: { text: "It is locked." } }],
-      }),
-    },
-  },
-  hotspots: [
-    { target: { kind: "character", character: "host" }, area: hostArea, approach: hostApproach },
-    { target: { kind: "scenery", scenery: "gate" }, area: gateArea, approach: gateApproach },
+  walkableRegion: [
+    { x: 0, y: 0 }, { x: 640, y: 0 },
+    { x: 640, y: 360 }, { x: 0, y: 360 },
   ],
+} satisfies SceneDefinition;
+
+const project = {
+  identity: "com.example.harbour",
+  version: "1",
+  logicalResolution: { width: 320, height: 180 },
+  scenes: { harbour },
+  initialScene: "harbour",
+} satisfies GameProject;
+
+const session = await startGame(project, {
+  target: document.querySelector<HTMLElement>("#game")!,
 });
 ```
 
-A background region has no registry owner, so its Hotspot requires a local
-Noun. Character, Object, and Scenery Hotspots reject a local Noun. An owner may
-omit its Noun while non-interactive; if a Hotspot references it, `defineGame`
-reports `definition.hotspot.target-noun.required` at the owner's `noun` path.
+`startGame` validates every local definition and cross-definition reference,
+aggregates capability-owned `AuthoringDiagnostic` values, applies supported
+defaults, and creates a private deeply immutable copy. It does not modify or
+freeze Author-owned data. Mutating that data later cannot affect a running Game
+Session; another `startGame` call captures a new independent snapshot.
+
+## Focused definitions
+
+The package root exports `CharacterDefinition`, `ObjectDefinition`,
+`SceneDefinition`, `SequenceDefinition`, `NounDefinition`, `CommandLexicon`,
+and `HUDTheme`. They allow a project to remain modular without authoring
+functions:
 
 ```ts
-const muralHotspot: HotspotDefinition = {
-  target: { kind: "background" },
-  area: [{ x: 35, y: 5 }, { x: 50, y: 5 }, { x: 50, y: 20 }],
-  approach: { groundPoint: { x: 45, y: 35 }, facing: "back" },
-  noun: defineNoun({
-    labels: [{ text: "Mural" }],
-    preferredVerbs: [{ verb: "look-at" }],
-    cases: [{ verb: "look-at", response: { text: "Faded paint." } }],
-  }),
-};
-```
+import {
+  type CharacterDefinition,
+  type NounDefinition,
+} from "@asterixcapri/fondale";
 
-## Resolve Commands declaratively
+const hostNoun = {
+  labels: [{ text: "Host" }],
+  preferredVerbs: [{ verb: "talk-to" }],
+  cases: [{ verb: "talk-to", line: { character: "host", text: "Welcome." } }],
+} satisfies NounDefinition;
 
-A Noun declares ordered conditional labels, Preferred Verbs, optional Secondary
-Verbs, optional Selected Object Verbs, specific Command Cases, and local
-fallbacks. Conditions read Game Variables or Inventory membership. A case may
-produce one direct Character Line, one neutral Command Response, or start one
-Sequence, accompanied by atomic Game Operations.
-
-```ts
-const gateNoun = defineNoun({
-  labels: [{ when: { variable: "gateOpen", equals: true }, text: "Open gate" },
-    { text: "Closed gate" }],
-  preferredVerbs: [{ verb: "look-at" }],
-  secondaryVerbs: [{ verb: "open" }],
-  objectVerbs: [{ verb: "use" }],
-  cases: [{
-    verb: "use",
-    firstNoun: "key",
-    response: { text: "The key opens the gate." },
-    operations: [
-      { type: "set-variable", variable: "gateOpen", value: true },
-      {
-        type: "set-appearance",
-        target: { kind: "scenery", scene: "alley", scenery: "gate" },
-        appearance: "open",
+export const host = {
+  initialScene: "harbour",
+  initialGroundPoint: { x: 150, y: 120 },
+  initialFacing: "front",
+  initialAppearance: "idle",
+  appearances: {
+    idle: {
+      animations: {
+        idle: { frames: [new URL("./host.png", import.meta.url)], framesPerSecond: 1 },
       },
-    ],
-  }],
-  fallbacks: { open: { response: { text: "It will not move." } } },
-});
-```
-
-The supported operations set Variables and Appearances, start Sequences,
-collect the target Object, place the selected or a named Object, or consume the
-selected Object. A complete
-Command that has no local match uses the project's response-only global
-fallback. `defineCommandLexicon` supplies all visible Verb labels, Inventory
-phrases, and unary/Give/Use grammar. See the [Interaction](recipes/interaction.ts),
-[Inventory](recipes/inventory.ts), and [Command Case](recipes/command-case.ts)
-recipes.
-
-## Author Characters, Appearances, and Sequences
-
-Every Character, Object, and image-backed Scenery Appearance owns named
-Animations plus semantic default, optional speaking, and optional walking
-roles. A one-frame Default Animation is the static case; directional strips
-serve walking without a naming convention. Scenery may also use a region cut
-from the owning Background. Named Appearance changes belong to Game State,
-while current frames and loop phase remain derived presentation.
-
-A Sequence is a finite modal progression of Character Lines, Narrations,
-Choices, automatic branches, operation groups, and Direction Steps containing
-concurrent Animation, Motion, and Camera directions. A Cue in one Animation may
-start later directions; the Core advances after every finite direction ends.
-Skippable Sequences declare an explicit Skip Outcome. Choices may conditionally
-expose at most six alternatives; selected text is spoken by the Player
-Character unless `spoken: false`. Sequence progress is saved exactly.
-
-```ts
-const greeting = defineSequence({
-  skippable: true,
-  skipOutcome: [],
-  steps: [
-    { type: "line", character: "host", text: "Welcome." },
-    { type: "narration", text: "Rain taps against the shutters." },
-    {
-      type: "choice",
-      alternatives: [{
-        text: "Ask about the harbour.",
-        when: { variable: "gateOpen", equals: true },
-        steps: [{ type: "line", character: "host", text: "Follow the lamps." }],
-      }],
-      fallback: { text: "Leave.", spoken: false, steps: [] },
+      roles: { default: "idle" },
     },
-  ],
-});
+  },
+  movementSpeed: 60,
+  noun: hostNoun,
+} satisfies CharacterDefinition;
 ```
 
-See the compiled [Character](recipes/character-walking.ts) and
-[Sequence](recipes/sequence.ts) recipes.
+Registry keys are identities. Cross-definition references use those keys and
+are resolved by the owning capability. A Scene `size` omitted at authoring
+defaults to the Logical Resolution during compilation. Other optional
+registries default to empty registries and `letterboxColor` defaults to
+`#000000`.
 
-## Start, save, restore, and stop
+## Startup diagnostics
 
-`startGame` validates browser assets and mounts one Game Session. The returned
-session can create a JSON-safe Save Snapshot, report status and diagnostics,
-and stop idempotently. Treat stored JSON as `unknown`; only a successful
-`validateSaveSnapshot` result can restore a session.
+Invalid projects reject before the target, environment, Runtime Assets, or
+mount are touched:
 
 ```ts
-const session = await startGame(project, { target: gameElement });
-const stored = JSON.stringify(session.createSaveSnapshot());
-const result = validateSaveSnapshot(project, JSON.parse(stored) as unknown);
+import { AuthoringError, startGame } from "@asterixcapri/fondale";
 
-if (result.ok) {
-  session.stop();
-  await startGame(project, { target: gameElement, snapshot: result.snapshot });
+try {
+  await startGame(project, { target });
+} catch (error) {
+  if (error instanceof AuthoringError) {
+    for (const diagnostic of error.diagnostics) {
+      console.error(diagnostic.owner, diagnostic.path, diagnostic.message);
+    }
+  }
 }
 ```
 
-`defineHUDTheme` optionally supplies the local font, palette, opacity, speech
-width and colours, and directional cursors used by the Engine-owned HUD:
+## Save and restore
+
+`GameSession.createSaveSnapshot()` returns a JSON-safe `SaveSnapshot`. Treat
+stored data as untrusted and pass it directly to `startGame`; Save validates
+its shape, Project Identity, Project Version, and complete Game State before
+any browser work.
 
 ```ts
-const hudTheme = defineHUDTheme({
-  font: { family: "Example Serif", source: "./example-serif.woff2" },
-  colors: {
-    text: "#f4dfb4", preferred: "#f2ad62", selected: "#58d6d2",
-    backing: "#0c1626", border: "#5c7182", inventoryWell: "#152536",
-  },
-  opacity: 0.9,
-  maxSpeechWidth: 160,
-  cursors: {
-    left: "./cursor-left.svg", right: "./cursor-right.svg",
-    up: "./cursor-up.svg", down: "./cursor-down.svg", enter: "./cursor-enter.svg",
-  },
-  speechColors: { host: "#f2ad62" },
-});
+const stored: unknown = JSON.parse(localStorage.getItem("save") ?? "null");
+const restored = await startGame(project, { target, snapshot: stored });
 ```
 
-The complete form is compiled in the [HUD Theme recipe](recipes/hud-theme.ts).
-Input, Camera projection, browser, layout, Inventory, speech, Save/Load, and exclusion commitments
-are listed in the [Support Baseline](support-baseline.md). See the executable
-[Save Snapshot recipe](recipes/save-snapshot.ts) for restoration handling.
+Malformed, incompatible, or semantically invalid snapshots reject with
+Save-owned diagnostics and cannot partially restore or mount a Game Session.
+
+See the [recipes](recipes/README.md) for complete compiled examples and the
+[reference](reference.md) for every public contract and diagnostic code.

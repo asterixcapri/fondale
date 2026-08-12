@@ -3,13 +3,22 @@ import { expect, test } from "@playwright/test";
 import {
   commandVerbs,
   createInteraction,
-  defineCommandLexicon,
-  defineNoun,
+  type CommandLexicon,
+  type NounDefinition,
   type InteractionStateView,
   validateCommandLexicon,
   validateInventoryOperation,
   validateNounDefinition,
 } from "./index";
+import { validateTestDefinition } from "../../../test/definition-support";
+
+function validateTestNounDefinition<T extends NounDefinition>(value: T): T {
+  return validateTestDefinition(value, validateNounDefinition);
+}
+
+function validateTestCommandLexicon<T extends CommandLexicon>(value: T): T {
+  return validateTestDefinition(value, validateCommandLexicon);
+}
 
 const state: InteractionStateView = {
   currentScene: "courtyard",
@@ -41,7 +50,7 @@ test("Interaction validates complete local authoring values without throwing", (
     inventory: { select: "Select", deselect: "Deselect {noun}" },
     verbs: Object.fromEntries(commandVerbs.map((verb) => [verb, verb === "open" ? "" : verb])),
     patterns: { unary: "{noun}", give: "{verb} {first}", use: "{verb} {second}" },
-  } as Parameters<typeof defineCommandLexicon>[0];
+  } as CommandLexicon;
   expect(validateCommandLexicon(lexicon, "commandLexicon")).toEqual(expect.arrayContaining([
     expect.objectContaining({ code: "definition.command-lexicon.label", path: "commandLexicon.verbs.open" }),
     expect.objectContaining({ code: "definition.command-lexicon.pattern", path: "commandLexicon.inventory.select" }),
@@ -52,7 +61,7 @@ test("Interaction validates complete local authoring values without throwing", (
 });
 
 test("a selected Object Contextual Action requests an approach with one Player Intent", () => {
-  const door = defineNoun({
+  const door = (validateTestNounDefinition({
     labels: [{ text: "Door" }],
     preferredVerbs: [{ verb: "look-at" }],
     objectVerbs: [{ verb: "use" }],
@@ -61,7 +70,7 @@ test("a selected Object Contextual Action requests an approach with one Player I
       firstNoun: "key",
       response: { text: "The door opens." },
     }],
-  });
+  } satisfies NounDefinition));
   const interaction = createInteraction({
     objects: {},
     commandFallbacks: {},
@@ -90,12 +99,12 @@ test("a selected Object Contextual Action requests an approach with one Player I
 });
 
 test("an Inventory secondary action resolves immediately without a Player Intent", () => {
-  const key = defineNoun({
+  const key = (validateTestNounDefinition({
     labels: [{ text: "Key" }],
     preferredVerbs: [{ verb: "use" }],
     secondaryVerbs: [{ verb: "look-at" }],
     cases: [{ verb: "look-at", response: { text: "A brass key." } }],
-  });
+  } satisfies NounDefinition));
   const interaction = createInteraction({
     objects: { key: { noun: key } },
     commandFallbacks: {},
@@ -306,7 +315,7 @@ test("placing a named Object removes it from the Inventory wherever it was", () 
 });
 
 test("Inventory presentation is an immutable ordered model of available Nouns for the HUD", () => {
-  const key = defineNoun({
+  const key = (validateTestNounDefinition({
     labels: [
       { text: "Used key", when: { variable: "used", equals: true } },
       { text: "Key" },
@@ -314,7 +323,7 @@ test("Inventory presentation is an immutable ordered model of available Nouns fo
     preferredVerbs: [{ verb: "use" }],
     secondaryVerbs: [{ verb: "look-at" }],
     cases: [],
-  });
+  } satisfies NounDefinition));
   const interaction = createInteraction({
     objects: {
       key: { noun: key, inventoryAppearance: "key-inventory.png" },
@@ -472,7 +481,7 @@ test("an unavailable Noun rejects a resumed Player Intent and resets its Command
 });
 
 test("a resumed Player Intent resolves its Command against the latest state", () => {
-  const door = defineNoun({
+  const door = (validateTestNounDefinition({
     labels: [{ text: "Door" }],
     preferredVerbs: [{ verb: "look-at" }],
     cases: [{
@@ -480,7 +489,7 @@ test("a resumed Player Intent resolves its Command against the latest state", ()
       when: { variable: "opened", equals: true },
       response: { text: "The door is open." },
     }],
-  });
+  } satisfies NounDefinition));
   const interaction = createInteraction({ objects: {}, commandFallbacks: {} });
 
   expect(interaction.resume({
@@ -522,11 +531,11 @@ test("selecting a Verb cancels the current Player Intent and starts a fresh Comm
 });
 
 test("a Passage Walk To action requests an approach before its transition", () => {
-  const exit = defineNoun({
+  const exit = (validateTestNounDefinition({
     labels: [{ text: "Exit" }],
     preferredVerbs: [{ verb: "walk-to" }],
     cases: [],
-  });
+  } satisfies NounDefinition));
   const interaction = createInteraction({ objects: {}, commandFallbacks: {} });
 
   expect(interaction.input(

@@ -2,19 +2,19 @@ import backgroundUrl from "./background.png";
 import keyInventoryUrl from "../../docs/public/recipes/key-inventory-32.png";
 import keyUrl from "../../docs/public/recipes/key.png";
 import {
-  defineCharacter,
-  defineCommandLexicon,
-  defineGame,
-  defineNoun,
-  defineObject,
-  defineScene,
-  defineSequence,
+  type CharacterDefinition,
+  type CommandLexicon,
+  type GameProject,
+  type NounDefinition,
+  type ObjectDefinition,
+  type SceneDefinition,
+  type SequenceDefinition,
   startGame,
 } from "../../src/index";
 
 const silenceAudio = "data:audio/wav;base64,UklGRnQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YVAAAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgA==";
 
-const door = defineNoun({
+const door = ({
   labels: [{ text: "Portone" }],
   preferredVerbs: [{ verb: "look-at" }],
   secondaryVerbs: [{ verb: "talk-to" }],
@@ -32,8 +32,8 @@ const door = defineNoun({
     firstNoun: "key",
     response: { text: "La chiave gira nella serratura." },
   }],
-});
-const keyNoun = defineNoun({
+} satisfies NounDefinition);
+const keyNoun = ({
   labels: [{ text: "Chiave" }],
   preferredVerbs: [{ verb: "pick-up" }],
   secondaryVerbs: [{ verb: "look-at" }],
@@ -45,8 +45,8 @@ const keyNoun = defineNoun({
     verb: "look-at",
     response: { text: "Una piccola chiave da inventario." },
   }],
-});
-const extraNouns = Array.from({ length: 8 }, (_, index) => defineNoun({
+} satisfies NounDefinition);
+const extraNouns = Array.from({ length: 8 }, (_, index) => ({
   labels: [{ text: `Oggetto ${index + 1}` }],
   preferredVerbs: [{ verb: "pick-up" }],
   secondaryVerbs: [{ verb: "look-at" }],
@@ -62,29 +62,29 @@ const extraNouns = Array.from({ length: 8 }, (_, index) => defineNoun({
     firstNoun: "item2",
     response: { text: "Uso Oggetto 2 con Oggetto 3." },
   }] : [])],
-}));
+} satisfies NounDefinition));
 const extraObjects = Object.fromEntries(extraNouns.map((noun, index) => [
   `item${index + 1}`,
-  defineObject({
+  ({
     initialScene: "opening",
     initialGroundPoint: { x: 20 + index * 22, y: 110 },
     initialAppearance: "scene",
     appearances: { scene: { animations: { idle: { frames: [keyUrl], framesPerSecond: 1, loop: true } }, roles: { default: "idle" } } },
     inventoryAppearance: keyInventoryUrl,
     noun,
-  }),
+  } satisfies ObjectDefinition),
 ]));
-const exitNoun = defineNoun({
+const exitNoun = ({
   labels: [{ text: "Verso l'uscita" }],
   preferredVerbs: [{ verb: "walk-to" }],
   cases: [],
-});
-const returnNoun = defineNoun({
+} satisfies NounDefinition);
+const returnNoun = ({
   labels: [{ text: "Verso il portone" }],
   preferredVerbs: [{ verb: "walk-to" }],
   cases: [],
-});
-const hostNoun = defineNoun({
+} satisfies NounDefinition);
+const hostNoun = ({
   labels: [{ text: "Oste" }],
   preferredVerbs: [{ verb: "talk-to" }],
   secondaryVerbs: [{ verb: "look-at" }],
@@ -93,9 +93,9 @@ const hostNoun = defineNoun({
     { verb: "talk-to", sequence: "hostGreeting" },
     { verb: "give", firstNoun: "key", response: { text: "L'oste rifiuta la chiave." } },
   ],
-});
+} satisfies NounDefinition);
 const globalResponse = { text: "Non succede nulla." };
-const project = defineGame({
+const project = ({
   identity: "test.commands",
   version: "1",
   logicalResolution: { width: 426, height: 240 },
@@ -103,26 +103,26 @@ const project = defineGame({
   playerCharacter: "player",
   inventoryAppearanceSize: 32,
   objects: {
-    key: defineObject({
+    key: ({
       initialScene: "opening",
       initialGroundPoint: { x: 120, y: 150 },
       initialAppearance: "scene",
       appearances: { scene: { animations: { idle: { frames: [keyUrl], framesPerSecond: 1, loop: true } }, roles: { default: "idle" } } },
       inventoryAppearance: keyInventoryUrl,
       noun: keyNoun,
-    }),
+    } satisfies ObjectDefinition),
     ...extraObjects,
   },
   characters: {
-    player: defineCharacter({
+    player: ({
       initialScene: "opening",
       initialGroundPoint: { x: 180, y: 175 },
       initialFacing: "front",
       initialAppearance: "idle",
       appearances: { idle: { animations: { idle: { frames: [keyUrl], framesPerSecond: 1, loop: true } }, roles: { default: "idle", walking: "idle" } } },
       movementSpeed: 600,
-    }),
-    host: defineCharacter({
+    } satisfies CharacterDefinition),
+    host: ({
       initialScene: "opening",
       initialGroundPoint: { x: 315, y: 150 },
       initialFacing: "front",
@@ -130,10 +130,10 @@ const project = defineGame({
       appearances: { idle: { animations: { idle: { frames: [keyUrl], framesPerSecond: 1, loop: true } }, roles: { default: "idle" } } },
       movementSpeed: 60,
       noun: hostNoun,
-    }),
+    } satisfies CharacterDefinition),
   },
   sequences: {
-    hostGreeting: defineSequence({
+    hostGreeting: ({
       skippable: true,
       skipOutcome: [],
       steps: [
@@ -147,9 +147,9 @@ const project = defineGame({
         fallback: { text: "Arrivederci.", spoken: false, steps: [] },
         },
       ],
-    }),
+    } satisfies SequenceDefinition),
   },
-  commandLexicon: defineCommandLexicon({
+  commandLexicon: ({
     inventory: { select: "Prendi {noun}", deselect: "Riponi {noun}" },
     verbs: {
       open: "Apri", "pick-up": "Raccogli", push: "Spingi",
@@ -161,14 +161,14 @@ const project = defineGame({
       give: "{verb} {first} a {second}",
       use: "{verb} {first} con {second}",
     },
-  }),
+  } satisfies CommandLexicon),
   commandFallbacks: {
     open: globalResponse, "pick-up": globalResponse, push: globalResponse,
     close: globalResponse, "look-at": globalResponse, pull: globalResponse,
     give: globalResponse, "talk-to": globalResponse, use: globalResponse,
   },
   scenes: {
-    opening: defineScene({
+    opening: ({
       background: backgroundUrl,
       walkableRegion: [
         { x: 0, y: 100 }, { x: 426, y: 100 }, { x: 426, y: 180 }, { x: 0, y: 180 },
@@ -215,8 +215,8 @@ const project = defineGame({
         ],
         approach: { groundPoint: { x: 20 + index * 22, y: 130 }, facing: "back" as const },
       }))],
-    }),
-    hall: defineScene({
+    } satisfies SceneDefinition),
+    hall: ({
       background: backgroundUrl,
       walkableRegion: [
         { x: 0, y: 100 }, { x: 426, y: 100 }, { x: 426, y: 180 }, { x: 0, y: 180 },
@@ -229,8 +229,8 @@ const project = defineGame({
         direction: "left",
         destination: { scene: "opening", entrance: "fromHall" },
       }],
-    }),
+    } satisfies SceneDefinition),
   },
-});
+} satisfies GameProject);
 
 await startGame(project, { target: document.querySelector<HTMLElement>("#game")! });

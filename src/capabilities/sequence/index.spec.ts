@@ -2,12 +2,17 @@ import { expect, test } from "@playwright/test";
 
 import {
   createSequence,
-  defineSequence,
+  type SequenceDefinition,
   sequenceLines,
   validateSequenceDefinition,
   validateSequenceReferences,
   type SequenceRuntimeContext,
 } from "./index";
+import { validateTestDefinition } from "../../../test/definition-support";
+
+function validateTestSequenceDefinition<T extends SequenceDefinition>(value: T): T {
+  return validateTestDefinition(value, validateSequenceDefinition);
+}
 
 const runtimeContext: SequenceRuntimeContext = {
   tick: 12,
@@ -76,7 +81,7 @@ test("Sequence validates its complete local contract with a rooted path", () => 
 
 test("Sequence traverses a Branch and requests Operations before presenting a Line", () => {
   const sequence = createSequence({
-    opening: defineSequence({
+    opening: (validateTestSequenceDefinition({
       steps: [{
         type: "branch",
         cases: [{
@@ -92,7 +97,7 @@ test("Sequence traverses a Branch and requests Operations before presenting a Li
         }],
         fallback: [{ type: "narration", text: "The door remains closed." }],
       }],
-    }),
+    } satisfies SequenceDefinition)),
   });
   const started = sequence.start("opening", "room");
   const beforeAdvance = structuredClone(started);
@@ -119,7 +124,7 @@ test("Sequence traverses a Branch and requests Operations before presenting a Li
 
 test("Sequence owns Choice eligibility, speech, and nested continuation", () => {
   const sequence = createSequence({
-    conversation: defineSequence({
+    conversation: (validateTestSequenceDefinition({
       steps: [{
         type: "choice",
         alternatives: [{
@@ -133,7 +138,7 @@ test("Sequence owns Choice eligibility, speech, and nested continuation", () => 
         }],
         fallback: { text: "Leave.", spoken: false, steps: [] },
       }],
-    }),
+    } satisfies SequenceDefinition)),
   });
   const choiceDecision = sequence.advance(sequence.start("conversation", "room"), runtimeContext);
   expect(choiceDecision).toMatchObject({
@@ -163,7 +168,7 @@ test("Sequence owns Choice eligibility, speech, and nested continuation", () => 
 
 test("Sequence selects the unspoken Choice fallback and completes its nested path", () => {
   const sequence = createSequence({
-    fallback: defineSequence({
+    fallback: (validateTestSequenceDefinition({
       steps: [{
         type: "choice",
         alternatives: [{
@@ -177,7 +182,7 @@ test("Sequence selects the unspoken Choice fallback and completes its nested pat
           steps: [{ type: "narration", text: "You step away." }],
         },
       }],
-    }),
+    } satisfies SequenceDefinition)),
   });
   const choice = sequence.advance(sequence.start("fallback", "room"), runtimeContext);
   expect(choice).toMatchObject({
@@ -196,11 +201,11 @@ test("Sequence selects the unspoken Choice fallback and completes its nested pat
 
 test("Sequence returns an explicit Skip Outcome without applying Game Operations", () => {
   const sequence = createSequence({
-    skippable: defineSequence({
+    skippable: (validateTestSequenceDefinition({
       skippable: true,
       skipOutcome: [{ type: "set-variable", variable: "finished", value: true }],
       steps: [{ type: "narration", text: "A long account." }],
-    }),
+    } satisfies SequenceDefinition)),
   });
   const waiting = sequence.advance(sequence.start("skippable", "room"), runtimeContext);
   if (waiting.type !== "waiting") throw new Error("expected an active Sequence");
@@ -213,7 +218,7 @@ test("Sequence returns an explicit Skip Outcome without applying Game Operations
 
 test("Sequence owns Direction progress and resumes traversal after completion", () => {
   const sequence = createSequence({
-    directed: defineSequence({
+    directed: (validateTestSequenceDefinition({
       scene: "room",
       steps: [{
         type: "direction",
@@ -222,7 +227,7 @@ test("Sequence owns Direction progress and resumes traversal after completion", 
         type: "narration",
         text: "The view settles.",
       }],
-    }),
+    } satisfies SequenceDefinition)),
   });
   const waiting = sequence.advance(sequence.start("directed", "room"), runtimeContext);
   if (waiting.type !== "waiting") throw new Error("expected a Direction Step");
@@ -248,10 +253,10 @@ test("Sequence owns Direction progress and resumes traversal after completion", 
 
 test("Sequence rejects a start outside its authored Scene", () => {
   const sequence = createSequence({
-    local: defineSequence({
+    local: (validateTestSequenceDefinition({
       scene: "room",
       steps: [{ type: "narration", text: "Only here." }],
-    }),
+    } satisfies SequenceDefinition)),
   });
 
   expect(() => sequence.start("local", "outside")).toThrow(
@@ -291,7 +296,7 @@ test("Sequence owns diagnostics for its composed references", () => {
 
 test("Sequence validates restored active state against its authored traversal", () => {
   const sequence = createSequence({
-    restore: defineSequence({
+    restore: (validateTestSequenceDefinition({
       steps: [{ type: "narration", text: "Before." }, {
         type: "choice",
         alternatives: [{ text: "Continue.", spoken: false, steps: [] }],
@@ -300,7 +305,7 @@ test("Sequence validates restored active state against its authored traversal", 
         type: "narration",
         text: "Last.",
       }],
-    }),
+    } satisfies SequenceDefinition)),
   });
   const first = sequence.advance(sequence.start("restore", "room"), runtimeContext);
   if (first.type !== "waiting") throw new Error("expected Narration");
@@ -322,7 +327,7 @@ test("Sequence validates restored active state against its authored traversal", 
 
 test("Sequence rejects impossible restored Choice speech metadata", () => {
   const sequence = createSequence({
-    restore: defineSequence({
+    restore: (validateTestSequenceDefinition({
       steps: [
         { type: "line", character: "guide", text: "Before." },
         {
@@ -331,7 +336,7 @@ test("Sequence rejects impossible restored Choice speech metadata", () => {
           fallback: { text: "Leave.", steps: [] },
         },
       ],
-    }),
+    } satisfies SequenceDefinition)),
   });
   const restoreContext = {
     currentTick: 12,
@@ -361,7 +366,7 @@ test("Sequence rejects impossible restored Choice speech metadata", () => {
 });
 
 test("Sequence enumerates nested Lines with stable authored paths", () => {
-  const definition = defineSequence({
+  const definition = (validateTestSequenceDefinition({
     steps: [{
       type: "branch",
       cases: [{
@@ -370,7 +375,7 @@ test("Sequence enumerates nested Lines with stable authored paths", () => {
       }],
       fallback: [{ type: "narration", text: "Outside." }],
     }],
-  });
+  } satisfies SequenceDefinition));
 
   expect(sequenceLines(definition, "sequences.opening.steps")).toEqual([{
     line: expect.objectContaining({ text: "Inside.", audio: "inside.ogg" }),
@@ -381,9 +386,9 @@ test("Sequence enumerates nested Lines with stable authored paths", () => {
 test("Sequence presentation defensively clones a Line audio URL", () => {
   const audio = new URL("https://example.test/line.ogg");
   const sequence = createSequence({
-    audio: defineSequence({
+    audio: (validateTestSequenceDefinition({
       steps: [{ type: "line", character: "guide", text: "Listen.", audio }],
-    }),
+    } satisfies SequenceDefinition)),
   });
   const waiting = sequence.advance(sequence.start("audio", "room"), runtimeContext);
   if (waiting.type !== "waiting") throw new Error("expected Line");

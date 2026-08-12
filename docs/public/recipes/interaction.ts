@@ -1,13 +1,13 @@
 import {
-  defineCharacter,
-  defineNoun,
-  defineObject,
-  defineScene,
+  type CharacterDefinition,
+  type NounDefinition,
+  type ObjectDefinition,
+  type SceneDefinition,
 } from "@asterixcapri/fondale";
 
 const doorArea = [{ x: 10, y: 10 }, { x: 30, y: 10 }, { x: 30, y: 30 }];
 
-export const interactionHost = defineCharacter({
+export const interactionHost = ({
   initialScene: "opening",
   initialGroundPoint: { x: 65, y: 35 },
   initialFacing: "left",
@@ -16,14 +16,14 @@ export const interactionHost = defineCharacter({
     idle: { animations: { idle: { frames: [new URL("./key.png", import.meta.url)], framesPerSecond: 1, loop: true } }, roles: { default: "idle" } },
   },
   movementSpeed: 60,
-  noun: defineNoun({
+  noun: ({
     labels: [{ text: "Host" }],
     preferredVerbs: [{ verb: "talk-to" }],
     cases: [{ verb: "talk-to", response: { text: "Welcome." } }],
-  }),
-});
+  } satisfies NounDefinition),
+} satisfies CharacterDefinition);
 
-export const interactionKey = defineObject({
+export const interactionKey = ({
   initialScene: "opening",
   initialGroundPoint: { x: 85, y: 35 },
   initialAppearance: "present",
@@ -31,7 +31,7 @@ export const interactionKey = defineObject({
     present: { animations: { idle: { frames: [new URL("./key.png", import.meta.url)], framesPerSecond: 1, loop: true } }, roles: { default: "idle" } },
   },
   inventoryAppearance: new URL("./key-inventory-32.png", import.meta.url),
-  noun: defineNoun({
+  noun: ({
     labels: [{ text: "Key" }],
     preferredVerbs: [{ verb: "pick-up" }],
     cases: [{
@@ -39,10 +39,10 @@ export const interactionKey = defineObject({
       response: { text: "The key enters the Inventory." },
       operations: [{ type: "collect-target-object" }],
     }],
-  }),
-});
+  } satisfies NounDefinition),
+} satisfies ObjectDefinition);
 
-export const interactionScene = defineScene({
+export const interactionScene = ({
   background: new URL("./scene.png", import.meta.url),
   walkableRegion: [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 40 }, { x: 0, y: 40 }],
   scenery: {
@@ -50,7 +50,7 @@ export const interactionScene = defineScene({
       baseline: 30,
       initialAppearance: "closed",
       appearances: { closed: { kind: "background-region", area: doorArea } },
-      noun: defineNoun({
+      noun: ({
         labels: [
           { when: { variable: "doorOpen", equals: true }, text: "Open door" },
           { text: "Door" },
@@ -68,7 +68,7 @@ export const interactionScene = defineScene({
           verb: "look-at",
           response: { text: "The door is open." },
         }],
-      }),
+      } satisfies NounDefinition),
     },
   },
   hotspots: [
@@ -91,11 +91,11 @@ export const interactionScene = defineScene({
       target: { kind: "background" },
       area: [{ x: 35, y: 5 }, { x: 50, y: 5 }, { x: 50, y: 20 }],
       approach: { groundPoint: { x: 45, y: 35 }, facing: "back" },
-      noun: defineNoun({
+      noun: ({
         labels: [{ text: "Mural" }],
         preferredVerbs: [{ verb: "look-at" }],
         cases: [{ verb: "look-at", response: { text: "Faded paint." } }],
-      }),
+      } satisfies NounDefinition),
     },
   ],
-});
+} satisfies SceneDefinition);

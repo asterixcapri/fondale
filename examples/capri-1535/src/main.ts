@@ -1,6 +1,5 @@
 import {
   startGame,
-  validateSaveSnapshot,
   type GameSession,
 } from "@asterixcapri/fondale";
 
@@ -29,9 +28,7 @@ if (import.meta.env.MODE === "prototype") {
   restore.addEventListener("click", async () => {
     const stored: unknown = JSON.parse(JSON.stringify(session.createSaveSnapshot()));
     session.stop();
-    const result = validateSaveSnapshot(project, stored);
-    if (!result.ok) throw new Error(result.diagnostics.map(({ message }) => message).join("\n"));
-    session = await startGame(project, { target, snapshot: result.snapshot });
+    session = await startGame(project, { target, snapshot: stored });
   });
 }
 

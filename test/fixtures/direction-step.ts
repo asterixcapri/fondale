@@ -8,19 +8,22 @@ import walk1Url from "./direction-walk-1.svg";
 import walk2Url from "./direction-walk-2.svg";
 import {
   commandVerbs,
-  defineCharacter,
-  defineCommandLexicon,
-  defineGame,
-  defineNoun,
-  defineScene,
-  defineSequence,
+  type CharacterDefinition,
+  type CommandLexicon,
+  type GameProject,
+  type NounDefinition,
+  type SceneDefinition,
+  type SequenceDefinition,
   startGame,
   type GameSession,
 } from "../../src/index";
 import { BrowserRenderer } from "../../src/browser/renderer";
 import { loadProjectAssets } from "../../src/browser/assets";
 import { createCoreSession } from "../../src/capabilities/game-session";
-import { getBrowserProjectView } from "../../src/capabilities/game-project";
+import {
+  getBrowserProjectView,
+} from "../../src/capabilities/game-project";
+import { compileTestGameProject } from "../support";
 
 declare global {
   interface Window {
@@ -40,7 +43,7 @@ const cameraModes = parameters.has("cameraModes");
 const square = [
   { x: 0, y: 0 }, { x: 1586, y: 0 }, { x: 1586, y: 240 }, { x: 0, y: 240 },
 ];
-const player = defineCharacter({
+const player = ({
   initialScene: "stage",
   initialGroundPoint: { x: 213, y: 180 },
   initialFacing: "front",
@@ -56,8 +59,8 @@ const player = defineCharacter({
     },
   },
   movementSpeed: 60,
-});
-const action = defineSequence({
+} satisfies CharacterDefinition);
+const action = ({
   scene: "stage",
   skippable: true,
   skipOutcome: [{ type: "set-variable", variable: "skipped", value: true }],
@@ -114,8 +117,8 @@ const action = defineSequence({
       operations: [{ type: "set-variable", variable: "completed", value: true }],
     },
   ],
-});
-const scene = defineScene({
+} satisfies SequenceDefinition);
+const scene = ({
   background: backgroundUrl,
   size: { width: 1586, height: 240 },
   walkableRegion: square,
@@ -144,14 +147,14 @@ const scene = defineScene({
     target: { kind: "background" },
     area: [{ x: 190, y: 160 }, { x: 236, y: 160 }, { x: 236, y: 200 }, { x: 190, y: 200 }],
     approach: { groundPoint: { x: 213, y: 180 }, facing: "front" },
-    noun: defineNoun({
+    noun: ({
       labels: [{ text: "Direction Step" }],
       preferredVerbs: [{ verb: "use" }],
       cases: [{ verb: "use", sequence: "action" }],
-    }),
+    } satisfies NounDefinition),
   }],
-});
-const project = defineGame({
+} satisfies SceneDefinition);
+const project = ({
   identity: "test.direction-step-browser",
   version: "1",
   logicalResolution: { width: 426, height: 240 },
@@ -161,7 +164,7 @@ const project = defineGame({
   sequences: { action },
   variables: { completed: false, skipped: false },
   initialScene: "stage",
-  commandLexicon: defineCommandLexicon({
+  commandLexicon: ({
     inventory: { select: "Hold {noun}", deselect: "Put away {noun}" },
     verbs: {
       open: "Open", "pick-up": "Pick up", push: "Push", close: "Close",
@@ -170,17 +173,18 @@ const project = defineGame({
     patterns: {
       unary: "{verb} {noun}", give: "{verb} {first} to {second}", use: "{verb} {first} with {second}",
     },
-  }),
+  } satisfies CommandLexicon),
   commandFallbacks: Object.fromEntries(
     commandVerbs.map((verb) => [verb, { text: "Nothing happens." }]),
   ) as never,
-});
+} satisfies GameProject);
 
 try {
   if (live) {
     window.__directionStepLive = { session: await startGame(project, { target: document.body }) };
   } else {
-    const projectView = getBrowserProjectView(project);
+    const compiledProject = compileTestGameProject(project);
+    const projectView = getBrowserProjectView(compiledProject);
     const startup = projectView.startup;
     const assets = await loadProjectAssets(projectView.assets);
     const application = new Application();
@@ -197,7 +201,7 @@ try {
     frame.append(application.canvas);
     document.body.append(frame);
 
-    const core = createCoreSession(project);
+    const core = createCoreSession(compiledProject);
     const controls = {
       slots: () => [],
       save: () => undefined,

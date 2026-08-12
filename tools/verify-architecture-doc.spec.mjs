@@ -36,6 +36,13 @@ test("rejects an external resource from the offline document", () => {
   );
 });
 
+test("rejects a removed authoring contract", () => {
+  assert.throws(
+    () => verifyArchitectureDocument(`${valid} validateSaveSnapshot`),
+    /obsolete authoring contract/,
+  );
+});
+
 function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

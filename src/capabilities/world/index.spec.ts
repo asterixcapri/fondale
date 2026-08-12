@@ -3,9 +3,9 @@ import { expect, test } from "@playwright/test";
 import {
   createWorldDefinitionQueries,
   createWorld,
-  defineCharacter,
-  defineObject,
-  defineScene,
+  type CharacterDefinition,
+  type ObjectDefinition,
+  type SceneDefinition,
   isInside,
   navigationPath,
   validateCharacterDefinition,
@@ -13,9 +13,16 @@ import {
   validateObjectDefinition,
   validateSceneDefinition,
   validateWorldProject,
-  type SceneDefinition,
 } from "./index";
 import type { InteractionCondition } from "../interaction";
+import { validateTestDefinition } from "../../../test/definition-support";
+
+const validateTestCharacterDefinition = <T extends CharacterDefinition>(value: T): T =>
+  validateTestDefinition(value, validateCharacterDefinition);
+const validateTestObjectDefinition = <T extends ObjectDefinition>(value: T): T =>
+  validateTestDefinition(value, validateObjectDefinition);
+const validateTestSceneDefinition = <T extends SceneDefinition>(value: T): T =>
+  validateTestDefinition(value, validateSceneDefinition);
 
 const square = [
   { x: 0, y: 0 },
@@ -128,7 +135,7 @@ test("World validates complete local definitions with caller-provided paths", ()
 });
 
 test("World creates defensive initial spatial state from its project view", () => {
-  const scene = defineScene({
+  const scene = (validateTestSceneDefinition({
     background: "scene.png",
     walkableRegion: square,
     scenery: {
@@ -140,22 +147,22 @@ test("World creates defensive initial spatial state from its project view", () =
         },
       },
     },
-  });
-  const character = defineCharacter({
+  } satisfies SceneDefinition));
+  const character = (validateTestCharacterDefinition({
     initialScene: "opening",
     initialGroundPoint: { x: 10, y: 20 },
     initialFacing: "right",
     initialAppearance: "normal",
     appearances: { normal: appearance },
     movementSpeed: 60,
-  });
-  const object = defineObject({
+  } satisfies CharacterDefinition));
+  const object = (validateTestObjectDefinition({
     initialScene: "opening",
     initialGroundPoint: { x: 30, y: 40 },
     initialAppearance: "normal",
     appearances: { normal: appearance },
     inventoryAppearance: "object.png",
-  });
+  } satisfies ObjectDefinition));
   const world = createWorld({
     initialScene: "opening",
     scenes: { opening: { ...scene, size: { width: 100, height: 100 } } },
@@ -190,7 +197,7 @@ test("World creates defensive initial spatial state from its project view", () =
 });
 
 test("World hit testing selects the topmost available target from immutable state", () => {
-  const scene = defineScene({
+  const scene = (validateTestSceneDefinition({
     background: "scene.png",
     walkableRegion: square,
     hotspots: [
@@ -207,14 +214,14 @@ test("World hit testing selects the topmost available target from immutable stat
         when: { variable: "visible", equals: true },
       },
     ],
-  });
-  const object = defineObject({
+  } satisfies SceneDefinition));
+  const object = (validateTestObjectDefinition({
     initialScene: "opening",
     initialGroundPoint: { x: 30, y: 40 },
     initialAppearance: "normal",
     appearances: { normal: appearance },
     inventoryAppearance: "object.png",
-  });
+  } satisfies ObjectDefinition));
   const world = createWorld({
     initialScene: "opening",
     scenes: { opening: { ...scene, size: { width: 100, height: 100 } } },
@@ -241,7 +248,7 @@ test("World hit testing selects the topmost available target from immutable stat
 });
 
 test("World answers directed-subject presence and position in the current Scene", () => {
-  const opening = defineScene({
+  const opening = (validateTestSceneDefinition({
     background: "opening.png",
     walkableRegion: square,
     scenery: {
@@ -252,23 +259,23 @@ test("World answers directed-subject presence and position in the current Scene"
         appearances: { normal: { kind: "background-region", area: square } },
       },
     },
-  });
-  const elsewhere = defineScene({ background: "elsewhere.png", walkableRegion: square });
-  const character = defineCharacter({
+  } satisfies SceneDefinition));
+  const elsewhere = (validateTestSceneDefinition({ background: "elsewhere.png", walkableRegion: square } satisfies SceneDefinition));
+  const character = (validateTestCharacterDefinition({
     initialScene: "opening",
     initialGroundPoint: { x: 10, y: 20 },
     initialFacing: "right",
     initialAppearance: "normal",
     appearances: { normal: appearance },
     movementSpeed: 60,
-  });
-  const object = defineObject({
+  } satisfies CharacterDefinition));
+  const object = (validateTestObjectDefinition({
     initialScene: "opening",
     initialGroundPoint: { x: 30, y: 40 },
     initialAppearance: "normal",
     appearances: { normal: appearance },
     inventoryAppearance: "object.png",
-  });
+  } satisfies ObjectDefinition));
   const world = createWorld({
     initialScene: "opening",
     scenes: {
@@ -294,7 +301,7 @@ test("World answers directed-subject presence and position in the current Scene"
 
 test("World derives defensive presentation facts for the current Scene", () => {
   const curtainFrame = new URL("https://example.test/curtain.png");
-  const scene = defineScene({
+  const scene = (validateTestSceneDefinition({
     background: "scene.png",
     walkableRegion: square,
     perspectiveScale: [{ y: 0, scale: 0.5 }, { y: 100, scale: 1 }],
@@ -313,22 +320,22 @@ test("World derives defensive presentation facts for the current Scene", () => {
         },
       },
     },
-  });
-  const character = defineCharacter({
+  } satisfies SceneDefinition));
+  const character = (validateTestCharacterDefinition({
     initialScene: "opening",
     initialGroundPoint: { x: 10, y: 20 },
     initialFacing: "left",
     initialAppearance: "normal",
     appearances: { normal: appearance },
     movementSpeed: 60,
-  });
-  const object = defineObject({
+  } satisfies CharacterDefinition));
+  const object = (validateTestObjectDefinition({
     initialScene: "opening",
     initialGroundPoint: { x: 30, y: 40 },
     initialAppearance: "normal",
     appearances: { normal: appearance },
     inventoryAppearance: "object.png",
-  });
+  } satisfies ObjectDefinition));
   const world = createWorld({
     initialScene: "opening",
     scenes: { opening: { ...scene, size: { width: 100, height: 100 } } },
@@ -371,7 +378,7 @@ test("World derives defensive presentation facts for the current Scene", () => {
 });
 
 test("World separates local Scene geometry from composed entity membership", () => {
-  const invalidScene = {
+  const invalidScene = ({
     background: "scene.png",
     size: { width: 120, height: 100 },
     walkableRegion: [
@@ -380,15 +387,15 @@ test("World separates local Scene geometry from composed entity membership", () 
       { x: 0, y: 100 },
     ],
     entrances: { outside: { groundPoint: { x: 110, y: 90 }, facing: "front" } },
-  } as const satisfies SceneDefinition;
-  const character = defineCharacter({
+  } as const satisfies SceneDefinition);
+  const character = (validateTestCharacterDefinition({
     initialScene: "missing",
     initialGroundPoint: { x: 10, y: 20 },
     initialFacing: "right",
     initialAppearance: "normal",
     appearances: { normal: appearance },
     movementSpeed: 60,
-  });
+  } satisfies CharacterDefinition));
 
   expect(validateSceneDefinition(invalidScene, "scenes.opening")).toEqual(expect.arrayContaining([
     expect.objectContaining({
@@ -425,7 +432,7 @@ test("World diagnoses invalid Passage destinations and Arrival rules", () => {
     preferredVerbs: [{ verb: "walk-to" as const }],
     cases: [],
   };
-  const opening = {
+  const opening = ({
     background: "opening.png",
     walkableRegion: square,
     entrances: { valid: { groundPoint: { x: 10, y: 10 }, facing: "front" } },
@@ -442,7 +449,7 @@ test("World diagnoses invalid Passage destinations and Arrival rules", () => {
     }, {
       sequence: "second",
     }],
-  } as const satisfies SceneDefinition;
+  } as const satisfies SceneDefinition);
 
   expect(validateSceneDefinition(opening, "scenes.opening")).toEqual(expect.arrayContaining([
     expect.objectContaining({
@@ -486,10 +493,10 @@ test("World owns local and Scene-specific Motion diagnostics", () => {
     ]),
   );
 
-  const opening = defineScene({
+  const opening = (validateTestSceneDefinition({
     background: "opening.png",
     walkableRegion: square,
-  });
+  } satisfies SceneDefinition));
   const world = createWorldDefinitionQueries({
     logicalResolution: { width: 100, height: 100 },
     initialScene: "opening",
@@ -540,15 +547,15 @@ test("World plans and advances deterministic Character navigation without mutati
     { x: 100, y: 100 },
     { x: 0, y: 100 },
   ];
-  const opening = defineScene({ background: "opening.png", walkableRegion: concave });
-  const character = defineCharacter({
+  const opening = (validateTestSceneDefinition({ background: "opening.png", walkableRegion: concave } satisfies SceneDefinition));
+  const character = (validateTestCharacterDefinition({
     initialScene: "opening",
     initialGroundPoint: { x: 10, y: 10 },
     initialFacing: "front",
     initialAppearance: "normal",
     appearances: { normal: appearance },
     movementSpeed: 60,
-  });
+  } satisfies CharacterDefinition));
   const world = createWorld({
     initialScene: "opening",
     scenes: { opening: { ...opening, size: { width: 100, height: 100 } } },
@@ -587,15 +594,15 @@ test("World plans and advances deterministic Character navigation without mutati
 });
 
 test("World derives every Character facing even when movement completes in one tick", () => {
-  const opening = defineScene({ background: "opening.png", walkableRegion: square });
-  const character = defineCharacter({
+  const opening = (validateTestSceneDefinition({ background: "opening.png", walkableRegion: square } satisfies SceneDefinition));
+  const character = (validateTestCharacterDefinition({
     initialScene: "opening",
     initialGroundPoint: { x: 50, y: 50 },
     initialFacing: "front",
     initialAppearance: "normal",
     appearances: { normal: appearance },
     movementSpeed: 60,
-  });
+  } satisfies CharacterDefinition));
   const world = createWorld({
     initialScene: "opening",
     scenes: { opening: { ...opening, size: { width: 100, height: 100 } } },
@@ -621,7 +628,7 @@ test("World derives every Character facing even when movement completes in one t
 });
 
 test("World selects available Approach Points", () => {
-  const opening = defineScene({
+  const opening = (validateTestSceneDefinition({
     background: "opening.png",
     walkableRegion: square,
     hotspots: [{
@@ -639,7 +646,7 @@ test("World selects available Approach Points", () => {
       destination: { scene: "opening", entrance: "door" },
     }],
     entrances: { door: { groundPoint: { x: 10, y: 10 }, facing: "front" } },
-  });
+  } satisfies SceneDefinition));
   const world = createWorld({
     initialScene: "opening",
     scenes: { opening: { ...opening, size: { width: 100, height: 100 } } },
@@ -660,7 +667,7 @@ test("World selects available Approach Points", () => {
 });
 
 test("World advances Character, Object and Scenery Motion from shared local timing", () => {
-  const opening = defineScene({
+  const opening = (validateTestSceneDefinition({
     background: "opening.png",
     walkableRegion: square,
     scenery: {
@@ -671,22 +678,22 @@ test("World advances Character, Object and Scenery Motion from shared local timi
         appearances: { normal: { kind: "background-region", area: square } },
       },
     },
-  });
-  const character = defineCharacter({
+  } satisfies SceneDefinition));
+  const character = (validateTestCharacterDefinition({
     initialScene: "opening",
     initialGroundPoint: { x: 10, y: 10 },
     initialFacing: "front",
     initialAppearance: "normal",
     appearances: { normal: appearance },
     movementSpeed: 60,
-  });
-  const object = defineObject({
+  } satisfies CharacterDefinition));
+  const object = (validateTestObjectDefinition({
     initialScene: "opening",
     initialGroundPoint: { x: 20, y: 20 },
     initialAppearance: "normal",
     appearances: { normal: appearance },
     inventoryAppearance: "object.png",
-  });
+  } satisfies ObjectDefinition));
   const world = createWorld({
     initialScene: "opening",
     scenes: { opening: { ...opening, size: { width: 100, height: 100 } } },
@@ -748,7 +755,7 @@ test("World resolves a Passage transition and its Arrival Sequence without mutat
     preferredVerbs: [{ verb: "walk-to" as const }],
     cases: [],
   };
-  const opening = defineScene({
+  const opening = (validateTestSceneDefinition({
     background: "opening.png",
     walkableRegion: square,
     passages: [{
@@ -759,8 +766,8 @@ test("World resolves a Passage transition and its Arrival Sequence without mutat
       destination: { scene: "tower", entrance: "fromOpening" },
       when: { variable: "doorOpen", equals: true },
     }],
-  });
-  const tower = defineScene({
+  } satisfies SceneDefinition));
+  const tower = (validateTestSceneDefinition({
     background: "tower.png",
     walkableRegion: square,
     entrances: { fromOpening: { groundPoint: { x: 5, y: 6 }, facing: "left" } },
@@ -769,15 +776,15 @@ test("World resolves a Passage transition and its Arrival Sequence without mutat
       sequence: "arrival",
       when: { variable: "firstVisit", equals: true },
     }],
-  });
-  const character = defineCharacter({
+  } satisfies SceneDefinition));
+  const character = (validateTestCharacterDefinition({
     initialScene: "opening",
     initialGroundPoint: { x: 10, y: 10 },
     initialFacing: "front",
     initialAppearance: "normal",
     appearances: { normal: appearance },
     movementSpeed: 60,
-  });
+  } satisfies CharacterDefinition));
   const world = createWorld({
     initialScene: "opening",
     scenes: {

@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { defineCharacter, defineGame, defineNoun, defineScene } from "@asterixcapri/fondale";
+import { type CharacterDefinition, type GameProject, type NounDefinition, type SceneDefinition } from "@asterixcapri/fondale";
 
 import { player } from "../docs/public/recipes/character-walking";
 import {
@@ -19,23 +19,23 @@ import { key, successfulUse } from "../docs/public/recipes/inventory";
 import { restoreStoredProject } from "../docs/public/recipes/save-snapshot";
 import { greeting } from "../docs/public/recipes/sequence";
 
-const sequencePlayer = defineCharacter({
+const sequencePlayer = ({
   initialScene: "opening",
   initialGroundPoint: { x: 10, y: 10 },
   initialFacing: "front",
   initialAppearance: "idle",
   movementSpeed: 60,
   appearances: { idle: { animations: { idle: { frames: ["player.png"], framesPerSecond: 1, loop: true } }, roles: { default: "idle", walking: "idle" } } },
-});
+} satisfies CharacterDefinition);
 
-test("every public recipe executes against the built package root", () => {
-  expect(Object.isFrozen(firstScene)).toBe(true);
-  expect(Object.isFrozen(firstProject)).toBe(true);
-  expect(Object.isFrozen(player)).toBe(true);
-  expect(Object.isFrozen(interactionScene)).toBe(true);
-  expect(Object.isFrozen(exampleHUDTheme)).toBe(true);
-  expect(Object.isFrozen(key)).toBe(true);
-  expect(Object.isFrozen(greeting)).toBe(true);
+test("every public recipe exposes ordinary author-owned data from the built package root", () => {
+  expect(Object.isFrozen(firstScene)).toBe(false);
+  expect(Object.isFrozen(firstProject)).toBe(false);
+  expect(Object.isFrozen(player)).toBe(false);
+  expect(Object.isFrozen(interactionScene)).toBe(false);
+  expect(Object.isFrozen(exampleHUDTheme)).toBe(false);
+  expect(Object.isFrozen(key)).toBe(false);
+  expect(Object.isFrozen(greeting)).toBe(false);
   expect(successfulUse.verb).toBe("use");
   expect(restoreStoredProject).toBeInstanceOf(Function);
 
@@ -44,23 +44,23 @@ test("every public recipe executes against the built package root", () => {
   ]);
 });
 
-test("the Interaction, Sequence, and Inventory recipes compose as validated projects", () => {
-  const plainScene = defineScene({
+test("the Interaction, Sequence, and Inventory recipes compose as typed projects", () => {
+  const plainScene = ({
     background: "scene.png",
     walkableRegion: [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 40 }, { x: 0, y: 40 }],
     hotspots: [{
       target: { kind: "background" },
       area: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 0, y: 10 }],
       approach: { groundPoint: { x: 5, y: 5 }, facing: "front" },
-      noun: defineNoun({
+      noun: ({
         labels: [{ text: "Plain room" }],
         preferredVerbs: [{ verb: "look-at" }],
         cases: [{ verb: "look-at", response: { text: "A plain room." } }, successfulUse],
-      }),
+      } satisfies NounDefinition),
     }],
-  });
+  } satisfies SceneDefinition);
   const projects = [
-    defineGame({
+    ({
       identity: "recipe.interaction",
       version: "1",
       logicalResolution: { width: 100, height: 100 },
@@ -72,8 +72,8 @@ test("the Interaction, Sequence, and Inventory recipes compose as validated proj
       commandLexicon: englishCommandLexicon,
       commandFallbacks: englishCommandFallbacks,
       initialScene: "opening",
-    }),
-    defineGame({
+    } satisfies GameProject),
+    ({
       identity: "recipe.sequence",
       version: "1",
       logicalResolution: { width: 100, height: 100 },
@@ -86,8 +86,8 @@ test("the Interaction, Sequence, and Inventory recipes compose as validated proj
       commandLexicon: englishCommandLexicon,
       commandFallbacks: englishCommandFallbacks,
       initialScene: "opening",
-    }),
-    defineGame({
+    } satisfies GameProject),
+    ({
       identity: "recipe.inventory",
       version: "1",
       logicalResolution: { width: 100, height: 100 },
@@ -96,9 +96,9 @@ test("the Interaction, Sequence, and Inventory recipes compose as validated proj
       commandLexicon: englishCommandLexicon,
       commandFallbacks: englishCommandFallbacks,
       initialScene: "opening",
-    }),
+    } satisfies GameProject),
   ];
-  expect(projects.every(Object.isFrozen)).toBe(true);
+  expect(projects.every((project) => !Object.isFrozen(project))).toBe(true);
 });
 
 test("the Save recipe executes its invalid-data result path", async () => {

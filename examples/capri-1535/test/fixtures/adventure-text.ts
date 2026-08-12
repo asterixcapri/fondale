@@ -1,10 +1,10 @@
 import {
-  defineCharacter,
-  defineGame,
-  defineHUDTheme,
-  defineNoun,
-  defineScene,
-  defineSequence,
+  type CharacterDefinition,
+  type GameProject,
+  type HUDTheme,
+  type NounDefinition,
+  type SceneDefinition,
+  type SequenceDefinition,
   startGame,
 } from "@asterixcapri/fondale";
 
@@ -13,7 +13,7 @@ import { italianCommandFallbacks, italianCommandLexicon } from "../../src/hud";
 const requestedScene = new URLSearchParams(location.search).get("scene");
 const sceneFamily = requestedScene === "boffe" ? "boffe" : requestedScene === "harbour" ? "harbour" : "aiano";
 const background = await logicalBackground(`/art/scenes/${sceneFamily}/background.png`);
-const hudTheme = defineHUDTheme({
+const hudTheme = ({
   font: { family: "Capri Pixel", source: "/src/hud/capri-pixel.ttf" },
   colors: {
     text: "#f4dfb4",
@@ -33,35 +33,35 @@ const hudTheme = defineHUDTheme({
     enter: "/src/hud/cursors/enter.svg",
   },
   speechColors: { player: "#f4dfb4", guide: "#f2ad62" },
-});
+} satisfies HUDTheme);
 
-const responseNoun = defineNoun({
+const responseNoun = ({
   labels: [{ text: "Panorama" }],
   preferredVerbs: [{ verb: "look-at" }],
   cases: [{ verb: "look-at", response: { text: "La luce cambia ogni pietra senza nascondere la strada." } }],
-});
-const narrationNoun = defineNoun({
+} satisfies NounDefinition);
+const narrationNoun = ({
   labels: [{ text: "Ricordo" }],
   preferredVerbs: [{ verb: "look-at" }],
   cases: [{ verb: "look-at", sequence: "memory" }],
-});
-const guideNoun = defineNoun({
+} satisfies NounDefinition);
+const guideNoun = ({
   labels: [{ text: "Guida" }],
   preferredVerbs: [{ verb: "talk-to" }],
   cases: [{
     verb: "talk-to",
     line: { character: "guide", text: "Qui ogni voce deve restare sopra chi la pronuncia." },
   }],
-});
+} satisfies NounDefinition);
 
-const project = defineGame({
+const project = ({
   identity: `capri.adventure-text.${sceneFamily}`,
   version: "1",
   logicalResolution: { width: 426, height: 240 },
   initialScene: sceneFamily,
   playerCharacter: "player",
   scenes: {
-    [sceneFamily]: defineScene({
+    [sceneFamily]: ({
       background,
       walkableRegion: [{ x: 0, y: 130 }, { x: 426, y: 130 }, { x: 426, y: 215 }, { x: 0, y: 215 }],
       hotspots: [{
@@ -79,18 +79,18 @@ const project = defineGame({
         area: [{ x: 300, y: 85 }, { x: 365, y: 85 }, { x: 365, y: 190 }, { x: 300, y: 190 }],
         approach: { groundPoint: { x: 285, y: 170 }, facing: "right" },
       }],
-    }),
+    } satisfies SceneDefinition),
   },
   characters: {
-    player: defineCharacter({
+    player: ({
       initialScene: sceneFamily,
       initialGroundPoint: { x: 210, y: 175 },
       initialFacing: "front",
       initialAppearance: "idle",
       appearances: { idle: { animations: { idle: { frames: ["/src/characters/brother-elia/idle.png"], framesPerSecond: 1, loop: true } }, roles: { default: "idle", walking: "idle" } } },
       movementSpeed: 900,
-    }),
-    guide: defineCharacter({
+    } satisfies CharacterDefinition),
+    guide: ({
       initialScene: sceneFamily,
       initialGroundPoint: { x: 334, y: 178 },
       initialFacing: "front",
@@ -98,21 +98,21 @@ const project = defineGame({
       appearances: { idle: { animations: { idle: { frames: ["/src/characters/raffaele/idle.png"], framesPerSecond: 1, loop: true } }, roles: { default: "idle" } } },
       movementSpeed: 60,
       noun: guideNoun,
-    }),
+    } satisfies CharacterDefinition),
   },
   sequences: {
-    memory: defineSequence({
+    memory: ({
       steps: [{ type: "narration", text: "Il vento porta il sale fin dentro i vicoli dell'isola." }, {
         type: "choice",
         alternatives: [{ text: "Seguiamo la luce.", steps: [] }, { text: "Restiamo ancora un momento.", steps: [] }],
         fallback: { text: "Andiamo via.", spoken: false, steps: [] },
       }],
-    }),
+    } satisfies SequenceDefinition),
   },
   commandLexicon: italianCommandLexicon,
   commandFallbacks: italianCommandFallbacks,
   hudTheme,
-});
+} satisfies GameProject);
 
 await startGame(project, { target: document.querySelector<HTMLElement>("#game")! });
 

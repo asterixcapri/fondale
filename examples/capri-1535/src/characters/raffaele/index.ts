@@ -1,8 +1,8 @@
-import { defineCharacter, defineNoun } from "@asterixcapri/fondale";
+import { type CharacterDefinition, type NounDefinition } from "@asterixcapri/fondale";
 
 import idleUrl from "./idle.png";
 
-export const raffaele = defineCharacter({
+export const raffaele = ({
   initialScene: "harbour",
   initialGroundPoint: { x: 430, y: 205 },
   initialFacing: "left",
@@ -11,7 +11,7 @@ export const raffaele = defineCharacter({
     working: { animations: { idle: { frames: [idleUrl], framesPerSecond: 1, loop: true } }, roles: { default: "idle" } },
   },
   movementSpeed: 70,
-  noun: defineNoun({
+  noun: ({
     labels: [{ text: "Raffaele" }],
     preferredVerbs: [{ verb: "talk-to" }],
     secondaryVerbs: [{ verb: "look-at" }],
@@ -35,5 +35,5 @@ export const raffaele = defineCharacter({
       },
       { verb: "talk-to", sequence: "raffaeleConversation" },
     ],
-  }),
-});
+  } satisfies NounDefinition),
+} satisfies CharacterDefinition);

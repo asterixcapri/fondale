@@ -54,13 +54,13 @@ opacity and speech styling, but cannot rearrange those controls.
 
 A **Save Snapshot** is an inspectable JSON-safe copy of the latest committed
 Game State, identified by Project Identity, Project Version, and Fondale's
-format version. Stored data is always `unknown` until `validateSaveSnapshot`
-returns a validated value.
+format version. Stored data remains `unknown`; `startGame` validates it against
+the current project before doing browser or Runtime Asset work.
 
 An **Authoring Diagnostic** has stable code, family, and author-facing path.
-Definitions fail at helpers or `defineGame`; external save data returns an
-explicit result; environment, visual asset and Line audio checks happen
-asynchronously at startup.
+Invalid definitions and external save data reject `startGame` with an
+`AuthoringError`; environment, visual asset and Line audio checks happen only
+after semantic validation succeeds.
 
 See the [Game Project authoring guide](game-authoring.md) for complete current
 examples, the [reference](reference.md) for precise fields, and the
