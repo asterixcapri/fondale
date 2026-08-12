@@ -60,12 +60,21 @@ export class LocalDialogueProvider implements DialogueProvider {
   }
 
   private async send<T>(body: LocalDialogueRequest, signal?: AbortSignal): Promise<T> {
-    const response = await fetch(this.endpoint, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(body),
-      ...(signal ? { signal } : {}),
-    });
+    let response: Response;
+    try {
+      response = await fetch(this.endpoint, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+        ...(signal ? { signal } : {}),
+      });
+    } catch (cause) {
+      if (signal?.aborted && "turnId" in body) {
+        await this.notifyCancellation(body.turnId);
+        throw signal.reason ?? cause;
+      }
+      throw cause;
+    }
     const payload: unknown = await response.json();
     if (!isLocalDialogueResponse(payload)) {
       throw new Error("Local Dialogue Provider returned an invalid response.");
@@ -74,6 +83,18 @@ export class LocalDialogueProvider implements DialogueProvider {
       throw new Error(payload.ok ? "Local Dialogue Provider request failed." : payload.error);
     }
     return payload.value as T;
+  }
+
+  private async notifyCancellation(turnId: string): Promise<void> {
+    await fetch(this.endpoint, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        operation: "cancel",
+        sessionId: this.sessionId,
+        turnId,
+      } satisfies LocalDialogueRequest),
+    }).catch(() => undefined);
   }
 }
 

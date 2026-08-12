@@ -3,8 +3,10 @@ import { test } from "node:test";
 
 import {
   DeterministicDialogueModel,
-  createPostgresDialogueProvider,
   type DialogueModel,
+} from "./dialogue-model";
+import {
+  createPostgresDialogueProvider,
 } from "./postgres-dialogue-provider";
 
 const databaseUrl = process.env.DIALOGUE_ADAPTER_TEST_DATABASE_URL;
@@ -165,6 +167,117 @@ test("failed and cancelled turns leave no visible half-turn in memory", async ()
     const nextResponse = await answer(provider, "antonio", "Next question", "turn-4");
     assert.match(nextResponse, /Committed question/);
     assert.doesNotMatch(nextResponse, /Fail now|Wait forever/);
+  } finally {
+    await provider.reset();
+    await provider.close();
+  }
+});
+
+test("reset invalidates an in-flight turn before acknowledging completion", async () => {
+  const sessionId = crypto.randomUUID();
+  let release!: () => void;
+  let markStarted!: () => void;
+  const started = new Promise<void>((resolve) => {
+    markStarted = resolve;
+  });
+  const deterministic = new DeterministicDialogueModel({ interpretations: {} });
+  const model: DialogueModel = {
+    interpret: (...arguments_) => deterministic.interpret(...arguments_),
+    reflect: (...arguments_) => deterministic.reflect(...arguments_),
+    async verbalize(request, history, signal) {
+      if (request.playerInput !== "Pending before reset") {
+        return deterministic.verbalize(request, history, signal);
+      }
+      markStarted();
+      await new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      return "Late Character Line.";
+    },
+  };
+  const provider = await createPostgresDialogueProvider({ databaseUrl, sessionId, model });
+
+  try {
+    const pending = answer(provider, "antonio", "Pending before reset", "turn-1");
+    await started;
+    const resetting = provider.reset();
+    const resetOutcome = await Promise.race([
+      resetting.then(() => "completed"),
+      new Promise<string>((resolve) => setTimeout(() => resolve("pending"), 50)),
+    ]);
+    release();
+    const pendingOutcome = await pending.then(() => "resolved", (cause: unknown) => cause);
+    await resetting;
+    assert.equal(resetOutcome, "pending");
+    assert(pendingOutcome instanceof DOMException);
+    assert.equal(pendingOutcome.name, "AbortError");
+    assert.match(await answer(provider, "antonio", "After reset", "turn-2"),
+      /no earlier visible Lines/);
+  } finally {
+    release?.();
+    await provider.reset();
+    await provider.close();
+  }
+});
+
+test("Mastra bounds the visible context supplied to the model", async () => {
+  const sessionId = crypto.randomUUID();
+  const model: DialogueModel = {
+    interpret: () => Promise.resolve({ factId: null, reason: "no-relevant-fact" }),
+    verbalize: (_request, history) => Promise.resolve(`history:${history.length}`),
+    reflect: () => Promise.resolve({ summary: "unused" }),
+  };
+  const provider = await createPostgresDialogueProvider({ databaseUrl, sessionId, model });
+
+  try {
+    for (let index = 0; index < 51; index += 1) {
+      await answer(provider, "antonio", `Question ${index}`, `turn-${index}`);
+    }
+    assert.equal(await answer(provider, "antonio", "Bounded question", "turn-51"),
+      "history:100");
+  } finally {
+    await provider.reset();
+    await provider.close();
+  }
+});
+
+test("Reflection memory stores the exact Character Line shown by Fondale", async () => {
+  const sessionId = crypto.randomUUID();
+  const reflectionHistories: (readonly import("./dialogue-model").VisibleDialogueLine[])[] = [];
+  const model: DialogueModel = {
+    interpret: () => Promise.resolve({ factId: null, reason: "no-relevant-fact" }),
+    verbalize: () => Promise.resolve("unused"),
+    reflect: (_request, history) => {
+      reflectionHistories.push(history);
+      return Promise.resolve({
+        summary: "I remember the harbour.",
+        hypotheses: ["the lantern may be a signal"],
+        suggestions: ["inspect the harbour stairs"],
+      });
+    },
+  };
+  const provider = await createPostgresDialogueProvider({ databaseUrl, sessionId, model });
+  const request = {
+    playerInput: "First reflection",
+    character: "michele",
+    facts: [{ id: "harbour", proposition: "The harbour is below." }],
+    testimonies: [],
+    relationships: [],
+  } as const;
+
+  try {
+    await provider.reflect(request, turnContext("reflection-1"));
+    await provider.reflect({ ...request, playerInput: "Second reflection" },
+      turnContext("reflection-2"));
+    assert.deepEqual(reflectionHistories[1], [
+      { role: "player", text: "First reflection" },
+      {
+        role: "character",
+        text: "I remember the harbour. " +
+          "Uncertain hypothesis: the lantern may be a signal " +
+          "Possible investigation: inspect the harbour stairs",
+      },
+    ]);
   } finally {
     await provider.reset();
     await provider.close();

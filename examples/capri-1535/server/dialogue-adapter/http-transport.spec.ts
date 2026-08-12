@@ -109,3 +109,49 @@ test("the local transport never exposes server-side failure details", async () =
     await server.close();
   }
 });
+
+test("cancelling while a Game Session provider initializes never starts the turn", async () => {
+  let resolveProvider!: (provider: DialogueProvider) => void;
+  const providerReady = new Promise<DialogueProvider>((resolve) => {
+    resolveProvider = resolve;
+  });
+  let interpretations = 0;
+  const provider: DialogueProvider = {
+    interpret: () => {
+      interpretations += 1;
+      return Promise.resolve({ factId: null, reason: "no-relevant-fact" });
+    },
+    verbalize: () => Promise.reject(new Error("unused")),
+    reflect: () => Promise.reject(new Error("unused")),
+    reset: () => Promise.resolve(),
+  };
+  const server = await createDialogueAdapterServer({
+    host: "127.0.0.1",
+    port: 0,
+    createProvider: () => providerReady,
+  });
+  const client = new LocalDialogueProvider({
+    endpoint: server.url,
+    sessionId: "game-session-1",
+  });
+  const controller = new AbortController();
+
+  try {
+    const pending = client.interpret({
+      playerInput: "Where is it?",
+      speaker: "antonio",
+      listener: "michele",
+      candidates: [],
+    }, { turnId: "turn-1", signal: controller.signal });
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    controller.abort(new DOMException("Cancelled", "AbortError"));
+    await assert.rejects(pending, { name: "AbortError" });
+
+    resolveProvider(provider);
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(interpretations, 0);
+  } finally {
+    resolveProvider(provider);
+    await server.close();
+  }
+});

@@ -4,86 +4,12 @@ import type { MastraDBMessage } from "@mastra/core/agent";
 import { Memory } from "@mastra/memory";
 import { PostgresStore } from "@mastra/pg";
 import type {
-  DialogueInterpretation,
-  DialogueInterpretationRequest,
   DialogueProvider,
   DialogueTurnContext,
-  DialogueVerbalizationRequest,
-  ReflectionRequest,
   ReflectionResponse,
 } from "@asterixcapri/fondale";
 
-export interface VisibleDialogueLine {
-  readonly role: "player" | "character";
-  readonly text: string;
-}
-
-export interface DialogueModel {
-  interpret(
-    request: DialogueInterpretationRequest,
-    history: readonly VisibleDialogueLine[],
-    signal: AbortSignal,
-  ): Promise<DialogueInterpretation>;
-  verbalize(
-    request: DialogueVerbalizationRequest,
-    history: readonly VisibleDialogueLine[],
-    signal: AbortSignal,
-  ): Promise<string>;
-  reflect(
-    request: ReflectionRequest,
-    history: readonly VisibleDialogueLine[],
-    signal: AbortSignal,
-  ): Promise<ReflectionResponse>;
-}
-
-export class DeterministicDialogueModel implements DialogueModel {
-  constructor(private readonly configuration: {
-    readonly interpretations: Readonly<Record<
-      string,
-      string | null | { readonly reason: "ambiguous" | "no-relevant-fact" }
-    >>;
-  }) {}
-
-  interpret(
-    request: DialogueInterpretationRequest,
-    _history: readonly VisibleDialogueLine[],
-    signal: AbortSignal,
-  ): Promise<DialogueInterpretation> {
-    throwIfAborted(signal);
-    const configured = this.configuration.interpretations[request.playerInput];
-    if (typeof configured === "string") return Promise.resolve({ factId: configured });
-    return Promise.resolve({
-      factId: null,
-      reason: configured?.reason ?? "no-relevant-fact",
-    });
-  }
-
-  verbalize(
-    request: DialogueVerbalizationRequest,
-    history: readonly VisibleDialogueLine[],
-    signal: AbortSignal,
-  ): Promise<string> {
-    throwIfAborted(signal);
-    const authorisedText = request.fact?.proposition ?? request.claim?.proposition ??
-      strategyLine(request.strategy);
-    return Promise.resolve(`${authorisedText} ${historyDescription(history)}`);
-  }
-
-  reflect(
-    request: ReflectionRequest,
-    history: readonly VisibleDialogueLine[],
-    signal: AbortSignal,
-  ): Promise<ReflectionResponse> {
-    throwIfAborted(signal);
-    const remembered = [
-      ...request.facts.map(({ proposition }) => proposition),
-      ...request.testimonies.map(({ speaker, claim }) => `${speaker} said: ${claim.proposition}`),
-    ];
-    return Promise.resolve({
-      summary: `${remembered.join(" ")} ${historyDescription(history)}`.trim(),
-    });
-  }
-}
+import type { DialogueModel, VisibleDialogueLine } from "./dialogue-model";
 
 export interface PostgresDialogueProvider extends DialogueProvider {
   close(): Promise<void>;
@@ -107,67 +33,105 @@ export async function createPostgresDialogueProvider(options: {
     options: { lastMessages: 100 },
   });
   const resourceId = `fondale-dialogue-session:${options.sessionId}`;
+  const activeTurns = new Set<Promise<unknown>>();
+  let lifecycleController = new AbortController();
+  let resetQueue = Promise.resolve();
+
+  async function runTurn<T>(
+    context: DialogueTurnContext,
+    execute: (context: DialogueTurnContext) => Promise<T>,
+  ): Promise<T> {
+    await resetQueue;
+    const signal = AbortSignal.any([context.signal, lifecycleController.signal]);
+    const operation = execute({ turnId: context.turnId, signal });
+    activeTurns.add(operation);
+    try {
+      return await operation;
+    } finally {
+      activeTurns.delete(operation);
+    }
+  }
+
+  async function resetMemory(): Promise<void> {
+    lifecycleController.abort(new DOMException("Dialogue Provider memory was reset.", "AbortError"));
+    lifecycleController = new AbortController();
+    await Promise.allSettled([...activeTurns]);
+    const { threads } = await memory.listThreads({
+      filter: { resourceId },
+      perPage: false,
+    });
+    await Promise.all(threads.map(({ id }) => memory.deleteThread(id)));
+  }
 
   return {
-    async interpret(request, context) {
-      const history = await recallVisibleLines(
-        memory,
-        threadIdentity(options.sessionId, "conversation", request.speaker),
-      );
-      throwIfAborted(context.signal);
-      return options.model.interpret(request, history, context.signal);
-    },
-
-    async verbalize(request, context) {
-      const thread = threadIdentity(options.sessionId, "conversation", request.speaker);
-      const history = await recallVisibleLines(memory, thread);
-      throwIfAborted(context.signal);
-      const response = (await options.model.verbalize(request, history, context.signal)).trim();
-      throwIfAborted(context.signal);
-      if (!response) throw new Error("Dialogue model returned an empty Character Line.");
-      await persistVisibleExchange({
-        memory,
-        resourceId,
-        thread,
-        mode: "conversation",
-        character: request.speaker,
-        playerLine: request.playerInput,
-        characterLine: response,
-        context,
+    interpret(request, context) {
+      return runTurn(context, async (turnContext) => {
+        const history = await recallVisibleLines(
+          memory,
+          threadIdentity(options.sessionId, "conversation", request.speaker),
+        );
+        throwIfAborted(turnContext.signal);
+        return options.model.interpret(request, history, turnContext.signal);
       });
-      return response;
     },
 
-    async reflect(request, context) {
-      const thread = threadIdentity(options.sessionId, "reflection", request.character);
-      const history = await recallVisibleLines(memory, thread);
-      throwIfAborted(context.signal);
-      const response = await options.model.reflect(request, history, context.signal);
-      throwIfAborted(context.signal);
-      if (!response.summary.trim()) throw new Error("Dialogue model returned an empty Reflection.");
-      await persistVisibleExchange({
-        memory,
-        resourceId,
-        thread,
-        mode: "reflection",
-        character: request.character,
-        playerLine: request.playerInput,
-        characterLine: formatReflection(response),
-        context,
+    verbalize(request, context) {
+      return runTurn(context, async (turnContext) => {
+        const thread = threadIdentity(options.sessionId, "conversation", request.speaker);
+        const history = await recallVisibleLines(memory, thread);
+        throwIfAborted(turnContext.signal);
+        const response = (await options.model.verbalize(
+          request,
+          history,
+          turnContext.signal,
+        )).trim();
+        throwIfAborted(turnContext.signal);
+        if (!response) throw new Error("Dialogue model returned an empty Character Line.");
+        await persistVisibleExchange({
+          memory,
+          resourceId,
+          thread,
+          mode: "conversation",
+          character: request.speaker,
+          playerLine: request.playerInput,
+          characterLine: response,
+          context: turnContext,
+        });
+        return response;
       });
-      return response;
     },
 
-    async reset() {
-      const { threads } = await memory.listThreads({
-        filter: { resourceId },
-        perPage: false,
+    reflect(request, context) {
+      return runTurn(context, async (turnContext) => {
+        const thread = threadIdentity(options.sessionId, "reflection", request.character);
+        const history = await recallVisibleLines(memory, thread);
+        throwIfAborted(turnContext.signal);
+        const response = await options.model.reflect(request, history, turnContext.signal);
+        throwIfAborted(turnContext.signal);
+        if (!response.summary.trim()) throw new Error("Dialogue model returned an empty Reflection.");
+        await persistVisibleExchange({
+          memory,
+          resourceId,
+          thread,
+          mode: "reflection",
+          character: request.character,
+          playerLine: request.playerInput,
+          characterLine: formatReflection(response),
+          context: turnContext,
+        });
+        return response;
       });
-      await Promise.all(threads.map(({ id }) => memory.deleteThread(id)));
     },
 
-    close() {
-      return storage.close();
+    reset() {
+      resetQueue = resetQueue.then(resetMemory, resetMemory);
+      return resetQueue;
+    },
+
+    async close() {
+      lifecycleController.abort(new DOMException("Dialogue Provider closed.", "AbortError"));
+      await Promise.allSettled([...activeTurns]);
+      await storage.close();
     },
   };
 }
@@ -178,7 +142,7 @@ async function recallVisibleLines(
 ): Promise<readonly VisibleDialogueLine[]> {
   const thread = await memory.getThreadById({ threadId });
   if (!thread) return [];
-  const { messages } = await memory.recall({ threadId, perPage: false });
+  const { messages } = await memory.getContext({ threadId });
   return messages.flatMap((message) => {
     if (message.role !== "user" && message.role !== "assistant") return [];
     const text = message.content.parts
@@ -288,34 +252,14 @@ function throwIfAborted(signal: AbortSignal): void {
   if (signal.aborted) throw signal.reason ?? new DOMException("Aborted", "AbortError");
 }
 
-function historyDescription(history: readonly VisibleDialogueLine[]): string {
-  if (history.length === 0) return "[no earlier visible Lines]";
-  return `[earlier visible Lines: ${history.map(({ role, text }) =>
-    `${role === "player" ? "Player" : "Character"}: ${text}`
-  ).join(" | ")}]`;
-}
-
-function strategyLine(strategy: DialogueVerbalizationRequest["strategy"]): string {
-  switch (strategy) {
-    case "clarify":
-      return "Could you clarify your question?";
-    case "cover-story":
-      return "I cannot answer that.";
-    case "evade":
-      return "That is not important right now.";
-    case "refuse":
-      return "I will not discuss that.";
-    case "withhold":
-      return "I cannot tell you that.";
-    case "answer":
-      return "I do not have an authorised fact to answer with.";
-  }
-}
-
 function formatReflection(response: ReflectionResponse): string {
   return [
-    response.summary,
-    ...(response.hypotheses?.map((hypothesis) => `Perhaps ${hypothesis}`) ?? []),
-    ...(response.suggestions ?? []),
+    response.summary.trim(),
+    ...(response.hypotheses?.map((hypothesis) =>
+      `Uncertain hypothesis: ${hypothesis.trim()}`
+    ) ?? []),
+    ...(response.suggestions?.map((suggestion) =>
+      `Possible investigation: ${suggestion.trim()}`
+    ) ?? []),
   ].join(" ");
 }

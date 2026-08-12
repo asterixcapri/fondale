@@ -22,6 +22,7 @@ export type LocalDialogueRequest = {
     readonly turnId: string;
     readonly request: ReflectionRequest;
   }
+  | { readonly operation: "cancel"; readonly turnId: string }
   | { readonly operation: "reset" }
 );
 

@@ -23,6 +23,7 @@ export async function createDialogueAdapterServer(options: {
   readonly allowedOrigins?: readonly string[];
 }): Promise<DialogueAdapterServer> {
   const providers = new Map<string, Promise<ClosableDialogueProvider>>();
+  const activeTurns = new Map<string, AbortController>();
   const allowedOrigins = new Set(options.allowedOrigins ?? [
     "http://127.0.0.1:5173",
     "http://localhost:5173",
@@ -43,19 +44,32 @@ export async function createDialogueAdapterServer(options: {
         writeJson(response, 400, { ok: false, error: "Invalid Dialogue Provider request." });
         return;
       }
-      let providerPromise = providers.get(body.sessionId);
-      if (!providerPromise) {
-        providerPromise = options.createProvider(body.sessionId);
-        providers.set(body.sessionId, providerPromise);
+      const turnKey = "turnId" in body ? `${body.sessionId}\0${body.turnId}` : undefined;
+      if (body.operation === "cancel") {
+        activeTurns.get(turnKey!)?.abort(new DOMException("Aborted", "AbortError"));
+        writeJson(response, 200, { ok: true });
+        return;
       }
-      const provider = await providerPromise;
       const controller = new AbortController();
-      request.once("aborted", () => controller.abort(new DOMException("Aborted", "AbortError")));
+      const abort = () => controller.abort(new DOMException("Aborted", "AbortError"));
+      request.once("aborted", abort);
       response.once("close", () => {
-        if (!response.writableEnded) controller.abort(new DOMException("Aborted", "AbortError"));
+        if (!response.writableEnded) abort();
       });
-      const value = await execute(provider, body, controller.signal);
-      if (!controller.signal.aborted) writeJson(response, 200, { ok: true, value });
+      if (turnKey) activeTurns.set(turnKey, controller);
+      try {
+        let providerPromise = providers.get(body.sessionId);
+        if (!providerPromise) {
+          providerPromise = options.createProvider(body.sessionId);
+          providers.set(body.sessionId, providerPromise);
+        }
+        const provider = await providerPromise;
+        if (controller.signal.aborted) return;
+        const value = await execute(provider, body, controller.signal);
+        if (!controller.signal.aborted) writeJson(response, 200, { ok: true, value });
+      } finally {
+        if (turnKey && activeTurns.get(turnKey) === controller) activeTurns.delete(turnKey);
+      }
     } catch {
       if (!response.headersSent) {
         writeJson(response, 500, {
@@ -78,6 +92,7 @@ export async function createDialogueAdapterServer(options: {
     async close() {
       await new Promise<void>((resolve, reject) => {
         server.close((error) => error ? reject(error) : resolve());
+        server.closeIdleConnections();
       });
       const settledProviders = await Promise.allSettled(providers.values());
       await Promise.all(settledProviders.flatMap((result) =>
@@ -93,6 +108,7 @@ async function execute(
   signal: AbortSignal,
 ): Promise<unknown> {
   if (body.operation === "reset") return provider.reset();
+  if (body.operation === "cancel") return;
   const context: DialogueTurnContext = { turnId: body.turnId, signal };
   switch (body.operation) {
     case "interpret":
@@ -140,6 +156,9 @@ function isLocalDialogueRequest(value: unknown): value is LocalDialogueRequest {
   if (typeof candidate.sessionId !== "string" || !candidate.sessionId.trim() ||
       candidate.sessionId.length > 200) return false;
   if (candidate.operation === "reset") return true;
+  if (candidate.operation === "cancel") {
+    return typeof candidate.turnId === "string" && candidate.turnId.length > 0;
+  }
   return (candidate.operation === "interpret" || candidate.operation === "verbalize" ||
       candidate.operation === "reflect") &&
     typeof candidate.turnId === "string" && candidate.turnId.length > 0 &&
