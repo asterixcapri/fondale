@@ -132,7 +132,7 @@ export function animationNameForRole(
   return appearance.roles[role];
 }
 
-/** Reports every local Appearance and Animation authoring error. */
+/** Reports every local Appearance and Animation Authoring Diagnostic. */
 export function validateAppearance(
   appearance: Appearance,
   path: string,
@@ -229,6 +229,43 @@ export interface AppearanceSetValidation {
   readonly requireWalking?: boolean;
 }
 
+/** Reports required walking-role Authoring Diagnostic without repeating Appearance validation. */
+export function validateWalkingAppearanceRoles(
+  appearances: Readonly<Record<string, Appearance>>,
+  path: string,
+  subject: "Character" | "Object",
+): readonly AuthoringDiagnostic[] {
+  return Object.entries(appearances).flatMap(([appearanceName, appearance]) =>
+    appearance.roles.walking
+      ? []
+      : [{
+          code: "reference.animation.walking-role",
+          family: "reference" as const,
+          owner: "animation" as const,
+          path: `${path}.${appearanceName}.roles.walking`,
+          message: `A ${subject} Appearance requires a walking Animation Role.`,
+        }],
+  );
+}
+
+/** Reports an invalid initial Appearance selection for any animated subject. */
+export function validateInitialAppearance(
+  appearances: Readonly<Record<string, unknown>>,
+  initialAppearance: string,
+  path: string,
+  subject: "Character" | "Object" | "Scenery",
+): readonly AuthoringDiagnostic[] {
+  return initialAppearance in appearances
+    ? []
+    : [{
+        code: "reference.appearance.initial",
+        family: "reference",
+        owner: "animation",
+        path,
+        message: `Appearance '${initialAppearance}' is not defined on this ${subject}.`,
+      }];
+}
+
 /** Validates one entity's complete set of Appearance choices and role requirements. */
 export function validateAppearanceSet(
   appearances: Readonly<Record<string, Appearance>>,
@@ -240,27 +277,18 @@ export function validateAppearanceSet(
   const ownerPath = validation.path.endsWith(".appearances")
     ? validation.path.slice(0, -".appearances".length)
     : "";
-  if (!(validation.initialAppearance in appearances)) {
-    diagnostics.push({
-      code: "reference.appearance.initial",
-      family: "reference",
-      owner: "animation",
-      path: ownerPath ? `${ownerPath}.initialAppearance` : "initialAppearance",
-      message: `Appearance '${validation.initialAppearance}' is not defined on this ${validation.subject}.`,
-    });
-  }
+  diagnostics.push(...validateInitialAppearance(
+    appearances,
+    validation.initialAppearance,
+    ownerPath ? `${ownerPath}.initialAppearance` : "initialAppearance",
+    validation.subject,
+  ));
   if (validation.requireWalking) {
-    for (const [appearanceName, appearance] of Object.entries(appearances)) {
-      if (!appearance.roles.walking) {
-        diagnostics.push({
-          code: "reference.animation.walking-role",
-          family: "reference",
-          owner: "animation",
-          path: `${validation.path}.${appearanceName}.roles.walking`,
-          message: `A ${validation.subject} Appearance requires a walking Animation Role.`,
-        });
-      }
-    }
+    diagnostics.push(...validateWalkingAppearanceRoles(
+      appearances,
+      validation.path,
+      validation.subject,
+    ));
   }
   return diagnostics;
 }

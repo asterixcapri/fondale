@@ -692,33 +692,42 @@ function textDuration(text: string, speed: PlayerPreferences["textSpeed"]): numb
   return Math.max(minimumDuration, text.length * millisecondsPerCharacter);
 }
 
-/** Creates and freezes one complete local HUD Theme. */
-export function defineHUDTheme(input: HUDTheme): HUDTheme {
+/** Reports every local HUD Theme Authoring Diagnostic without a Game Project. */
+export function validateHUDTheme(
+  input: HUDTheme,
+  path = "",
+): readonly AuthoringDiagnostic[] {
   const diagnostics: AuthoringDiagnostic[] = [];
   if (!input.font.family.trim() || !assetReference(input.font.source)) {
-    diagnostics.push(themeDiagnostic("definition.hud-theme.font", "font", "HUD Theme font family and local source are required."));
+    diagnostics.push(themeDiagnostic("definition.hud-theme.font", childPath(path, "font"), "HUD Theme font family and local source are required."));
   }
   for (const [name, color] of Object.entries(input.colors)) {
     if (!cssColor(color)) {
-      diagnostics.push(themeDiagnostic("definition.hud-theme.color", `colors.${name}`, "HUD Theme colors must use a CSS hex color."));
+      diagnostics.push(themeDiagnostic("definition.hud-theme.color", childPath(path, `colors.${name}`), "HUD Theme colors must use a CSS hex color."));
     }
   }
   if (!Number.isFinite(input.opacity) || input.opacity < 0 || input.opacity > 1) {
-    diagnostics.push(themeDiagnostic("definition.hud-theme.opacity", "opacity", "HUD Theme opacity must be between zero and one."));
+    diagnostics.push(themeDiagnostic("definition.hud-theme.opacity", childPath(path, "opacity"), "HUD Theme opacity must be between zero and one."));
   }
   if (!Number.isFinite(input.maxSpeechWidth) || input.maxSpeechWidth <= 0) {
-    diagnostics.push(themeDiagnostic("definition.hud-theme.speech-width", "maxSpeechWidth", "Maximum speech width must be positive."));
+    diagnostics.push(themeDiagnostic("definition.hud-theme.speech-width", childPath(path, "maxSpeechWidth"), "Maximum speech width must be positive."));
   }
   for (const direction of ["left", "right", "up", "down", "enter"] as const) {
     if (!assetReference(input.cursors[direction])) {
-      diagnostics.push(themeDiagnostic("definition.hud-theme.cursor", `cursors.${direction}`, `A '${direction}' cursor asset is required.`));
+      diagnostics.push(themeDiagnostic("definition.hud-theme.cursor", childPath(path, `cursors.${direction}`), `A '${direction}' cursor asset is required.`));
     }
   }
   for (const [character, color] of Object.entries(input.speechColors)) {
     if (!character.trim() || !cssColor(color)) {
-      diagnostics.push(themeDiagnostic("definition.hud-theme.speech-color", `speechColors.${character}`, "Speech colors need a Character and CSS hex color."));
+      diagnostics.push(themeDiagnostic("definition.hud-theme.speech-color", childPath(path, `speechColors.${character}`), "Speech colors need a Character and CSS hex color."));
     }
   }
+  return diagnostics;
+}
+
+/** Creates and freezes one complete local HUD Theme. */
+export function defineHUDTheme(input: HUDTheme): HUDTheme {
+  const diagnostics = validateHUDTheme(input);
   if (diagnostics.length > 0) throw new AuthoringError(diagnostics);
   return deepFreeze({
     ...input,
@@ -788,6 +797,10 @@ function maximumInventoryPage(count: number, pageSize: number): number {
 
 function themeDiagnostic(code: string, path: string, message: string): AuthoringDiagnostic {
   return { code, family: "definition", owner: "hud", path, message };
+}
+
+function childPath(path: string, child: string): string {
+  return path ? `${path}.${child}` : child;
 }
 
 function cssColor(value: string): boolean {

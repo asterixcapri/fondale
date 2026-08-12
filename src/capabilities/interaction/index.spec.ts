@@ -1,10 +1,14 @@
 import { expect, test } from "@playwright/test";
 
 import {
+  commandVerbs,
   createInteraction,
+  defineCommandLexicon,
   defineNoun,
   type InteractionStateView,
+  validateCommandLexicon,
   validateInventoryOperation,
+  validateNounDefinition,
 } from "./index";
 
 const state: InteractionStateView = {
@@ -16,6 +20,36 @@ const state: InteractionStateView = {
     firstNoun: { kind: "object", object: "key" },
   },
 };
+
+test("Interaction validates complete local authoring values without throwing", () => {
+  const nounDiagnostics = validateNounDefinition({
+    labels: [{ when: { variable: "known", equals: true }, text: "" }],
+    preferredVerbs: [{ when: { variable: "open", equals: true }, verb: "open" }],
+    cases: [{ verb: "give" }],
+  }, "objects.key.noun");
+
+  expect(nounDiagnostics).toEqual(expect.arrayContaining([
+    expect.objectContaining({ code: "definition.conditional-fallback", path: "objects.key.noun.labels" }),
+    expect.objectContaining({ code: "definition.conditional-fallback", path: "objects.key.noun.preferredVerbs" }),
+    expect.objectContaining({ code: "definition.noun-label.text", path: "objects.key.noun.labels[0].text" }),
+    expect.objectContaining({ code: "definition.command-case.arity", path: "objects.key.noun.cases[0].firstNoun" }),
+    expect.objectContaining({ code: "definition.command-case.empty", path: "objects.key.noun.cases[0]" }),
+  ]));
+  expect(nounDiagnostics.every(({ owner }) => owner === "interaction")).toBe(true);
+
+  const lexicon = {
+    inventory: { select: "Select", deselect: "Deselect {noun}" },
+    verbs: Object.fromEntries(commandVerbs.map((verb) => [verb, verb === "open" ? "" : verb])),
+    patterns: { unary: "{noun}", give: "{verb} {first}", use: "{verb} {second}" },
+  } as Parameters<typeof defineCommandLexicon>[0];
+  expect(validateCommandLexicon(lexicon, "commandLexicon")).toEqual(expect.arrayContaining([
+    expect.objectContaining({ code: "definition.command-lexicon.label", path: "commandLexicon.verbs.open" }),
+    expect.objectContaining({ code: "definition.command-lexicon.pattern", path: "commandLexicon.inventory.select" }),
+    expect.objectContaining({ code: "definition.command-lexicon.pattern", path: "commandLexicon.patterns.unary" }),
+    expect.objectContaining({ code: "definition.command-lexicon.pattern", path: "commandLexicon.patterns.give" }),
+    expect.objectContaining({ code: "definition.command-lexicon.pattern", path: "commandLexicon.patterns.use" }),
+  ]));
+});
 
 test("a selected Object Contextual Action requests an approach with one Player Intent", () => {
   const door = defineNoun({

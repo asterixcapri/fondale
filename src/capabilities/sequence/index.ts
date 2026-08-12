@@ -200,14 +200,17 @@ export function validateSequenceStartReference(
       }];
 }
 
-/** Creates and freezes a finite Sequence of Lines, Narrations, Choices, branches and operations. */
-export function defineSequence(input: SequenceDefinition): SequenceDefinition {
+/** Reports every local Sequence Authoring Diagnostic without a Game Project. */
+export function validateSequenceDefinition(
+  input: SequenceDefinition,
+  path = "",
+): readonly AuthoringDiagnostic[] {
   const diagnostics: AuthoringDiagnostic[] = [];
   if (input.skippable && input.skipOutcome === undefined) {
     diagnostics.push({
       code: "definition.sequence.skip-outcome",
       family: "definition", owner: "sequence",
-      path: "skipOutcome",
+      path: childPath(path, "skipOutcome"),
       message: "A skippable Sequence must declare its Skip Outcome.",
     });
   }
@@ -215,7 +218,7 @@ export function defineSequence(input: SequenceDefinition): SequenceDefinition {
     diagnostics.push({
       code: "definition.sequence.skip-outcome.unused",
       family: "definition", owner: "sequence",
-      path: "skipOutcome",
+      path: childPath(path, "skipOutcome"),
       message: "Only a skippable Sequence can declare a Skip Outcome.",
     });
   }
@@ -232,7 +235,12 @@ export function defineSequence(input: SequenceDefinition): SequenceDefinition {
     }
     visiting.add(steps);
     steps.forEach((step, index) => {
-      if (step.type === "line") {
+      if (step.type === "operations") {
+        diagnostics.push(...validateSequenceOperationRules(
+          step.operations,
+          `${path}[${index}].operations`,
+        ));
+      } else if (step.type === "line") {
         if (!step.character?.trim()) {
           diagnostics.push({
             code: "definition.line.character",
@@ -289,7 +297,17 @@ export function defineSequence(input: SequenceDefinition): SequenceDefinition {
     });
     visiting.delete(steps);
   };
-  visit(input.steps, "steps");
+  visit(input.steps, childPath(path, "steps"));
+  diagnostics.push(...validateSequenceOperationRules(
+    input.skipOutcome ?? [],
+    childPath(path, "skipOutcome"),
+  ));
+  return diagnostics;
+}
+
+/** Creates and freezes a finite Sequence of Lines, Narrations, Choices, branches and operations. */
+export function defineSequence(input: SequenceDefinition): SequenceDefinition {
+  const diagnostics = validateSequenceDefinition(input);
   if (diagnostics.length > 0) throw new AuthoringError(diagnostics);
   return deepFreeze({
     ...input,
@@ -460,6 +478,37 @@ export interface SequenceReferenceContext {
   ) => readonly AuthoringDiagnostic[];
 }
 
+function validateSequenceOperationRules(
+  operations: readonly GameOperation[],
+  path: string,
+): readonly AuthoringDiagnostic[] {
+  return operations.flatMap((operation, index) => {
+    const operationPath = `${path}[${index}]`;
+    if (
+      operation.type === "place-selected-object" ||
+      operation.type === "consume-selected-object"
+    ) {
+      return [{
+        code: "definition.sequence.selected-object-operation",
+        family: "definition" as const,
+        owner: "sequence" as const,
+        path: operationPath,
+        message: "A Sequence cannot use a selected-Object operation because it has no Command selection context.",
+      }];
+    }
+    if (operation.type === "start-sequence") {
+      return [{
+        code: "definition.sequence.nested",
+        family: "definition" as const,
+        owner: "sequence" as const,
+        path: operationPath,
+        message: "A Sequence cannot start another Sequence.",
+      }];
+    }
+    return [];
+  });
+}
+
 /** @internal Validates Sequence-owned relationships against narrow capability views. */
 export function validateSequenceReferences(
   sequenceId: string,
@@ -471,28 +520,6 @@ export function validateSequenceReferences(
   const scene = definition.scene;
 
   const validateOperations = (operations: readonly GameOperation[], path: string) => {
-    operations.forEach((operation, index) => {
-      const operationPath = `${path}[${index}]`;
-      if (
-        operation.type === "place-selected-object" ||
-        operation.type === "consume-selected-object"
-      ) {
-        diagnostics.push({
-          code: "definition.sequence.selected-object-operation",
-          family: "definition", owner: "sequence",
-          path: operationPath,
-          message: "A Sequence cannot use a selected-Object operation because it has no Command selection context.",
-        });
-      }
-      if (operation.type === "start-sequence") {
-        diagnostics.push({
-          code: "definition.sequence.nested",
-          family: "definition", owner: "sequence",
-          path: operationPath,
-          message: "A Sequence cannot start another Sequence.",
-        });
-      }
-    });
     diagnostics.push(...context.validateOperations(operations, path));
   };
 
@@ -1128,6 +1155,10 @@ function maximumEligibleAlternatives(alternatives: readonly ChoiceAlternative[])
     simultaneouslyEligible += Math.max(counts.true, counts.false);
   }
   return simultaneouslyEligible;
+}
+
+function childPath(path: string, child: string): string {
+  return path ? `${path}.${child}` : child;
 }
 
 function topLevelPaths(sequence: SequenceDefinition): string[] {

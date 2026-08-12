@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 
+import { AuthoringError } from "./diagnostics";
 import { defineCharacter, defineScene } from "../world";
 import {
   defineGame,
@@ -75,4 +76,43 @@ test("Game Project supplies immutable consumer-specific composition views", () =
     save.world,
     save.animation,
   ].every(Object.isFrozen)).toBe(true);
+});
+
+test("Game Project delegates every local definition to capability validators", () => {
+  try {
+    defineGame({
+      identity: "example.invalid-local-definition",
+      version: "1",
+      logicalResolution: { width: 320, height: 180 },
+      initialScene: "opening",
+      scenes: {
+        opening: {
+          background: "opening.png",
+          walkableRegion: [{ x: Number.NaN, y: 0 }, { x: 1, y: 1 }],
+        },
+      },
+      characters: {
+        player: {
+          initialScene: "opening",
+          initialGroundPoint: { x: 0, y: 0 },
+          initialFacing: "front",
+          initialAppearance: "missing",
+          appearances: {},
+          movementSpeed: 0,
+        },
+      },
+      sequences: {
+        opening: { steps: [{ type: "narration", text: "" }] },
+      },
+    });
+    throw new Error("expected invalid local definitions to be rejected");
+  } catch (error) {
+    expect(error).toBeInstanceOf(AuthoringError);
+    expect((error as AuthoringError).diagnostics).toEqual(expect.arrayContaining([
+      expect.objectContaining({ owner: "world", path: "scenes.opening.walkableRegion[0]" }),
+      expect.objectContaining({ owner: "world", path: "characters.player.movementSpeed" }),
+      expect.objectContaining({ owner: "animation", path: "characters.player.initialAppearance" }),
+      expect.objectContaining({ owner: "sequence", path: "sequences.opening.steps[0].text" }),
+    ]));
+  }
 });

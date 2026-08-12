@@ -13,6 +13,7 @@ import {
   type DirectionStep,
   type GameInput,
   type HotspotDefinition,
+  type SceneDefinition,
 } from "../src/index";
 
 const coordinatedDirectionStep = {
@@ -862,7 +863,7 @@ test("local helpers reject invalid walking rates and interaction polygons", () =
 });
 
 test("defineGame aggregates independent cross-definition reference failures", () => {
-  const scene = defineScene({
+  const scene = {
     background: "scene.png",
     walkableRegion: [
       { x: 0, y: 0 },
@@ -899,7 +900,7 @@ test("defineGame aggregates independent cross-definition reference failures", ()
         destination: { scene: "missing", entrance: "missing" },
       },
     ],
-  });
+  } as const satisfies SceneDefinition;
 
   try {
     defineGame({
@@ -1039,12 +1040,12 @@ test("defineGame bounds portable Object and Sequence placements to every possibl
     initialScene: "small",
   }))).toContain("definition.operation.ground-point");
 
-  const placement = defineSequence({
+  const placement = {
     steps: [{
       type: "operations",
       operations: [{ type: "place-selected-object", groundPoint: { x: 150, y: 20 } }],
     }],
-  });
+  } as const;
   expect(placementCodes(() => defineGame({
     identity: "invalid.sequence-placement",
     version: "1",

@@ -18,10 +18,13 @@ import {
   validateInventoryOperation,
   validateInteractionComposition,
   validateInteractionConditionReference,
+  validateCommandLexicon,
+  validateNounDefinition,
   validateNounReferences,
 } from "../interaction";
 import {
   validateHUDProjectReferences,
+  validateHUDTheme,
   type HUDProjectView,
   type HUDTheme,
 } from "../hud";
@@ -30,15 +33,16 @@ import {
   validateLineReferences,
   validateSequenceStartReference,
   validateSequenceReferences,
+  validateSequenceDefinition,
   type DirectedSubject,
   type Line,
   type SequenceDefinition,
 } from "../sequence";
 import {
-  validateAppearanceSet,
   validateAnimationProjectSettings,
   validateAppearanceOperationReference,
   validateObjectAppearanceReference,
+  validateWalkingAppearanceRoles,
   type AnimationDefinition,
   type AnimationFrames,
   type AnimationRoles,
@@ -48,6 +52,9 @@ import {
 } from "../animation";
 import {
   createWorldDefinitionQueries,
+  validateCharacterDefinition,
+  validateObjectDefinition,
+  validateSceneDefinition,
   validateWorldProject,
   type CharacterDefinition,
   type EntityAppearance,
@@ -222,6 +229,22 @@ export function defineGame(input: GameInput): GameProject {
   const objects = input.objects ?? {};
   const sequences = input.sequences ?? {};
   const variables = input.variables ?? {};
+  for (const [sceneId, scene] of Object.entries(input.scenes)) {
+    diagnostics.push(...validateSceneDefinition(scene, `scenes.${sceneId}`));
+  }
+  for (const [characterId, character] of Object.entries(characters)) {
+    diagnostics.push(...validateCharacterDefinition(character, `characters.${characterId}`));
+  }
+  for (const [objectId, object] of Object.entries(objects)) {
+    diagnostics.push(...validateObjectDefinition(object, `objects.${objectId}`));
+  }
+  for (const [sequenceId, sequence] of Object.entries(sequences)) {
+    diagnostics.push(...validateSequenceDefinition(sequence, `sequences.${sequenceId}`));
+  }
+  if (input.commandLexicon) {
+    diagnostics.push(...validateCommandLexicon(input.commandLexicon, "commandLexicon"));
+  }
+  if (input.hudTheme) diagnostics.push(...validateHUDTheme(input.hudTheme, "hudTheme"));
   diagnostics.push(...validateWorldProject({
     logicalResolution: input.logicalResolution,
     initialScene: input.initialScene,
@@ -487,6 +510,7 @@ function validateProjectDefinitions(
     destinationScenes?: readonly string[],
   ) => {
     if (!value) return;
+    diagnostics.push(...validateNounDefinition(value, path));
     diagnostics.push(...validateNounReferences(value, path, interactionReferences));
     value.cases.forEach((candidate, index) => {
       const candidatePath = `${path}.cases[${index}]`;
@@ -551,12 +575,11 @@ function validateProjectDefinitions(
       characterId === input.playerCharacter ? allSceneIds : [character.initialScene],
     );
     if (characterId === input.playerCharacter) {
-      diagnostics.push(...validateAppearanceSet(character.appearances, {
-        path: `characters.${characterId}.appearances`,
-        initialAppearance: character.initialAppearance,
-        subject: "Character",
-        requireWalking: true,
-      }));
+      diagnostics.push(...validateWalkingAppearanceRoles(
+        character.appearances,
+        `characters.${characterId}.appearances`,
+        "Character",
+      ));
     }
   }
   for (const [objectId, object] of Object.entries(objects)) {

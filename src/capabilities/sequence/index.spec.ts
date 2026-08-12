@@ -4,6 +4,7 @@ import {
   createSequence,
   defineSequence,
   sequenceLines,
+  validateSequenceDefinition,
   validateSequenceReferences,
   type SequenceRuntimeContext,
 } from "./index";
@@ -15,6 +16,63 @@ const runtimeContext: SequenceRuntimeContext = {
     condition === undefined || "variable" in condition && condition.variable === "open" && condition.equals,
   directedSubjectsAreAvailable: () => true,
 };
+
+test("Sequence validates its complete local contract with a rooted path", () => {
+  const cyclic: unknown[] = [];
+  cyclic.push({
+    type: "branch",
+    cases: [],
+    fallback: cyclic,
+  });
+  const diagnostics = validateSequenceDefinition({
+    skippable: true,
+    steps: [{ type: "line", character: "", text: "" }, {
+      type: "narration",
+      text: "",
+    }, {
+      type: "choice",
+      alternatives: Array.from({ length: 7 }, (_, index) => ({ text: String(index), steps: [] })),
+      fallback: { text: "Leave", steps: cyclic },
+    }, {
+      type: "operations",
+      operations: [{ type: "start-sequence", sequence: "nested" }],
+    }, {
+      type: "direction",
+      directions: [{
+        type: "motion",
+        subject: { kind: "object", object: "key" },
+        path: [],
+        duration: 0,
+      }, {
+        type: "camera",
+        mode: "cut",
+        point: { x: 0, y: 0 },
+        startAfter: { direction: 0, cue: "" },
+      }],
+    }],
+  } as never, "sequences.opening");
+
+  expect(diagnostics).toEqual(expect.arrayContaining([
+    expect.objectContaining({ code: "definition.sequence.skip-outcome", path: "sequences.opening.skipOutcome" }),
+    expect.objectContaining({ code: "definition.line.character", path: "sequences.opening.steps[0].character" }),
+    expect.objectContaining({ code: "definition.line.text", path: "sequences.opening.steps[0].text" }),
+    expect.objectContaining({ code: "definition.narration.text", path: "sequences.opening.steps[1].text" }),
+    expect.objectContaining({ code: "definition.choice.limit", path: "sequences.opening.steps[2].alternatives" }),
+    expect.objectContaining({ code: "definition.sequence.cycle" }),
+    expect.objectContaining({ code: "definition.sequence.nested", path: "sequences.opening.steps[3].operations[0]" }),
+    expect.objectContaining({ code: "definition.motion.path", path: "sequences.opening.steps[4].directions[0].path" }),
+    expect.objectContaining({ code: "definition.motion.duration", path: "sequences.opening.steps[4].directions[0].duration" }),
+    expect.objectContaining({
+      code: "definition.sequence.cue-source",
+      path: "sequences.opening.steps[4].directions[1].startAfter.direction",
+    }),
+    expect.objectContaining({
+      code: "definition.sequence.cue-name",
+      path: "sequences.opening.steps[4].directions[1].startAfter.cue",
+    }),
+  ]));
+  expect(diagnostics.every(({ owner }) => ["sequence", "world", "camera"].includes(owner))).toBe(true);
+});
 
 test("Sequence traverses a Branch and requests Operations before presenting a Line", () => {
   const sequence = createSequence({
@@ -201,8 +259,8 @@ test("Sequence rejects a start outside its authored Scene", () => {
   );
 });
 
-test("Sequence owns diagnostics for its composed references and recursive starts", () => {
-  const definition = defineSequence({
+test("Sequence owns diagnostics for its composed references", () => {
+  const definition = {
     steps: [{ type: "line", character: "missing", text: "Hello." }, {
       type: "choice",
       alternatives: [{ text: "Continue.", steps: [{
@@ -211,7 +269,7 @@ test("Sequence owns diagnostics for its composed references and recursive starts
       }] }],
       fallback: { text: "Leave.", spoken: false, steps: [] },
     }],
-  });
+  } as const;
 
   expect(validateSequenceReferences("opening", definition, {
     sceneExists: () => true,
@@ -228,7 +286,6 @@ test("Sequence owns diagnostics for its composed references and recursive starts
   })).toEqual(expect.arrayContaining([
     expect.objectContaining({ code: "reference.character", owner: "sequence" }),
     expect.objectContaining({ code: "definition.choice.player-character", owner: "sequence" }),
-    expect.objectContaining({ code: "definition.sequence.nested", owner: "sequence" }),
   ]));
 });
 

@@ -14,6 +14,7 @@ import {
   type CameraDirection,
 } from "../src/index";
 import { createTestSession } from "../src/capabilities/game-session";
+import { validateSequenceDefinition } from "../src/capabilities/sequence";
 
 const staticAppearance = (image: string): Appearance => ({
   animations: {
@@ -358,33 +359,18 @@ test("an Object placed earlier in a Sequence may be directed in its owning Scene
   }
 });
 
-test("composition rejects selected-Object operations from Sequence outcomes", () => {
-  const square = [
-    { x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }, { x: 0, y: 100 },
-  ];
-  const invalidOutcome = defineSequence({
+test("Sequence rejects selected-Object operations from its local outcomes", () => {
+  const diagnostics = validateSequenceDefinition({
     skippable: true,
     skipOutcome: [{ type: "consume-selected-object" }],
     steps: [{ type: "narration", text: "Done." }],
-  });
+  }, "sequences.invalidOutcome");
 
-  try {
-    defineGame({
-      identity: "test.sequence-selected-object-outcome",
-      version: "1",
-      logicalResolution: { width: 100, height: 100 },
-      scenes: { room: defineScene({ background: "room.png", walkableRegion: square }) },
-      sequences: { invalidOutcome },
-      initialScene: "room",
-    });
-    throw new Error("Expected defineGame to reject the Skip Outcome.");
-  } catch (error) {
-    expect(error).toBeInstanceOf(AuthoringError);
-    expect((error as AuthoringError).diagnostics).toContainEqual(expect.objectContaining({
-      code: "definition.sequence.selected-object-operation",
-      path: "sequences.invalidOutcome.skipOutcome[0]",
-    }));
-  }
+  expect(diagnostics).toContainEqual(expect.objectContaining({
+    code: "definition.sequence.selected-object-operation",
+    owner: "sequence",
+    path: "sequences.invalidOutcome.skipOutcome[0]",
+  }));
 });
 
 test("composition diagnoses a movable Player Appearance without a walking Role", () => {

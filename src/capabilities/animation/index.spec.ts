@@ -8,6 +8,7 @@ import {
   animationPresentationForSubject,
   validateAppearance,
   validateAppearanceSet,
+  validateInitialAppearance,
   type AnimationProjectView,
   type Appearance,
 } from "./index";
@@ -231,4 +232,15 @@ test("Animation validates Appearance selection and required Roles for a subject"
       path: "characters.actor.appearances.normal.roles.walking",
     }),
   ]));
+
+  expect(validateInitialAppearance(
+    { visible: { kind: "background-region" } },
+    "missing",
+    "scenes.opening.scenery.mist.initialAppearance",
+    "Scenery",
+  )).toEqual([expect.objectContaining({
+    code: "reference.appearance.initial",
+    owner: "animation",
+    path: "scenes.opening.scenery.mist.initialAppearance",
+  })]);
 });

@@ -101,20 +101,23 @@ export interface NounDefinition {
   readonly fallbacks?: Readonly<Partial<Record<CommandVerb, CommandFallback>>>;
 }
 
-/** Creates and freezes one locally valid Noun Definition. */
-export function defineNoun(input: NounDefinition): NounDefinition {
+/** Reports every local Noun Definition Authoring Diagnostic without a Game Project. */
+export function validateNounDefinition(
+  input: NounDefinition,
+  path = "",
+): readonly AuthoringDiagnostic[] {
   const diagnostics: AuthoringDiagnostic[] = [];
-  validateConditionalFallback(input.labels, "labels", "Noun Label", diagnostics);
+  validateConditionalFallback(input.labels, childPath(path, "labels"), "Noun Label", diagnostics);
   validateConditionalFallback(
     input.preferredVerbs,
-    "preferredVerbs",
+    childPath(path, "preferredVerbs"),
     "Preferred Verb",
     diagnostics,
   );
   if (input.secondaryVerbs) {
     validateConditionalFallback(
       input.secondaryVerbs,
-      "secondaryVerbs",
+      childPath(path, "secondaryVerbs"),
       "Secondary Verb",
       diagnostics,
     );
@@ -122,7 +125,7 @@ export function defineNoun(input: NounDefinition): NounDefinition {
   if (input.objectVerbs) {
     validateConditionalFallback(
       input.objectVerbs,
-      "objectVerbs",
+      childPath(path, "objectVerbs"),
       "Selected Object Verb",
       diagnostics,
     );
@@ -132,7 +135,7 @@ export function defineNoun(input: NounDefinition): NounDefinition {
       diagnostics.push({
         code: "definition.noun-label.text",
         family: "definition", owner: "interaction",
-        path: `labels[${index}].text`,
+        path: childPath(path, `labels[${index}].text`),
         message: "A Noun Label cannot be empty.",
       });
     }
@@ -142,14 +145,14 @@ export function defineNoun(input: NounDefinition): NounDefinition {
       diagnostics.push({
         code: "definition.command-case.arity",
         family: "definition", owner: "interaction",
-        path: `cases[${index}].firstNoun`,
+        path: childPath(path, `cases[${index}].firstNoun`),
         message: "Give Command Cases always require a first Noun.",
       });
     } else if (candidate.verb !== "give" && candidate.verb !== "use" && candidate.firstNoun !== undefined) {
       diagnostics.push({
         code: "definition.command-case.arity",
         family: "definition", owner: "interaction",
-        path: `cases[${index}].firstNoun`,
+        path: childPath(path, `cases[${index}].firstNoun`),
         message: `The '${candidate.verb}' Verb is unary and cannot declare a first Noun.`,
       });
     }
@@ -161,7 +164,7 @@ export function defineNoun(input: NounDefinition): NounDefinition {
       diagnostics.push({
         code: "definition.command-case.textual-outcome",
         family: "definition", owner: "interaction",
-        path: `cases[${index}]`,
+        path: childPath(path, `cases[${index}]`),
         message: "A Command Case can declare only one textual outcome: Line, Command Response, or Sequence.",
       });
     }
@@ -169,7 +172,7 @@ export function defineNoun(input: NounDefinition): NounDefinition {
       diagnostics.push({
         code: "definition.command-case.empty",
         family: "definition", owner: "interaction",
-        path: `cases[${index}]`,
+        path: childPath(path, `cases[${index}]`),
         message: "A Command Case must produce a Line, Command Response, Game Operation, or Sequence.",
       });
     }
@@ -186,7 +189,7 @@ export function defineNoun(input: NounDefinition): NounDefinition {
       diagnostics.push({
         code: "definition.command-case.object-feedback",
         family: "definition", owner: "interaction",
-        path: `cases[${index}]`,
+        path: childPath(path, `cases[${index}]`),
         message: "A Command Case that moves or consumes an Object must provide a Line, Command Response, or Sequence.",
       });
     }
@@ -194,7 +197,7 @@ export function defineNoun(input: NounDefinition): NounDefinition {
       diagnostics.push({
         code: "definition.line.character",
         family: "definition", owner: "interaction",
-        path: `cases[${index}].line.character`,
+        path: childPath(path, `cases[${index}].line.character`),
         message: "A Line requires a Character.",
       });
     }
@@ -202,15 +205,21 @@ export function defineNoun(input: NounDefinition): NounDefinition {
       diagnostics.push({
         code: "definition.line.text",
         family: "definition", owner: "interaction",
-        path: `cases[${index}].line.text`,
+        path: childPath(path, `cases[${index}].line.text`),
         message: "A Line cannot be empty.",
       });
     }
-    validateCommandResponse(candidate.response, `cases[${index}].response`, diagnostics);
+    validateCommandResponse(candidate.response, childPath(path, `cases[${index}].response`), diagnostics);
   });
   for (const [verb, fallback] of Object.entries(input.fallbacks ?? {})) {
-    validateCommandResponse(fallback.response, `fallbacks.${verb}.response`, diagnostics);
+    validateCommandResponse(fallback.response, childPath(path, `fallbacks.${verb}.response`), diagnostics);
   }
+  return diagnostics;
+}
+
+/** Creates and freezes one locally valid Noun Definition. */
+export function defineNoun(input: NounDefinition): NounDefinition {
+  const diagnostics = validateNounDefinition(input);
   if (diagnostics.length > 0) throw new AuthoringError(diagnostics);
   const cloned = structuredClone(input);
   return deepFreeze({
@@ -393,7 +402,6 @@ export function validateNounReferences(
         `Sequence '${candidate.sequence}' does not exist.`,
       ));
     }
-    validateCommandResponse(candidate.response, `${candidatePath}.response`, diagnostics);
   });
   for (const verb of commandVerbs) {
     const fallback = noun.fallbacks?.[verb];
@@ -407,7 +415,6 @@ export function validateNounReferences(
       });
     }
     if (!fallback) continue;
-    validateCommandResponse(fallback.response, `${path}.fallbacks.${verb}.response`, diagnostics);
     if (fallback.sequence !== undefined && !view.sequences.has(fallback.sequence)) {
       diagnostics.push(interactionReference(
         "reference.sequence",
@@ -432,24 +439,33 @@ export interface CommandLexicon {
   };
 }
 
-/** Creates and freezes the localized labels and sentence patterns for Commands. */
-export function defineCommandLexicon(input: CommandLexicon): CommandLexicon {
+/** Reports every local Command Lexicon Authoring Diagnostic without a Game Project. */
+export function validateCommandLexicon(
+  input: CommandLexicon,
+  path = "",
+): readonly AuthoringDiagnostic[] {
   const diagnostics: AuthoringDiagnostic[] = [];
   for (const verb of commandVerbs) {
     if (!input.verbs[verb]?.trim()) {
       diagnostics.push({
         code: "definition.command-lexicon.label",
         family: "definition", owner: "interaction",
-        path: `verbs.${verb}`,
+        path: childPath(path, `verbs.${verb}`),
         message: `The Command Lexicon needs a non-empty label for '${verb}'.`,
       });
     }
   }
-  validatePattern(input.inventory.select, ["{noun}"], "inventory.select", diagnostics);
-  validatePattern(input.inventory.deselect, ["{noun}"], "inventory.deselect", diagnostics);
-  validatePattern(input.patterns.unary, ["{verb}", "{noun}"], "patterns.unary", diagnostics);
-  validatePattern(input.patterns.give, ["{verb}", "{first}", "{second}"], "patterns.give", diagnostics);
-  validatePattern(input.patterns.use, ["{verb}", "{first}", "{second}"], "patterns.use", diagnostics);
+  validatePattern(input.inventory.select, ["{noun}"], childPath(path, "inventory.select"), diagnostics);
+  validatePattern(input.inventory.deselect, ["{noun}"], childPath(path, "inventory.deselect"), diagnostics);
+  validatePattern(input.patterns.unary, ["{verb}", "{noun}"], childPath(path, "patterns.unary"), diagnostics);
+  validatePattern(input.patterns.give, ["{verb}", "{first}", "{second}"], childPath(path, "patterns.give"), diagnostics);
+  validatePattern(input.patterns.use, ["{verb}", "{first}", "{second}"], childPath(path, "patterns.use"), diagnostics);
+  return diagnostics;
+}
+
+/** Creates and freezes the localized labels and sentence patterns for Commands. */
+export function defineCommandLexicon(input: CommandLexicon): CommandLexicon {
+  const diagnostics = validateCommandLexicon(input);
   if (diagnostics.length > 0) throw new AuthoringError(diagnostics);
   return deepFreeze(structuredClone(input));
 }
@@ -1262,6 +1278,10 @@ function interactionReference(
   message: string,
 ): AuthoringDiagnostic {
   return { code, family: "reference", owner: "interaction", path, message };
+}
+
+function childPath(path: string, child: string): string {
+  return path ? `${path}.${child}` : child;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

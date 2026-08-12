@@ -8,8 +8,12 @@ import {
   defineScene,
   isInside,
   navigationPath,
+  validateCharacterDefinition,
   validateMotionDirection,
+  validateObjectDefinition,
+  validateSceneDefinition,
   validateWorldProject,
+  type SceneDefinition,
 } from "./index";
 import type { InteractionCondition } from "../interaction";
 
@@ -24,6 +28,104 @@ const appearance = {
   animations: { idle: { frames: ["idle.png"], framesPerSecond: 1 } },
   roles: { default: "idle" },
 } as const;
+
+test("World validates complete local definitions with caller-provided paths", () => {
+  expect(validateCharacterDefinition({
+    initialScene: "opening",
+    initialGroundPoint: { x: Number.NaN, y: 0 },
+    initialFacing: "front",
+    initialAppearance: "missing",
+    appearances: { broken: { animations: {}, roles: { default: "" } } },
+    movementSpeed: 0,
+  }, "characters.player")).toEqual(expect.arrayContaining([
+    expect.objectContaining({
+      code: "definition.point.finite",
+      owner: "world",
+      path: "characters.player.initialGroundPoint",
+    }),
+    expect.objectContaining({
+      code: "definition.character.movement-speed",
+      owner: "world",
+      path: "characters.player.movementSpeed",
+    }),
+    expect.objectContaining({
+      code: "reference.appearance.initial",
+      owner: "animation",
+      path: "characters.player.initialAppearance",
+    }),
+  ]));
+
+  expect(validateObjectDefinition({
+    initialScene: "opening",
+    initialGroundPoint: { x: 0, y: Number.POSITIVE_INFINITY },
+    initialAppearance: "missing",
+    appearances: {},
+    inventoryAppearance: "key.png",
+  }, "objects.key")).toEqual(expect.arrayContaining([
+    expect.objectContaining({ owner: "world", path: "objects.key.initialGroundPoint" }),
+    expect.objectContaining({ owner: "animation", path: "objects.key.initialAppearance" }),
+  ]));
+
+  expect(validateSceneDefinition({
+    background: "opening.png",
+    size: { width: 0, height: 10 },
+    walkableRegion: [{ x: Number.NaN, y: 0 }, { x: 1, y: 1 }],
+    perspectiveScale: [{ y: Number.NaN, scale: 0 }],
+    scenery: {
+      mist: {
+        baseline: Number.NaN,
+        initialAppearance: "missing",
+        appearances: {},
+      },
+    },
+    hotspots: [{
+      target: { kind: "background" },
+      noun: { labels: [{ text: "Mist" }], preferredVerbs: [{ verb: "look-at" }], cases: [] },
+      area: [{ x: 0, y: 0 }],
+      approach: { groundPoint: { x: Number.NaN, y: 0 }, facing: "front" },
+    }],
+    entrances: {
+      doorway: { groundPoint: { x: 0, y: Number.POSITIVE_INFINITY }, facing: "front" },
+    },
+  }, "scenes.opening")).toEqual(expect.arrayContaining([
+    expect.objectContaining({
+      code: "definition.scene-size.positive-integer",
+      path: "scenes.opening.size.width",
+    }),
+    expect.objectContaining({ code: "definition.point.finite", path: "scenes.opening.walkableRegion[0]" }),
+    expect.objectContaining({ code: "definition.polygon.vertices", path: "scenes.opening.walkableRegion" }),
+    expect.objectContaining({
+      code: "definition.perspective-scale.stop",
+      path: "scenes.opening.perspectiveScale[0]",
+    }),
+    expect.objectContaining({ owner: "animation", path: "scenes.opening.scenery.mist.initialAppearance" }),
+    expect.objectContaining({ code: "definition.scenery.baseline", path: "scenes.opening.scenery.mist.baseline" }),
+    expect.objectContaining({ code: "definition.polygon.vertices", path: "scenes.opening.hotspots[0].area" }),
+    expect.objectContaining({ code: "definition.approach.bounds", path: "scenes.opening.hotspots[0].approach" }),
+    expect.objectContaining({
+      code: "definition.scene-space.bounds",
+      path: "scenes.opening.entrances.doorway.groundPoint",
+    }),
+  ]));
+
+  expect(validateSceneDefinition({
+    background: "crossed.png",
+    walkableRegion: [
+      { x: 0, y: 0 }, { x: 20, y: 20 }, { x: 0, y: 20 }, { x: 20, y: 0 },
+    ],
+  }, "scenes.crossed")).toContainEqual(expect.objectContaining({
+    code: "definition.polygon.self-intersection",
+    path: "scenes.crossed.walkableRegion",
+  }));
+
+  expect(validateSceneDefinition({
+    background: "flat.png",
+    walkableRegion: [{ x: 0, y: 0 }, { x: 1, y: 1 }, { x: 2, y: 2 }],
+  }, "scenes.flat")).toContainEqual(expect.objectContaining({
+    code: "definition.polygon.degenerate",
+    path: "scenes.flat.walkableRegion",
+  }));
+});
 
 test("World creates defensive initial spatial state from its project view", () => {
   const scene = defineScene({
@@ -268,8 +370,8 @@ test("World derives defensive presentation facts for the current Scene", () => {
   );
 });
 
-test("World validates composed Scene geometry and entity membership", () => {
-  const invalidScene = defineScene({
+test("World separates local Scene geometry from composed entity membership", () => {
+  const invalidScene = {
     background: "scene.png",
     size: { width: 120, height: 100 },
     walkableRegion: [
@@ -278,7 +380,7 @@ test("World validates composed Scene geometry and entity membership", () => {
       { x: 0, y: 100 },
     ],
     entrances: { outside: { groundPoint: { x: 110, y: 90 }, facing: "front" } },
-  });
+  } as const satisfies SceneDefinition;
   const character = defineCharacter({
     initialScene: "missing",
     initialGroundPoint: { x: 10, y: 20 },
@@ -288,14 +390,7 @@ test("World validates composed Scene geometry and entity membership", () => {
     movementSpeed: 60,
   });
 
-  expect(validateWorldProject({
-    logicalResolution: { width: 100, height: 100 },
-    initialScene: "opening",
-    playerCharacter: "guide",
-    scenes: { opening: invalidScene },
-    characters: { guide: character },
-    objects: {},
-  })).toEqual(expect.arrayContaining([
+  expect(validateSceneDefinition(invalidScene, "scenes.opening")).toEqual(expect.arrayContaining([
     expect.objectContaining({
       owner: "world",
       code: "definition.scene-space.bounds",
@@ -306,6 +401,16 @@ test("World validates composed Scene geometry and entity membership", () => {
       code: "definition.entrance.walkable",
       path: "scenes.opening.entrances.outside.groundPoint",
     }),
+  ]));
+
+  expect(validateWorldProject({
+    logicalResolution: { width: 100, height: 100 },
+    initialScene: "opening",
+    playerCharacter: "guide",
+    scenes: { opening: invalidScene },
+    characters: { guide: character },
+    objects: {},
+  })).toEqual(expect.arrayContaining([
     expect.objectContaining({
       owner: "world",
       code: "reference.character.initial-scene",
@@ -320,7 +425,7 @@ test("World diagnoses invalid Passage destinations and Arrival rules", () => {
     preferredVerbs: [{ verb: "walk-to" as const }],
     cases: [],
   };
-  const opening = defineScene({
+  const opening = {
     background: "opening.png",
     walkableRegion: square,
     entrances: { valid: { groundPoint: { x: 10, y: 10 }, facing: "front" } },
@@ -337,7 +442,20 @@ test("World diagnoses invalid Passage destinations and Arrival rules", () => {
     }, {
       sequence: "second",
     }],
-  });
+  } as const satisfies SceneDefinition;
+
+  expect(validateSceneDefinition(opening, "scenes.opening")).toEqual(expect.arrayContaining([
+    expect.objectContaining({
+      code: "reference.arrival.entrance",
+      owner: "world",
+      path: "scenes.opening.arrivalSequences[0].entrance",
+    }),
+    expect.objectContaining({
+      code: "definition.arrival-sequence.ambiguous",
+      owner: "world",
+      path: "scenes.opening.arrivalSequences[1]",
+    }),
+  ]));
 
   expect(validateWorldProject({
     logicalResolution: { width: 100, height: 100 },
@@ -350,16 +468,6 @@ test("World diagnoses invalid Passage destinations and Arrival rules", () => {
       code: "reference.passage.scene",
       owner: "world",
       path: "scenes.opening.passages[0].destination.scene",
-    }),
-    expect.objectContaining({
-      code: "reference.arrival.entrance",
-      owner: "world",
-      path: "scenes.opening.arrivalSequences[0].entrance",
-    }),
-    expect.objectContaining({
-      code: "definition.arrival-sequence.ambiguous",
-      owner: "world",
-      path: "scenes.opening.arrivalSequences[1]",
     }),
   ]));
 });

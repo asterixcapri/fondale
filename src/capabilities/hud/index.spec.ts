@@ -7,7 +7,9 @@ import {
 } from "../interaction";
 import {
   createHUD,
+  validateHUDTheme,
   type HUDPresentationContext,
+  type HUDTheme,
 } from "./index";
 
 const lexicon: CommandLexicon = {
@@ -80,6 +82,27 @@ const context: HUDPresentationContext = {
     direction: "right",
   }],
 };
+
+test("HUD validates its complete local Theme contract with a rooted path", () => {
+  const diagnostics = validateHUDTheme({
+    font: { family: "", source: "" },
+    colors: { text: "turquoise" },
+    opacity: 2,
+    maxSpeechWidth: 0,
+    cursors: { left: "", right: "", up: "", down: "", enter: "" },
+    speechColors: { "": "invalid" },
+  } as unknown as HUDTheme, "hudTheme");
+
+  expect(diagnostics).toEqual(expect.arrayContaining([
+    expect.objectContaining({ code: "definition.hud-theme.font", path: "hudTheme.font" }),
+    expect.objectContaining({ code: "definition.hud-theme.color", path: "hudTheme.colors.text" }),
+    expect.objectContaining({ code: "definition.hud-theme.opacity", path: "hudTheme.opacity" }),
+    expect.objectContaining({ code: "definition.hud-theme.speech-width", path: "hudTheme.maxSpeechWidth" }),
+    expect.objectContaining({ code: "definition.hud-theme.cursor", path: "hudTheme.cursors.enter" }),
+    expect.objectContaining({ code: "definition.hud-theme.speech-color", path: "hudTheme.speechColors." }),
+  ]));
+  expect(diagnostics.every(({ owner }) => owner === "hud")).toBe(true);
+});
 
 test("HUD prepares contextual Command phrases once for browser presentation", () => {
   const hud = createHUD({ commandLexicon: lexicon });
