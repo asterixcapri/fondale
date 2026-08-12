@@ -629,7 +629,7 @@ class EngineOverlay {
       boxSizing: "border-box",
       pointerEvents: "none",
     });
-    this.conversation.dataset.fondaleConversation = "";
+    this.conversation.dataset.fondaleDialogue = "";
     this.conversation.style.cssText = [
       "position:absolute",
       "display:none",
@@ -676,7 +676,10 @@ class EngineOverlay {
     this.conversation.addEventListener("submit", (event) => {
       event.preventDefault();
       const playerInput = this.conversationInput.value;
-      void this.core.submitDialogue(playerInput).then((result) => {
+      const submission = this.core.reflection()
+        ? this.core.submitReflection(playerInput)
+        : this.core.submitDialogue(playerInput);
+      void submission.then((result) => {
         if (result.ok) this.conversationInput.value = "";
         this.render();
       });
@@ -748,7 +751,8 @@ class EngineOverlay {
   }
 
   blocksWorldInput(): boolean {
-    return this.currentHUD.system.blocksWorldInput || this.core.conversation() !== null;
+    return this.currentHUD.system.blocksWorldInput || this.core.conversation() !== null ||
+      this.core.reflection() !== null;
   }
 
   render(): void {
@@ -1078,14 +1082,29 @@ class EngineOverlay {
   }
 
   private renderConversation(): void {
-    const presentation = this.core.conversation();
+    const conversation = this.core.conversation();
+    const reflection = this.core.reflection();
+    const presentation = conversation ?? reflection;
+    if (conversation) {
+      this.conversation.dataset.fondaleConversation = "";
+      delete this.conversation.dataset.fondaleReflection;
+    } else if (reflection) {
+      this.conversation.dataset.fondaleReflection = "";
+      delete this.conversation.dataset.fondaleConversation;
+    } else {
+      delete this.conversation.dataset.fondaleConversation;
+      delete this.conversation.dataset.fondaleReflection;
+    }
     const visible = presentation !== null && this.currentHUD.narrative === null;
     this.conversation.style.display = visible ? "grid" : "none";
     if (!presentation) {
       this.conversationWasVisible = false;
       return;
     }
-    this.conversationHeading.textContent = `Ask ${presentation.character}`;
+    this.conversationHeading.textContent = conversation
+      ? `Ask ${conversation.character}`
+      : "Reflection";
+    this.conversationSubmit.textContent = reflection ? "Reflect" : "Ask";
     this.conversationInput.maxLength = presentation.maxInputLength;
     const pending = presentation.status === "pending";
     this.conversationInput.disabled = pending;

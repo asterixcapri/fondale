@@ -40,6 +40,8 @@ export interface GameSession {
   getStatus(): "running" | "failed" | "stopped";
   /** Returns contextual diagnostics after a runtime failure, otherwise an empty list. */
   getDiagnostics(): readonly AuthoringDiagnostic[];
+  /** Opens Reflection for the Player Character when the Game Session is idle. */
+  startReflection(): boolean;
   /** Permanently stops this session and releases its target. Safe to call repeatedly. */
   stop(): void;
 }
@@ -130,6 +132,12 @@ export async function startGame(
       },
       getDiagnostics() {
         return core?.diagnostics() ?? [];
+      },
+      startReflection() {
+        if (stopped || !core || !renderer) return false;
+        const started = core.startReflection();
+        if (started) renderer.render([]);
+        return started;
       },
       stop() {
         if (stopped) return;

@@ -6,10 +6,13 @@ a **Command Lexicon**, Command fallbacks and a **HUD Theme**. A **Player**
 controls one isolated **Game Session**.
 
 Every committed fact belongs to the session's canonical **Game State**.
-Fondale evolves it through validated, atomic **Game Operations**. Rendering,
+Fondale evolves it through validated, atomic **Game Operations**. Reflection
+may summarise committed Character Knowledge and Testimony, but its generated
+summary, Hypotheses, and suggestions remain non-canonical. Rendering,
 loaded textures, screen coordinates, and animation frames are derived and do
 not become canonical state. A **Game Activity** is the single dominant piece
-of progress: a replaceable Player Intent, a direct Line, or a modal Sequence.
+of progress: a replaceable Player Intent, a direct Line, a modal Sequence, a
+Conversation, or Player Character Reflection.
 
 A **Logical Resolution** is the fixed visible frame and HUD canvas. A
 **Scene** has a **Scene Size** that defaults to that frame and may be wider,

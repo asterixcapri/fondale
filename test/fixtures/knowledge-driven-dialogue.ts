@@ -65,6 +65,12 @@ const project = ({
   narrativeFacts: {
     "harbour-chain-cut": { proposition: "The harbour chain was cut." },
     "antonio-ordered-sabotage": { proposition: "Antonio ordered the sabotage." },
+    "antonio-on-santa-lucia": { proposition: "Antonio was aboard the Santa Lucia." },
+  },
+  claims: {
+    "antonio-denies-santa-lucia": {
+      proposition: "Antonio was never aboard the Santa Lucia.",
+    },
   },
   variables: { confessionUnlocked: false, handoffReady: true },
   characters: {
@@ -82,6 +88,16 @@ const project = ({
             level: "secret",
             when: { variable: "confessionUnlocked", equals: true },
           },
+        }, {
+          factId: "antonio-on-santa-lucia",
+          disclosure: {
+            level: "secret",
+            when: { variable: "confessionUnlocked", equals: true },
+          },
+        }],
+        coverStories: [{
+          concealsFactId: "antonio-on-santa-lucia",
+          claimId: "antonio-denies-santa-lucia",
         }],
       },
     }),
@@ -169,6 +185,7 @@ const dialogueProvider = new FakeDialogueProvider({
     "Who cut the chain?": "harbour-chain-cut",
     "What happened to the chain?": "harbour-chain-cut",
     "What are you hiding?": "antonio-ordered-sabotage",
+    "Were you aboard the Santa Lucia?": "antonio-on-santa-lucia",
     "I do not know what to ask.": null,
     "Wait for this answer.": {
       outcome: "pending",
@@ -185,8 +202,16 @@ const dialogueProvider = new FakeDialogueProvider({
   },
   verbalizations: {
     "harbour-chain-cut": "I saw the harbour chain being cut.",
+    "antonio-denies-santa-lucia": "I was never aboard the Santa Lucia.",
     evade: "I would rather not say.",
     clarify: "What exactly do you want to know?",
+  },
+  reflections: {
+    "What have I learned?": {
+      summary: "I know the harbour chain was cut, and Antonio denied being aboard the Santa Lucia.",
+      hypotheses: ["Antonio may know more than he admitted."],
+      suggestions: ["Investigate the Santa Lucia's passenger list."],
+    },
   },
 });
 window.__dialogueProvider = dialogueProvider;
@@ -194,4 +219,7 @@ window.__dialogueProvider = dialogueProvider;
 window.__dialogueSession = await startGame(project, {
   target: document.querySelector<HTMLElement>("#game")!,
   dialogueProvider,
+});
+document.querySelector<HTMLButtonElement>("#reflect")!.addEventListener("click", () => {
+  window.__dialogueSession?.startReflection();
 });

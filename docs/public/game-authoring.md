@@ -185,6 +185,27 @@ Game State; `learn-narrative-fact`, `record-testimony`, `set-trust` and
 validate and restore it exactly. Trust is directional, and Trust alone can
 never unlock a `secret` fact.
 
+## Player Character Reflection
+
+Give the Player Character a Dialogue Profile to make Reflection available,
+then expose an Example-specific control that calls the running Game Session:
+
+```ts
+const session = await startGame(dialogueProject, { target, dialogueProvider });
+
+document.querySelector("#reflect")?.addEventListener("click", () => {
+  session.startReflection();
+});
+```
+
+The provider's `reflect` method receives a `ReflectionRequest` containing only
+the Player Character's committed facts, attributed Testimony, and directional
+Relationships. It returns a `ReflectionResponse` with a summary and optional
+Hypotheses or investigation suggestions. Fondale labels Hypotheses as uncertain
+and suggestions as possible, presents the result as the Player Character's
+Line, and never adds generated material to Game State. Conversation and
+Reflection memory use distinct provider threads and both are reset on Load.
+
 ## Startup diagnostics
 
 Invalid projects reject before the target, environment, Runtime Assets, or

@@ -53,6 +53,62 @@ test("the browser fixture completes an open-fact Conversation without external d
   expect(learned).toEqual(["harbour-chain-cut"]);
 });
 
+test("Rifletti keeps Reflection separate and Load resets every provider thread", async ({ page }) => {
+  await openCharacterConversation(page, 315);
+  const conversation = page.locator("[data-fondale-conversation]");
+  const input = conversation.locator("[data-fondale-dialogue-input]");
+
+  for (const question of ["Who cut the chain?", "Were you aboard the Santa Lucia?"]) {
+    await input.fill(question);
+    await conversation.getByRole("button", { name: "Ask" }).click();
+    await page.locator("[data-fondale-frame]").focus();
+    await page.keyboard.press(".");
+    await page.keyboard.press(".");
+  }
+  await conversation.getByRole("button", { name: "Leave" }).click();
+  await page.getByRole("button", { name: "Rifletti" }).click();
+
+  const reflection = page.locator("[data-fondale-reflection]");
+  await expect(reflection).toBeVisible();
+  await expect(page.locator("[data-fondale-conversation]")).toHaveCount(0);
+  await expect(reflection).toContainText("Reflection");
+  await reflection.locator("[data-fondale-dialogue-input]").fill("What have I learned?");
+  await reflection.getByRole("button", { name: "Reflect" }).click();
+  await expect(page.locator('[data-fondale-line][data-fondale-speaker="player"]'))
+    .toContainText("Antonio denied being aboard the Santa Lucia");
+  await expect(page.locator('[data-fondale-line][data-fondale-speaker="player"]'))
+    .toContainText("Uncertain hypothesis: Antonio may know more than he admitted.");
+  expect(await page.evaluate(() => window.__dialogueProvider?.threadKeys())).toEqual([
+    "conversation:antonio",
+    "reflection:player",
+  ]);
+
+  await page.keyboard.press(".");
+  const canonicalBefore = await page.evaluate(() => {
+    const snapshot = window.__dialogueSession!.createSaveSnapshot();
+    localStorage.setItem("fondale.save-slots", JSON.stringify([{
+      name: "Active Reflection",
+      savedAt: "2026-08-12T12:00:00.000Z",
+      snapshot,
+    }]));
+    return {
+      knowledge: snapshot.state.characterKnowledge.player,
+      testimonies: snapshot.state.testimonies,
+    };
+  });
+  await page.locator("[data-fondale-frame]").focus();
+  await page.keyboard.press("Control+l");
+  await page.locator('[data-fondale-load-slot="0"]').click();
+
+  await expect(reflection).toBeVisible();
+  expect(await page.evaluate(() => window.__dialogueProvider?.resetCount())).toBe(1);
+  expect(await page.evaluate(() => window.__dialogueProvider?.threadKeys())).toEqual([]);
+  expect(await page.evaluate(() => {
+    const state = window.__dialogueSession!.createSaveSnapshot().state;
+    return { knowledge: state.characterKnowledge.player, testimonies: state.testimonies };
+  })).toEqual(canonicalBefore);
+});
+
 test("an authored Sequence takes over the browser and then resumes its Conversation", async ({
   page,
 }) => {

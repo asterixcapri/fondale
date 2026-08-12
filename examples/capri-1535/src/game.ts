@@ -18,13 +18,18 @@ import { winchInstallation } from "./sequences/winch-installation";
 
 export const project = ({
   identity: "org.asterixcapri.capri-1535-example",
-  version: "5",
+  version: "6",
   logicalResolution: { width: 426, height: 240 },
   inventoryAppearanceSize: 32,
   letterboxColor: "#15101d",
   scenes: { townSquare, cloister, harbour, coastalFortification },
   characters: { michele, raffaele, brotherElia },
   playerCharacter: "michele",
+  narrativeFacts: {
+    "michele-arrived-in-capri": {
+      proposition: "Michele arrived in Capri looking for honest work.",
+    },
+  },
   objects: { oilFlask, winchHandle },
   sequences: {
     raffaeleConversation,

@@ -1,4 +1,8 @@
-import type { ConversationActivityState, GameState } from "../game-session";
+import type {
+  ConversationActivityState,
+  GameState,
+  ReflectionActivityState,
+} from "../game-session";
 import { createSequence, type Sequence } from "../sequence";
 import {
   interactionSaveValidation,
@@ -210,6 +214,9 @@ function validActivity(
   if (value.type === "conversation") {
     return validConversationActivity(value, context);
   }
+  if (value.type === "reflection") {
+    return validReflectionActivity(value, context);
+  }
   if (value.type === "player-intent") {
     if (!project.playerCharacter ||
         state.characters[project.playerCharacter]?.scene !== state.currentScene) return false;
@@ -296,6 +303,16 @@ function validConversationActivity(
   return isRecord(value) && hasExactKeys(value, ["type", "character"]) &&
     value.type === "conversation" && typeof value.character === "string" &&
     context.world.hasCharacter(value.character) && context.dialogue.hasProfile(value.character);
+}
+
+function validReflectionActivity(
+  value: unknown,
+  context: Pick<SaveValidationContext, "project" | "dialogue">,
+): value is ReflectionActivityState {
+  const playerCharacter = context.project.playerCharacter;
+  return isRecord(value) && hasExactKeys(value, ["type"]) &&
+    value.type === "reflection" && typeof playerCharacter === "string" &&
+    context.dialogue.hasProfile(playerCharacter);
 }
 
 function validOptionalFacing(value: unknown): boolean {

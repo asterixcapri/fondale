@@ -81,8 +81,8 @@ without storing generated wording or treating the Claim as truth.
 `DialogueProvider` is the provider-agnostic startup seam for a Game Project
 that declares at least one Character Dialogue Profile. `StartGameOptions`
 receives it as `dialogueProvider`; Fondale never creates a model client. The
-interface keeps `interpret`, `verbalize`, and `reset` as separate
-responsibilities. Both provider phases receive the same transient
+interface keeps `interpret`, `verbalize`, `reflect`, and `reset` as separate
+responsibilities. Provider turns receive a transient
 `DialogueTurnContext`, containing a non-canonical `turnId` and `AbortSignal`.
 The context fields are `turnId` and `signal`.
 Interpretation receives untrusted `playerInput`, speaker and listener
@@ -111,17 +111,33 @@ dominant Game Activity and retains ownership of exact Lines, Choices, timing
 and skip behavior. A resumable handoff stores only the canonical Conversation
 continuation; provider memory remains external and is still reset by Load.
 
+`GameSession.startReflection()` opens Reflection only while the session is
+idle and the Player Character has a Dialogue Profile. `reflect` receives a
+`ReflectionRequest` containing only that Character's committed Narrative Fact
+propositions, remembered Claims attributed to their speakers, and directional
+Relationships. It cannot see undiscovered Character Knowledge or the complete
+Narrative Fact registry. A `ReflectionResponse` separates its supported
+summary from optional Hypotheses and investigation suggestions; Fondale labels
+the latter as uncertain and possible before presenting one Player Character
+Line. The response, Hypotheses, suggestions, and Reflection thread never enter
+Game State. Reflection has no interlocutor, Disclosure, Cover Story, Testimony,
+or Game Operation path. With no known facts or Testimony, Fondale presents a
+limited response without asking the provider to invent one. Load resets both
+Conversation and Reflection memory before a restored activity accepts input.
+
 `FakeDialogueProvider` is the deterministic adapter used by Engine tests and
 browser fixtures. Its `interpretations` map multiple exact Player formulations
 to declared Narrative Fact IDs or `null`; its `verbalizations` map an authorised
-fact ID, Claim ID, or non-answer Response Strategy to one response. It has no
+fact ID, Claim ID, or non-answer Response Strategy to one response; its
+`reflections` map turns Player input into a structured Reflection response. It has no
 network, database, model, or credential dependency. Tests may configure
 `pending` and `failure` outcomes, inspect and release pending turn IDs, and
 observe provider-memory reset calls without relying on timing.
 Controlled results use the `outcome` discriminator; pending results may set
 `ignoreCancellation` only when a test needs to simulate a non-conforming late
 adapter result. The fake's internal `resets` count is exposed through
-`resetCount()`.
+`resetCount()`, and `threadKeys()` exposes distinct Conversation and Reflection
+memory identities since the last reset.
 
 The authored condition fields are `trustAtLeast`, `variable`, and `equals`.
 Conversation handoff fields are `handoffs` and `after`. Qualitative profile
@@ -131,6 +147,9 @@ fields are `biography`, `personality`, `behavior`, `voice`,
 `concealsFactId`, and `claimId`. Provider requests carry Engine-selected
 `strategy`, `profile`, and optional `claim` fields. A directional Trust
 operation names its target with `towards`.
+Reflection request and response fields are `facts`, `summary`, `hypotheses`,
+and `suggestions`. The Fake adapter's internal `threads` set backs the
+read-only `threadKeys()` test observation.
 
 `ObjectDefinition` describes an Object with initial Scene, Ground Point, Appearance,
 named animated Appearances, square `inventoryAppearance`, and optional Noun. An
@@ -266,10 +285,14 @@ identifies the capability or browser adapter responsible for the rule.
 | `ResponseStrategy` | Engine-authorised conversational approach | answer, cover-story, withhold, evade, refuse, clarify | selected deterministically before verbalisation | invalid provider output rejects the turn | [Dialogue authoring](game-authoring.md) |
 | `DialoguePortrayalProfile` | provider-visible qualitative portrayal | optional biography, Personality, Voice and Dialogue State | carries no semantic authority | validated at startup | [Dialogue authoring](game-authoring.md) |
 | `DialogueVerbalizationRequest` | authorised expression input | speech identities, strategy, portrayal and optional fact or Claim | a concealed fact is absent when its Cover Story Claim is present | empty response rejects the turn | [Dialogue authoring](game-authoring.md) |
-| `DialogueTurnContext` | transient provider-call lifecycle | turn ID and AbortSignal | shared by interpretation and verbalisation; never saved | lifecycle invalidation aborts the signal and ignores late results | [Dialogue authoring](game-authoring.md) |
+| `DialogueTurnContext` | transient provider-call lifecycle | turn ID and AbortSignal | shared by Conversation phases or supplied to Reflection; never saved | lifecycle invalidation aborts the signal and ignores late results | [Dialogue authoring](game-authoring.md) |
+| `ReflectionRequest` | authorised Player Character reflection context | input, Character, known facts, attributed Testimony and directional Relationships | excludes hidden truth and every other Character's knowledge | provider failure rejects only the Reflection turn | [Dialogue authoring](game-authoring.md) |
+| `ReflectionResponse` | non-canonical generated reflection | supported summary, optional Hypotheses and suggestions | Hypotheses and suggestions are labelled uncertain/possible and never saved | malformed or empty output rejects the turn | [Dialogue authoring](game-authoring.md) |
+| `ReflectionTestimony` | provider-visible remembered Claim | speaker and declared Claim | preserves attribution without asserting truth | derived only from committed Testimony | [Dialogue authoring](game-authoring.md) |
+| `ReflectionRelationship` | provider-visible directional Trust | target Character and qualitative Trust | includes only the reflecting Character's outgoing Relationship | derived only from committed Relationship state | [Dialogue authoring](game-authoring.md) |
 | `Testimony` | canonical memory of a communicated Claim | speaker, listener and Claim ID | set-like and idempotent; stores no wording or truth | Save state validation | [Dialogue authoring](game-authoring.md) |
-| `DialogueProvider` | generated-dialogue adapter seam | interpret, verbalize, reset | supplied at startup; Engine creates no client; Load awaits reset | missing adapter is a startup diagnostic | [Dialogue authoring](game-authoring.md) |
-| `FakeDialogueProvider` | deterministic Dialogue Provider adapter | interpretation, verbalization, pending/failure controls and reset count | no external dependency, timing assumption or generated authority | missing configured mapping rejects the turn | [Dialogue authoring](game-authoring.md) |
+| `DialogueProvider` | generated-dialogue adapter seam | interpret, verbalize, reflect, reset | supplied at startup; Engine creates no client; Load awaits reset | missing adapter is a startup diagnostic | [Dialogue authoring](game-authoring.md) |
+| `FakeDialogueProvider` | deterministic Dialogue Provider adapter | interpretation, verbalization, reflection, pending/failure controls, thread keys and reset count | no external dependency, timing assumption or generated authority | missing configured mapping rejects the turn | [Dialogue authoring](game-authoring.md) |
 | `FakeDialoguePendingOutcome` | deterministic suspended fake response | pending discriminator, eventual value and optional cancellation behavior | released explicitly by transient turn ID | ordinary cancellation rejects unless the test requests a late result | [Dialogue authoring](game-authoring.md) |
 | `FakeDialogueFailureOutcome` | deterministic fake rejection | failure discriminator and message | rejects one configured provider phase | leaves canonical state unchanged | [Dialogue authoring](game-authoring.md) |
 | `ObjectDefinition` | persistent Object | initial values, appearances, Inventory PNG, noun | begins in one Scene | Object/asset diagnostics | [Inventory](recipes/inventory.ts) |
@@ -320,7 +343,7 @@ identifies the capability or browser adapter responsible for the rule.
 | `AuthoringError` | aggregate failure | read-only diagnostics | one error per startup layer | thrown by startup | [Scene](recipes/first-scene.ts) |
 | `SaveSnapshot` | JSON-safe committed state | format, project identities and state | exact fields only | save validation diagnostics | [Save](recipes/save-snapshot.ts) |
 | `StartGameOptions` | browser mount options | target, optional snapshot and Dialogue Provider | omitted snapshot starts fresh; configured dialogue requires its adapter | environment/save/dialogue diagnostics | [Save](recipes/save-snapshot.ts) |
-| `GameSession` | running lifecycle handle | save, status, diagnostics, stop | stop idempotent and terminal | lifecycle diagnostics | [Save](recipes/save-snapshot.ts) |
+| `GameSession` | running lifecycle handle | save, start Reflection, status, diagnostics, stop | Reflection starts only while idle; stop is idempotent and terminal | lifecycle diagnostics | [Save](recipes/save-snapshot.ts) |
 
 Exact reachable fields also include `x`, `y`, `width`, `height`, `kind`,
 `image`, `visualAnchor`, `frames`, `side`, `front`, `back`, `framesPerSecond`,

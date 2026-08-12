@@ -57,6 +57,10 @@ export {
   type Trust,
   type VoiceDefinition,
   type DialogueVerbalizationRequest,
+  type ReflectionRelationship,
+  type ReflectionRequest,
+  type ReflectionResponse,
+  type ReflectionTestimony,
   type Testimony,
 } from "./capabilities/dialogue";
 export {

@@ -152,6 +152,20 @@ test("the packaged Example opens in the new panoramic town square and reaches th
   expect(errors).toEqual([]);
 });
 
+test("the Example exposes Rifletti as Player Character Reflection", async ({ page }) => {
+  const { errors } = await openGame(page);
+
+  await page.getByRole("button", { name: "Rifletti" }).click();
+  const reflection = page.locator("[data-fondale-reflection]");
+  await expect(reflection).toBeVisible();
+  await reflection.locator("[data-fondale-dialogue-input]").fill("Che cosa so?");
+  await reflection.getByRole("button", { name: "Reflect" }).click();
+
+  await expect(page.locator('[data-fondale-line][data-fondale-speaker="michele"]'))
+    .toContainText("Sono arrivato a Capri");
+  expect(errors).toEqual([]);
+});
+
 test("Michele completes one ordinary job before the drifting boat begins the adventure", async ({
   page,
 }) => {

@@ -12,6 +12,8 @@ import {
   type CharacterKnowledgeDefinition,
 } from ".";
 
+const unusedReflection = () => Promise.reject(new Error("Reflection is not used by this test."));
+
 function dialogueTurnLifecycleFixture() {
   return createKnowledgeDrivenDialogue({
     narrativeFacts: { chain: { proposition: "The harbour chain was cut." } },
@@ -426,6 +428,7 @@ test("a Dialogue Turn exposes only known open candidates and stages one Engine o
       verbalizationRequest = request;
       return Promise.resolve('{"type":"learn-narrative-fact","factId":"hidden"}');
     },
+    reflect: unusedReflection,
     reset() {
       return Promise.resolve();
     },
@@ -506,6 +509,7 @@ test("Dialogue policy deterministically authorises answer, withholding and clari
       verbalizationRequests.push(policyRequest);
       return Promise.resolve(`${policyRequest.strategy}:${request.fact?.id ?? "none"}`);
     },
+    reflect: unusedReflection,
     reset: () => Promise.resolve(),
   };
   const state = {
@@ -624,6 +628,7 @@ test("Dialogue policy authorises only a declared Cover Story for a concealed fac
       verbalizationRequest = request;
       return Promise.resolve("I was never aboard that ship.");
     },
+    reflect: unusedReflection,
     reset: () => Promise.resolve(),
   };
 
@@ -706,6 +711,7 @@ test("a Dialogue Provider cannot improvise an undeclared Claim", async () => {
       verbalized = true;
       return Promise.resolve("An improvised factual lie.");
     },
+    reflect: unusedReflection,
     reset: () => Promise.resolve(),
   };
 
@@ -737,6 +743,7 @@ test("a Dialogue Turn rejects an unknown interpreted ID before verbalization", a
       verbalized = true;
       return Promise.resolve("Invented response.");
     },
+    reflect: unusedReflection,
     reset: () => Promise.resolve(),
   };
 
@@ -765,6 +772,7 @@ test("a Dialogue Turn shares one transient identity and cancellation across prov
       verbalized = true;
       return Promise.resolve("I saw it happen.");
     },
+    reflect: unusedReflection,
     reset: () => Promise.resolve(),
   };
   const cancellation = new AbortController();
@@ -830,4 +838,109 @@ test("FakeDialogueProvider deterministically controls pending, late, failed and 
   })).rejects.toThrow("Dialogue Provider timed out.");
   await provider.reset();
   expect(provider.resetCount()).toBe(1);
+});
+
+test("Reflection exposes only the Player Character's committed understanding", async () => {
+  const dialogue = createKnowledgeDrivenDialogue({
+    narrativeFacts: {
+      known: { proposition: "The harbour chain was cut." },
+      hidden: { proposition: "Antonio ordered the sabotage." },
+    },
+    claims: {
+      denial: { proposition: "Antonio was never aboard the Santa Lucia." },
+    },
+    variables: {},
+    characters: {
+      player: {
+        dialogue: {
+          knowledge: [{ factId: "known", disclosure: { level: "open" } }],
+          relationships: { antonio: { trust: "low" } },
+        },
+      },
+      antonio: {
+        dialogue: {
+          knowledge: [{
+            factId: "hidden",
+            disclosure: { level: "secret", when: { variable: "unlocked", equals: true } },
+          }],
+          coverStories: [{ concealsFactId: "hidden", claimId: "denial" }],
+        },
+      },
+    },
+  });
+  const state = dialogue.initialState();
+  state.testimonies.push({ speaker: "antonio", listener: "player", claimId: "denial" });
+  let reflectionRequest: Parameters<DialogueProvider["reflect"]>[0] | undefined;
+  const provider: DialogueProvider = {
+    interpret: () => Promise.resolve({ factId: null, reason: "no-relevant-fact" }),
+    verbalize: () => Promise.resolve("Not used by Reflection."),
+    reflect(request) {
+      reflectionRequest = request;
+      return Promise.resolve({
+        summary: "I know the harbour chain was cut, and Antonio denied being aboard.",
+        hypotheses: ["Antonio may know more than he said."],
+        suggestions: ["Ask who benefited from the sabotage."],
+      });
+    },
+    reset: () => Promise.resolve(),
+  };
+
+  const result = await dialogue.reflect(state, {
+    character: "player",
+    playerInput: "What do I know?",
+  }, provider);
+
+  expect(reflectionRequest).toEqual({
+    playerInput: "What do I know?",
+    character: "player",
+    facts: [{ id: "known", proposition: "The harbour chain was cut." }],
+    testimonies: [{
+      speaker: "antonio",
+      claim: { id: "denial", proposition: "Antonio was never aboard the Santa Lucia." },
+    }],
+    relationships: [{ character: "antonio", trust: "low" }],
+  });
+  expect(JSON.stringify(reflectionRequest)).not.toContain("Antonio ordered the sabotage.");
+  expect(result).toEqual({
+    playerInput: "What do I know?",
+    response: "I know the harbour chain was cut, and Antonio denied being aboard. " +
+      "Uncertain hypothesis: Antonio may know more than he said. " +
+      "Possible investigation: Ask who benefited from the sabotage.",
+  });
+  expect(state.characterKnowledge.player).toEqual(["known"]);
+  expect(state.testimonies).toEqual([{
+    speaker: "antonio", listener: "player", claimId: "denial",
+  }]);
+});
+
+test("Reflection gives an honest limited response when the Character knows nothing", async () => {
+  const dialogue = createKnowledgeDrivenDialogue({
+    narrativeFacts: { hidden: { proposition: "Antonio ordered the sabotage." } },
+    variables: {},
+    characters: {
+      player: { dialogue: { knowledge: [] } },
+      antonio: {
+        dialogue: { knowledge: [{ factId: "hidden", disclosure: { level: "open" } }] },
+      },
+    },
+  });
+  let providerWasAsked = false;
+  const provider: DialogueProvider = {
+    interpret: () => Promise.resolve({ factId: null, reason: "no-relevant-fact" }),
+    verbalize: () => Promise.resolve("Not used by Reflection."),
+    reflect: () => {
+      providerWasAsked = true;
+      return Promise.resolve({ summary: "An invented answer." });
+    },
+    reset: () => Promise.resolve(),
+  };
+
+  await expect(dialogue.reflect(dialogue.initialState(), {
+    character: "player",
+    playerInput: "What do I know?",
+  }, provider)).resolves.toEqual({
+    playerInput: "What do I know?",
+    response: "I do not know enough to reflect on that yet.",
+  });
+  expect(providerWasAsked).toBe(false);
 });

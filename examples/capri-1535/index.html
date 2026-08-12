@@ -8,7 +8,7 @@
     <style>
       html, body, #game { margin: 0; width: 100%; height: 100%; overflow: hidden; }
       body { background: #15101d; }
-      #restore {
+      #restore, #reflection {
         position: fixed;
         z-index: 2;
         top: 8px;
@@ -19,6 +19,7 @@
         border: 2px solid white;
         font: 12px monospace;
       }
+      #reflection { left: 8px; right: auto; }
       #restore:focus-visible { outline: 3px double #f4cf63; outline-offset: 2px; }
       #error { position: fixed; inset: 20% 10%; color: white; font: 16px monospace; }
       #error:empty { display: none; }
@@ -27,6 +28,7 @@
   <body>
     <div id="game"></div>
     <button id="restore" type="button">Salva e ripristina</button>
+    <button id="reflection" type="button">Rifletti</button>
     <output id="error"></output>
     <script type="module" src="./src/main.ts"></script>
   </body>

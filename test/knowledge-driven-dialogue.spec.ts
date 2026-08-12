@@ -15,6 +15,8 @@ import {
 } from "../src/index";
 import { compileGameProject } from "../src/capabilities/game-project";
 
+const unusedReflection = () => Promise.reject(new Error("Reflection is not used by this test."));
+
 const square = [
   { x: 0, y: 0 },
   { x: 100, y: 0 },
@@ -602,6 +604,110 @@ test("Talk To completes an open-fact Conversation through the Dialogue Provider"
   }
 });
 
+test("Reflection presents a non-canonical Player Character Line in its own activity", async () => {
+  const project = knowledgeProject();
+  const provider = new FakeDialogueProvider({
+    interpretations: {},
+    verbalizations: {},
+    reflections: {
+      "What have I learned?": {
+        summary: "I know the harbour chain was cut.",
+        hypotheses: ["The cutter may have entered from the sea."],
+        suggestions: ["Inspect the harbour gate."],
+      },
+    },
+  });
+  const session = createTestSession(project, undefined, provider);
+  session.input({ type: "select-verb", verb: "look-at" });
+  session.input({ type: "activate-hotspot", hotspot: 0 });
+  session.steps(2);
+  const canonicalBefore = session.createSaveSnapshot().state;
+
+  expect(session.startReflection()).toBe(true);
+  expect(session.snapshot().activity).toEqual({ type: "reflection" });
+  expect(session.conversation()).toBeNull();
+  expect(session.reflection()).toMatchObject({ status: "ready" });
+
+  await expect(session.submitReflection("What have I learned?")).resolves.toEqual({ ok: true });
+  expect(session.reflection()).toMatchObject({ status: "pending" });
+  session.steps();
+
+  expect(session.hud().narrative).toMatchObject({
+    kind: "line",
+    speaker: "player",
+    text: "I know the harbour chain was cut. " +
+      "Uncertain hypothesis: The cutter may have entered from the sea. " +
+      "Possible investigation: Inspect the harbour gate.",
+  });
+  expect(session.snapshot().characterKnowledge).toEqual(canonicalBefore.characterKnowledge);
+  expect(session.snapshot().testimonies).toEqual(canonicalBefore.testimonies);
+  expect(JSON.stringify(session.createSaveSnapshot())).not.toMatch(
+    /entered from the sea|Inspect the harbour gate/,
+  );
+
+  session.input({ type: "advance-reflection-line" });
+  session.steps();
+  expect(session.reflection()).toMatchObject({ status: "ready" });
+});
+
+test("leaving Reflection cancels a pending turn and ignores its late response", async () => {
+  const project = knowledgeProject();
+  const provider = new FakeDialogueProvider({
+    interpretations: {},
+    verbalizations: {},
+    reflections: {
+      "Wait for reflection.": {
+        outcome: "pending",
+        value: { summary: "This late reflection must stay invisible." },
+        ignoreCancellation: true,
+      },
+    },
+  });
+  const session = createTestSession(project, undefined, provider);
+  session.input({ type: "select-verb", verb: "look-at" });
+  session.input({ type: "activate-hotspot", hotspot: 0 });
+  session.steps(2);
+  expect(session.startReflection()).toBe(true);
+  const before = session.snapshot();
+
+  const pending = session.submitReflection("Wait for reflection.");
+  await Promise.resolve();
+  const [turnId] = provider.pendingTurnIds();
+  session.input({ type: "escape" });
+  session.steps();
+
+  await expect(pending).resolves.toEqual({
+    ok: false,
+    message: "Reflection turn was cancelled.",
+  });
+  expect(turnId && provider.release(turnId)).toBe(true);
+  await Promise.resolve();
+  session.steps();
+  expect(session.snapshot()).toEqual({ ...before, activity: null, tick: before.tick + 2 });
+  expect(session.hud().narrative).toBeNull();
+});
+
+test("Save validates and restores active Reflection without generated memory", () => {
+  const project = knowledgeProject();
+  const provider = new FakeDialogueProvider({
+    interpretations: {},
+    verbalizations: {},
+    reflections: {},
+  });
+  const session = createTestSession(project, undefined, provider);
+  expect(session.startReflection()).toBe(true);
+  const snapshot = session.createSaveSnapshot();
+
+  expect(snapshot.state.activity).toEqual({ type: "reflection" });
+  expect(JSON.stringify(snapshot)).not.toMatch(/summary|hypothesis|suggestion|thread/i);
+  const validation = validateTestSaveSnapshot(project, snapshot);
+  expect(validation.ok).toBe(true);
+  if (!validation.ok) return;
+  expect(createTestSession(project, validation.snapshot, provider).reflection()).toMatchObject({
+    status: "ready",
+  });
+});
+
 test("an authored handoff runs a Sequence after a Dialogue Turn and resumes the Conversation", async () => {
   const project = conversationHandoffProject("resume");
   const provider = new FakeDialogueProvider({
@@ -915,6 +1021,7 @@ test("failed or stopped Cover Story turns discard staged Testimony", async () =>
   const failedProvider: DialogueProvider = {
     interpret: () => Promise.resolve({ factId: "santa-lucia" }),
     verbalize: () => Promise.reject(new Error("Provider unavailable.")),
+    reflect: unusedReflection,
     reset: () => Promise.resolve(),
   };
   const failedSession = createTestSession(project, undefined, failedProvider);
@@ -935,6 +1042,7 @@ test("failed or stopped Cover Story turns discard staged Testimony", async () =>
       stoppedTurnContext = context;
       finishVerbalization = resolve;
     }),
+    reflect: unusedReflection,
     reset: () => Promise.resolve(),
   };
   const stoppedSession = createTestSession(project, undefined, pendingProvider);
@@ -965,6 +1073,7 @@ test("leaving a pending Conversation cancels its unique turn and ignores a late 
       });
     },
     verbalize: () => Promise.resolve("I was never aboard that ship."),
+    reflect: unusedReflection,
     reset: () => Promise.resolve(),
   };
   const session = createTestSession(project, undefined, provider);
@@ -1090,6 +1199,7 @@ test("failed Dialogue Turn phases leave Game State unchanged and allow a retry",
     verbalize: ({ playerInput }) => Promise.resolve(
       playerInput === "empty" ? "   " : "I saw the harbour chain being cut.",
     ),
+    reflect: unusedReflection,
     reset: () => Promise.resolve(),
   };
   const base = knowledgeProject();

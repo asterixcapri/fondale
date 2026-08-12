@@ -162,6 +162,34 @@ export interface DialogueVerbalizationRequest {
   readonly profile: DialoguePortrayalProfile;
 }
 
+/** One remembered Claim exposed to Reflection with its original speaker. */
+export interface ReflectionTestimony {
+  readonly speaker: string;
+  readonly claim: DialogueClaimCandidate;
+}
+
+/** One directional Relationship exposed to its owning Character during Reflection. */
+export interface ReflectionRelationship {
+  readonly character: string;
+  readonly trust: Trust;
+}
+
+/** The complete authorised context from which a provider may compose Reflection. */
+export interface ReflectionRequest {
+  readonly playerInput: string;
+  readonly character: string;
+  readonly facts: readonly DialogueFactCandidate[];
+  readonly testimonies: readonly ReflectionTestimony[];
+  readonly relationships: readonly ReflectionRelationship[];
+}
+
+/** Non-canonical generated material returned for one Reflection turn. */
+export interface ReflectionResponse {
+  readonly summary: string;
+  readonly hypotheses?: readonly string[];
+  readonly suggestions?: readonly string[];
+}
+
 /** Transient lifecycle context shared by both provider phases of one Dialogue Turn. */
 export interface DialogueTurnContext {
   readonly turnId: string;
@@ -178,6 +206,10 @@ export interface DialogueProvider {
     request: DialogueVerbalizationRequest,
     context: DialogueTurnContext,
   ): Promise<string>;
+  reflect(
+    request: ReflectionRequest,
+    context: DialogueTurnContext,
+  ): Promise<ReflectionResponse>;
   reset(): Promise<void>;
 }
 
@@ -205,6 +237,7 @@ interface PendingFakeDialogueControl {
 /** Deterministic, dependency-free Dialogue Provider for tests and technical fixtures. */
 export class FakeDialogueProvider implements DialogueProvider {
   private readonly pending = new Map<string, PendingFakeDialogueControl>();
+  private readonly threads = new Set<string>();
   private resets = 0;
 
   constructor(private readonly responses: {
@@ -215,12 +248,14 @@ export class FakeDialogueProvider implements DialogueProvider {
       >
     >>;
     readonly verbalizations: Readonly<Record<string, FakeDialogueOutcome<string>>>;
+    readonly reflections?: Readonly<Record<string, FakeDialogueOutcome<ReflectionResponse>>>;
   }) {}
 
   async interpret(
     request: DialogueInterpretationRequest,
     context: DialogueTurnContext,
   ): Promise<DialogueInterpretation> {
+    this.threads.add(`conversation:${request.speaker}`);
     if (!hasOwn(this.responses.interpretations, request.playerInput)) {
       throw new Error("Fake Dialogue Provider has no matching interpretation.");
     }
@@ -246,8 +281,18 @@ export class FakeDialogueProvider implements DialogueProvider {
     return this.resolveOutcome(this.responses.verbalizations[responseKey]!, context);
   }
 
+  reflect(request: ReflectionRequest, context: DialogueTurnContext): Promise<ReflectionResponse> {
+    this.threads.add(`reflection:${request.character}`);
+    const outcome = this.responses.reflections?.[request.playerInput];
+    if (outcome === undefined) {
+      return Promise.reject(new Error("Fake Dialogue Provider has no matching Reflection."));
+    }
+    return this.resolveOutcome(outcome, context);
+  }
+
   reset(): Promise<void> {
     this.resets += 1;
+    this.threads.clear();
     for (const [turnId, pending] of this.pending) {
       pending.cancel?.();
       pending.reject(new Error("Dialogue Provider memory was reset."));
@@ -274,6 +319,11 @@ export class FakeDialogueProvider implements DialogueProvider {
   /** Number of provider-memory resets observed by this deterministic adapter. */
   resetCount(): number {
     return this.resets;
+  }
+
+  /** Provider-memory thread identities observed since the most recent reset. */
+  threadKeys(): readonly string[] {
+    return [...this.threads];
   }
 
   private resolveOutcome<T>(
@@ -399,6 +449,18 @@ export interface KnowledgeDrivenDialogue {
     readonly playerInput: string;
     readonly response: string;
     readonly operation?: LearnNarrativeFactOperation | RecordTestimonyOperation;
+  }>;
+  reflect(
+    state: KnowledgeDrivenDialogueState,
+    input: {
+      readonly character: string;
+      readonly playerInput: string;
+    },
+    provider: DialogueProvider,
+    context?: DialogueTurnContext,
+  ): Promise<{
+    readonly playerInput: string;
+    readonly response: string;
   }>;
   learn(
     state: KnowledgeDrivenDialogueState,
@@ -582,6 +644,64 @@ export function createKnowledgeDrivenDialogue(
         } : {}),
       });
     },
+    async reflect(
+      state: KnowledgeDrivenDialogueState,
+      input: { readonly character: string; readonly playerInput: string },
+      provider: DialogueProvider,
+      context: DialogueTurnContext = {
+        turnId: "unmanaged-reflection-turn",
+        signal: new AbortController().signal,
+      },
+    ) {
+      const playerInput = input.playerInput.trim();
+      if (!playerInput || playerInput.length > dialogueInputMaxLength) {
+        throw new Error(`Player speech must contain between 1 and ${dialogueInputMaxLength} characters.`);
+      }
+      if (!hasOwn(project.characters, input.character) ||
+          project.characters[input.character]!.dialogue === undefined) {
+        throw new Error(`Character '${input.character}' has no Dialogue Profile.`);
+      }
+      const knownFactIds = state.characterKnowledge[input.character];
+      if (!knownFactIds) {
+        throw new Error(`Character Knowledge for '${input.character}' is missing.`);
+      }
+      const facts = Object.freeze(knownFactIds.map((id) => Object.freeze({
+        id,
+        proposition: project.narrativeFacts[id]!.proposition,
+      })));
+      const testimonies = Object.freeze(state.testimonies
+        .filter(({ listener }) => listener === input.character)
+        .map(({ speaker, claimId }) => Object.freeze({
+          speaker,
+          claim: Object.freeze({
+            id: claimId,
+            proposition: project.claims![claimId]!.proposition,
+          }),
+        })));
+      const relationships = Object.freeze(Object.entries(
+        state.relationships[input.character] ?? {},
+      ).map(([character, { trust }]) => Object.freeze({ character, trust })));
+      if (facts.length === 0 && testimonies.length === 0) {
+        return Object.freeze({
+          playerInput,
+          response: "I do not know enough to reflect on that yet.",
+        });
+      }
+      const reflection = await abortable(provider.reflect(Object.freeze({
+        playerInput,
+        character: input.character,
+        facts,
+        testimonies,
+        relationships,
+      }), context), context.signal);
+      if (!isValidReflectionResponse(reflection)) {
+        throw new Error("Dialogue Provider returned an invalid Reflection.");
+      }
+      return Object.freeze({
+        playerInput,
+        response: formatReflectionResponse(reflection),
+      });
+    },
     learn(state: KnowledgeDrivenDialogueState, operation: LearnNarrativeFactOperation) {
       if (!hasOwn(project.characters, operation.character)) {
         throw new Error(`Unknown Character '${operation.character}'.`);
@@ -739,6 +859,31 @@ function isValidInterpretation(value: unknown): value is DialogueInterpretation 
   if (typeof value.factId === "string") return hasExactKeys(value, ["factId"]);
   return value.factId === null && hasExactKeys(value, ["factId", "reason"]) &&
     (value.reason === "ambiguous" || value.reason === "no-relevant-fact");
+}
+
+function isValidReflectionResponse(value: unknown): value is ReflectionResponse {
+  if (!isRecord(value) || !hasExactKeys(
+    value,
+    ["summary"],
+    ["hypotheses", "suggestions"],
+  ) || typeof value.summary !== "string" || !value.summary.trim()) return false;
+  return [value.hypotheses, value.suggestions].every((entries) =>
+    entries === undefined || (Array.isArray(entries) && entries.every((entry) =>
+      typeof entry === "string" && entry.trim().length > 0
+    ))
+  );
+}
+
+function formatReflectionResponse(response: ReflectionResponse): string {
+  return [
+    response.summary.trim(),
+    ...(response.hypotheses ?? []).map((hypothesis) =>
+      `Uncertain hypothesis: ${hypothesis.trim()}`
+    ),
+    ...(response.suggestions ?? []).map((suggestion) =>
+      `Possible investigation: ${suggestion.trim()}`
+    ),
+  ].join(" ");
 }
 
 function disclosureAllows(
@@ -1243,8 +1388,14 @@ function hasOwn(value: object, key: PropertyKey): boolean {
   return Object.prototype.hasOwnProperty.call(value, key);
 }
 
-function hasExactKeys(value: Record<string, unknown>, keys: readonly string[]): boolean {
-  return sameKeys(value, Object.fromEntries(keys.map((key) => [key, true])));
+function hasExactKeys(
+  value: Record<string, unknown>,
+  required: readonly string[],
+  optional: readonly string[] = [],
+): boolean {
+  const keys = Object.keys(value);
+  return required.every((key) => keys.includes(key)) &&
+    keys.every((key) => required.includes(key) || optional.includes(key));
 }
 
 function sameKeys(left: Record<string, unknown>, right: object): boolean {

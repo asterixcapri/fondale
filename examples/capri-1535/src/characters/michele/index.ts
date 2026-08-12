@@ -42,4 +42,10 @@ export const michele = ({
     },
   },
   movementSpeed: 150,
+  dialogue: {
+    knowledge: [{
+      factId: "michele-arrived-in-capri",
+      disclosure: { level: "open" },
+    }],
+  },
 } satisfies CharacterDefinition);

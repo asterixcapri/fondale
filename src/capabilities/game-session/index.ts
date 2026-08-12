@@ -98,10 +98,15 @@ export interface ConversationActivityState {
   readonly character: string;
 }
 
+export interface ReflectionActivityState {
+  readonly type: "reflection";
+}
+
 export type GameActivityState = PlayerIntentState
   | SequenceActivityState
   | LineActivityState
-  | ConversationActivityState;
+  | ConversationActivityState
+  | ReflectionActivityState;
 
 export interface GameState extends WorldState {
   inventory: { objects: string[] };
@@ -121,6 +126,7 @@ export type CoreInput = InteractionInput
   | { readonly type: "advance-sequence" }
   | { readonly type: "advance-line" }
   | { readonly type: "advance-conversation-line" }
+  | { readonly type: "advance-reflection-line" }
   | { readonly type: "skip-sequence" }
   | { readonly type: "choose"; readonly alternative: number };
 
@@ -130,10 +136,17 @@ export type CoreEffect =
   | { readonly type: "interaction-response"; readonly text: string; readonly response?: CommandResponse }
   | { readonly type: "scene-changed"; readonly scene: string }
   | { readonly type: "sequence-changed" }
-  | { readonly type: "conversation-changed" };
+  | { readonly type: "conversation-changed" }
+  | { readonly type: "reflection-changed" };
 
 export interface ConversationPresentation {
   readonly character: string;
+  readonly status: "ready" | "pending" | "line" | "error";
+  readonly maxInputLength: number;
+  readonly error?: string;
+}
+
+export interface ReflectionPresentation {
   readonly status: "ready" | "pending" | "line" | "error";
   readonly maxInputLength: number;
   readonly error?: string;
@@ -170,7 +183,10 @@ export interface CoreSession {
   camera(): CameraPresentation;
   sequence(): SequencePresentation | null;
   conversation(): ConversationPresentation | null;
+  reflection(): ReflectionPresentation | null;
+  startReflection(): boolean;
   submitDialogue(playerInput: string): Promise<DialogueSubmissionResult>;
+  submitReflection(playerInput: string): Promise<DialogueSubmissionResult>;
   stop(): void;
 }
 
@@ -215,12 +231,26 @@ export function createCoreSession(
     readonly controller: AbortController;
   } | null = null;
   let dialogueTurnSequence = 0;
+  let reflectionTurn: { readonly response: string; readonly playerCharacter: string } | null = null;
+  let reflectionStatus: ReflectionPresentation["status"] = "ready";
+  let reflectionError: string | undefined;
+  let reflectionCompletion: {
+    readonly response: string;
+    readonly playerCharacter: string;
+  } | null = null;
+  let pendingReflectionTurn: {
+    readonly turnId: string;
+    readonly controller: AbortController;
+  } | null = null;
+  let reflectionTurnSequence = 0;
 
   const session: CoreSession = {
     input(input) {
       if (status !== "running") return;
       if (input.type === "escape" && state.activity?.type === "conversation") {
         invalidateDialogueTurn();
+      } else if (input.type === "escape" && state.activity?.type === "reflection") {
+        invalidateReflectionTurn();
       }
       inputs.push(structuredClone(input));
     },
@@ -241,6 +271,7 @@ export function createCoreSession(
     createSaveSnapshot() {
       assertRunning();
       invalidateDialogueTurn();
+      invalidateReflectionTurn();
       return save.createSnapshot(state);
     },
     lifecycle: () => status,
@@ -287,6 +318,26 @@ export function createCoreSession(
         ...(conversationError ? { error: conversationError } : {}),
       });
     },
+    reflection() {
+      if (state.activity?.type !== "reflection") return null;
+      return structuredClone({
+        status: reflectionStatus,
+        maxInputLength: dialogueInputMaxLength,
+        ...(reflectionError ? { error: reflectionError } : {}),
+      });
+    },
+    startReflection() {
+      const playerCharacter = projectViews.world.playerCharacter;
+      if (status !== "running" || state.activity !== null || !playerCharacter ||
+          !dialogueProvider || !dialogue.hasProfile(playerCharacter)) return false;
+      state.activity = { type: "reflection" };
+      reflectionTurn = null;
+      reflectionCompletion = null;
+      reflectionStatus = "ready";
+      reflectionError = undefined;
+      emitted.push({ type: "reflection-changed" });
+      return true;
+    },
     async submitDialogue(playerInput) {
       const activity = state.activity;
       const playerCharacter = projectViews.world.playerCharacter;
@@ -331,9 +382,46 @@ export function createCoreSession(
         return { ok: false, message };
       }
     },
+    async submitReflection(playerInput) {
+      const playerCharacter = projectViews.world.playerCharacter;
+      if (state.activity?.type !== "reflection" || !playerCharacter || !dialogueProvider) {
+        return { ok: false, message: "No Reflection is ready for Player speech." };
+      }
+      if (reflectionStatus !== "ready" && reflectionStatus !== "error") {
+        return { ok: false, message: "Reflection is not ready for Player speech." };
+      }
+      reflectionStatus = "pending";
+      reflectionError = undefined;
+      const currentTurn = {
+        turnId: `reflection-turn-${reflectionTurnSequence += 1}`,
+        controller: new AbortController(),
+      };
+      const cancelled = { ok: false as const, message: "Reflection turn was cancelled." };
+      pendingReflectionTurn = currentTurn;
+      try {
+        const turn = await dialogue.reflect(state, {
+          character: playerCharacter,
+          playerInput,
+        }, dialogueProvider, {
+          turnId: currentTurn.turnId,
+          signal: currentTurn.controller.signal,
+        });
+        if (reflectionTurnWasCancelled(currentTurn)) return cancelled;
+        reflectionCompletion = { response: turn.response, playerCharacter };
+        return { ok: true };
+      } catch (cause) {
+        if (reflectionTurnWasCancelled(currentTurn)) return cancelled;
+        pendingReflectionTurn = null;
+        const message = cause instanceof Error ? cause.message : String(cause);
+        reflectionStatus = "error";
+        reflectionError = message;
+        return { ok: false, message };
+      }
+    },
     stop() {
       if (status === "stopped") return;
       invalidateDialogueTurn();
+      invalidateReflectionTurn();
       status = "stopped";
       inputs.length = 0;
     },
@@ -357,6 +445,24 @@ export function createCoreSession(
 
   function dialogueTurnWasCancelled(turn: NonNullable<typeof pendingDialogueTurn>): boolean {
     return pendingDialogueTurn !== turn || turn.controller.signal.aborted;
+  }
+
+  function invalidateReflectionTurn(): void {
+    const pending = pendingReflectionTurn;
+    pendingReflectionTurn = null;
+    pending?.controller.abort();
+    const completion = reflectionCompletion;
+    reflectionCompletion = null;
+    if ((pending || completion) && state.activity?.type === "reflection") {
+      reflectionStatus = "ready";
+      reflectionError = undefined;
+    }
+  }
+
+  function reflectionTurnWasCancelled(
+    turn: NonNullable<typeof pendingReflectionTurn>,
+  ): boolean {
+    return pendingReflectionTurn !== turn || turn.controller.signal.aborted;
   }
 
   function hudContext(facts: HUDAdapterFacts = {}): HUDPresentationContext {
@@ -396,6 +502,14 @@ export function createCoreSession(
   }
 
   function activeNarrativeFacts(): HUDPresentationContext["narrative"] {
+    if (state.activity?.type === "reflection" && reflectionTurn) {
+      return {
+        kind: "line",
+        source: "reflection",
+        character: reflectionTurn.playerCharacter,
+        text: reflectionTurn.response,
+      };
+    }
     if (state.activity?.type === "conversation" && dialogueTurn) {
       return dialogueTurn.phase === "player"
         ? {
@@ -449,6 +563,7 @@ export function createCoreSession(
 
   function step(): void {
     commitDialogueCompletion();
+    commitReflectionCompletion();
     for (const input of inputs.splice(0)) {
       handleInput(input);
       if (status !== "running") return;
@@ -482,7 +597,30 @@ export function createCoreSession(
     emitted.push({ type: "conversation-changed" });
   }
 
+  function commitReflectionCompletion(): void {
+    const completion = reflectionCompletion;
+    if (!completion) return;
+    reflectionCompletion = null;
+    pendingReflectionTurn = null;
+    if (state.activity?.type !== "reflection") return;
+    reflectionTurn = completion;
+    reflectionStatus = "line";
+    emitted.push({ type: "reflection-changed" });
+  }
+
   function handleInput(input: CoreInput): void {
+    if (state.activity?.type === "reflection") {
+      if (input.type === "escape") {
+        invalidateReflectionTurn();
+        reflectionTurn = null;
+        state.activity = null;
+      } else if (input.type === "advance-reflection-line" && reflectionTurn) {
+        reflectionTurn = null;
+        reflectionStatus = "ready";
+      }
+      emitted.push({ type: "reflection-changed" });
+      return;
+    }
     if (state.activity?.type === "conversation") {
       if (input.type === "escape") {
         invalidateDialogueTurn();
@@ -1059,6 +1197,7 @@ function isInteractionInput(input: CoreInput): input is InteractionInput {
     input.type !== "advance-sequence" &&
     input.type !== "advance-line" &&
     input.type !== "advance-conversation-line" &&
+    input.type !== "advance-reflection-line" &&
     input.type !== "skip-sequence" &&
     input.type !== "choose";
 }
