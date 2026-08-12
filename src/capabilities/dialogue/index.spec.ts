@@ -898,7 +898,7 @@ test("Reflection exposes only the Player Character's committed understanding", a
       speaker: "antonio",
       claim: { id: "denial", proposition: "Antonio was never aboard the Santa Lucia." },
     }],
-    relationships: [{ character: "antonio", trust: "low" }],
+    relationships: [{ towards: "antonio", trust: "low" }],
   });
   expect(JSON.stringify(reflectionRequest)).not.toContain("Antonio ordered the sabotage.");
   expect(result).toEqual({

@@ -147,9 +147,11 @@ fields are `biography`, `personality`, `behavior`, `voice`,
 `concealsFactId`, and `claimId`. Provider requests carry Engine-selected
 `strategy`, `profile`, and optional `claim` fields. A directional Trust
 operation names its target with `towards`.
-Reflection request and response fields are `facts`, `summary`, `hypotheses`,
-and `suggestions`. The Fake adapter's internal `threads` set backs the
-read-only `threadKeys()` test observation.
+Reflection request fields are `playerInput`, `character`, `facts`,
+`testimonies`, and `relationships`; each directional Relationship uses
+`towards` and `trust`. Reflection response fields are `summary`, `hypotheses`,
+and `suggestions`. The Fake adapter's internal `threads` set backs the read-only
+`threadKeys()` test observation.
 
 `ObjectDefinition` describes an Object with initial Scene, Ground Point, Appearance,
 named animated Appearances, square `inventoryAppearance`, and optional Noun. An
@@ -289,7 +291,7 @@ identifies the capability or browser adapter responsible for the rule.
 | `ReflectionRequest` | authorised Player Character reflection context | input, Character, known facts, attributed Testimony and directional Relationships | excludes hidden truth and every other Character's knowledge | provider failure rejects only the Reflection turn | [Dialogue authoring](game-authoring.md) |
 | `ReflectionResponse` | non-canonical generated reflection | supported summary, optional Hypotheses and suggestions | Hypotheses and suggestions are labelled uncertain/possible and never saved | malformed or empty output rejects the turn | [Dialogue authoring](game-authoring.md) |
 | `ReflectionTestimony` | provider-visible remembered Claim | speaker and declared Claim | preserves attribution without asserting truth | derived only from committed Testimony | [Dialogue authoring](game-authoring.md) |
-| `ReflectionRelationship` | provider-visible directional Trust | target Character and qualitative Trust | includes only the reflecting Character's outgoing Relationship | derived only from committed Relationship state | [Dialogue authoring](game-authoring.md) |
+| `ReflectionRelationship` | provider-visible directional Trust | `towards` Character and qualitative Trust | includes only the reflecting Character's outgoing Relationship | derived only from committed Relationship state | [Dialogue authoring](game-authoring.md) |
 | `Testimony` | canonical memory of a communicated Claim | speaker, listener and Claim ID | set-like and idempotent; stores no wording or truth | Save state validation | [Dialogue authoring](game-authoring.md) |
 | `DialogueProvider` | generated-dialogue adapter seam | interpret, verbalize, reflect, reset | supplied at startup; Engine creates no client; Load awaits reset | missing adapter is a startup diagnostic | [Dialogue authoring](game-authoring.md) |
 | `FakeDialogueProvider` | deterministic Dialogue Provider adapter | interpretation, verbalization, reflection, pending/failure controls, thread keys and reset count | no external dependency, timing assumption or generated authority | missing configured mapping rejects the turn | [Dialogue authoring](game-authoring.md) |

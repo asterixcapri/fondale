@@ -421,12 +421,12 @@ class EngineOverlay {
   private readonly inventoryPanel = document.createElement("aside");
   private readonly inventoryScrim = document.createElement("button");
   private readonly narrative = document.createElement("div");
-  private readonly conversation = document.createElement("form");
-  private readonly conversationHeading = document.createElement("label");
-  private readonly conversationInput = document.createElement("input");
-  private readonly conversationSubmit = document.createElement("button");
-  private readonly conversationLeave = document.createElement("button");
-  private readonly conversationStatus = document.createElement("div");
+  private readonly dialogueForm = document.createElement("form");
+  private readonly dialogueHeading = document.createElement("label");
+  private readonly dialogueInput = document.createElement("input");
+  private readonly dialogueSubmit = document.createElement("button");
+  private readonly dialogueLeave = document.createElement("button");
+  private readonly dialogueStatus = document.createElement("div");
   private readonly modal = document.createElement("section");
   private readonly reveal = document.createElement("button");
   private readonly revealedHotspots = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -441,7 +441,7 @@ class EngineOverlay {
   private responseTimer: number | undefined;
   private activeAudio: HTMLAudioElement | undefined;
   private dismissedActionSignature: string | null = null;
-  private conversationWasVisible = false;
+  private dialogueWasVisible = false;
 
   constructor(
     private readonly frame: HTMLElement,
@@ -629,8 +629,8 @@ class EngineOverlay {
       boxSizing: "border-box",
       pointerEvents: "none",
     });
-    this.conversation.dataset.fondaleDialogue = "";
-    this.conversation.style.cssText = [
+    this.dialogueForm.dataset.fondaleDialogue = "";
+    this.dialogueForm.style.cssText = [
       "position:absolute",
       "display:none",
       "left:73px",
@@ -648,42 +648,42 @@ class EngineOverlay {
       "border-radius:4px",
       "box-shadow:0 3px 10px rgba(0,0,0,.8)",
     ].join(";");
-    this.conversationHeading.style.cssText = "grid-column:1/-1";
-    this.conversationHeading.htmlFor = "fondale-dialogue-input";
-    this.conversationInput.id = "fondale-dialogue-input";
-    this.conversationInput.dataset.fondaleDialogueInput = "";
-    this.conversationInput.type = "text";
-    this.conversationInput.autocomplete = "off";
-    this.conversationInput.style.cssText = "min-width:0;font:inherit;padding:3px;color:#111;background:#fff;border:1px solid #777";
-    this.conversationSubmit.type = "submit";
-    this.conversationSubmit.textContent = "Ask";
-    this.conversationSubmit.style.cssText = "font:inherit;padding:3px 7px";
-    this.conversationLeave.type = "button";
-    this.conversationLeave.textContent = "Leave";
-    this.conversationLeave.style.cssText = "font:inherit;padding:3px 7px";
-    this.conversationLeave.addEventListener("click", () => {
+    this.dialogueHeading.style.cssText = "grid-column:1/-1";
+    this.dialogueHeading.htmlFor = "fondale-dialogue-input";
+    this.dialogueInput.id = "fondale-dialogue-input";
+    this.dialogueInput.dataset.fondaleDialogueInput = "";
+    this.dialogueInput.type = "text";
+    this.dialogueInput.autocomplete = "off";
+    this.dialogueInput.style.cssText = "min-width:0;font:inherit;padding:3px;color:#111;background:#fff;border:1px solid #777";
+    this.dialogueSubmit.type = "submit";
+    this.dialogueSubmit.textContent = "Ask";
+    this.dialogueSubmit.style.cssText = "font:inherit;padding:3px 7px";
+    this.dialogueLeave.type = "button";
+    this.dialogueLeave.textContent = "Leave";
+    this.dialogueLeave.style.cssText = "font:inherit;padding:3px 7px";
+    this.dialogueLeave.addEventListener("click", () => {
       this.core.input({ type: "escape" });
     });
-    this.conversationStatus.setAttribute("role", "status");
-    this.conversationStatus.style.cssText = "grid-column:1/-1;min-height:9px";
-    this.conversation.append(
-      this.conversationHeading,
-      this.conversationInput,
-      this.conversationSubmit,
-      this.conversationLeave,
-      this.conversationStatus,
+    this.dialogueStatus.setAttribute("role", "status");
+    this.dialogueStatus.style.cssText = "grid-column:1/-1;min-height:9px";
+    this.dialogueForm.append(
+      this.dialogueHeading,
+      this.dialogueInput,
+      this.dialogueSubmit,
+      this.dialogueLeave,
+      this.dialogueStatus,
     );
-    this.conversation.addEventListener("submit", (event) => {
+    this.dialogueForm.addEventListener("submit", (event) => {
       event.preventDefault();
-      const playerInput = this.conversationInput.value;
+      const playerInput = this.dialogueInput.value;
       const submission = this.core.reflection()
         ? this.core.submitReflection(playerInput)
         : this.core.submitDialogue(playerInput);
       void submission.then((result) => {
-        if (result.ok) this.conversationInput.value = "";
+        if (result.ok) this.dialogueInput.value = "";
         this.render();
       });
-      this.renderConversation();
+      this.renderDialogue();
     });
     this.modal.dataset.fondaleModal = "";
     this.modal.style.cssText = [
@@ -740,7 +740,7 @@ class EngineOverlay {
       this.inventoryPanel,
       this.inventoryTrigger,
       this.reveal,
-      this.conversation,
+      this.dialogueForm,
       this.narrative,
       this.modal,
     );
@@ -768,7 +768,7 @@ class EngineOverlay {
       this.action.style.display = "none";
     }
     this.renderNarrative();
-    this.renderConversation();
+    this.renderDialogue();
     const line = this.narrative.querySelector<HTMLElement>("[data-fondale-line]");
     if (line && this.currentHUD.narrative?.kind === "line") {
       this.positionSpeech(line, this.currentHUD.narrative);
@@ -1081,41 +1081,41 @@ class EngineOverlay {
     }
   }
 
-  private renderConversation(): void {
+  private renderDialogue(): void {
     const conversation = this.core.conversation();
     const reflection = this.core.reflection();
     const presentation = conversation ?? reflection;
     if (conversation) {
-      this.conversation.dataset.fondaleConversation = "";
-      delete this.conversation.dataset.fondaleReflection;
+      this.dialogueForm.dataset.fondaleConversation = "";
+      delete this.dialogueForm.dataset.fondaleReflection;
     } else if (reflection) {
-      this.conversation.dataset.fondaleReflection = "";
-      delete this.conversation.dataset.fondaleConversation;
+      this.dialogueForm.dataset.fondaleReflection = "";
+      delete this.dialogueForm.dataset.fondaleConversation;
     } else {
-      delete this.conversation.dataset.fondaleConversation;
-      delete this.conversation.dataset.fondaleReflection;
+      delete this.dialogueForm.dataset.fondaleConversation;
+      delete this.dialogueForm.dataset.fondaleReflection;
     }
     const visible = presentation !== null && this.currentHUD.narrative === null;
-    this.conversation.style.display = visible ? "grid" : "none";
+    this.dialogueForm.style.display = visible ? "grid" : "none";
     if (!presentation) {
-      this.conversationWasVisible = false;
+      this.dialogueWasVisible = false;
       return;
     }
-    this.conversationHeading.textContent = conversation
+    this.dialogueHeading.textContent = conversation
       ? `Ask ${conversation.character}`
       : "Reflection";
-    this.conversationSubmit.textContent = reflection ? "Reflect" : "Ask";
-    this.conversationInput.maxLength = presentation.maxInputLength;
+    this.dialogueSubmit.textContent = reflection ? "Reflect" : "Ask";
+    this.dialogueInput.maxLength = presentation.maxInputLength;
     const pending = presentation.status === "pending";
-    this.conversationInput.disabled = pending;
-    this.conversationSubmit.disabled = pending;
-    this.conversationStatus.textContent = pending
+    this.dialogueInput.disabled = pending;
+    this.dialogueSubmit.disabled = pending;
+    this.dialogueStatus.textContent = pending
       ? "Waiting for a response…"
       : presentation.error ?? "";
-    if (visible && !this.conversationWasVisible) {
-      this.conversationInput.focus({ preventScroll: true });
+    if (visible && !this.dialogueWasVisible) {
+      this.dialogueInput.focus({ preventScroll: true });
     }
-    this.conversationWasVisible = visible;
+    this.dialogueWasVisible = visible;
   }
 
   private presentLine(presentation: Extract<HUDNarrativePresentation, { kind: "line" }>): void {
@@ -1228,7 +1228,7 @@ class EngineOverlay {
   }
 
   private readonly onKeyDown = (event: KeyboardEvent): void => {
-    if (event.target === this.conversationInput) {
+    if (event.target === this.dialogueInput) {
       if (event.key === "Escape") {
         event.preventDefault();
         this.core.input({ type: "escape" });

@@ -203,8 +203,9 @@ the Player Character's committed facts, attributed Testimony, and directional
 Relationships. It returns a `ReflectionResponse` with a summary and optional
 Hypotheses or investigation suggestions. Fondale labels Hypotheses as uncertain
 and suggestions as possible, presents the result as the Player Character's
-Line, and never adds generated material to Game State. Conversation and
-Reflection memory use distinct provider threads and both are reset on Load.
+Line, and never adds generated material to Game State. A Dialogue Provider
+adapter must keep Conversation and Reflection memory in distinct threads;
+Fondale resets all provider memory on Load.
 
 ## Startup diagnostics
 

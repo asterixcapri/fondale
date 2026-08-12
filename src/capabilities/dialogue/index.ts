@@ -170,7 +170,7 @@ export interface ReflectionTestimony {
 
 /** One directional Relationship exposed to its owning Character during Reflection. */
 export interface ReflectionRelationship {
-  readonly character: string;
+  readonly towards: string;
   readonly trust: Trust;
 }
 
@@ -680,7 +680,7 @@ export function createKnowledgeDrivenDialogue(
         })));
       const relationships = Object.freeze(Object.entries(
         state.relationships[input.character] ?? {},
-      ).map(([character, { trust }]) => Object.freeze({ character, trust })));
+      ).map(([towards, { trust }]) => Object.freeze({ towards, trust })));
       if (facts.length === 0 && testimonies.length === 0) {
         return Object.freeze({
           playerInput,

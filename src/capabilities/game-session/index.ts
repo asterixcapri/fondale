@@ -226,11 +226,12 @@ export function createCoreSession(
   let dialogueCompletion: DialogueTurnContent & {
     readonly operation?: LearnNarrativeFactOperation | RecordTestimonyOperation;
   } | null = null;
-  let pendingDialogueTurn: {
+  let pendingProviderTurn: {
+    readonly mode: "conversation" | "reflection";
     readonly turnId: string;
     readonly controller: AbortController;
   } | null = null;
-  let dialogueTurnSequence = 0;
+  let providerTurnSequence = 0;
   let reflectionTurn: { readonly response: string; readonly playerCharacter: string } | null = null;
   let reflectionStatus: ReflectionPresentation["status"] = "ready";
   let reflectionError: string | undefined;
@@ -238,19 +239,14 @@ export function createCoreSession(
     readonly response: string;
     readonly playerCharacter: string;
   } | null = null;
-  let pendingReflectionTurn: {
-    readonly turnId: string;
-    readonly controller: AbortController;
-  } | null = null;
-  let reflectionTurnSequence = 0;
 
   const session: CoreSession = {
     input(input) {
       if (status !== "running") return;
       if (input.type === "escape" && state.activity?.type === "conversation") {
-        invalidateDialogueTurn();
+        invalidateProviderTurn("conversation");
       } else if (input.type === "escape" && state.activity?.type === "reflection") {
-        invalidateReflectionTurn();
+        invalidateProviderTurn("reflection");
       }
       inputs.push(structuredClone(input));
     },
@@ -270,8 +266,7 @@ export function createCoreSession(
     },
     createSaveSnapshot() {
       assertRunning();
-      invalidateDialogueTurn();
-      invalidateReflectionTurn();
+      invalidateProviderTurn();
       return save.createSnapshot(state);
     },
     lifecycle: () => status,
@@ -349,12 +344,8 @@ export function createCoreSession(
       }
       conversationStatus = "pending";
       conversationError = undefined;
-      const currentTurn = {
-        turnId: `dialogue-turn-${dialogueTurnSequence += 1}`,
-        controller: new AbortController(),
-      };
+      const currentTurn = beginProviderTurn("conversation");
       const cancelled = { ok: false as const, message: "Dialogue Turn was cancelled." };
-      pendingDialogueTurn = currentTurn;
       try {
         const turn = await dialogue.respond(state, {
           speaker: activity.character,
@@ -364,7 +355,7 @@ export function createCoreSession(
           turnId: currentTurn.turnId,
           signal: currentTurn.controller.signal,
         });
-        if (dialogueTurnWasCancelled(currentTurn)) return cancelled;
+        if (providerTurnWasCancelled(currentTurn)) return cancelled;
         dialogueCompletion = {
           character: activity.character,
           playerInput: turn.playerInput,
@@ -374,8 +365,8 @@ export function createCoreSession(
         };
         return { ok: true };
       } catch (cause) {
-        if (dialogueTurnWasCancelled(currentTurn)) return cancelled;
-        pendingDialogueTurn = null;
+        if (providerTurnWasCancelled(currentTurn)) return cancelled;
+        pendingProviderTurn = null;
         const message = cause instanceof Error ? cause.message : String(cause);
         conversationStatus = "error";
         conversationError = message;
@@ -392,12 +383,8 @@ export function createCoreSession(
       }
       reflectionStatus = "pending";
       reflectionError = undefined;
-      const currentTurn = {
-        turnId: `reflection-turn-${reflectionTurnSequence += 1}`,
-        controller: new AbortController(),
-      };
+      const currentTurn = beginProviderTurn("reflection");
       const cancelled = { ok: false as const, message: "Reflection turn was cancelled." };
-      pendingReflectionTurn = currentTurn;
       try {
         const turn = await dialogue.reflect(state, {
           character: playerCharacter,
@@ -406,12 +393,12 @@ export function createCoreSession(
           turnId: currentTurn.turnId,
           signal: currentTurn.controller.signal,
         });
-        if (reflectionTurnWasCancelled(currentTurn)) return cancelled;
+        if (providerTurnWasCancelled(currentTurn)) return cancelled;
         reflectionCompletion = { response: turn.response, playerCharacter };
         return { ok: true };
       } catch (cause) {
-        if (reflectionTurnWasCancelled(currentTurn)) return cancelled;
-        pendingReflectionTurn = null;
+        if (providerTurnWasCancelled(currentTurn)) return cancelled;
+        pendingProviderTurn = null;
         const message = cause instanceof Error ? cause.message : String(cause);
         reflectionStatus = "error";
         reflectionError = message;
@@ -420,8 +407,7 @@ export function createCoreSession(
     },
     stop() {
       if (status === "stopped") return;
-      invalidateDialogueTurn();
-      invalidateReflectionTurn();
+      invalidateProviderTurn();
       status = "stopped";
       inputs.length = 0;
     },
@@ -431,38 +417,48 @@ export function createCoreSession(
     if (status !== "running") throw new Error(`Game Session is ${status}.`);
   }
 
-  function invalidateDialogueTurn(): void {
-    const pending = pendingDialogueTurn;
-    pendingDialogueTurn = null;
-    pending?.controller.abort();
-    const completion = dialogueCompletion;
-    dialogueCompletion = null;
-    if ((pending || completion) && state.activity?.type === "conversation") {
+  function beginProviderTurn(mode: "conversation" | "reflection") {
+    const turn = {
+      mode,
+      turnId: `${mode === "conversation" ? "dialogue" : "reflection"}-turn-${
+        providerTurnSequence += 1
+      }`,
+      controller: new AbortController(),
+    } as const;
+    pendingProviderTurn = turn;
+    return turn;
+  }
+
+  function invalidateProviderTurn(mode?: "conversation" | "reflection"): void {
+    const pending = pendingProviderTurn;
+    const hadDialogueCompletion = dialogueCompletion !== null;
+    const hadReflectionCompletion = reflectionCompletion !== null;
+    if (pending && (mode === undefined || pending.mode === mode)) {
+      pendingProviderTurn = null;
+      pending.controller.abort();
+    }
+    if ((mode === undefined || mode === "conversation") && dialogueCompletion) {
+      dialogueCompletion = null;
+    }
+    if ((mode === undefined || mode === "reflection") && reflectionCompletion) {
+      reflectionCompletion = null;
+    }
+    if (state.activity?.type === "conversation" &&
+        (mode === undefined || mode === "conversation") &&
+        (pending?.mode === "conversation" || hadDialogueCompletion)) {
       conversationStatus = "ready";
       conversationError = undefined;
     }
-  }
-
-  function dialogueTurnWasCancelled(turn: NonNullable<typeof pendingDialogueTurn>): boolean {
-    return pendingDialogueTurn !== turn || turn.controller.signal.aborted;
-  }
-
-  function invalidateReflectionTurn(): void {
-    const pending = pendingReflectionTurn;
-    pendingReflectionTurn = null;
-    pending?.controller.abort();
-    const completion = reflectionCompletion;
-    reflectionCompletion = null;
-    if ((pending || completion) && state.activity?.type === "reflection") {
+    if (state.activity?.type === "reflection" &&
+        (mode === undefined || mode === "reflection") &&
+        (pending?.mode === "reflection" || hadReflectionCompletion)) {
       reflectionStatus = "ready";
       reflectionError = undefined;
     }
   }
 
-  function reflectionTurnWasCancelled(
-    turn: NonNullable<typeof pendingReflectionTurn>,
-  ): boolean {
-    return pendingReflectionTurn !== turn || turn.controller.signal.aborted;
+  function providerTurnWasCancelled(turn: NonNullable<typeof pendingProviderTurn>): boolean {
+    return pendingProviderTurn !== turn || turn.controller.signal.aborted;
   }
 
   function hudContext(facts: HUDAdapterFacts = {}): HUDPresentationContext {
@@ -580,7 +576,7 @@ export function createCoreSession(
     const completion = dialogueCompletion;
     if (!completion) return;
     dialogueCompletion = null;
-    pendingDialogueTurn = null;
+    pendingProviderTurn = null;
     if (state.activity?.type !== "conversation" ||
         state.activity.character !== completion.character) return;
     const draft = structuredClone(state);
@@ -601,7 +597,7 @@ export function createCoreSession(
     const completion = reflectionCompletion;
     if (!completion) return;
     reflectionCompletion = null;
-    pendingReflectionTurn = null;
+    pendingProviderTurn = null;
     if (state.activity?.type !== "reflection") return;
     reflectionTurn = completion;
     reflectionStatus = "line";
@@ -611,7 +607,7 @@ export function createCoreSession(
   function handleInput(input: CoreInput): void {
     if (state.activity?.type === "reflection") {
       if (input.type === "escape") {
-        invalidateReflectionTurn();
+        invalidateProviderTurn("reflection");
         reflectionTurn = null;
         state.activity = null;
       } else if (input.type === "advance-reflection-line" && reflectionTurn) {
@@ -623,7 +619,7 @@ export function createCoreSession(
     }
     if (state.activity?.type === "conversation") {
       if (input.type === "escape") {
-        invalidateDialogueTurn();
+        invalidateProviderTurn("conversation");
         dialogueTurn = null;
         closeOrHandoffConversation(state.activity.character);
       } else if (input.type === "advance-conversation-line" && dialogueTurn) {
@@ -850,7 +846,7 @@ export function createCoreSession(
   function startConversationHandoff(character: string): boolean {
     const handoff = dialogue.handoff(character, conditionMatches);
     if (!handoff) return false;
-    invalidateDialogueTurn();
+    invalidateProviderTurn("conversation");
     dialogueTurn = null;
     if (handoff.after === "resume") {
       state.conversationContinuation = { type: "conversation", character };
