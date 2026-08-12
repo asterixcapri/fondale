@@ -2,6 +2,7 @@
 .claude
 node_modules
 dist
+.scratch
 test/.artifacts
 .playwright-cli
 .release
