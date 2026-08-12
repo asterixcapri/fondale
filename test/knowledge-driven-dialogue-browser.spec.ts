@@ -50,3 +50,82 @@ test("the browser fixture completes an open-fact Conversation without external d
   );
   expect(learned).toEqual(["harbour-chain-cut"]);
 });
+
+test("the Player can leave a pending Conversation and its late response stays invisible", async ({
+  page,
+}) => {
+  await page.goto("/test/fixtures/knowledge-driven-dialogue.html");
+  const canvas = page.locator("[data-fondale-frame] canvas");
+  const bounds = await canvas.boundingBox();
+  if (!bounds) throw new Error("Fondale canvas is not visible.");
+  await page.mouse.click(
+    bounds.x + (315 / 426) * bounds.width,
+    bounds.y + (150 / 240) * bounds.height,
+  );
+
+  const conversation = page.locator("[data-fondale-conversation]");
+  const input = conversation.locator("[data-fondale-dialogue-input]");
+  await input.fill("Wait for this answer.");
+  await conversation.getByRole("button", { name: "Ask" }).click();
+  await expect(input).toBeDisabled();
+  await expect(conversation.getByRole("button", { name: "Ask" })).toBeDisabled();
+  await expect(conversation).toContainText("Waiting for a response…");
+
+  await conversation.getByRole("button", { name: "Leave" }).click();
+  await expect(conversation).toBeHidden();
+  const released = await page.evaluate(() => {
+    const [turnId] = window.__dialogueProvider?.pendingTurnIds() ?? [];
+    return turnId ? window.__dialogueProvider?.release(turnId) : false;
+  });
+  expect(released).toBe(true);
+  await page.waitForTimeout(0);
+
+  await expect(page.locator("[data-fondale-line]")).toHaveCount(0);
+  expect(await page.evaluate(() =>
+    window.__dialogueSession?.createSaveSnapshot().state.characterKnowledge.player
+  )).toEqual([]);
+});
+
+test("Load resets provider memory before restoring an active Conversation", async ({ page }) => {
+  await page.goto("/test/fixtures/knowledge-driven-dialogue.html");
+  const canvas = page.locator("[data-fondale-frame] canvas");
+  const bounds = await canvas.boundingBox();
+  if (!bounds) throw new Error("Fondale canvas is not visible.");
+  await page.mouse.click(
+    bounds.x + (315 / 426) * bounds.width,
+    bounds.y + (150 / 240) * bounds.height,
+  );
+  const conversation = page.locator("[data-fondale-conversation]");
+  const input = conversation.locator("[data-fondale-dialogue-input]");
+  await expect(input).toBeVisible();
+  await page.evaluate(() => {
+    const snapshot = window.__dialogueSession!.createSaveSnapshot();
+    localStorage.setItem("fondale.save-slots", JSON.stringify([{
+      name: "Active Conversation",
+      savedAt: "2026-08-12T12:00:00.000Z",
+      snapshot,
+    }]));
+  });
+
+  await input.fill("Wait for this answer.");
+  await conversation.getByRole("button", { name: "Ask" }).click();
+  await expect(input).toBeDisabled();
+  const [pendingTurnId] = await page.evaluate(() =>
+    window.__dialogueProvider?.pendingTurnIds() ?? []
+  );
+  const frame = page.locator("[data-fondale-frame]");
+  await frame.focus();
+  await page.keyboard.press("Control+l");
+  await page.locator('[data-fondale-load-slot="0"]').click();
+
+  await expect(input).toBeVisible();
+  await expect(input).toBeEnabled();
+  await expect(conversation).toContainText("Ask antonio");
+  expect(await page.evaluate(() => window.__dialogueProvider?.resetCount())).toBe(1);
+  expect(await page.evaluate((turnId) =>
+    turnId ? window.__dialogueProvider?.release(turnId) : false, pendingTurnId
+  )).toBe(false);
+  expect(await page.evaluate(() =>
+    window.__dialogueSession?.createSaveSnapshot().state.characterKnowledge.player
+  )).toEqual([]);
+});

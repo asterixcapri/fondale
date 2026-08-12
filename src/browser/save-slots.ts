@@ -16,10 +16,10 @@ export interface BrowserSaveSlot extends HUDSaveSlotFacts {
 export interface BrowserSessionControls {
   slots(): readonly BrowserSaveSlot[];
   save(name: string): void;
-  load(index: number): { readonly ok: true } | {
+  load(index: number): Promise<{ readonly ok: true } | {
     readonly ok: false;
     readonly diagnostics: readonly AuthoringDiagnostic[];
-  };
+  }>;
 }
 
 interface StoredSaveSlot {
@@ -34,7 +34,7 @@ const saveSlotsKey = "fondale.save-slots";
 export function createBrowserSessionControls(
   project: CompiledGameProject,
   currentCore: () => CoreSession,
-  replaceCore: (snapshot: ValidatedSaveSnapshot) => void,
+  replaceCore: (snapshot: ValidatedSaveSnapshot) => Promise<void>,
 ): BrowserSessionControls {
   const read = (): StoredSaveSlot[] => {
     try {
@@ -78,11 +78,11 @@ export function createBrowserSessionControls(
       else slots.push(next);
       write(slots);
     },
-    load(index) {
+    async load(index) {
       const slot = read()[index];
       const validation = saveCapability.validate(slot?.snapshot);
       if (!validation.ok) return { ok: false, diagnostics: validation.diagnostics };
-      replaceCore(validation.snapshot);
+      await replaceCore(validation.snapshot);
       return { ok: true };
     },
   };

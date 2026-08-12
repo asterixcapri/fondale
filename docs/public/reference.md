@@ -80,10 +80,13 @@ without storing generated wording or treating the Claim as truth.
 that declares at least one Character Dialogue Profile. `StartGameOptions`
 receives it as `dialogueProvider`; Fondale never creates a model client. The
 interface keeps `interpret`, `verbalize`, and `reset` as separate
-responsibilities. Interpretation receives untrusted `playerInput`, speaker and
-listener identities, and the known `DialogueFactCandidate` values relevant to
-that Conversation. Its `DialogueInterpretation` selects one declared `factId`
-or returns `null` with a `reason` of `ambiguous` or `no-relevant-fact`.
+responsibilities. Both provider phases receive the same transient
+`DialogueTurnContext`, containing a non-canonical `turnId` and `AbortSignal`.
+The context fields are `turnId` and `signal`.
+Interpretation receives untrusted `playerInput`, speaker and listener
+identities, and the known `DialogueFactCandidate` values relevant to that
+Conversation. Its `DialogueInterpretation` selects one declared `factId` or
+returns `null` with a `reason` of `ambiguous` or `no-relevant-fact`.
 
 After validating the interpretation, deterministic Dialogue policy applies
 Disclosure, directional Trust, Game Variables and Dialogue Behavior. Fondale
@@ -96,11 +99,23 @@ successful Cover Story applies a `RecordTestimonyOperation`; either effect is
 committed atomically only after verbalisation succeeds. Player speech must contain from 1 through
 `dialogueInputMaxLength` (500) characters.
 
+Only one Dialogue Turn may be pending. Leaving, saving, loading, or stopping
+the Game Session aborts it and ignores late provider results. Loading awaits
+`DialogueProvider.reset()` before a restored Conversation accepts new speech;
+provider-owned transcript, thread, model and usage data never enter a Save
+Snapshot.
+
 `FakeDialogueProvider` is the deterministic adapter used by Engine tests and
 browser fixtures. Its `interpretations` map multiple exact Player formulations
 to declared Narrative Fact IDs or `null`; its `verbalizations` map an authorised
 fact ID, Claim ID, or non-answer Response Strategy to one response. It has no
-network, database, model, or credential dependency.
+network, database, model, or credential dependency. Tests may configure
+`pending` and `failure` outcomes, inspect and release pending turn IDs, and
+observe provider-memory reset calls without relying on timing.
+Controlled results use the `outcome` discriminator; pending results may set
+`ignoreCancellation` only when a test needs to simulate a non-conforming late
+adapter result. The fake's internal `resets` count is exposed through
+`resetCount()`.
 
 The authored condition fields are `trustAtLeast`, `variable`, and `equals`.
 Qualitative profile fields are `biography`, `personality`, `behavior`, `voice`,
@@ -243,9 +258,12 @@ identifies the capability or browser adapter responsible for the rule.
 | `ResponseStrategy` | Engine-authorised conversational approach | answer, cover-story, withhold, evade, refuse, clarify | selected deterministically before verbalisation | invalid provider output rejects the turn | [Dialogue authoring](game-authoring.md) |
 | `DialoguePortrayalProfile` | provider-visible qualitative portrayal | optional biography, Personality, Voice and Dialogue State | carries no semantic authority | validated at startup | [Dialogue authoring](game-authoring.md) |
 | `DialogueVerbalizationRequest` | authorised expression input | speech identities, strategy, portrayal and optional fact or Claim | a concealed fact is absent when its Cover Story Claim is present | empty response rejects the turn | [Dialogue authoring](game-authoring.md) |
+| `DialogueTurnContext` | transient provider-call lifecycle | turn ID and AbortSignal | shared by interpretation and verbalisation; never saved | lifecycle invalidation aborts the signal and ignores late results | [Dialogue authoring](game-authoring.md) |
 | `Testimony` | canonical memory of a communicated Claim | speaker, listener and Claim ID | set-like and idempotent; stores no wording or truth | Save state validation | [Dialogue authoring](game-authoring.md) |
-| `DialogueProvider` | generated-dialogue adapter seam | interpret, verbalize, reset | supplied at startup; Engine creates no client | missing adapter is a startup diagnostic | [Dialogue authoring](game-authoring.md) |
-| `FakeDialogueProvider` | deterministic Dialogue Provider adapter | interpretation and verbalization maps | no external dependency or generated authority | missing configured mapping rejects the turn | [Dialogue authoring](game-authoring.md) |
+| `DialogueProvider` | generated-dialogue adapter seam | interpret, verbalize, reset | supplied at startup; Engine creates no client; Load awaits reset | missing adapter is a startup diagnostic | [Dialogue authoring](game-authoring.md) |
+| `FakeDialogueProvider` | deterministic Dialogue Provider adapter | interpretation, verbalization, pending/failure controls and reset count | no external dependency, timing assumption or generated authority | missing configured mapping rejects the turn | [Dialogue authoring](game-authoring.md) |
+| `FakeDialoguePendingOutcome` | deterministic suspended fake response | pending discriminator, eventual value and optional cancellation behavior | released explicitly by transient turn ID | ordinary cancellation rejects unless the test requests a late result | [Dialogue authoring](game-authoring.md) |
+| `FakeDialogueFailureOutcome` | deterministic fake rejection | failure discriminator and message | rejects one configured provider phase | leaves canonical state unchanged | [Dialogue authoring](game-authoring.md) |
 | `ObjectDefinition` | persistent Object | initial values, appearances, Inventory PNG, noun | begins in one Scene | Object/asset diagnostics | [Inventory](recipes/inventory.ts) |
 | `InteractionCondition` | state predicate | variable equality or held Object | omission is unconditional | missing-reference diagnostics | [Command](recipes/command-case.ts) |
 | `InventoryOperation` | Inventory and Object lifecycle change | collect target, place selected, place named, consume selected | World owns placement validity; Animation owns Appearance validity | Interaction/World/Animation diagnostics | [Inventory](recipes/inventory.ts) |

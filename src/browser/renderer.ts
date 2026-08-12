@@ -425,6 +425,7 @@ class EngineOverlay {
   private readonly conversationHeading = document.createElement("label");
   private readonly conversationInput = document.createElement("input");
   private readonly conversationSubmit = document.createElement("button");
+  private readonly conversationLeave = document.createElement("button");
   private readonly conversationStatus = document.createElement("div");
   private readonly modal = document.createElement("section");
   private readonly reveal = document.createElement("button");
@@ -636,7 +637,7 @@ class EngineOverlay {
       "bottom:12px",
       "width:280px",
       "box-sizing:border-box",
-      "grid-template-columns:1fr auto",
+      "grid-template-columns:1fr auto auto",
       "gap:4px",
       "padding:7px",
       "z-index:9",
@@ -657,12 +658,19 @@ class EngineOverlay {
     this.conversationSubmit.type = "submit";
     this.conversationSubmit.textContent = "Ask";
     this.conversationSubmit.style.cssText = "font:inherit;padding:3px 7px";
+    this.conversationLeave.type = "button";
+    this.conversationLeave.textContent = "Leave";
+    this.conversationLeave.style.cssText = "font:inherit;padding:3px 7px";
+    this.conversationLeave.addEventListener("click", () => {
+      this.core.input({ type: "escape" });
+    });
     this.conversationStatus.setAttribute("role", "status");
     this.conversationStatus.style.cssText = "grid-column:1/-1;min-height:9px";
     this.conversation.append(
       this.conversationHeading,
       this.conversationInput,
       this.conversationSubmit,
+      this.conversationLeave,
       this.conversationStatus,
     );
     this.conversation.addEventListener("submit", (event) => {
@@ -810,7 +818,8 @@ class EngineOverlay {
     if (result.preferences) this.persistPreferences(result.preferences);
     if (result.adapter?.type === "save") {
       this.controls.save(result.adapter.name);
-    } else if (result.adapter?.type === "load" && this.controls.load(result.adapter.index).ok) {
+    } else if (result.adapter?.type === "load") {
+      void this.controls.load(result.adapter.index);
       return;
     }
     this.currentHUD = this.core.hud(this.adapterFacts());
@@ -1200,7 +1209,13 @@ class EngineOverlay {
   }
 
   private readonly onKeyDown = (event: KeyboardEvent): void => {
-    if (event.target === this.conversationInput) return;
+    if (event.target === this.conversationInput) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        this.core.input({ type: "escape" });
+      }
+      return;
+    }
     if (event.key === "F5") {
       event.preventDefault();
       this.openModal(this.currentHUD.system.modal?.kind === "options" ? null : "options");

@@ -205,7 +205,7 @@ try {
     const controls = {
       slots: () => [],
       save: () => undefined,
-      load: () => ({ ok: false as const, diagnostics: [] }),
+      load: () => Promise.resolve({ ok: false as const, diagnostics: [] }),
     };
     const renderer = new BrowserRenderer(
       application,

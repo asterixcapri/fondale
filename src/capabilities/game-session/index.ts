@@ -209,6 +209,10 @@ export function createCoreSession(
   let dialogueCompletion: DialogueTurnContent & {
     readonly operation?: LearnNarrativeFactOperation | RecordTestimonyOperation;
   } | null = null;
+  let pendingDialogueTurn: {
+    readonly turnId: string;
+    readonly controller: AbortController;
+  } | null = null;
 
   const session: CoreSession = {
     input(input) {
@@ -230,6 +234,7 @@ export function createCoreSession(
     },
     createSaveSnapshot() {
       assertRunning();
+      cancelPendingDialogueTurn();
       return save.createSnapshot(state);
     },
     lifecycle: () => status,
@@ -287,12 +292,24 @@ export function createCoreSession(
       }
       conversationStatus = "pending";
       conversationError = undefined;
+      const currentTurn = {
+        turnId: `dialogue-turn-${crypto.randomUUID()}`,
+        controller: new AbortController(),
+      };
+      pendingDialogueTurn = currentTurn;
       try {
         const turn = await dialogue.respond(state, {
           speaker: activity.character,
           listener: playerCharacter,
           playerInput,
-        }, dialogueProvider);
+        }, dialogueProvider, {
+          turnId: currentTurn.turnId,
+          signal: currentTurn.controller.signal,
+        });
+        if (pendingDialogueTurn !== currentTurn || currentTurn.controller.signal.aborted) {
+          return { ok: false, message: "Dialogue Turn was cancelled." };
+        }
+        pendingDialogueTurn = null;
         dialogueCompletion = {
           character: activity.character,
           playerInput: turn.playerInput,
@@ -302,6 +319,10 @@ export function createCoreSession(
         };
         return { ok: true };
       } catch (cause) {
+        if (pendingDialogueTurn !== currentTurn || currentTurn.controller.signal.aborted) {
+          return { ok: false, message: "Dialogue Turn was cancelled." };
+        }
+        pendingDialogueTurn = null;
         const message = cause instanceof Error ? cause.message : String(cause);
         conversationStatus = "error";
         conversationError = message;
@@ -310,6 +331,8 @@ export function createCoreSession(
     },
     stop() {
       if (status === "stopped") return;
+      cancelPendingDialogueTurn();
+      dialogueCompletion = null;
       status = "stopped";
       inputs.length = 0;
     },
@@ -317,6 +340,17 @@ export function createCoreSession(
 
   function assertRunning(): void {
     if (status !== "running") throw new Error(`Game Session is ${status}.`);
+  }
+
+  function cancelPendingDialogueTurn(): void {
+    const pending = pendingDialogueTurn;
+    if (!pending) return;
+    pendingDialogueTurn = null;
+    pending.controller.abort();
+    if (state.activity?.type === "conversation") {
+      conversationStatus = "ready";
+      conversationError = undefined;
+    }
   }
 
   function hudContext(facts: HUDAdapterFacts = {}): HUDPresentationContext {
@@ -443,7 +477,13 @@ export function createCoreSession(
 
   function handleInput(input: CoreInput): void {
     if (state.activity?.type === "conversation") {
-      if (input.type === "advance-conversation-line" && dialogueTurn) {
+      if (input.type === "escape") {
+        cancelPendingDialogueTurn();
+        dialogueTurn = null;
+        dialogueCompletion = null;
+        state.activity = null;
+        emitted.push({ type: "conversation-changed" });
+      } else if (input.type === "advance-conversation-line" && dialogueTurn) {
         if (dialogueTurn.phase === "player") {
           dialogueTurn.phase = "character";
         } else {

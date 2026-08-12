@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 
 import {
   createKnowledgeDrivenDialogue,
+  FakeDialogueProvider,
   validateKnowledgeDrivenDialogueProject,
   validateLearnNarrativeFactOperation,
   type DialogueInterpretationRequest,
@@ -730,4 +731,110 @@ test("a Dialogue Turn rejects an unknown interpreted ID before verbalization", a
     playerInput: "What happened?",
   }, provider)).rejects.toThrow("selected an unknown Narrative Fact");
   expect(verbalized).toBe(false);
+});
+
+test("a Dialogue Turn shares one transient identity and cancellation across provider phases", async () => {
+  const dialogue = createKnowledgeDrivenDialogue({
+    narrativeFacts: { chain: { proposition: "The harbour chain was cut." } },
+    variables: {},
+    characters: {
+      player: { dialogue: { knowledge: [] } },
+      antonio: {
+        dialogue: {
+          knowledge: [{ factId: "chain", disclosure: { level: "open" } }],
+        },
+      },
+    },
+  });
+  let finishInterpretation!: (value: { readonly factId: string }) => void;
+  const contexts: Array<{ readonly turnId: string; readonly signal: AbortSignal }> = [];
+  let verbalized = false;
+  const provider: DialogueProvider = {
+    interpret: (_request, context) => {
+      contexts.push(context);
+      return new Promise((resolve) => {
+        finishInterpretation = resolve;
+      });
+    },
+    verbalize: (_request, context) => {
+      contexts.push(context);
+      verbalized = true;
+      return Promise.resolve("I saw it happen.");
+    },
+    reset: () => Promise.resolve(),
+  };
+  const cancellation = new AbortController();
+  const pending = dialogue.respond({ ...dialogue.initialState(), variables: {} }, {
+    speaker: "antonio",
+    listener: "player",
+    playerInput: "Who cut the chain?",
+  }, provider, {
+    turnId: "dialogue-turn-test",
+    signal: cancellation.signal,
+  });
+
+  await Promise.resolve();
+  expect(contexts).toHaveLength(1);
+  expect(contexts[0]?.turnId).toBe("dialogue-turn-test");
+  expect(contexts[0]?.signal).toBe(cancellation.signal);
+
+  cancellation.abort();
+  await expect(pending).rejects.toThrow("Dialogue Turn was cancelled.");
+  finishInterpretation({ factId: "chain" });
+  await Promise.resolve();
+
+  expect(verbalized).toBe(false);
+});
+
+test("FakeDialogueProvider deterministically controls pending, late, failed and reset outcomes", async () => {
+  const dialogue = createKnowledgeDrivenDialogue({
+    narrativeFacts: { chain: { proposition: "The harbour chain was cut." } },
+    variables: {},
+    characters: {
+      player: { dialogue: { knowledge: [] } },
+      antonio: {
+        dialogue: {
+          knowledge: [{ factId: "chain", disclosure: { level: "open" } }],
+        },
+      },
+    },
+  });
+  const provider = new FakeDialogueProvider({
+    interpretations: {
+      pending: {
+        outcome: "pending",
+        value: "chain",
+        ignoreCancellation: true,
+      },
+      timeout: { outcome: "failure", message: "Dialogue Provider timed out." },
+    },
+    verbalizations: { chain: "I saw it happen." },
+  });
+  const cancellation = new AbortController();
+  const pending = dialogue.respond({ ...dialogue.initialState(), variables: {} }, {
+    speaker: "antonio",
+    listener: "player",
+    playerInput: "pending",
+  }, provider, {
+    turnId: "dialogue-turn-pending",
+    signal: cancellation.signal,
+  });
+
+  await Promise.resolve();
+  expect(provider.pendingTurnIds()).toEqual(["dialogue-turn-pending"]);
+  cancellation.abort();
+  await expect(pending).rejects.toThrow("Dialogue Turn was cancelled.");
+  expect(provider.release("dialogue-turn-pending")).toBe(true);
+  await Promise.resolve();
+
+  await expect(dialogue.respond({ ...dialogue.initialState(), variables: {} }, {
+    speaker: "antonio",
+    listener: "player",
+    playerInput: "timeout",
+  }, provider, {
+    turnId: "dialogue-turn-timeout",
+    signal: new AbortController().signal,
+  })).rejects.toThrow("Dialogue Provider timed out.");
+  await provider.reset();
+  expect(provider.resetCount()).toBe(1);
 });

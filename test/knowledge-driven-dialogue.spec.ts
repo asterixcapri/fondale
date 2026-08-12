@@ -631,9 +631,11 @@ test("failed or stopped Cover Story turns discard staged Testimony", async () =>
   expect(failedSession.snapshot().testimonies).toEqual([]);
 
   let finishVerbalization!: (response: string) => void;
+  let stoppedTurnContext: Parameters<DialogueProvider["verbalize"]>[1] | undefined;
   const pendingProvider: DialogueProvider = {
     interpret: () => Promise.resolve({ factId: "santa-lucia" }),
-    verbalize: () => new Promise((resolve) => {
+    verbalize: (_request, context) => new Promise((resolve) => {
+      stoppedTurnContext = context;
       finishVerbalization = resolve;
     }),
     reset: () => Promise.resolve(),
@@ -643,10 +645,159 @@ test("failed or stopped Cover Story turns discard staged Testimony", async () =>
   const pendingTurn = stoppedSession.submitDialogue("Were you aboard?");
   await Promise.resolve();
   stoppedSession.stop();
+  await expect(pendingTurn).resolves.toEqual({
+    ok: false,
+    message: "Dialogue Turn was cancelled.",
+  });
+  expect(stoppedTurnContext?.signal.aborted).toBe(true);
   finishVerbalization("I was never aboard that ship.");
-  await pendingTurn;
+  await Promise.resolve();
 
   expect(stoppedSession.snapshot().testimonies).toEqual([]);
+});
+
+test("leaving a pending Conversation cancels its unique turn and ignores a late result", async () => {
+  const project = coverStoryProject();
+  let context: Parameters<DialogueProvider["interpret"]>[1] | undefined;
+  let finishInterpretation!: (value: { readonly factId: string }) => void;
+  const provider: DialogueProvider = {
+    interpret: (_request, turnContext) => {
+      context = turnContext;
+      return new Promise((resolve) => {
+        finishInterpretation = resolve;
+      });
+    },
+    verbalize: () => Promise.resolve("I was never aboard that ship."),
+    reset: () => Promise.resolve(),
+  };
+  const session = createTestSession(project, undefined, provider);
+  openAntonioConversation(session);
+  const before = session.snapshot();
+
+  const pending = session.submitDialogue("Were you aboard?");
+  await Promise.resolve();
+  expect(session.conversation()).toMatchObject({ status: "pending" });
+  await expect(session.submitDialogue("Tell me now.")).resolves.toEqual({
+    ok: false,
+    message: "The Conversation is not ready for Player speech.",
+  });
+  expect(context?.turnId).toMatch(/^dialogue-turn-/);
+
+  session.input({ type: "escape" });
+  session.steps();
+
+  await expect(pending).resolves.toEqual({
+    ok: false,
+    message: "Dialogue Turn was cancelled.",
+  });
+  expect(context?.signal.aborted).toBe(true);
+  expect(session.conversation()).toBeNull();
+
+  finishInterpretation({ factId: "santa-lucia" });
+  await Promise.resolve();
+  session.steps();
+  expect(session.snapshot()).toEqual({ ...before, activity: null, tick: before.tick + 2 });
+});
+
+test("Save cancels a pending Dialogue Turn without persisting provider-owned data", async () => {
+  const project = coverStoryProject();
+  const provider = new FakeDialogueProvider({
+    interpretations: {
+      "Were you aboard?": {
+        outcome: "pending",
+        value: "santa-lucia",
+        ignoreCancellation: true,
+      },
+    },
+    verbalizations: { denial: "I was never aboard that ship." },
+  });
+  const session = createTestSession(project, undefined, provider);
+  openAntonioConversation(session);
+  const pending = session.submitDialogue("Were you aboard?");
+  await Promise.resolve();
+  const [turnId] = provider.pendingTurnIds();
+
+  const snapshot = session.createSaveSnapshot();
+
+  await expect(pending).resolves.toEqual({
+    ok: false,
+    message: "Dialogue Turn was cancelled.",
+  });
+  expect(session.conversation()).toMatchObject({ status: "ready" });
+  expect(snapshot.state.activity).toEqual({ type: "conversation", character: "antonio" });
+  expect(JSON.stringify(snapshot)).not.toContain("Were you aboard?");
+  expect(JSON.stringify(snapshot)).not.toContain(turnId);
+  expect(JSON.stringify(snapshot)).not.toMatch(/transcript|summary|thread|provider|model|token/i);
+
+  expect(turnId && provider.release(turnId)).toBe(true);
+  await Promise.resolve();
+  session.steps();
+  expect(session.snapshot().testimonies).toEqual([]);
+});
+
+test("failed Dialogue Turn phases leave Game State unchanged and allow a retry", async () => {
+  const provider: DialogueProvider = {
+    interpret: ({ playerInput }) => {
+      if (playerInput === "timeout") {
+        return Promise.reject(new Error("Dialogue Provider timed out."));
+      }
+      if (playerInput === "invalid") {
+        return Promise.resolve({ factId: 42 } as never);
+      }
+      return Promise.resolve({ factId: "harbour-chain-cut" });
+    },
+    verbalize: ({ playerInput }) => Promise.resolve(
+      playerInput === "empty" ? "   " : "I saw the harbour chain being cut.",
+    ),
+    reset: () => Promise.resolve(),
+  };
+  const base = knowledgeProject();
+  const session = createTestSession({
+    ...base,
+    characters: {
+      ...base.characters,
+      antonio: {
+        ...base.characters!.antonio!,
+        noun: {
+          labels: [{ text: "Antonio" }],
+          preferredVerbs: [{ verb: "talk-to" }],
+          cases: [{ verb: "talk-to", response: { text: "Authored fallback." } }],
+        },
+      },
+    },
+    scenes: {
+      opening: {
+        ...base.scenes.opening!,
+        hotspots: [{
+          target: { kind: "character", character: "antonio" },
+          area: square,
+          approach: { groundPoint: { x: 10, y: 10 }, facing: "front" },
+        }],
+      },
+    },
+  }, undefined, provider);
+  openAntonioConversation(session);
+  const before = session.snapshot();
+
+  for (const [input, message] of [
+    ["timeout", "Dialogue Provider timed out."],
+    ["invalid", "Dialogue Provider selected an unknown Narrative Fact."],
+    ["empty", "Dialogue Provider returned an empty Line."],
+  ] as const) {
+    await expect(session.submitDialogue(input)).resolves.toEqual({ ok: false, message });
+    expect(session.snapshot()).toEqual(before);
+    expect(session.conversation()).toMatchObject({ status: "error", error: message });
+  }
+
+  await expect(session.submitDialogue("retry")).resolves.toEqual({ ok: true });
+  expect(session.snapshot()).toEqual(before);
+  session.steps();
+  expect(session.snapshot().characterKnowledge.player).toEqual(["harbour-chain-cut"]);
+  expect(session.hud().narrative).toMatchObject({
+    kind: "line",
+    speaker: "player",
+    text: "retry",
+  });
 });
 
 test("Save Snapshot rejects malformed, duplicate or unknown Testimony", () => {

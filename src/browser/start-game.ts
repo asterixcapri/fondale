@@ -86,6 +86,7 @@ export async function startGame(
   };
 
   try {
+    if (restored && options.dialogueProvider) await options.dialogueProvider.reset();
     frame = new BrowserFrame(options.target, projectView.startup);
     frame.checkEnvironment();
     const assets = await loadProjectAssets(projectView.assets);
@@ -105,9 +106,10 @@ export async function startGame(
       next.render([]);
       return next;
     };
-    const replaceCore = (snapshot: ValidatedSaveSnapshot) => {
-      renderer!.destroy();
+    const replaceCore = async (snapshot: ValidatedSaveSnapshot) => {
       core!.stop();
+      renderer!.destroy();
+      if (options.dialogueProvider) await options.dialogueProvider.reset();
       core = createCoreSession(compiledProject, snapshot, options.dialogueProvider);
       renderer = mountRenderer(core);
       loop!.reset();

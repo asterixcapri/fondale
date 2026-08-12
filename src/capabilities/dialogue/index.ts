@@ -153,28 +153,72 @@ export interface DialogueVerbalizationRequest {
   readonly profile: DialoguePortrayalProfile;
 }
 
+/** Transient lifecycle context shared by both provider phases of one Dialogue Turn. */
+export interface DialogueTurnContext {
+  readonly turnId: string;
+  readonly signal: AbortSignal;
+}
+
 /** Provider-agnostic seam between Fondale and generated dialogue adapters. */
 export interface DialogueProvider {
-  interpret(request: DialogueInterpretationRequest): Promise<DialogueInterpretation>;
-  verbalize(request: DialogueVerbalizationRequest): Promise<string>;
+  interpret(
+    request: DialogueInterpretationRequest,
+    context: DialogueTurnContext,
+  ): Promise<DialogueInterpretation>;
+  verbalize(
+    request: DialogueVerbalizationRequest,
+    context: DialogueTurnContext,
+  ): Promise<string>;
   reset(): Promise<void>;
+}
+
+/** One deterministic deferred result configured on the Fake Dialogue Provider. */
+export interface FakeDialoguePendingOutcome<T> {
+  readonly outcome: "pending";
+  readonly value: T;
+  readonly ignoreCancellation?: boolean;
+}
+
+/** One deterministic rejection configured on the Fake Dialogue Provider. */
+export interface FakeDialogueFailureOutcome {
+  readonly outcome: "failure";
+  readonly message: string;
+}
+
+type FakeDialogueOutcome<T> = T | FakeDialoguePendingOutcome<T> | FakeDialogueFailureOutcome;
+
+interface PendingFakeDialogueOutcome {
+  readonly release: () => void;
+  readonly reject: (cause: Error) => void;
+  readonly cancel?: () => void;
 }
 
 /** Deterministic, dependency-free Dialogue Provider for tests and technical fixtures. */
 export class FakeDialogueProvider implements DialogueProvider {
+  private readonly pending = new Map<string, PendingFakeDialogueOutcome>();
+  private resets = 0;
+
   constructor(private readonly responses: {
     readonly interpretations: Readonly<Record<
       string,
-      string | null | { readonly reason: "ambiguous" | "no-relevant-fact" }
+      FakeDialogueOutcome<
+        string | null | { readonly reason: "ambiguous" | "no-relevant-fact" }
+      >
     >>;
-    readonly verbalizations: Readonly<Record<string, string>>;
+    readonly verbalizations: Readonly<Record<string, FakeDialogueOutcome<string>>>;
   }) {}
 
-  interpret(request: DialogueInterpretationRequest): Promise<DialogueInterpretation> {
+  async interpret(
+    request: DialogueInterpretationRequest,
+    context: DialogueTurnContext,
+  ): Promise<DialogueInterpretation> {
     if (!hasOwn(this.responses.interpretations, request.playerInput)) {
-      return Promise.reject(new Error("Fake Dialogue Provider has no matching interpretation."));
+      throw new Error("Fake Dialogue Provider has no matching interpretation.");
     }
-    const interpretation = this.responses.interpretations[request.playerInput]!;
+    const interpretation = await this.resolveOutcome(
+      this.responses.interpretations[request.playerInput]!,
+      context,
+    );
     if (typeof interpretation === "string") return Promise.resolve({ factId: interpretation });
     return Promise.resolve({
       factId: null,
@@ -182,17 +226,73 @@ export class FakeDialogueProvider implements DialogueProvider {
     });
   }
 
-  verbalize(request: DialogueVerbalizationRequest): Promise<string> {
+  verbalize(
+    request: DialogueVerbalizationRequest,
+    context: DialogueTurnContext,
+  ): Promise<string> {
     const responseKey = request.fact?.id ?? request.claim?.id ?? request.strategy;
     if (!hasOwn(this.responses.verbalizations, responseKey)) {
       return Promise.reject(new Error("Fake Dialogue Provider has no matching verbalization."));
     }
-    const response = this.responses.verbalizations[responseKey]!;
-    return Promise.resolve(response);
+    return this.resolveOutcome(this.responses.verbalizations[responseKey]!, context);
   }
 
   reset(): Promise<void> {
+    this.resets += 1;
+    for (const [turnId, pending] of this.pending) {
+      pending.cancel?.();
+      pending.reject(new Error("Dialogue Provider memory was reset."));
+      this.pending.delete(turnId);
+    }
     return Promise.resolve();
+  }
+
+  /** Transient turn identities currently held by a configured pending outcome. */
+  pendingTurnIds(): readonly string[] {
+    return [...this.pending.keys()];
+  }
+
+  /** Releases one configured pending outcome, including a deliberately late result. */
+  release(turnId: string): boolean {
+    const pending = this.pending.get(turnId);
+    if (!pending) return false;
+    pending.cancel?.();
+    this.pending.delete(turnId);
+    pending.release();
+    return true;
+  }
+
+  /** Number of provider-memory resets observed by this deterministic adapter. */
+  resetCount(): number {
+    return this.resets;
+  }
+
+  private resolveOutcome<T>(
+    outcome: FakeDialogueOutcome<T>,
+    context: DialogueTurnContext,
+  ): Promise<T> {
+    if (isFakeDialogueFailure(outcome)) return Promise.reject(new Error(outcome.message));
+    if (!isFakeDialoguePending(outcome)) return Promise.resolve(outcome);
+    return new Promise<T>((resolve, reject) => {
+      if (context.signal.aborted && !outcome.ignoreCancellation) {
+        reject(new Error("Dialogue Turn was cancelled."));
+        return;
+      }
+      const cancel = outcome.ignoreCancellation
+        ? undefined
+        : () => {
+            this.pending.delete(context.turnId);
+            reject(new Error("Dialogue Turn was cancelled."));
+          };
+      if (cancel) context.signal.addEventListener("abort", cancel, { once: true });
+      this.pending.set(context.turnId, {
+        release: () => resolve(outcome.value),
+        reject,
+        ...(cancel ? {
+          cancel: () => context.signal.removeEventListener("abort", cancel),
+        } : {}),
+      });
+    });
   }
 }
 
@@ -280,6 +380,7 @@ export interface KnowledgeDrivenDialogue {
       readonly playerInput: string;
     },
     provider: DialogueProvider,
+    context?: DialogueTurnContext,
   ): Promise<{
     readonly playerInput: string;
     readonly response: string;
@@ -343,6 +444,10 @@ export function createKnowledgeDrivenDialogue(
         readonly playerInput: string;
       },
       provider: DialogueProvider,
+      context: DialogueTurnContext = {
+        turnId: "unmanaged-dialogue-turn",
+        signal: new AbortController().signal,
+      },
     ) {
       const playerInput = input.playerInput.trim();
       if (!playerInput || playerInput.length > dialogueInputMaxLength) {
@@ -370,7 +475,7 @@ export function createKnowledgeDrivenDialogue(
         listener: input.listener,
         candidates,
       });
-      const interpretation = await provider.interpret(request);
+      const interpretation = await abortable(provider.interpret(request, context), context.signal);
       if (!isValidInterpretation(interpretation)) {
         throw new Error("Dialogue Provider selected an unknown Narrative Fact.");
       }
@@ -417,7 +522,7 @@ export function createKnowledgeDrivenDialogue(
           }
         }
       }
-      const response = await provider.verbalize(Object.freeze({
+      const response = await abortable(provider.verbalize(Object.freeze({
         playerInput,
         speaker: input.speaker,
         listener: input.listener,
@@ -425,7 +530,7 @@ export function createKnowledgeDrivenDialogue(
         ...(fact ? { fact } : {}),
         ...(claim ? { claim } : {}),
         profile,
-      }));
+      }), context), context.signal);
       if (typeof response !== "string" || !response.trim()) {
         throw new Error("Dialogue Provider returned an empty Line.");
       }
@@ -1047,6 +1152,33 @@ function compareTestimony(left: Testimony, right: Testimony): number {
   return left.speaker.localeCompare(right.speaker) ||
     left.listener.localeCompare(right.listener) ||
     left.claimId.localeCompare(right.claimId);
+}
+
+function abortable<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
+  if (signal.aborted) return Promise.reject(new Error("Dialogue Turn was cancelled."));
+  return new Promise<T>((resolve, reject) => {
+    const cancel = () => reject(new Error("Dialogue Turn was cancelled."));
+    signal.addEventListener("abort", cancel, { once: true });
+    promise.then((value) => {
+      signal.removeEventListener("abort", cancel);
+      resolve(value);
+    }, (cause) => {
+      signal.removeEventListener("abort", cancel);
+      reject(cause);
+    });
+  });
+}
+
+function isFakeDialoguePending<T>(
+  outcome: FakeDialogueOutcome<T>,
+): outcome is FakeDialoguePendingOutcome<T> {
+  return isRecord(outcome) && outcome.outcome === "pending";
+}
+
+function isFakeDialogueFailure<T>(
+  outcome: FakeDialogueOutcome<T>,
+): outcome is FakeDialogueFailureOutcome {
+  return isRecord(outcome) && outcome.outcome === "failure";
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

@@ -32,6 +32,8 @@ export {
 export {
   dialogueInputMaxLength,
   FakeDialogueProvider,
+  type FakeDialogueFailureOutcome,
+  type FakeDialoguePendingOutcome,
   type DialogueClaimCandidate,
   type DialogueFactCandidate,
   type DialogueInterpretation,
@@ -42,6 +44,7 @@ export {
   type DialoguePortrayalProfile,
   type DialogueState,
   type DialogueTrustCondition,
+  type DialogueTurnContext,
   type DialogueVariableCondition,
   type Disclosure,
   type GuardedDisclosure,

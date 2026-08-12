@@ -14,6 +14,7 @@ import {
 declare global {
   interface Window {
     __dialogueSession?: GameSession;
+    __dialogueProvider?: FakeDialogueProvider;
   }
 }
 
@@ -109,6 +110,11 @@ const dialogueProvider = new FakeDialogueProvider({
     "What happened to the chain?": "harbour-chain-cut",
     "What are you hiding?": "antonio-ordered-sabotage",
     "I do not know what to ask.": null,
+    "Wait for this answer.": {
+      outcome: "pending",
+      value: "harbour-chain-cut",
+      ignoreCancellation: true,
+    },
   },
   verbalizations: {
     "harbour-chain-cut": "I saw the harbour chain being cut.",
@@ -116,6 +122,7 @@ const dialogueProvider = new FakeDialogueProvider({
     clarify: "What exactly do you want to know?",
   },
 });
+window.__dialogueProvider = dialogueProvider;
 
 window.__dialogueSession = await startGame(project, {
   target: document.querySelector<HTMLElement>("#game")!,
