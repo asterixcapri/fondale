@@ -192,6 +192,12 @@ function validActivity(
       (value.line.animation === undefined || typeof value.line.animation === "string") &&
       isValidLineAnimation(animation, state, value.line.character, value.line.animation as string | undefined);
   }
+  if (value.type === "conversation") {
+    return hasExactKeys(value, ["type", "character"]) &&
+      typeof value.character === "string" &&
+      world.hasCharacter(value.character) &&
+      context.dialogue.hasProfile(value.character);
+  }
   if (value.type === "player-intent") {
     if (!project.playerCharacter ||
         state.characters[project.playerCharacter]?.scene !== state.currentScene) return false;

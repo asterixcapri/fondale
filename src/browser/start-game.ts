@@ -3,9 +3,11 @@ import {
   AuthoringError,
   compileGameProject,
   getBrowserProjectView,
+  getGameSessionCompositionView,
   type AuthoringDiagnostic,
   type GameProject,
 } from "../capabilities/game-project";
+import type { DialogueProvider } from "../capabilities/dialogue";
 import {
   createSave,
   type SaveSnapshot,
@@ -23,6 +25,8 @@ export interface StartGameOptions {
   readonly target: HTMLElement;
   /** Optional untrusted Save Snapshot data to validate and restore at startup. */
   readonly snapshot?: unknown;
+  /** Required adapter when any Character declares a Dialogue Profile. */
+  readonly dialogueProvider?: DialogueProvider;
 }
 
 /** The public lifecycle and persistence controls of one running Game Session. */
@@ -48,6 +52,17 @@ export async function startGame(
   const compilation = compileGameProject(project);
   if (!compilation.ok) throw new AuthoringError(compilation.diagnostics);
   const compiledProject = compilation.project;
+  const dialogueConfigured = Object.values(
+    getGameSessionCompositionView(compiledProject).dialogue.characters,
+  ).some(({ dialogue }) => dialogue !== undefined);
+  if (dialogueConfigured && !options.dialogueProvider) {
+    throw new AuthoringError([{
+      code: "environment.dialogue-provider.missing",
+      family: "environment", owner: "dialogue",
+      path: "startGame.dialogueProvider",
+      message: "This Game Project requires a Dialogue Provider startup dependency.",
+    }]);
+  }
   let restored: ValidatedSaveSnapshot | undefined;
   if (options.snapshot !== undefined) {
     const validation = createSave(compiledProject).validate(options.snapshot);
@@ -73,7 +88,7 @@ export async function startGame(
     const assets = await loadProjectAssets(projectView.assets);
     await frame.mount();
 
-    core = createCoreSession(compiledProject, restored);
+    core = createCoreSession(compiledProject, restored, options.dialogueProvider);
     let controls: BrowserSessionControls;
     const mountRenderer = (session: CoreSession): BrowserRenderer => {
       const next = new BrowserRenderer(
@@ -90,7 +105,7 @@ export async function startGame(
     const replaceCore = (snapshot: ValidatedSaveSnapshot) => {
       renderer!.destroy();
       core!.stop();
-      core = createCoreSession(compiledProject, snapshot);
+      core = createCoreSession(compiledProject, snapshot, options.dialogueProvider);
       renderer = mountRenderer(core);
       loop!.reset();
     };

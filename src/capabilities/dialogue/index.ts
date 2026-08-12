@@ -21,6 +21,71 @@ export interface CharacterDialogueDefinition {
   readonly knowledge: readonly CharacterKnowledgeDefinition[];
 }
 
+/** Maximum Player speech accepted by one Dialogue Turn. */
+export const dialogueInputMaxLength = 500;
+
+/** One Narrative Fact offered to interpretation without granting state authority. */
+export interface DialogueFactCandidate {
+  readonly id: string;
+  readonly proposition: string;
+}
+
+/** Untrusted Player speech and the only declared facts relevant to one Conversation. */
+export interface DialogueInterpretationRequest {
+  readonly playerInput: string;
+  readonly speaker: string;
+  readonly listener: string;
+  readonly candidates: readonly DialogueFactCandidate[];
+}
+
+/** Structured technical output returned by a Dialogue Provider. */
+export interface DialogueInterpretation {
+  readonly factId: string;
+}
+
+/** Engine-authorised semantic payload for a Dialogue Provider to express. */
+export interface DialogueVerbalizationRequest {
+  readonly playerInput: string;
+  readonly speaker: string;
+  readonly listener: string;
+  readonly fact: DialogueFactCandidate;
+}
+
+/** Provider-agnostic seam between Fondale and generated dialogue adapters. */
+export interface DialogueProvider {
+  interpret(request: DialogueInterpretationRequest): Promise<DialogueInterpretation>;
+  verbalize(request: DialogueVerbalizationRequest): Promise<string>;
+  reset(): Promise<void>;
+}
+
+/** Deterministic, dependency-free Dialogue Provider for tests and technical fixtures. */
+export class FakeDialogueProvider implements DialogueProvider {
+  constructor(private readonly responses: {
+    readonly interpretations: Readonly<Record<string, string>>;
+    readonly verbalizations: Readonly<Record<string, string>>;
+  }) {}
+
+  interpret(request: DialogueInterpretationRequest): Promise<DialogueInterpretation> {
+    const factId = this.responses.interpretations[request.playerInput];
+    if (factId === undefined) {
+      return Promise.reject(new Error("Fake Dialogue Provider has no matching interpretation."));
+    }
+    return Promise.resolve({ factId });
+  }
+
+  verbalize(request: DialogueVerbalizationRequest): Promise<string> {
+    const response = this.responses.verbalizations[request.fact.id];
+    if (response === undefined) {
+      return Promise.reject(new Error("Fake Dialogue Provider has no matching verbalization."));
+    }
+    return Promise.resolve(response);
+  }
+
+  reset(): Promise<void> {
+    return Promise.resolve();
+  }
+}
+
 /** Monotonic Game Operation that teaches one declared Narrative Fact to one Character. */
 export interface LearnNarrativeFactOperation {
   readonly type: "learn-narrative-fact";
@@ -42,6 +107,20 @@ export interface KnowledgeDrivenDialogueProjectView {
 /** @internal Character Knowledge lifecycle behind the capability interface. */
 export interface KnowledgeDrivenDialogue {
   initialState(): CharacterKnowledgeState;
+  hasProfile(character: string): boolean;
+  respond(
+    state: CharacterKnowledgeState,
+    input: {
+      readonly speaker: string;
+      readonly listener: string;
+      readonly playerInput: string;
+    },
+    provider: DialogueProvider,
+  ): Promise<{
+    readonly playerInput: string;
+    readonly response: string;
+    readonly operation: LearnNarrativeFactOperation;
+  }>;
   learn(
     state: CharacterKnowledgeState,
     operation: LearnNarrativeFactOperation,
@@ -59,6 +138,69 @@ export function createKnowledgeDrivenDialogue(
         characterId,
         character.dialogue?.knowledge.map(({ factId }) => factId) ?? [],
       ]));
+    },
+    hasProfile(character: string) {
+      return hasOwn(project.characters, character) &&
+        project.characters[character]!.dialogue !== undefined;
+    },
+    async respond(
+      state: CharacterKnowledgeState,
+      input: {
+        readonly speaker: string;
+        readonly listener: string;
+        readonly playerInput: string;
+      },
+      provider: DialogueProvider,
+    ) {
+      const playerInput = input.playerInput.trim();
+      if (!playerInput || playerInput.length > dialogueInputMaxLength) {
+        throw new Error(`Player speech must contain between 1 and ${dialogueInputMaxLength} characters.`);
+      }
+      if (!hasOwn(project.characters, input.speaker) ||
+          project.characters[input.speaker]!.dialogue === undefined) {
+        throw new Error(`Character '${input.speaker}' has no Dialogue Profile.`);
+      }
+      if (!hasOwn(project.characters, input.listener) || state[input.listener] === undefined) {
+        throw new Error(`Unknown listening Character '${input.listener}'.`);
+      }
+      const knownFactIds = state[input.speaker];
+      if (!knownFactIds) {
+        throw new Error(`Character Knowledge for '${input.speaker}' is missing.`);
+      }
+      const candidates = Object.freeze(knownFactIds.map((id) => Object.freeze({
+        id,
+        proposition: project.narrativeFacts[id]!.proposition,
+      })));
+      const request = Object.freeze({
+        playerInput,
+        speaker: input.speaker,
+        listener: input.listener,
+        candidates,
+      });
+      const interpretation = await provider.interpret(request);
+      if (!isRecord(interpretation) || typeof interpretation.factId !== "string" ||
+          !candidates.some(({ id }) => id === interpretation.factId)) {
+        throw new Error("Dialogue Provider selected an unknown Narrative Fact.");
+      }
+      const fact = candidates.find(({ id }) => id === interpretation.factId)!;
+      const response = await provider.verbalize(Object.freeze({
+        playerInput,
+        speaker: input.speaker,
+        listener: input.listener,
+        fact,
+      }));
+      if (typeof response !== "string" || !response.trim()) {
+        throw new Error("Dialogue Provider returned an empty Line.");
+      }
+      return Object.freeze({
+        playerInput,
+        response: response.trim(),
+        operation: Object.freeze({
+          type: "learn-narrative-fact" as const,
+          character: input.listener,
+          factId: fact.id,
+        }),
+      });
     },
     learn(state: CharacterKnowledgeState, operation: LearnNarrativeFactOperation) {
       if (!hasOwn(project.characters, operation.character)) {

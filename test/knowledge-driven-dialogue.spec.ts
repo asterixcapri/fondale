@@ -5,6 +5,7 @@ import {
   type CharacterDefinition,
   type CharacterKnowledgeDefinition,
   type CommandLexicon,
+  FakeDialogueProvider,
   type GameOperation,
   type GameProject,
   type NounDefinition,
@@ -286,4 +287,79 @@ test("a Narrative Fact may use __proto__ as its stable registry identity", () =>
 
   expect(session.snapshot().characterKnowledge.player).toEqual(["__proto__"]);
   expect(validation.ok).toBe(true);
+});
+
+test("Talk To completes an open-fact Conversation through the Dialogue Provider", async () => {
+  const base = knowledgeProject();
+  const project = {
+    ...base,
+    scenes: {
+      opening: {
+        ...base.scenes.opening!,
+        hotspots: [{
+          target: { kind: "character", character: "antonio" },
+          area: square,
+          approach: { groundPoint: { x: 10, y: 10 }, facing: "front" },
+        }],
+      },
+    },
+    characters: {
+      ...base.characters,
+      antonio: {
+        ...base.characters!.antonio!,
+        noun: {
+          labels: [{ text: "Antonio" }],
+          preferredVerbs: [{ verb: "talk-to" }],
+          cases: [{
+            verb: "talk-to",
+            line: { character: "antonio", text: "Authored fallback." },
+          }],
+        },
+      },
+    },
+  } satisfies GameProject;
+  const provider = new FakeDialogueProvider({
+    interpretations: {
+      "Who cut the harbour chain?": "harbour-chain-cut",
+      "What happened to the chain?": "harbour-chain-cut",
+    },
+    verbalizations: {
+      "harbour-chain-cut": "I saw the harbour chain being cut.",
+    },
+  });
+  const session = createTestSession(project, undefined, provider);
+
+  session.input({ type: "select-verb", verb: "talk-to" });
+  session.input({ type: "activate-hotspot", hotspot: 0 });
+  session.steps(2);
+
+  expect(session.conversation()).toMatchObject({
+    character: "antonio",
+    status: "ready",
+  });
+
+  for (const playerInput of [
+    "Who cut the harbour chain?",
+    "What happened to the chain?",
+  ]) {
+    await expect(session.submitDialogue(playerInput)).resolves.toEqual({ ok: true });
+    expect(session.snapshot().characterKnowledge.player).toEqual(["harbour-chain-cut"]);
+    expect(session.hud().narrative).toMatchObject({
+      kind: "line",
+      speaker: "player",
+      text: playerInput,
+    });
+
+    session.input({ type: "advance-conversation-line" });
+    session.steps();
+    expect(session.hud().narrative).toMatchObject({
+      kind: "line",
+      speaker: "antonio",
+      text: "I saw the harbour chain being cut.",
+    });
+
+    session.input({ type: "advance-conversation-line" });
+    session.steps();
+    expect(session.conversation()).toMatchObject({ status: "ready" });
+  }
 });

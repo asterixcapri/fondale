@@ -8,6 +8,7 @@ import {
   type CharacterDialogueDefinition,
   type CharacterKnowledgeDefinition,
   type CommandLexicon,
+  type DialogueProvider,
   type DirectionStep,
   type GameProject,
   type LearnNarrativeFactOperation,
@@ -45,6 +46,7 @@ const focusedTypes = {
   characterKnowledge: null as unknown as CharacterKnowledgeDefinition,
   commandLexicon: null as unknown as CommandLexicon,
   direction: null as unknown as DirectionStep,
+  dialogueProvider: null as unknown as DialogueProvider,
   hudTheme: null as unknown as HUDTheme,
   learnNarrativeFact: null as unknown as LearnNarrativeFactOperation,
   narrativeFact: null as unknown as NarrativeFactDefinition,
@@ -117,6 +119,45 @@ test("startGame validates an untrusted Save Snapshot before reading the target",
       expect.objectContaining({ owner: "save", code: "save.format.version" }),
       expect.objectContaining({ owner: "save", code: "save.state.invalid" }),
     ]),
+  });
+  expect(targetReads).toBe(0);
+});
+
+test("startGame requires a Dialogue Provider before reading the target", async () => {
+  let targetReads = 0;
+  const dialogueProject = {
+    ...project,
+    characters: {
+      antonio: {
+        initialScene: "opening",
+        initialGroundPoint: { x: 10, y: 10 },
+        initialFacing: "front",
+        initialAppearance: "idle",
+        appearances: {
+          idle: {
+            animations: {
+              idle: { frames: ["antonio.png"], framesPerSecond: 1, loop: true },
+            },
+            roles: { default: "idle" },
+          },
+        },
+        movementSpeed: 60,
+        dialogue: { knowledge: [] },
+      },
+    },
+  } satisfies GameProject;
+  const promise = startGame(dialogueProject, {
+    get target(): HTMLElement {
+      targetReads += 1;
+      throw new Error("target must remain untouched");
+    },
+  });
+
+  await expect(promise).rejects.toMatchObject({
+    diagnostics: [expect.objectContaining({
+      code: "environment.dialogue-provider.missing",
+      path: "startGame.dialogueProvider",
+    })],
   });
   expect(targetReads).toBe(0);
 });

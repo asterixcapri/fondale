@@ -84,7 +84,7 @@ export interface HUDSaveSlotFacts {
 export type HUDNarrativeFacts =
   | {
       readonly kind: "line";
-      readonly source: "line" | "sequence";
+      readonly source: "line" | "sequence" | "conversation";
       readonly character: string;
       readonly text: string;
       readonly audio?: URL | string;
@@ -280,6 +280,7 @@ export interface HUDInputResult {
   readonly interaction?: InteractionInput;
   readonly session?:
     | { readonly type: "advance-line" }
+    | { readonly type: "advance-conversation-line" }
     | { readonly type: "advance-sequence" }
     | { readonly type: "choose"; readonly alternative: number }
     | { readonly type: "skip-sequence" };
@@ -456,7 +457,13 @@ export function createHUD(input: HUDProjectView): HUD {
         if (narrative?.kind === "line") {
           return {
             focus: null,
-            session: { type: narrative.source === "line" ? "advance-line" : "advance-sequence" },
+            session: {
+              type: narrative.source === "line"
+                ? "advance-line"
+                : narrative.source === "conversation"
+                  ? "advance-conversation-line"
+                  : "advance-sequence",
+            },
           };
         }
         return narrative?.kind === "narration"

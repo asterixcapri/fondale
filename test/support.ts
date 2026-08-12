@@ -9,6 +9,10 @@ import {
   type CoreSession,
 } from "../src/capabilities/game-session";
 import {
+  FakeDialogueProvider,
+  type DialogueProvider,
+} from "../src/capabilities/dialogue";
+import {
   createSave,
   type SaveSnapshotValidation,
 } from "../src/capabilities/save";
@@ -16,12 +20,16 @@ import {
 export function createTestSession(
   project: GameProject,
   restored?: unknown,
+  dialogueProvider: DialogueProvider = new FakeDialogueProvider({
+    interpretations: {},
+    verbalizations: {},
+  }),
 ): CoreSession {
   const compiledProject = compileTestGameProject(project);
-  if (restored === undefined) return createCoreSession(compiledProject);
+  if (restored === undefined) return createCoreSession(compiledProject, undefined, dialogueProvider);
   const validation = createSave(compiledProject).validate(restored);
   if (!validation.ok) throw new AuthoringError(validation.diagnostics);
-  return createCoreSession(compiledProject, validation.snapshot);
+  return createCoreSession(compiledProject, validation.snapshot, dialogueProvider);
 }
 
 export function validateTestSaveSnapshot(

@@ -421,6 +421,11 @@ class EngineOverlay {
   private readonly inventoryPanel = document.createElement("aside");
   private readonly inventoryScrim = document.createElement("button");
   private readonly narrative = document.createElement("div");
+  private readonly conversation = document.createElement("form");
+  private readonly conversationHeading = document.createElement("label");
+  private readonly conversationInput = document.createElement("input");
+  private readonly conversationSubmit = document.createElement("button");
+  private readonly conversationStatus = document.createElement("div");
   private readonly modal = document.createElement("section");
   private readonly reveal = document.createElement("button");
   private readonly revealedHotspots = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -435,6 +440,7 @@ class EngineOverlay {
   private responseTimer: number | undefined;
   private activeAudio: HTMLAudioElement | undefined;
   private dismissedActionSignature: string | null = null;
+  private conversationWasVisible = false;
 
   constructor(
     private readonly frame: HTMLElement,
@@ -622,6 +628,52 @@ class EngineOverlay {
       boxSizing: "border-box",
       pointerEvents: "none",
     });
+    this.conversation.dataset.fondaleConversation = "";
+    this.conversation.style.cssText = [
+      "position:absolute",
+      "display:none",
+      "left:73px",
+      "bottom:12px",
+      "width:280px",
+      "box-sizing:border-box",
+      "grid-template-columns:1fr auto",
+      "gap:4px",
+      "padding:7px",
+      "z-index:9",
+      "pointer-events:auto",
+      `color:${data.hudTheme?.colors.text ?? "#f4dfb4"}`,
+      `background:${colorWithAlpha(data.hudTheme?.colors.backing ?? "#0c1626", 0.96)}`,
+      `border:1px solid ${data.hudTheme?.colors.border ?? "#5c7182"}`,
+      "border-radius:4px",
+      "box-shadow:0 3px 10px rgba(0,0,0,.8)",
+    ].join(";");
+    this.conversationHeading.style.cssText = "grid-column:1/-1";
+    this.conversationHeading.htmlFor = "fondale-dialogue-input";
+    this.conversationInput.id = "fondale-dialogue-input";
+    this.conversationInput.dataset.fondaleDialogueInput = "";
+    this.conversationInput.type = "text";
+    this.conversationInput.autocomplete = "off";
+    this.conversationInput.style.cssText = "min-width:0;font:inherit;padding:3px;color:#111;background:#fff;border:1px solid #777";
+    this.conversationSubmit.type = "submit";
+    this.conversationSubmit.textContent = "Ask";
+    this.conversationSubmit.style.cssText = "font:inherit;padding:3px 7px";
+    this.conversationStatus.setAttribute("role", "status");
+    this.conversationStatus.style.cssText = "grid-column:1/-1;min-height:9px";
+    this.conversation.append(
+      this.conversationHeading,
+      this.conversationInput,
+      this.conversationSubmit,
+      this.conversationStatus,
+    );
+    this.conversation.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const playerInput = this.conversationInput.value;
+      void this.core.submitDialogue(playerInput).then((result) => {
+        if (result.ok) this.conversationInput.value = "";
+        this.render();
+      });
+      this.renderConversation();
+    });
     this.modal.dataset.fondaleModal = "";
     this.modal.style.cssText = [
       "position:absolute",
@@ -677,6 +729,7 @@ class EngineOverlay {
       this.inventoryPanel,
       this.inventoryTrigger,
       this.reveal,
+      this.conversation,
       this.narrative,
       this.modal,
     );
@@ -687,7 +740,7 @@ class EngineOverlay {
   }
 
   blocksWorldInput(): boolean {
-    return this.currentHUD.system.blocksWorldInput;
+    return this.currentHUD.system.blocksWorldInput || this.core.conversation() !== null;
   }
 
   render(): void {
@@ -703,6 +756,7 @@ class EngineOverlay {
       this.action.style.display = "none";
     }
     this.renderNarrative();
+    this.renderConversation();
     const line = this.narrative.querySelector<HTMLElement>("[data-fondale-line]");
     if (line && this.currentHUD.narrative?.kind === "line") {
       this.positionSpeech(line, this.currentHUD.narrative);
@@ -1014,6 +1068,28 @@ class EngineOverlay {
     }
   }
 
+  private renderConversation(): void {
+    const presentation = this.core.conversation();
+    const visible = presentation !== null && this.currentHUD.narrative === null;
+    this.conversation.style.display = visible ? "grid" : "none";
+    if (!presentation) {
+      this.conversationWasVisible = false;
+      return;
+    }
+    this.conversationHeading.textContent = `Ask ${presentation.character}`;
+    this.conversationInput.maxLength = presentation.maxInputLength;
+    const pending = presentation.status === "pending";
+    this.conversationInput.disabled = pending;
+    this.conversationSubmit.disabled = pending;
+    this.conversationStatus.textContent = pending
+      ? "Waiting for a response…"
+      : presentation.error ?? "";
+    if (visible && !this.conversationWasVisible) {
+      this.conversationInput.focus({ preventScroll: true });
+    }
+    this.conversationWasVisible = visible;
+  }
+
   private presentLine(presentation: Extract<HUDNarrativePresentation, { kind: "line" }>): void {
     if (!presentation.layout) return;
     const line = document.createElement("div");
@@ -1124,6 +1200,7 @@ class EngineOverlay {
   }
 
   private readonly onKeyDown = (event: KeyboardEvent): void => {
+    if (event.target === this.conversationInput) return;
     if (event.key === "F5") {
       event.preventDefault();
       this.openModal(this.currentHUD.system.modal?.kind === "options" ? null : "options");

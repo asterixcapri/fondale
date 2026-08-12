@@ -68,6 +68,28 @@ Engine copies Character Knowledge into independent Game State; Characters
 without dialogue data begin with an empty set and otherwise keep their existing
 authored behaviour.
 
+## Knowledge-Driven Dialogue
+
+`DialogueProvider` is the provider-agnostic startup seam for a Game Project
+that declares at least one Character Dialogue Profile. `StartGameOptions`
+receives it as `dialogueProvider`; Fondale never creates a model client. The
+interface keeps `interpret`, `verbalize`, and `reset` as separate
+responsibilities. Interpretation receives untrusted `playerInput`, speaker and
+listener identities, and only the known `open` `DialogueFactCandidate` values
+eligible for that Conversation. Its `DialogueInterpretation` selects one
+declared `factId`.
+
+After validating that ID, Fondale sends `DialogueVerbalizationRequest` with
+exactly one authorised fact. The returned text is presented as a Line but is
+never parsed for Narrative Facts or Game Operations. A successful turn teaches
+that fact to the Player Character atomically. Player speech must contain from 1
+through `dialogueInputMaxLength` (500) characters.
+
+`FakeDialogueProvider` is the deterministic adapter used by Engine tests and
+browser fixtures. Its `interpretations` map multiple exact Player formulations
+to declared Narrative Fact IDs; its `verbalizations` map an authorised fact ID
+to one response. It has no network, database, model, or credential dependency.
+
 `ObjectDefinition` describes an Object with initial Scene, Ground Point, Appearance,
 named animated Appearances, square `inventoryAppearance`, and optional Noun. An
 Object is in one Scene, in Inventory, or consumed. Its one Noun governs both
@@ -127,7 +149,8 @@ the destination in Scene Space.
 `startGame` first compiles an isolated project snapshot and validates any
 untrusted Save Snapshot, then resolves to `GameSession` after assets validate,
 WebGL starts, and the first frame is drawn. `StartGameOptions` contains an
-unowned `target` and optional unknown `snapshot`. `GameSession` exposes
+unowned `target`, optional unknown `snapshot`, and the `dialogueProvider`
+required when any Character declares a Dialogue Profile. `GameSession` exposes
 `createSaveSnapshot`, `getStatus`, `getDiagnostics`, and idempotent terminal
 `stop`.
 
@@ -172,6 +195,12 @@ identifies the capability or browser adapter responsible for the rule.
 | `CharacterKnowledgeDefinition` | initial known fact reference | factId and open Disclosure | one reference per Character and fact | knowledge reference/duplicate diagnostics | [Dialogue authoring](game-authoring.md) |
 | `CharacterDialogueDefinition` | optional Character dialogue profile | initial knowledge | omission preserves authored behaviour | dialogue capability diagnostics | [Dialogue authoring](game-authoring.md) |
 | `LearnNarrativeFactOperation` | monotonic Character Knowledge change | Character and Narrative Fact identities | repeated learning is idempotent | Character/fact reference diagnostics | [Dialogue authoring](game-authoring.md) |
+| `DialogueFactCandidate` | fact eligible for interpretation | stable id and canonical proposition | contains only known open facts | unknown selections are rejected | [Dialogue authoring](game-authoring.md) |
+| `DialogueInterpretationRequest` | untrusted speech interpretation input | playerInput, speaker, listener, candidates | candidates are frozen and capability-authorised | provider failure rejects the turn | [Dialogue authoring](game-authoring.md) |
+| `DialogueInterpretation` | provider-selected semantic reference | one declared factId | carries no Game Operation authority | unknown fact ID rejects before verbalization | [Dialogue authoring](game-authoring.md) |
+| `DialogueVerbalizationRequest` | authorised expression input | playerInput, speaker, listener, one fact | never contains unrelated Narrative Facts | empty response rejects the turn | [Dialogue authoring](game-authoring.md) |
+| `DialogueProvider` | generated-dialogue adapter seam | interpret, verbalize, reset | supplied at startup; Engine creates no client | missing adapter is a startup diagnostic | [Dialogue authoring](game-authoring.md) |
+| `FakeDialogueProvider` | deterministic Dialogue Provider adapter | interpretation and verbalization maps | no external dependency or generated authority | missing configured mapping rejects the turn | [Dialogue authoring](game-authoring.md) |
 | `ObjectDefinition` | persistent Object | initial values, appearances, Inventory PNG, noun | begins in one Scene | Object/asset diagnostics | [Inventory](recipes/inventory.ts) |
 | `InteractionCondition` | state predicate | variable equality or held Object | omission is unconditional | missing-reference diagnostics | [Command](recipes/command-case.ts) |
 | `InventoryOperation` | Inventory and Object lifecycle change | collect target, place selected, place named, consume selected | World owns placement validity; Animation owns Appearance validity | Interaction/World/Animation diagnostics | [Inventory](recipes/inventory.ts) |
@@ -219,7 +248,7 @@ identifies the capability or browser adapter responsible for the rule.
 | `AuthoringDiagnostic` | one author-facing issue | code, family, owner, path, message, suggestion, cause | stable code/path ordering | describes owning failure | [Scene](recipes/first-scene.ts) |
 | `AuthoringError` | aggregate failure | read-only diagnostics | one error per startup layer | thrown by startup | [Scene](recipes/first-scene.ts) |
 | `SaveSnapshot` | JSON-safe committed state | format, project identities and state | exact fields only | save validation diagnostics | [Save](recipes/save-snapshot.ts) |
-| `StartGameOptions` | browser mount options | target and optional snapshot | omitted snapshot starts fresh | environment/save diagnostics | [Save](recipes/save-snapshot.ts) |
+| `StartGameOptions` | browser mount options | target, optional snapshot and Dialogue Provider | omitted snapshot starts fresh; configured dialogue requires its adapter | environment/save/dialogue diagnostics | [Save](recipes/save-snapshot.ts) |
 | `GameSession` | running lifecycle handle | save, status, diagnostics, stop | stop idempotent and terminal | lifecycle diagnostics | [Save](recipes/save-snapshot.ts) |
 
 Exact reachable fields also include `x`, `y`, `width`, `height`, `kind`,
@@ -239,6 +268,8 @@ Exact reachable fields also include `x`, `y`, `width`, `height`, `kind`,
 `identity`, `version`,
 `logicalResolution`, `scenes`, `narrativeFacts`, `proposition`, `characters`,
 `dialogue`, `knowledge`, `factId`, `disclosure`, `level`, `characterKnowledge`,
+`id`, `playerInput`, `speaker`, `listener`, `candidates`, `fact`, `interpretations`,
+`verbalizations`, `dialogueProvider`,
 `playerCharacter`, `objects`,
 `sequences`, `variables`, `inventoryAppearanceSize`, `initialScene`,
 `letterboxColor`, `commandLexicon`, `commandFallbacks`, `hudTheme`, `verb`,
@@ -325,7 +356,8 @@ Runtime, save, asset and environment codes: `state.operation.invalid`,
 `asset.cursor.dimensions`, `asset.font.load.failed`,
 `asset.inventory-appearance.dimensions`, `asset.animation-strip.frames`,
 `asset.animation-strip.dimensions`, `asset.visual-anchor.bounds`,
-`environment.start.failed`, `environment.target.occupied`, and
+`environment.dialogue-provider.missing`, `environment.start.failed`,
+`environment.target.occupied`, and
 `environment.webgl.unavailable`.
 
 See the [quick start](quick-start.md), [Game Project authoring guide](game-authoring.md),

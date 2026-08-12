@@ -73,8 +73,10 @@ import {
 import { Camera, type CameraPresentation } from "../camera";
 import {
   createKnowledgeDrivenDialogue,
+  dialogueInputMaxLength,
   isLearnNarrativeFactOperation,
   type CharacterKnowledgeState,
+  type DialogueProvider,
 } from "../dialogue";
 
 export type { CharacterState, ObjectLocation, ObjectState } from "../world";
@@ -85,7 +87,15 @@ export interface LineActivityState {
   line: Omit<Line, "audio"> & { audio?: string };
 }
 
-export type GameActivityState = PlayerIntentState | SequenceActivityState | LineActivityState;
+export interface ConversationActivityState {
+  readonly type: "conversation";
+  readonly character: string;
+}
+
+export type GameActivityState = PlayerIntentState
+  | SequenceActivityState
+  | LineActivityState
+  | ConversationActivityState;
 
 export interface GameState extends WorldState {
   inventory: { objects: string[] };
@@ -100,6 +110,7 @@ export type CoreInput = InteractionInput
   | { readonly type: "move"; readonly point: Point; readonly fast?: boolean }
   | { readonly type: "advance-sequence" }
   | { readonly type: "advance-line" }
+  | { readonly type: "advance-conversation-line" }
   | { readonly type: "skip-sequence" }
   | { readonly type: "choose"; readonly alternative: number };
 
@@ -108,7 +119,19 @@ export type CoreEffect =
   | { readonly type: "movement-finished"; readonly destination: Point }
   | { readonly type: "interaction-response"; readonly text: string; readonly response?: CommandResponse }
   | { readonly type: "scene-changed"; readonly scene: string }
-  | { readonly type: "sequence-changed" };
+  | { readonly type: "sequence-changed" }
+  | { readonly type: "conversation-changed" };
+
+export interface ConversationPresentation {
+  readonly character: string;
+  readonly status: "ready" | "pending" | "line" | "error";
+  readonly maxInputLength: number;
+  readonly error?: string;
+}
+
+export type DialogueSubmissionResult =
+  | { readonly ok: true }
+  | { readonly ok: false; readonly message: string };
 
 export type CoreWorldTarget = WorldTarget;
 
@@ -129,12 +152,15 @@ export interface CoreSession {
   animation(subject: DirectedSubject): AnimationPresentation | undefined;
   camera(): CameraPresentation;
   sequence(): SequencePresentation | null;
+  conversation(): ConversationPresentation | null;
+  submitDialogue(playerInput: string): Promise<DialogueSubmissionResult>;
   stop(): void;
 }
 
 export function createCoreSession(
   project: CompiledGameProject,
   restored?: ValidatedSaveSnapshot,
+  dialogueProvider?: DialogueProvider,
 ): CoreSession {
   const projectViews = getGameSessionCompositionView(project);
   const world = createWorld(projectViews.world);
@@ -146,6 +172,11 @@ export function createCoreSession(
   const hud = createHUD(projectViews.hud);
   const sequenceCapability = createSequence(projectViews.sequences);
   const dialogue = createKnowledgeDrivenDialogue(projectViews.dialogue);
+  if (Object.keys(projectViews.dialogue.characters).some((character) =>
+    dialogue.hasProfile(character)
+  ) && !dialogueProvider) {
+    throw new TypeError("A Dialogue Provider is required by this Game Project.");
+  }
   const save = createSave(project);
   let state = restored
     ? save.restore(restored)
@@ -156,6 +187,15 @@ export function createCoreSession(
   const emitted: CoreEffect[] = [];
   const camera = new Camera();
   let cameraPresentation: CameraPresentation;
+  let dialogueTurn: {
+    phase: "player" | "character";
+    readonly playerInput: string;
+    readonly response: string;
+    readonly playerCharacter: string;
+    readonly character: string;
+  } | null = null;
+  let conversationStatus: ConversationPresentation["status"] = "ready";
+  let conversationError: string | undefined;
 
   const session: CoreSession = {
     input(input) {
@@ -214,6 +254,52 @@ export function createCoreSession(
     sequence() {
       return activeSequencePresentation() ?? null;
     },
+    conversation() {
+      if (state.activity?.type !== "conversation") return null;
+      return structuredClone({
+        character: state.activity.character,
+        status: conversationStatus,
+        maxInputLength: dialogueInputMaxLength,
+        ...(conversationError ? { error: conversationError } : {}),
+      });
+    },
+    async submitDialogue(playerInput) {
+      const activity = state.activity;
+      const playerCharacter = projectViews.world.playerCharacter;
+      if (activity?.type !== "conversation" || !playerCharacter || !dialogueProvider) {
+        return { ok: false, message: "No Conversation is ready for Player speech." };
+      }
+      if (conversationStatus !== "ready" && conversationStatus !== "error") {
+        return { ok: false, message: "The Conversation is not ready for Player speech." };
+      }
+      conversationStatus = "pending";
+      conversationError = undefined;
+      try {
+        const turn = await dialogue.respond(state.characterKnowledge, {
+          speaker: activity.character,
+          listener: playerCharacter,
+          playerInput,
+        }, dialogueProvider);
+        const draft = structuredClone(state);
+        draft.characterKnowledge = dialogue.learn(draft.characterKnowledge, turn.operation);
+        state = draft;
+        dialogueTurn = {
+          phase: "player",
+          playerInput: turn.playerInput,
+          response: turn.response,
+          playerCharacter,
+          character: activity.character,
+        };
+        conversationStatus = "line";
+        emitted.push({ type: "conversation-changed" });
+        return { ok: true };
+      } catch (cause) {
+        const message = cause instanceof Error ? cause.message : String(cause);
+        conversationStatus = "error";
+        conversationError = message;
+        return { ok: false, message };
+      }
+    },
     stop() {
       if (status === "stopped") return;
       status = "stopped";
@@ -262,6 +348,21 @@ export function createCoreSession(
   }
 
   function activeNarrativeFacts(): HUDPresentationContext["narrative"] {
+    if (state.activity?.type === "conversation" && dialogueTurn) {
+      return dialogueTurn.phase === "player"
+        ? {
+            kind: "line",
+            source: "conversation",
+            character: dialogueTurn.playerCharacter,
+            text: dialogueTurn.playerInput,
+          }
+        : {
+            kind: "line",
+            source: "conversation",
+            character: dialogueTurn.character,
+            text: dialogueTurn.response,
+          };
+    }
     if (state.activity?.type === "line") {
       return {
         kind: "line",
@@ -312,6 +413,18 @@ export function createCoreSession(
   }
 
   function handleInput(input: CoreInput): void {
+    if (state.activity?.type === "conversation") {
+      if (input.type === "advance-conversation-line" && dialogueTurn) {
+        if (dialogueTurn.phase === "player") {
+          dialogueTurn.phase = "character";
+        } else {
+          dialogueTurn = null;
+          conversationStatus = "ready";
+        }
+        emitted.push({ type: "conversation-changed" });
+      }
+      return;
+    }
     if (state.activity?.type === "line") {
       if (input.type === "advance-line") state.activity = null;
       return;
@@ -489,9 +602,28 @@ export function createCoreSession(
     if (!progress.complete) return;
     state.activity = null;
     emitted.push({ type: "movement-finished", destination: { ...activity.destination } });
-    handleInteractionDecision(
-      interaction.resume(activity.intent, state, interactionTarget(activity.intent)),
-    );
+    const target = interactionTarget(activity.intent);
+    if (openConversation(activity.intent, target)) return;
+    handleInteractionDecision(interaction.resume(activity.intent, state, target));
+  }
+
+  function openConversation(
+    intent: PlayerIntent,
+    target: InteractionTargetView | undefined,
+  ): boolean {
+    if (intent.kind !== "interaction" || intent.command?.verb !== "talk-to" ||
+        target?.target.kind !== "character" || !dialogue.hasProfile(target.target.character)) {
+      return false;
+    }
+    if (!intent.command.preserveState) {
+      state.command = { verb: "walk-to", firstNoun: null };
+    }
+    state.activity = { type: "conversation", character: target.target.character };
+    dialogueTurn = null;
+    conversationStatus = "ready";
+    conversationError = undefined;
+    emitted.push({ type: "conversation-changed" });
+    return true;
   }
 
   function resolvePassage(intent: Extract<PlayerIntent, { kind: "passage" }>): void {
@@ -680,6 +812,13 @@ export function createCoreSession(
   }
 
   function activeLineAnimation(): { readonly character: string; readonly animation?: string } | undefined {
+    if (state.activity?.type === "conversation" && dialogueTurn) {
+      return {
+        character: dialogueTurn.phase === "player"
+          ? dialogueTurn.playerCharacter
+          : dialogueTurn.character,
+      };
+    }
     if (state.activity?.type === "line") return state.activity.line;
     const presentation = activeSequencePresentation();
     return presentation?.kind === "line"
@@ -803,6 +942,7 @@ function isInteractionInput(input: CoreInput): input is InteractionInput {
   return input.type !== "move" &&
     input.type !== "advance-sequence" &&
     input.type !== "advance-line" &&
+    input.type !== "advance-conversation-line" &&
     input.type !== "skip-sequence" &&
     input.type !== "choose";
 }

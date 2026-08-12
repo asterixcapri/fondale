@@ -30,6 +30,15 @@ export {
   type Appearance,
 } from "./capabilities/animation";
 export {
+  dialogueInputMaxLength,
+  FakeDialogueProvider,
+  type DialogueFactCandidate,
+  type DialogueInterpretation,
+  type DialogueInterpretationRequest,
+  type DialogueProvider,
+  type DialogueVerbalizationRequest,
+} from "./capabilities/dialogue";
+export {
   type CharacterDialogueDefinition,
   type CharacterKnowledgeDefinition,
   type GameProject,
