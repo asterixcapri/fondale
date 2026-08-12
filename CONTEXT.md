@@ -13,7 +13,146 @@ _Avoid_: Game, generic framework
 **Engine Capability**:
 Reusable behavior that Fondale guarantees to Game Projects through its public
 interface.
-_Avoid_: Capri feature, renderer detail
+_Avoid_: Game Project feature, renderer detail
+
+**Knowledge-Driven Dialogue**:
+An Engine Capability through which the Player addresses a Character in
+free-form language and receives an Engine-governed response derived from what
+that Character may know and disclose in the current Game Session; it governs
+exploratory conversation rather than exact authored wording or choreography.
+Generated speech may add expressive colour but cannot establish an
+unauthorised Narrative Fact. The MVP enforces disclosure by withholding
+unauthorised propositions from verbalisation and tests provider conformance; it
+does not semantically verify generated text.
+_Avoid_: Example experiment, dialogue tree, LLM feature, Sequence, Choice
+
+**Narrative Fact**:
+An Author-declared true proposition with stable identity about the people,
+places, events, or clues of a Game Project that may affect story or puzzle
+reasoning. It is defined once in the Game Project's Narrative Fact registry;
+its identity remains independent from its wording.
+_Avoid_: Generated detail, conversational colour, World fact
+
+**Claim**:
+An Author-declared proposition with stable identity, defined once in the Game
+Project's Claim registry, that a Character may communicate without the Engine
+endorsing it as a Narrative Fact.
+_Avoid_: Narrative Fact, generated invention, Character Knowledge
+
+**Cover Story**:
+An Author-declared Character-specific association from a concealed Narrative
+Fact to a Claim that the Character may intentionally communicate instead during
+authored or Knowledge-Driven Dialogue.
+_Avoid_: Secret, improvised lie, false Narrative Fact
+
+**Testimony**:
+A committed record that one Character communicated a Claim to another, without
+making that Claim true or adding it to the listener's Character Knowledge.
+_Avoid_: Narrative Fact, belief, transcript, trusted knowledge
+
+**Hypothesis**:
+A non-canonical possibility that a Character may derive from its Character
+Knowledge and remembered Testimony and must express as uncertain. It neither
+enters Character Knowledge nor changes Game State unless an Author separately
+defines a corresponding canonical effect.
+_Avoid_: Narrative Fact, automatic deduction, learned fact, puzzle solution
+
+**Relationship**:
+The directional social state of one Character toward another in the current
+Game Session. The MVP represents only Trust.
+_Avoid_: symmetric bond, Personality, inferred sentiment
+
+**Trust**:
+The low, medium, or high confidence one Character currently places in another;
+it changes only through an authored Game Operation.
+_Avoid_: numeric score, mutual trust, Dialogue Provider inference
+
+**Character Knowledge**:
+References by stable identity to the Narrative Facts available to one Character
+in the current Game Session, initialised from the Game Project and changed
+atomically as that Character learns. The MVP only adds knowledge; it does not
+forget or retract it.
+_Avoid_: Biography, Claim, Testimony, prompt context, generated transcript, world truth
+
+**Disclosure**:
+The Character-specific authored constraint attached to a Character Knowledge
+reference and governing when that Character may communicate the referenced
+Narrative Fact. Open facts are eligible when relevant, guarded facts require an
+ordinary condition chosen by the Author for that Character Knowledge reference,
+such as a specified Trust level, and secret facts require an explicit authored
+unlock that Trust alone cannot provide.
+_Avoid_: Character Knowledge, Personality, prompt instruction, probabilistic leak
+
+**Biography**:
+Author-written prose that contextualises a Character's identity and history
+without independently authorising Narrative Facts in generated speech.
+_Avoid_: Background, Character Knowledge, gameplay rule, prompt authority
+
+**Personality**:
+Qualitative Author-declared traits that keep a Character's portrayal consistent
+without authorising Narrative Facts or deciding Game State.
+_Avoid_: Voice, Dialogue Behavior, numeric simulation, gameplay rule
+
+**Dialogue Behavior**:
+A small Engine-interpreted profile that determines how much authorised
+information a Character volunteers and which safe Response Strategies it
+prefers when withholding information.
+_Avoid_: Personality, Voice, arbitrary rule language, numeric trait formula
+
+**Dialogue State**:
+An optional qualitative and temporary Character condition, such as afraid or
+drunk, selected and changed through authored Game Operations when a Game
+Project needs it. A Dialogue Provider may portray but cannot infer or change it.
+_Avoid_: numeric emotion simulation, Personality, sentiment inference, generic state
+
+**Voice**:
+An Author-declared language profile governing how authorised content is phrased
+without changing what the Character communicates.
+_Avoid_: Personality, Dialogue Behavior, Response Strategy, Character Knowledge
+
+**Response Strategy**:
+The Engine-authorised conversational approach for one Dialogue Turn, such as
+answering, withholding part of an answer, evading, refusing, or expressing an
+authorised Cover Story as a lie. When interpretation is ambiguous, clarify asks
+the Player to disambiguate without producing canonical effects.
+_Avoid_: Generated speech, prompt instruction, Voice
+
+**Dialogue Provider**:
+An Author-supplied integration that interprets the Player's free-form language
+and verbalises an Engine-authorised response with enough Conversation context
+for continuity, without gaining authority over Narrative Facts or Game State.
+It owns non-canonical agent memory concerns such as transcripts, context-window
+management, and summaries, and clears that memory when Fondale loads a Save
+Snapshot.
+_Avoid_: LLM, OpenAI client, Engine service, narrative authority
+
+**Dialogue Turn**:
+One free-form Player input and its corresponding Engine-authorised Character
+response within Knowledge-Driven Dialogue. Accepted input is presented as a
+Line spoken by the Player Character without becoming a Narrative Fact; the
+response uses the same Line presentation. The turn either completes atomically
+with Game Operations for only the Narrative Facts or Claims that the Engine
+selected for communication before verbalisation, or fails without changing
+Game State. While pending it blocks another turn but remains cancellable;
+leaving the Conversation, saving, loading, or stopping invalidates it and any
+late provider result is ignored. Player text is length-bounded untrusted speech
+and never a provider or Engine instruction.
+_Avoid_: Prompt, request, Line, partial state update
+
+**Conversation**:
+The dominant Game Activity in which the Player conducts Knowledge-Driven
+Dialogue with one Character over one or more Dialogue Turns, normally opened by
+resolving Talk To against a Character configured for it. Its provider-owned
+transcript and context memory are not Game State and reset when a Save Snapshot
+is loaded.
+_Avoid_: Sequence, dialogue tree, arbitrary input prompt, Save Snapshot transcript
+
+**Reflection**:
+A Knowledge-Driven Dialogue mode in which the Player consults the Player
+Character's own Character Knowledge, remembered Testimony, and possible
+Hypotheses. It has no second interlocutor and does not apply Disclosure, Cover
+Stories, or new Testimony.
+_Avoid_: Conversation with oneself, omniscient hint system, Narrative Fact deduction
 
 **Game Setting**:
 A choice or value through which a Game Project adapts an Engine Capability to
@@ -94,7 +233,7 @@ _Avoid_: Engine patch, plugin
 
 **Example**:
 A Game Project distributed with Fondale to demonstrate and verify supported
-Engine Capabilities; Capri 1535 is the first Example.
+Engine Capabilities.
 _Avoid_: Engine code, throwaway demo
 
 **Support Baseline**:
@@ -159,7 +298,7 @@ Activity. Its steps progress sequentially, while one step may direct several
 Animations and Motions concurrently and completes when its finite directions
 finish; its exact logical progress belongs to the Game State. It remains within
 the Scene in which it started and cannot direct a Scene transition.
-_Avoid_: Cutscene, multi-Scene sequence, Choreography layer, Dialogue as a separate activity model, nested sequence, scripted async function
+_Avoid_: Cutscene, multi-Scene sequence, Choreography layer, authored Dialogue as a separate activity model, nested sequence, scripted async function
 
 **Direction Step**:
 A sequential Sequence step that directs concurrent Animations, Motions, and the
@@ -173,9 +312,10 @@ its logical result remains coherent without executing its remaining steps.
 _Avoid_: Cancellation, implicit fast-forward, renderer cleanup
 
 **Line**:
-A single authored phrase spoken by a Character. Its presentation may advance
-by timing or Player input; while active it directs a speaking Animation from
-the Character's current Appearance, with an optional authored override.
+A single phrase spoken by a Character, supplied by authored content or an
+accepted Dialogue Turn. Its presentation may advance by timing or Player input;
+while active it directs a speaking Animation from the Character's current
+Appearance, with an optional authored override.
 _Avoid_: Narration, Command Response, subtitle, dialogue node, renderer text
 
 **Narration**:
