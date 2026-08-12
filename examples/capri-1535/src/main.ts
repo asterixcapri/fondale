@@ -1,24 +1,32 @@
 import {
   FakeDialogueProvider,
   startGame,
+  type DialogueProvider,
   type GameSession,
 } from "@asterixcapri/fondale";
 
 import { project } from "./game";
+import { LocalDialogueProvider } from "./local-dialogue-provider";
 
 const target = document.querySelector<HTMLElement>("#game")!;
 const restore = document.querySelector<HTMLButtonElement>("#restore")!;
 const errorOutput = document.querySelector<HTMLOutputElement>("#error")!;
 const reflection = document.querySelector<HTMLButtonElement>("#reflection")!;
-const dialogueProvider = new FakeDialogueProvider({
-  interpretations: {},
-  verbalizations: {},
-  reflections: {
-    "Che cosa so?": {
-      summary: "Sono arrivato a Capri in cerca di un lavoro onesto.",
-    },
-  },
-});
+const dialogueProvider: DialogueProvider =
+  new URLSearchParams(window.location.search).get("dialogue") === "local"
+    ? new LocalDialogueProvider({
+      endpoint: "http://127.0.0.1:4315/dialogue",
+      sessionId: crypto.randomUUID(),
+    })
+    : new FakeDialogueProvider({
+      interpretations: {},
+      verbalizations: {},
+      reflections: {
+        "Che cosa so?": {
+          summary: "Sono arrivato a Capri in cerca di un lavoro onesto.",
+        },
+      },
+    });
 
 if (import.meta.env.MODE === "prototype") {
   restore.hidden = true;

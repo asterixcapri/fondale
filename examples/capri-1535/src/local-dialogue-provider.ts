@@ -1,0 +1,85 @@
+import type {
+  DialogueInterpretation,
+  DialogueInterpretationRequest,
+  DialogueProvider,
+  DialogueTurnContext,
+  DialogueVerbalizationRequest,
+  ReflectionRequest,
+  ReflectionResponse,
+} from "@asterixcapri/fondale";
+
+import type { LocalDialogueRequest, LocalDialogueResponse } from "./local-dialogue-protocol";
+
+export class LocalDialogueProvider implements DialogueProvider {
+  private readonly endpoint: string;
+  private readonly sessionId: string;
+
+  constructor(options: { readonly endpoint: string; readonly sessionId: string }) {
+    this.endpoint = options.endpoint;
+    this.sessionId = options.sessionId;
+  }
+
+  interpret(
+    request: DialogueInterpretationRequest,
+    context: DialogueTurnContext,
+  ): Promise<DialogueInterpretation> {
+    return this.send({
+      operation: "interpret",
+      sessionId: this.sessionId,
+      turnId: context.turnId,
+      request,
+    }, context.signal);
+  }
+
+  verbalize(
+    request: DialogueVerbalizationRequest,
+    context: DialogueTurnContext,
+  ): Promise<string> {
+    return this.send({
+      operation: "verbalize",
+      sessionId: this.sessionId,
+      turnId: context.turnId,
+      request,
+    }, context.signal);
+  }
+
+  reflect(
+    request: ReflectionRequest,
+    context: DialogueTurnContext,
+  ): Promise<ReflectionResponse> {
+    return this.send({
+      operation: "reflect",
+      sessionId: this.sessionId,
+      turnId: context.turnId,
+      request,
+    }, context.signal);
+  }
+
+  reset(): Promise<void> {
+    return this.send({ operation: "reset", sessionId: this.sessionId });
+  }
+
+  private async send<T>(body: LocalDialogueRequest, signal?: AbortSignal): Promise<T> {
+    const response = await fetch(this.endpoint, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+      ...(signal ? { signal } : {}),
+    });
+    const payload: unknown = await response.json();
+    if (!isLocalDialogueResponse(payload)) {
+      throw new Error("Local Dialogue Provider returned an invalid response.");
+    }
+    if (!response.ok || !payload.ok) {
+      throw new Error(payload.ok ? "Local Dialogue Provider request failed." : payload.error);
+    }
+    return payload.value as T;
+  }
+}
+
+function isLocalDialogueResponse(value: unknown): value is LocalDialogueResponse {
+  if (typeof value !== "object" || value === null || !("ok" in value)) return false;
+  if ((value as { readonly ok?: unknown }).ok === true) return true;
+  return (value as { readonly ok?: unknown }).ok === false &&
+    "error" in value && typeof (value as { readonly error?: unknown }).error === "string";
+}

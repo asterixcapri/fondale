@@ -5,18 +5,25 @@
   "type": "module",
   "scripts": {
     "dev": "vite --force",
+    "dev:dialogue-adapter": "node --env-file-if-exists=.env.local --import tsx server/dialogue-adapter/main.ts",
     "prototype:hud": "vite --force --mode prototype --port 5174",
     "typecheck": "tsc --noEmit",
     "verify:project": "node tools/verify-project.mjs",
     "build": "npm run typecheck && npm run verify:project && vite build",
     "preview": "vite preview",
-    "verify": "playwright test"
+    "verify": "playwright test",
+    "verify:dialogue-adapter": "node --import tsx --test server/dialogue-adapter/http-transport.spec.ts server/dialogue-adapter/postgres-dialogue-provider.integration.spec.ts"
   },
   "dependencies": {
-    "@asterixcapri/fondale": "file:vendor/asterixcapri-fondale-0.4.0.tgz"
+    "@asterixcapri/fondale": "file:vendor/asterixcapri-fondale-0.4.0.tgz",
+    "@mastra/core": "^1.58.0",
+    "@mastra/memory": "^1.26.1",
+    "@mastra/pg": "^1.20.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",
+    "@types/node": "^22.20.1",
+    "tsx": "^4.23.12",
     "typescript": "^5.9.3",
     "vite": "^6.4.3",
     "vite-plugin-singlefile": "^2.3.3"
