@@ -77,6 +77,7 @@ import {
   isLearnNarrativeFactOperation,
   type CharacterKnowledgeState,
   type DialogueProvider,
+  type LearnNarrativeFactOperation,
 } from "../dialogue";
 
 export type { CharacterState, ObjectLocation, ObjectState } from "../world";
@@ -172,9 +173,7 @@ export function createCoreSession(
   const hud = createHUD(projectViews.hud);
   const sequenceCapability = createSequence(projectViews.sequences);
   const dialogue = createKnowledgeDrivenDialogue(projectViews.dialogue);
-  if (Object.keys(projectViews.dialogue.characters).some((character) =>
-    dialogue.hasProfile(character)
-  ) && !dialogueProvider) {
+  if (dialogue.requiresProvider() && !dialogueProvider) {
     throw new TypeError("A Dialogue Provider is required by this Game Project.");
   }
   const save = createSave(project);
@@ -196,6 +195,13 @@ export function createCoreSession(
   } | null = null;
   let conversationStatus: ConversationPresentation["status"] = "ready";
   let conversationError: string | undefined;
+  let dialogueCompletion: {
+    readonly character: string;
+    readonly playerInput: string;
+    readonly response: string;
+    readonly operation: LearnNarrativeFactOperation;
+    readonly playerCharacter: string;
+  } | null = null;
 
   const session: CoreSession = {
     input(input) {
@@ -280,18 +286,13 @@ export function createCoreSession(
           listener: playerCharacter,
           playerInput,
         }, dialogueProvider);
-        const draft = structuredClone(state);
-        draft.characterKnowledge = dialogue.learn(draft.characterKnowledge, turn.operation);
-        state = draft;
-        dialogueTurn = {
-          phase: "player",
+        dialogueCompletion = {
+          character: activity.character,
           playerInput: turn.playerInput,
           response: turn.response,
+          operation: turn.operation,
           playerCharacter,
-          character: activity.character,
         };
-        conversationStatus = "line";
-        emitted.push({ type: "conversation-changed" });
         return { ok: true };
       } catch (cause) {
         const message = cause instanceof Error ? cause.message : String(cause);
@@ -400,6 +401,7 @@ export function createCoreSession(
   }
 
   function step(): void {
+    commitDialogueCompletion();
     for (const input of inputs.splice(0)) {
       handleInput(input);
       if (status !== "running") return;
@@ -410,6 +412,26 @@ export function createCoreSession(
     if (status !== "running") return;
     state.tick += 1;
     advanceCamera();
+  }
+
+  function commitDialogueCompletion(): void {
+    const completion = dialogueCompletion;
+    if (!completion) return;
+    dialogueCompletion = null;
+    if (state.activity?.type !== "conversation" ||
+        state.activity.character !== completion.character) return;
+    const draft = structuredClone(state);
+    draft.characterKnowledge = dialogue.learn(draft.characterKnowledge, completion.operation);
+    state = draft;
+    dialogueTurn = {
+      phase: "player",
+      playerInput: completion.playerInput,
+      response: completion.response,
+      playerCharacter: completion.playerCharacter,
+      character: completion.character,
+    };
+    conversationStatus = "line";
+    emitted.push({ type: "conversation-changed" });
   }
 
   function handleInput(input: CoreInput): void {
@@ -620,6 +642,7 @@ export function createCoreSession(
     }
     state.activity = { type: "conversation", character: target.target.character };
     dialogueTurn = null;
+    dialogueCompletion = null;
     conversationStatus = "ready";
     conversationError = undefined;
     emitted.push({ type: "conversation-changed" });

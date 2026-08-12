@@ -66,18 +66,18 @@ export class FakeDialogueProvider implements DialogueProvider {
   }) {}
 
   interpret(request: DialogueInterpretationRequest): Promise<DialogueInterpretation> {
-    const factId = this.responses.interpretations[request.playerInput];
-    if (factId === undefined) {
+    if (!hasOwn(this.responses.interpretations, request.playerInput)) {
       return Promise.reject(new Error("Fake Dialogue Provider has no matching interpretation."));
     }
+    const factId = this.responses.interpretations[request.playerInput]!;
     return Promise.resolve({ factId });
   }
 
   verbalize(request: DialogueVerbalizationRequest): Promise<string> {
-    const response = this.responses.verbalizations[request.fact.id];
-    if (response === undefined) {
+    if (!hasOwn(this.responses.verbalizations, request.fact.id)) {
       return Promise.reject(new Error("Fake Dialogue Provider has no matching verbalization."));
     }
+    const response = this.responses.verbalizations[request.fact.id]!;
     return Promise.resolve(response);
   }
 
@@ -107,6 +107,7 @@ export interface KnowledgeDrivenDialogueProjectView {
 /** @internal Character Knowledge lifecycle behind the capability interface. */
 export interface KnowledgeDrivenDialogue {
   initialState(): CharacterKnowledgeState;
+  requiresProvider(): boolean;
   hasProfile(character: string): boolean;
   respond(
     state: CharacterKnowledgeState,
@@ -138,6 +139,11 @@ export function createKnowledgeDrivenDialogue(
         characterId,
         character.dialogue?.knowledge.map(({ factId }) => factId) ?? [],
       ]));
+    },
+    requiresProvider() {
+      return Object.keys(project.characters).some((character) =>
+        project.characters[character]!.dialogue !== undefined
+      );
     },
     hasProfile(character: string) {
       return hasOwn(project.characters, character) &&

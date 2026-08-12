@@ -7,7 +7,10 @@ import {
   type AuthoringDiagnostic,
   type GameProject,
 } from "../capabilities/game-project";
-import type { DialogueProvider } from "../capabilities/dialogue";
+import {
+  createKnowledgeDrivenDialogue,
+  type DialogueProvider,
+} from "../capabilities/dialogue";
 import {
   createSave,
   type SaveSnapshot,
@@ -52,9 +55,9 @@ export async function startGame(
   const compilation = compileGameProject(project);
   if (!compilation.ok) throw new AuthoringError(compilation.diagnostics);
   const compiledProject = compilation.project;
-  const dialogueConfigured = Object.values(
-    getGameSessionCompositionView(compiledProject).dialogue.characters,
-  ).some(({ dialogue }) => dialogue !== undefined);
+  const dialogueConfigured = createKnowledgeDrivenDialogue(
+    getGameSessionCompositionView(compiledProject).dialogue,
+  ).requiresProvider();
   if (dialogueConfigured && !options.dialogueProvider) {
     throw new AuthoringError([{
       code: "environment.dialogue-provider.missing",

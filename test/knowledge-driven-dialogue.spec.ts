@@ -343,6 +343,10 @@ test("Talk To completes an open-fact Conversation through the Dialogue Provider"
     "What happened to the chain?",
   ]) {
     await expect(session.submitDialogue(playerInput)).resolves.toEqual({ ok: true });
+    expect(session.snapshot().characterKnowledge.player).toEqual(
+      playerInput === "Who cut the harbour chain?" ? [] : ["harbour-chain-cut"],
+    );
+    session.steps();
     expect(session.snapshot().characterKnowledge.player).toEqual(["harbour-chain-cut"]);
     expect(session.hud().narrative).toMatchObject({
       kind: "line",
@@ -362,4 +366,47 @@ test("Talk To completes an open-fact Conversation through the Dialogue Provider"
     session.steps();
     expect(session.conversation()).toMatchObject({ status: "ready" });
   }
+});
+
+test("Talk To preserves authored dialogue for a Character without a Dialogue Profile", () => {
+  const base = knowledgeProject();
+  const project = {
+    ...base,
+    scenes: {
+      opening: {
+        ...base.scenes.opening!,
+        hotspots: [{
+          target: { kind: "character", character: "bystander" },
+          area: square,
+          approach: { groundPoint: { x: 10, y: 10 }, facing: "front" },
+        }],
+      },
+    },
+    characters: {
+      ...base.characters,
+      bystander: {
+        ...base.characters!.bystander!,
+        noun: {
+          labels: [{ text: "Bystander" }],
+          preferredVerbs: [{ verb: "talk-to" }],
+          cases: [{
+            verb: "talk-to",
+            line: { character: "bystander", text: "An authored answer." },
+          }],
+        },
+      },
+    },
+  } satisfies GameProject;
+  const session = createTestSession(project);
+
+  session.input({ type: "select-verb", verb: "talk-to" });
+  session.input({ type: "activate-hotspot", hotspot: 0 });
+  session.steps(2);
+
+  expect(session.conversation()).toBeNull();
+  expect(session.hud().narrative).toMatchObject({
+    kind: "line",
+    speaker: "bystander",
+    text: "An authored answer.",
+  });
 });
