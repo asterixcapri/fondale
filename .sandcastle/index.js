@@ -1,6 +1,6 @@
 import { stat } from "node:fs/promises";
 import { resolve } from "node:path";
-import { run, codex } from "@ai-hero/sandcastle";
+import { run, codex, claudeCode } from "@ai-hero/sandcastle";
 import { noSandbox } from "@ai-hero/sandcastle/sandboxes/no-sandbox";
 
 const issuesPathArgument = process.argv[2];
@@ -21,7 +21,8 @@ if (!issuesPathStat?.isDirectory()) {
 await run({
   name: "worker",
   sandbox: noSandbox(),
-  agent: codex("gpt-5.6-sol", { effort: "high" }),
+  // agent: codex("gpt-5.6-sol", { effort: "high" }),
+  agent: claudeCode("claude-opus-5", { effort: "medium" }),
   promptFile: "./.sandcastle/prompt.md",
   promptArgs: {
     ISSUES_PATH: issuesPath,
