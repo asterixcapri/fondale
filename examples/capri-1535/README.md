@@ -61,10 +61,8 @@ there are no `VITE_` credential variables and server failures are not returned
 verbatim to the browser.
 
 The deterministic adapter has no model or network cost. Its interpretation map
-is intentionally empty in the runnable server for this ticket, while Reflection
-uses committed Character Knowledge and its PostgreSQL-backed visible history.
-The OpenRouter model and the Michele/Antonio technical fixture belong to the
-separate live-spike ticket.
+is intentionally empty in the runnable server, while Reflection uses committed
+Character Knowledge and its PostgreSQL-backed visible history.
 
 Run the adapter verification independently from the standard suite:
 
@@ -86,3 +84,40 @@ docker compose -f compose.dialogue-adapter.yml stop
 
 To discard only this adapter's local database volume as well, run
 `docker compose -f compose.dialogue-adapter.yml down --volumes`.
+
+## Live OpenRouter spike
+
+The same adapter can answer through a real model. Set `DIALOGUE_ADAPTER_MODEL`
+to `openrouter` and put an `OPENROUTER_API_KEY` in `.env.local`, which Git
+ignores. The initial model is `deepseek/deepseek-v4-flash-0731`; a different
+compatible model needs only `OPENROUTER_MODEL_ID` on the server. The key is
+read by Node alone: it never reaches the browser, a diagnostic, an error
+message or the repository.
+
+Interpretation asks for a closed structured output restricted to the Narrative
+Facts the speaking Character actually knows, and Fondale independently rejects
+any ID outside that set. Verbalisation receives only the Engine-authorised
+fact, Claim or Response Strategy, so the model chooses wording, never content.
+
+The technical Michele/Antonio fixture lives at
+`test/fixtures/live-dialogue.html` and shares nothing with the Example's
+canonical story. With the adapter running in `openrouter` mode you can open it
+in the browser and talk to Antonio yourself.
+
+The live verification is opt-in and stays outside `npm run build`,
+`npm run verify` and `npm run verify:dialogue-adapter`. It needs local
+PostgreSQL, an OpenRouter key with credit, and the network:
+
+```sh
+docker compose -f compose.dialogue-adapter.yml up -d
+DIALOGUE_ADAPTER_TEST_DATABASE_URL=postgresql://fondale:fondale@127.0.0.1:54329/fondale_dialogue \
+  npm run verify:dialogue-live
+```
+
+It starts its own dev server and adapter, then observes paraphrased questions,
+a communicated `open` fact, a protected `secret`, the declared Cover Story and
+its remembered Testimony, durable multi-turn continuity, Load resetting every
+provider thread, and Reflection separating uncertain Hypothesis. It asserts
+canonical Game State and provider memory only; the generated Lines are printed
+for a human to read, never compared with an expected sentence. The adapter
+console reports model ID, latency and token cost, all outside Game State.

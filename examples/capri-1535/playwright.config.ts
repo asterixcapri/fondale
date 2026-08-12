@@ -6,6 +6,9 @@ const port = Number((globalThis as {
 
 export default defineConfig({
   testDir: "./test",
+  // The live spike has its own harness in `playwright.live.config.ts`: the
+  // standard suite never reaches OpenRouter, PostgreSQL or the network.
+  testIgnore: ["live-dialogue.spec.ts"],
   outputDir: "./test/.artifacts",
   fullyParallel: false,
   reporter: [["list"]],

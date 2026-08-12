@@ -9,6 +9,7 @@ import {
 } from "@asterixcapri/fondale";
 
 import { italianCommandFallbacks, italianCommandLexicon } from "../../src/hud";
+import { logicalBackground } from "./logical-background";
 
 const requestedScene = new URLSearchParams(location.search).get("scene");
 const sceneFamily = requestedScene === "boffe" ? "boffe" : requestedScene === "harbour" ? "harbour" : "aiano";
@@ -115,19 +116,3 @@ const project = ({
 } satisfies GameProject);
 
 await startGame(project, { target: document.querySelector<HTMLElement>("#game")! });
-
-async function logicalBackground(source: string): Promise<string> {
-  const image = new Image();
-  image.src = source;
-  await image.decode();
-  const canvas = document.createElement("canvas");
-  canvas.width = 426;
-  canvas.height = 240;
-  const context = canvas.getContext("2d");
-  if (!context) throw new Error("Canvas 2D is unavailable");
-  const scale = Math.max(canvas.width / image.naturalWidth, canvas.height / image.naturalHeight);
-  const width = image.naturalWidth * scale;
-  const height = image.naturalHeight * scale;
-  context.drawImage(image, (canvas.width - width) / 2, (canvas.height - height) / 2, width, height);
-  return canvas.toDataURL("image/png");
-}

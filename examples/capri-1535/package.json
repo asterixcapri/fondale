@@ -12,13 +12,17 @@
     "build": "npm run typecheck && npm run verify:project && vite build",
     "preview": "vite preview",
     "verify": "playwright test",
-    "verify:dialogue-adapter": "node --import tsx --test server/dialogue-adapter/http-transport.spec.ts server/dialogue-adapter/postgres-dialogue-provider.integration.spec.ts"
+    "verify:dialogue-adapter": "node --import tsx --test \"server/dialogue-adapter/*.spec.ts\"",
+    "verify:dialogue-live": "playwright test --config playwright.live.config.ts"
   },
   "dependencies": {
     "@asterixcapri/fondale": "file:vendor/asterixcapri-fondale-0.4.0.tgz",
     "@mastra/core": "^1.58.0",
     "@mastra/memory": "^1.26.1",
-    "@mastra/pg": "^1.20.0"
+    "@mastra/pg": "^1.20.0",
+    "@openrouter/ai-sdk-provider": "^3.0.0",
+    "ai": "^7.0.64",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",

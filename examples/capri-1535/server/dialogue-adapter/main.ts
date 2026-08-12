@@ -1,20 +1,22 @@
-import { DeterministicDialogueModel } from "./dialogue-model";
+import { readAdapterConfiguration } from "./configuration";
 import { createDialogueAdapterServer } from "./http-server";
+import { selectDialogueModel } from "./model-selection";
 import { createPostgresDialogueProvider } from "./postgres-dialogue-provider";
 
-const databaseUrl = process.env.DATABASE_URL;
-if (!databaseUrl) throw new Error("DATABASE_URL is required.");
+const { databaseUrl, host, port } = readAdapterConfiguration(process.env);
 
-const host = process.env.DIALOGUE_ADAPTER_HOST ?? "127.0.0.1";
-const configuredPort = Number(process.env.DIALOGUE_ADAPTER_PORT ?? "4315");
-if (!Number.isInteger(configuredPort) || configuredPort < 1 || configuredPort > 65_535) {
-  throw new Error("DIALOGUE_ADAPTER_PORT must be an integer between 1 and 65535.");
-}
-
-const model = new DeterministicDialogueModel({ interpretations: {} });
+// Technical observations stay on the server console: latency, model and token
+// cost never travel to the browser and never enter Game State.
+const model = selectDialogueModel(process.env, (diagnostic) => {
+  console.log(
+    `dialogue ${diagnostic.phase} via ${diagnostic.modelId} in ${diagnostic.latencyMs}ms` +
+      ` (in ${diagnostic.inputTokens ?? "?"} / out ${diagnostic.outputTokens ?? "?"} tokens` +
+      `${diagnostic.cost === undefined ? "" : `, cost ${diagnostic.cost}`})`,
+  );
+});
 const server = await createDialogueAdapterServer({
   host,
-  port: configuredPort,
+  port,
   createProvider(sessionId) {
     return createPostgresDialogueProvider({ databaseUrl, sessionId, model });
   },

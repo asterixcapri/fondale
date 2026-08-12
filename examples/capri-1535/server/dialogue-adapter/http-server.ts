@@ -70,7 +70,10 @@ export async function createDialogueAdapterServer(options: {
       } finally {
         if (turnKey && activeTurns.get(turnKey) === controller) activeTurns.delete(turnKey);
       }
-    } catch {
+    } catch (cause) {
+      // The browser learns only that the turn failed; the cause stays on the
+      // server console, where a local developer can actually read it.
+      console.error("Dialogue Provider request failed.", cause);
       if (!response.headersSent) {
         writeJson(response, 500, {
           ok: false,

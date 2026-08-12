@@ -16,6 +16,11 @@ export interface PostgresDialogueProvider extends DialogueProvider {
   close(): Promise<void>;
 }
 
+/** Mastra resource that owns every conversational thread of one Game Session. */
+export function dialogueResourceId(sessionId: string): string {
+  return `fondale-dialogue-session:${sessionId}`;
+}
+
 export async function createPostgresDialogueProvider(options: {
   readonly databaseUrl: string;
   readonly sessionId: string;
@@ -33,7 +38,7 @@ export async function createPostgresDialogueProvider(options: {
     storage,
     options: { lastMessages: 100 },
   });
-  const resourceId = `fondale-dialogue-session:${options.sessionId}`;
+  const resourceId = dialogueResourceId(options.sessionId);
   const activeTurns = new Set<Promise<unknown>>();
   let lifecycleController = new AbortController();
   let resetQueue = Promise.resolve();
