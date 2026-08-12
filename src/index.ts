@@ -32,6 +32,7 @@ export {
 export {
   dialogueInputMaxLength,
   FakeDialogueProvider,
+  type DialogueClaimCandidate,
   type DialogueFactCandidate,
   type DialogueInterpretation,
   type DialogueInterpretationRequest,
@@ -52,16 +53,20 @@ export {
   type Trust,
   type VoiceDefinition,
   type DialogueVerbalizationRequest,
+  type Testimony,
 } from "./capabilities/dialogue";
 export {
   type CharacterDialogueDefinition,
   type CharacterKnowledgeDefinition,
+  type ClaimDefinition,
+  type CoverStoryDefinition,
   type GameProject,
   type LogicalResolution,
   type GameOperation,
   type LearnNarrativeFactOperation,
   type NarrativeFactDefinition,
   type OpenDisclosure,
+  type RecordTestimonyOperation,
   type SetDialogueStateOperation,
   type SetTrustOperation,
 } from "./capabilities/game-project";

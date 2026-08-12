@@ -5,6 +5,7 @@ import {
   type CharacterDefinition,
   type CharacterKnowledgeDefinition,
   type CommandLexicon,
+  type DialogueProvider,
   FakeDialogueProvider,
   type GameOperation,
   type GameProject,
@@ -205,6 +206,61 @@ function dialogueRollbackProject(operations: readonly GameOperation[]): GameProj
       }),
     },
   } satisfies GameProject;
+}
+
+function coverStoryProject(): GameProject {
+  const base = knowledgeProject();
+  return {
+    ...base,
+    narrativeFacts: {
+      ...base.narrativeFacts,
+      "santa-lucia": { proposition: "Antonio was aboard the Santa Lucia." },
+    },
+    claims: {
+      denial: { proposition: "Antonio was never aboard the Santa Lucia." },
+    },
+    variables: { confessionUnlocked: false },
+    scenes: {
+      opening: {
+        ...base.scenes.opening!,
+        hotspots: [{
+          target: { kind: "character", character: "antonio" },
+          area: square,
+          approach: { groundPoint: { x: 10, y: 10 }, facing: "front" },
+        }],
+      },
+    },
+    characters: {
+      ...base.characters,
+      antonio: {
+        ...base.characters!.antonio!,
+        dialogue: {
+          knowledge: [{
+            factId: "santa-lucia",
+            disclosure: {
+              level: "secret",
+              when: { variable: "confessionUnlocked", equals: true },
+            },
+          }],
+          coverStories: [{ concealsFactId: "santa-lucia", claimId: "denial" }],
+        },
+        noun: {
+          labels: [{ text: "Antonio" }],
+          preferredVerbs: [{ verb: "talk-to" }],
+          cases: [{
+            verb: "talk-to",
+            line: { character: "antonio", text: "Authored fallback." },
+          }],
+        },
+      },
+    },
+  } satisfies GameProject;
+}
+
+function openAntonioConversation(session: ReturnType<typeof createTestSession>): void {
+  session.input({ type: "select-verb", verb: "talk-to" });
+  session.input({ type: "activate-hotspot", hotspot: 0 });
+  session.steps(2);
 }
 
 test("Game Session copies initial Character Knowledge and learns idempotently", () => {
@@ -508,6 +564,113 @@ test("Talk To completes an open-fact Conversation through the Dialogue Provider"
     session.input({ type: "advance-conversation-line" });
     session.steps();
     expect(session.conversation()).toMatchObject({ status: "ready" });
+  }
+});
+
+test("a successful Cover Story commits one idempotent Testimony and Save restores it exactly", async () => {
+  const project = coverStoryProject();
+  const provider = new FakeDialogueProvider({
+    interpretations: { "Were you aboard?": "santa-lucia" },
+    verbalizations: { denial: "I was never aboard that ship." },
+  });
+  const session = createTestSession(project, undefined, provider);
+  openAntonioConversation(session);
+
+  await expect(session.submitDialogue("Were you aboard?")).resolves.toEqual({ ok: true });
+  expect(session.snapshot().testimonies).toEqual([]);
+  session.steps();
+  const rememberedTestimony = [{
+    speaker: "antonio",
+    listener: "player",
+    claimId: "denial",
+  }];
+  expect(session.snapshot().testimonies).toEqual(rememberedTestimony);
+  expect(session.snapshot().characterKnowledge.player).toEqual([]);
+
+  for (let turn = 0; turn < 2; turn += 1) {
+    session.input({ type: "advance-conversation-line" });
+    session.steps();
+    session.input({ type: "advance-conversation-line" });
+    session.steps();
+    if (turn === 0) {
+      await expect(session.submitDialogue("Were you aboard?")).resolves.toEqual({ ok: true });
+      expect(session.snapshot().testimonies).toEqual(rememberedTestimony);
+      session.steps();
+      expect(session.snapshot().testimonies).toEqual(rememberedTestimony);
+    }
+  }
+
+  const snapshot = session.createSaveSnapshot();
+  expect(JSON.stringify(snapshot)).not.toContain("I was never aboard that ship.");
+  const validation = validateTestSaveSnapshot(
+    project,
+    JSON.parse(JSON.stringify(snapshot)) as unknown,
+  );
+  expect(validation.ok).toBe(true);
+  if (!validation.ok) return;
+  expect(createTestSession(project, validation.snapshot, provider).snapshot()).toEqual(
+    session.snapshot(),
+  );
+});
+
+test("failed or stopped Cover Story turns discard staged Testimony", async () => {
+  const project = coverStoryProject();
+  const failedProvider: DialogueProvider = {
+    interpret: () => Promise.resolve({ factId: "santa-lucia" }),
+    verbalize: () => Promise.reject(new Error("Provider unavailable.")),
+    reset: () => Promise.resolve(),
+  };
+  const failedSession = createTestSession(project, undefined, failedProvider);
+  openAntonioConversation(failedSession);
+
+  await expect(failedSession.submitDialogue("Were you aboard?")).resolves.toEqual({
+    ok: false,
+    message: "Provider unavailable.",
+  });
+  failedSession.steps();
+  expect(failedSession.snapshot().testimonies).toEqual([]);
+
+  let finishVerbalization!: (response: string) => void;
+  const pendingProvider: DialogueProvider = {
+    interpret: () => Promise.resolve({ factId: "santa-lucia" }),
+    verbalize: () => new Promise((resolve) => {
+      finishVerbalization = resolve;
+    }),
+    reset: () => Promise.resolve(),
+  };
+  const stoppedSession = createTestSession(project, undefined, pendingProvider);
+  openAntonioConversation(stoppedSession);
+  const pendingTurn = stoppedSession.submitDialogue("Were you aboard?");
+  await Promise.resolve();
+  stoppedSession.stop();
+  finishVerbalization("I was never aboard that ship.");
+  await pendingTurn;
+
+  expect(stoppedSession.snapshot().testimonies).toEqual([]);
+});
+
+test("Save Snapshot rejects malformed, duplicate or unknown Testimony", () => {
+  const project = coverStoryProject();
+  const snapshot = createTestSession(
+    project,
+    undefined,
+    new FakeDialogueProvider({ interpretations: {}, verbalizations: {} }),
+  ).createSaveSnapshot();
+  const remembered = { speaker: "antonio", listener: "player", claimId: "denial" };
+  const variants = [
+    [remembered, remembered],
+    [{ ...remembered, speaker: "missing" }],
+    [{ ...remembered, listener: "missing" }],
+    [{ ...remembered, claimId: "missing" }],
+    [{ ...remembered, speaker: "player" }],
+    [{ ...remembered, generatedWording: "This must not be saved." }],
+  ];
+
+  for (const testimonies of variants) {
+    expect(validateTestSaveSnapshot(project, {
+      ...snapshot,
+      state: { ...snapshot.state, testimonies },
+    }).ok).toBe(false);
   }
 });
 

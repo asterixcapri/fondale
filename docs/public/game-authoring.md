@@ -85,20 +85,26 @@ registries default to empty registries and `letterboxColor` defaults to
 ## Initial Character Knowledge
 
 Knowledge-Driven Dialogue begins with ordinary declarative data. Narrative
-Facts live once in the Game Project registry; a Character's optional `dialogue`
-profile refers to those identities and declares Character-specific Disclosure,
-directional Relationships and qualitative portrayal:
+Facts and non-canonical Claims live once in separate Game Project registries; a
+Character's optional `dialogue` profile refers to those identities and declares
+Character-specific Disclosure, Cover Stories, directional Relationships and
+qualitative portrayal:
 
 ```ts
 import {
   type CharacterDefinition,
   type CharacterDialogueDefinition,
+  type ClaimDefinition,
   type NarrativeFactDefinition,
 } from "@asterixcapri/fondale";
 
 const harbourFact = {
   proposition: "The harbour chain was cut.",
 } satisfies NarrativeFactDefinition;
+
+const denial = {
+  proposition: "Antonio did not cut the harbour chain.",
+} satisfies ClaimDefinition;
 
 const antonioDialogue = {
   personality: {
@@ -124,6 +130,10 @@ const antonioDialogue = {
       },
     },
   ],
+  coverStories: [{
+    concealsFactId: "antonio-cut-chain",
+    claimId: "antonio-denial",
+  }],
 } satisfies CharacterDialogueDefinition;
 
 const antonio = {
@@ -150,16 +160,22 @@ const dialogueProject = {
     "harbour-chain-cut": harbourFact,
     "antonio-cut-chain": { proposition: "Antonio cut the harbour chain." },
   },
+  claims: { "antonio-denial": denial },
   characters: { antonio },
 };
 ```
 
-Startup rejects empty propositions, missing fact or Relationship references,
-incoherent Disclosure and unsupported qualitative values. The Engine copies
-valid Character Knowledge, Relationships and Dialogue State into Game State;
-`learn-narrative-fact`, `set-trust` and `set-dialogue-state` operations change
-it atomically, and Save Snapshots validate and restore it exactly. Trust is
-directional, and Trust alone can never unlock a `secret` fact.
+Startup rejects empty propositions, missing fact, Claim or Relationship
+references, incoherent Cover Stories or Disclosure, and unsupported qualitative
+values. When Dialogue policy selects a Cover Story, the provider receives its
+Claim but not the concealed Narrative Fact. A successful turn records one
+idempotent Testimony containing speaker, listener and Claim ID; it does not add
+the Claim to Character Knowledge or save generated wording. The Engine copies
+valid Character Knowledge, Relationships, Dialogue State and Testimony into
+Game State; `learn-narrative-fact`, `record-testimony`, `set-trust` and
+`set-dialogue-state` operations change it atomically, and Save Snapshots
+validate and restore it exactly. Trust is directional, and Trust alone can
+never unlock a `secret` fact.
 
 ## Startup diagnostics
 

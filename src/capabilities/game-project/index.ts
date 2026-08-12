@@ -32,13 +32,17 @@ import {
   validateKnowledgeDrivenDialogueProject,
   type KnowledgeDrivenDialogueProjectView,
   type DialogueGameOperation,
+  type ClaimDefinition,
   type NarrativeFactDefinition,
 } from "../dialogue";
 export type {
   CharacterDialogueDefinition,
   CharacterKnowledgeDefinition,
+  ClaimDefinition,
+  CoverStoryDefinition,
   NarrativeFactDefinition,
   LearnNarrativeFactOperation,
+  RecordTestimonyOperation,
   SetDialogueStateOperation,
   SetTrustOperation,
   OpenDisclosure,
@@ -144,6 +148,7 @@ export interface GameProject {
   readonly logicalResolution: LogicalResolution;
   readonly scenes: Readonly<Record<string, SceneDefinition>>;
   readonly narrativeFacts?: Readonly<Record<string, NarrativeFactDefinition>>;
+  readonly claims?: Readonly<Record<string, ClaimDefinition>>;
   readonly characters?: Readonly<Record<string, CharacterDefinition>>;
   readonly playerCharacter?: string;
   readonly objects?: Readonly<Record<string, ObjectDefinition>>;
@@ -166,7 +171,7 @@ export interface CompiledGameProject {
 
 /** Fully expanded representation kept inside the Game Project implementation. */
 interface GameProjectData
-  extends Omit<GameProject, "scenes" | "characters" | "objects" | "sequences" | "variables" | "narrativeFacts"> {
+  extends Omit<GameProject, "scenes" | "characters" | "objects" | "sequences" | "variables" | "narrativeFacts" | "claims"> {
   readonly scenes: Readonly<Record<string, ResolvedSceneDefinition>>;
   readonly letterboxColor: string;
   readonly characters: Readonly<Record<string, CharacterDefinition>>;
@@ -174,6 +179,7 @@ interface GameProjectData
   readonly sequences: Readonly<Record<string, SequenceDefinition>>;
   readonly variables: Readonly<Record<string, boolean>>;
   readonly narrativeFacts: Readonly<Record<string, NarrativeFactDefinition>>;
+  readonly claims: Readonly<Record<string, ClaimDefinition>>;
 }
 
 /** @internal Project-owned identity and variable registry needed by Save. */
@@ -256,6 +262,7 @@ export function compileGameProject(input: GameProject): GameProjectCompilation {
   const sequences = input.sequences ?? {};
   const variables = input.variables ?? {};
   const narrativeFacts = input.narrativeFacts ?? {};
+  const claims = input.claims ?? {};
   for (const [sceneId, scene] of Object.entries(input.scenes)) {
     diagnostics.push(...validateSceneDefinition(scene, `scenes.${sceneId}`));
   }
@@ -282,6 +289,7 @@ export function compileGameProject(input: GameProject): GameProjectCompilation {
   }));
   diagnostics.push(...validateKnowledgeDrivenDialogueProject({
     narrativeFacts,
+    claims,
     variables,
     characters,
   }));
@@ -333,6 +341,7 @@ export function compileGameProject(input: GameProject): GameProjectCompilation {
     sequences: cloned.sequences ?? {},
     variables: cloned.variables ?? {},
     narrativeFacts: cloned.narrativeFacts ?? {},
+    claims: cloned.claims ?? {},
     letterboxColor: cloned.letterboxColor ?? "#000000",
   });
   const project = Object.freeze({}) as CompiledGameProject;
@@ -433,6 +442,7 @@ export function getSaveCompositionView(project: CompiledGameProject): SaveCompos
 function dialogueProjectView(data: GameProjectData): KnowledgeDrivenDialogueProjectView {
   return Object.freeze({
     narrativeFacts: data.narrativeFacts,
+    claims: data.claims,
     variables: data.variables,
     characters: data.characters,
   });
@@ -543,6 +553,7 @@ function validateProjectDefinitions(
   };
   const dialogueReferences = {
     narrativeFacts: input.narrativeFacts ?? {},
+    claims: input.claims ?? {},
     variables,
     characters,
   };

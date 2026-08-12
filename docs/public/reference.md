@@ -60,14 +60,19 @@ Animation Role. The Player Character also requires a walking Role; directional
 walking uses side/front/back strips and mirrors the side strip when facing left.
 
 `NarrativeFactDefinition` is a non-empty canonical `proposition` identified by
-its `narrativeFacts` registry key. A `CharacterDialogueDefinition` contains the
+its `narrativeFacts` registry key. `ClaimDefinition` is a non-canonical,
+non-empty `proposition` identified independently by its `claims` registry key.
+A `CharacterDialogueDefinition` contains the
 Character's initial Character Knowledge, directional Relationships and optional
 qualitative Dialogue State and portrayal profile. Every
 `CharacterKnowledgeDefinition` refers to one fact through `factId` and declares
 `open`, `guarded`, or `secret` Disclosure. Guarded facts require minimum Trust
 or a boolean Game Variable; secret facts always require an explicit Game
-Variable unlock. Repeated references are invalid. Fondale copies Character
-Knowledge, Relationships and Dialogue State into independent Game State.
+Variable unlock. Repeated references are invalid. A `CoverStoryDefinition`
+associates one guarded or secret known fact with one declared Claim. Fondale
+copies Character Knowledge, Relationships and Dialogue State into independent
+Game State; committed `Testimony` remembers speaker, listener and Claim ID
+without storing generated wording or treating the Claim as truth.
 
 ## Knowledge-Driven Dialogue
 
@@ -83,23 +88,26 @@ or returns `null` with a `reason` of `ambiguous` or `no-relevant-fact`.
 After validating the interpretation, deterministic Dialogue policy applies
 Disclosure, directional Trust, Game Variables and Dialogue Behavior. Fondale
 sends a `DialogueVerbalizationRequest` with an authorised `ResponseStrategy`,
-qualitative portrayal data, and a fact only for `answer`; blocked and `clarify`
-payloads contain no Narrative Fact. The returned text is presented as a Line
-but is never parsed for Game State changes. Only an answered fact is taught to
-the Player Character atomically. Player speech must contain from 1 through
+qualitative portrayal data, a `DialogueFactCandidate` only for `answer`, or a
+`DialogueClaimCandidate` only for `cover-story`; blocked and `clarify` payloads
+contain neither. The returned text is presented as a Line but is never parsed
+for Game State changes. An answered fact teaches the Player Character, while a
+successful Cover Story applies a `RecordTestimonyOperation`; either effect is
+committed atomically only after verbalisation succeeds. Player speech must contain from 1 through
 `dialogueInputMaxLength` (500) characters.
 
 `FakeDialogueProvider` is the deterministic adapter used by Engine tests and
 browser fixtures. Its `interpretations` map multiple exact Player formulations
 to declared Narrative Fact IDs or `null`; its `verbalizations` map an authorised
-fact ID or non-answer Response Strategy to one response. It has no network,
-database, model, or credential dependency.
+fact ID, Claim ID, or non-answer Response Strategy to one response. It has no
+network, database, model, or credential dependency.
 
 The authored condition fields are `trustAtLeast`, `variable`, and `equals`.
 Qualitative profile fields are `biography`, `personality`, `behavior`, `voice`,
 `relationships`, `talkativeness`, `honesty`, `discretion`, `suspiciousness`,
-`withholding`, `verbosity`, `tone`, `vocabulary`, and `trust`. Provider requests
-carry Engine-selected `strategy` and `profile` fields. A directional Trust
+`withholding`, `verbosity`, `tone`, `vocabulary`, `trust`, `coverStories`,
+`concealsFactId`, and `claimId`. Provider requests carry Engine-selected
+`strategy`, `profile`, and optional `claim` fields. A directional Trust
 operation names its target with `towards`.
 
 `ObjectDefinition` describes an Object with initial Scene, Ground Point, Appearance,
@@ -128,8 +136,8 @@ Narration, Choice, and Direction facts without resolving authored paths again.
 
 `GameProject` is ordinary declarative TypeScript data, commonly checked with
 `satisfies`. Required values are identity, version, Logical Resolution, Scene
-registry and initial Scene; the optional `narrativeFacts` registry defaults
-empty. `startGame` validates and creates a private deeply
+registry and initial Scene; the optional `narrativeFacts` and `claims`
+registries default empty. `startGame` validates and creates a private deeply
 immutable snapshot. Optional registries default empty; letterbox has default
 `#000000` (that is, default `#000000`). Registry keys are identities. Cross-references, geometry,
 conditions, operation targets, Nouns, fallbacks and assets are validated before
@@ -146,7 +154,9 @@ can set a Variable or Appearance, start a Sequence, collect the target Object,
 place the selected first Object, place a named Object, or consume the selected
 Object. It also includes `LearnNarrativeFactOperation`, whose
 `learn-narrative-fact` discriminator, Character identity and `factId` add
-declared Character Knowledge monotonically. Operations in one group see
+declared Character Knowledge monotonically, and `RecordTestimonyOperation`,
+which validates one authored Cover Story before remembering its Claim.
+Operations in one group see
 earlier writes and either commit together or fail without a partial commit.
 Conditions always read the latest committed Game State.
 
@@ -167,7 +177,8 @@ required when any Character declares a Dialogue Profile. `GameSession` exposes
 `stop`.
 
 A `SaveSnapshot` records format/project identity/project version and canonical
-state, including an incomplete Command and Character Knowledge. Stored values are passed as `unknown`
+state, including an incomplete Command, Character Knowledge and Testimony.
+Generated wording is not stored. Stored values are passed as `unknown`
 to `startGame`; malformed, incompatible or semantically invalid values reject
 with Save-owned diagnostics before browser effects.
 Camera position, hover, pointer position and Player Preferences are not saved.
@@ -203,6 +214,7 @@ identifies the capability or browser adapter responsible for the rule.
 | `BackgroundRegionAppearance` | Background cut-out | background-region and polygon | belongs to owning Background | polygon and bounds diagnostics | [Scene](recipes/first-scene.ts) |
 | `CharacterDefinition` | persistent Character | initial values, appearances, speed, noun, dialogue | initial point is walkable | Character/reference diagnostics | [Character](recipes/character-walking.ts) |
 | `NarrativeFactDefinition` | canonical authored truth | non-empty proposition | registry key is stable identity | Narrative Fact definition diagnostics | [Dialogue authoring](game-authoring.md) |
+| `ClaimDefinition` | authored non-canonical proposition | non-empty proposition | registry key is stable identity; never enters Character Knowledge | Claim definition diagnostics | [Dialogue authoring](game-authoring.md) |
 | `QualitativeLevel` | shared qualitative scale | low, medium, high | no numeric simulation | compile-time restriction and capability validation | [Dialogue authoring](game-authoring.md) |
 | `Trust` | directional Relationship confidence | qualitative level | changes only through authored operations | Relationship diagnostics | [Dialogue authoring](game-authoring.md) |
 | `DialogueVariableCondition` | boolean authored unlock | variable identity and expected value | reads committed Game Variables only | variable-reference diagnostics | [Dialogue authoring](game-authoring.md) |
@@ -217,23 +229,27 @@ identifies the capability or browser adapter responsible for the rule.
 | `DialogueState` | optional qualitative current condition | calm, afraid, angry, drunk | changed only by authored operation | state diagnostics | [Dialogue authoring](game-authoring.md) |
 | `RelationshipDefinition` | initial directional social state | qualitative Trust | source and target identities remain distinct | Character/Trust diagnostics | [Dialogue authoring](game-authoring.md) |
 | `CharacterKnowledgeDefinition` | initial known fact reference | factId and Disclosure | one reference per Character and fact | knowledge reference/duplicate diagnostics | [Dialogue authoring](game-authoring.md) |
-| `CharacterDialogueDefinition` | optional Character dialogue profile | knowledge, Relationships, qualitative portrayal and state | omission preserves authored behaviour | dialogue capability diagnostics | [Dialogue authoring](game-authoring.md) |
+| `CoverStoryDefinition` | controlled false account | concealed fact and Claim identities | fact must be guarded/secret and known by the Character | Cover Story definition/reference diagnostics | [Dialogue authoring](game-authoring.md) |
+| `CharacterDialogueDefinition` | optional Character dialogue profile | knowledge, Cover Stories, Relationships, qualitative portrayal and state | omission preserves authored behaviour | dialogue capability diagnostics | [Dialogue authoring](game-authoring.md) |
 | `LearnNarrativeFactOperation` | monotonic Character Knowledge change | Character and Narrative Fact identities | repeated learning is idempotent | Character/fact reference diagnostics | [Dialogue authoring](game-authoring.md) |
+| `RecordTestimonyOperation` | remember a communicated Claim | speaker, listener, concealed fact and Claim identities | must match the speaker's authored Cover Story; repeated testimony is idempotent | Character/Claim/Cover Story reference diagnostics | [Dialogue authoring](game-authoring.md) |
 | `SetTrustOperation` | directional Relationship change | source, target and qualitative Trust | only a declared Relationship edge may change | Character/Relationship diagnostics | [Dialogue authoring](game-authoring.md) |
 | `SetDialogueStateOperation` | qualitative Dialogue State change | Character and state or null | only authored operations change canonical state | Character/state diagnostics | [Dialogue authoring](game-authoring.md) |
-| `DialogueGameOperation` | Dialogue-owned canonical transition | learn fact, set Trust, set Dialogue State | participates in an atomic operation batch | operation/reference diagnostics | [Dialogue authoring](game-authoring.md) |
+| `DialogueGameOperation` | Dialogue-owned canonical transition | learn fact, record Testimony, set Trust, set Dialogue State | participates in an atomic operation batch | operation/reference diagnostics | [Dialogue authoring](game-authoring.md) |
 | `DialogueFactCandidate` | known fact eligible for interpretation | stable id and canonical proposition | Disclosure is applied after interpretation | unknown selections are rejected | [Dialogue authoring](game-authoring.md) |
+| `DialogueClaimCandidate` | authorised Cover Story content | stable id and non-canonical proposition | sent only when policy selects its concealed fact's Cover Story | undeclared Claims never reach verbalisation | [Dialogue authoring](game-authoring.md) |
 | `DialogueInterpretationRequest` | untrusted speech interpretation input | playerInput, speaker, listener, candidates | candidates are frozen and capability-authorised | provider failure rejects the turn | [Dialogue authoring](game-authoring.md) |
 | `DialogueInterpretation` | provider-selected semantic reference | declared factId, or null with an unresolved reason | ambiguity clarifies; no relevant fact withholds | unknown fact ID or reason rejects before verbalization | [Dialogue authoring](game-authoring.md) |
-| `ResponseStrategy` | Engine-authorised conversational approach | answer, withhold, evade, refuse, clarify | selected deterministically before verbalisation | invalid provider output rejects the turn | [Dialogue authoring](game-authoring.md) |
+| `ResponseStrategy` | Engine-authorised conversational approach | answer, cover-story, withhold, evade, refuse, clarify | selected deterministically before verbalisation | invalid provider output rejects the turn | [Dialogue authoring](game-authoring.md) |
 | `DialoguePortrayalProfile` | provider-visible qualitative portrayal | optional biography, Personality, Voice and Dialogue State | carries no semantic authority | validated at startup | [Dialogue authoring](game-authoring.md) |
-| `DialogueVerbalizationRequest` | authorised expression input | speech identities, strategy, portrayal and optional fact | a blocked fact is absent | empty response rejects the turn | [Dialogue authoring](game-authoring.md) |
+| `DialogueVerbalizationRequest` | authorised expression input | speech identities, strategy, portrayal and optional fact or Claim | a concealed fact is absent when its Cover Story Claim is present | empty response rejects the turn | [Dialogue authoring](game-authoring.md) |
+| `Testimony` | canonical memory of a communicated Claim | speaker, listener and Claim ID | set-like and idempotent; stores no wording or truth | Save state validation | [Dialogue authoring](game-authoring.md) |
 | `DialogueProvider` | generated-dialogue adapter seam | interpret, verbalize, reset | supplied at startup; Engine creates no client | missing adapter is a startup diagnostic | [Dialogue authoring](game-authoring.md) |
 | `FakeDialogueProvider` | deterministic Dialogue Provider adapter | interpretation and verbalization maps | no external dependency or generated authority | missing configured mapping rejects the turn | [Dialogue authoring](game-authoring.md) |
 | `ObjectDefinition` | persistent Object | initial values, appearances, Inventory PNG, noun | begins in one Scene | Object/asset diagnostics | [Inventory](recipes/inventory.ts) |
 | `InteractionCondition` | state predicate | variable equality or held Object | omission is unconditional | missing-reference diagnostics | [Command](recipes/command-case.ts) |
 | `InventoryOperation` | Inventory and Object lifecycle change | collect target, place selected, place named, consume selected | World owns placement validity; Animation owns Appearance validity | Interaction/World/Animation diagnostics | [Inventory](recipes/inventory.ts) |
-| `GameOperation` | atomic state change | ten declared operation variants | order matters; group atomic | operation/reference diagnostics | [Inventory](recipes/inventory.ts) |
+| `GameOperation` | atomic state change | eleven declared operation variants | order matters; group atomic | operation/reference diagnostics | [Inventory](recipes/inventory.ts) |
 | `HotspotTarget` | interaction subject | Background, Character, Object, Scenery | target is required | target reference diagnostic | [Interaction](recipes/interaction.ts) |
 | `ApproachPoint` | interaction destination | groundPoint and facing | must be walkable and HUD-safe | approach diagnostics | [Interaction](recipes/interaction.ts) |
 | `HotspotDefinition` | Scene interaction surface | target, area, approach, condition; local noun only for Background | target kind discriminates Noun ownership; later overlap wins hit-test | geometry, target and owner-Noun diagnostics | [Interaction](recipes/interaction.ts) |
@@ -295,9 +311,10 @@ Exact reachable fields also include `x`, `y`, `width`, `height`, `kind`,
 `skipOutcome`, `subject`, `animation`, `animationStartedTick`, `startAfter`, `cue`, `duration`, `mode`,
 `point`, `from`, `to`, `directions`,
 `identity`, `version`,
-`logicalResolution`, `scenes`, `narrativeFacts`, `proposition`, `characters`,
+`logicalResolution`, `scenes`, `narrativeFacts`, `claims`, `proposition`, `characters`,
 `dialogue`, `knowledge`, `factId`, `disclosure`, `level`, `characterKnowledge`,
-`id`, `playerInput`, `speaker`, `listener`, `candidates`, `fact`, `interpretations`,
+`coverStories`, `concealsFactId`, `claimId`, `testimonies`,
+`id`, `playerInput`, `speaker`, `listener`, `candidates`, `fact`, `claim`, `interpretations`,
 `verbalizations`, `dialogueProvider`,
 `playerCharacter`, `objects`,
 `sequences`, `variables`, `inventoryAppearanceSize`, `initialScene`,
@@ -372,13 +389,21 @@ Reference codes: `reference.appearance`, `reference.appearance.initial`,
 `reference.camera.subject-scene`, and `reference.variable`.
 Knowledge-Driven Dialogue references use
 `reference.character-knowledge.character` and
-`reference.character-knowledge.fact`, plus `reference.relationship.character`
-and `reference.relationship.missing` for directional Relationship edges.
+`reference.character-knowledge.fact`, `reference.cover-story.fact`,
+`reference.cover-story.knowledge`, `reference.cover-story.claim`,
+`reference.testimony.speaker`, `reference.testimony.listener`,
+`reference.testimony.claim`, and `reference.testimony.cover-story`, plus
+`reference.relationship.character` and `reference.relationship.missing` for
+directional Relationship edges.
 
 Knowledge-Driven Dialogue definition and operation codes include
+`definition.narrative-fact.identity`, `definition.narrative-fact.proposition`,
+`definition.claim.identity`, `definition.claim.proposition`,
 `definition.character-knowledge.collection`,
 `definition.character-knowledge.item`,
-`definition.character-knowledge.disclosure`,
+`definition.character-knowledge.disclosure`, `definition.character-knowledge.duplicate`,
+`definition.cover-story.collection`, `definition.cover-story.item`,
+`definition.cover-story.disclosure`, `definition.cover-story.duplicate`,
 `definition.relationship.collection`, `definition.relationship.trust`,
 `definition.dialogue.profile`, `definition.dialogue.biography`,
 `definition.dialogue.personality`, `definition.dialogue.behavior`,

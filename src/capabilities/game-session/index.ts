@@ -80,7 +80,9 @@ import {
   type DialogueProvider,
   type KnowledgeDrivenDialogueState,
   type LearnNarrativeFactOperation,
+  type RecordTestimonyOperation,
   type RelationshipState,
+  type Testimony,
 } from "../dialogue";
 
 export type { CharacterState, ObjectLocation, ObjectState } from "../world";
@@ -108,6 +110,7 @@ export interface GameState extends WorldState {
   characterKnowledge: CharacterKnowledgeState;
   relationships: RelationshipState;
   dialogueStates: CharacterDialogueState;
+  testimonies: Testimony[];
   activity: GameActivityState | null;
   tick: number;
 }
@@ -204,7 +207,7 @@ export function createCoreSession(
   let conversationStatus: ConversationPresentation["status"] = "ready";
   let conversationError: string | undefined;
   let dialogueCompletion: DialogueTurnContent & {
-    readonly operation?: LearnNarrativeFactOperation;
+    readonly operation?: LearnNarrativeFactOperation | RecordTestimonyOperation;
   } | null = null;
 
   const session: CoreSession = {
@@ -425,7 +428,9 @@ export function createCoreSession(
     if (state.activity?.type !== "conversation" ||
         state.activity.character !== completion.character) return;
     const draft = structuredClone(state);
-    if (completion.operation) Object.assign(draft, dialogue.learn(draft, completion.operation));
+    if (completion.operation) {
+      Object.assign(draft, dialogue.applyOperation(draft, completion.operation));
+    }
     state = draft;
     const { operation: _committedOperation, ...content } = completion;
     dialogueTurn = {

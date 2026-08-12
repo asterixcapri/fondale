@@ -5,6 +5,11 @@ export interface NarrativeFactDefinition {
   readonly proposition: string;
 }
 
+/** One non-canonical proposition identified by its Claim registry key. */
+export interface ClaimDefinition {
+  readonly proposition: string;
+}
+
 /** The three qualitative confidence levels used by Trust and Personality. */
 export type QualitativeLevel = "low" | "medium" | "high";
 
@@ -48,6 +53,12 @@ export interface CharacterKnowledgeDefinition {
   readonly disclosure: Disclosure;
 }
 
+/** One authored false account used in place of a concealed Narrative Fact. */
+export interface CoverStoryDefinition {
+  readonly concealsFactId: string;
+  readonly claimId: string;
+}
+
 /** Qualitative portrayal traits without numeric simulation or state authority. */
 export interface PersonalityDefinition {
   readonly talkativeness: QualitativeLevel;
@@ -84,6 +95,7 @@ export interface CharacterDialogueDefinition {
   readonly voice?: VoiceDefinition;
   readonly state?: DialogueState;
   readonly knowledge: readonly CharacterKnowledgeDefinition[];
+  readonly coverStories?: readonly CoverStoryDefinition[];
   readonly relationships?: Readonly<Record<string, RelationshipDefinition>>;
 }
 
@@ -92,6 +104,12 @@ export const dialogueInputMaxLength = 500;
 
 /** One Narrative Fact offered to interpretation without granting state authority. */
 export interface DialogueFactCandidate {
+  readonly id: string;
+  readonly proposition: string;
+}
+
+/** One Engine-authorised Claim offered only for Cover Story verbalisation. */
+export interface DialogueClaimCandidate {
   readonly id: string;
   readonly proposition: string;
 }
@@ -113,7 +131,8 @@ export type DialogueInterpretation =
     };
 
 /** Engine-selected semantic approach for one Dialogue Turn. */
-export type ResponseStrategy = "answer" | "withhold" | "evade" | "refuse" | "clarify";
+export type ResponseStrategy = "answer" | "withhold" | "evade" | "refuse" | "clarify"
+  | "cover-story";
 
 /** Qualitative portrayal context with no authority over response content. */
 export interface DialoguePortrayalProfile {
@@ -130,6 +149,7 @@ export interface DialogueVerbalizationRequest {
   readonly listener: string;
   readonly strategy: ResponseStrategy;
   readonly fact?: DialogueFactCandidate;
+  readonly claim?: DialogueClaimCandidate;
   readonly profile: DialoguePortrayalProfile;
 }
 
@@ -163,7 +183,7 @@ export class FakeDialogueProvider implements DialogueProvider {
   }
 
   verbalize(request: DialogueVerbalizationRequest): Promise<string> {
-    const responseKey = request.fact?.id ?? request.strategy;
+    const responseKey = request.fact?.id ?? request.claim?.id ?? request.strategy;
     if (!hasOwn(this.responses.verbalizations, responseKey)) {
       return Promise.reject(new Error("Fake Dialogue Provider has no matching verbalization."));
     }
@@ -198,10 +218,20 @@ export interface SetDialogueStateOperation {
   readonly state: DialogueState | null;
 }
 
+/** Game Operation that remembers one Character communicating a declared Claim. */
+export interface RecordTestimonyOperation {
+  readonly type: "record-testimony";
+  readonly speaker: string;
+  readonly listener: string;
+  readonly concealsFactId: string;
+  readonly claimId: string;
+}
+
 /** Game Operations whose policy belongs to Knowledge-Driven Dialogue. */
 export type DialogueGameOperation = LearnNarrativeFactOperation
   | SetTrustOperation
-  | SetDialogueStateOperation;
+  | SetDialogueStateOperation
+  | RecordTestimonyOperation;
 
 /** @internal Canonical Character Knowledge indexed by Character identity. */
 export type CharacterKnowledgeState = Record<string, string[]>;
@@ -212,16 +242,25 @@ export type RelationshipState = Record<string, Record<string, { trust: Trust }>>
 /** @internal Optional qualitative Dialogue State indexed by Character identity. */
 export type CharacterDialogueState = Record<string, DialogueState | null>;
 
+/** One canonical remembered Claim, without generated wording or truth authority. */
+export interface Testimony {
+  readonly speaker: string;
+  readonly listener: string;
+  readonly claimId: string;
+}
+
 /** @internal Canonical state owned by Knowledge-Driven Dialogue. */
 export interface KnowledgeDrivenDialogueState {
   readonly characterKnowledge: CharacterKnowledgeState;
   readonly relationships: RelationshipState;
   readonly dialogueStates: CharacterDialogueState;
+  readonly testimonies: Testimony[];
 }
 
 /** @internal Narrow authored view needed by Knowledge-Driven Dialogue validation. */
 export interface KnowledgeDrivenDialogueProjectView {
   readonly narrativeFacts: Readonly<Record<string, NarrativeFactDefinition>>;
+  readonly claims?: Readonly<Record<string, ClaimDefinition>>;
   readonly variables: Readonly<Record<string, boolean>>;
   readonly characters: Readonly<Record<string, {
     readonly dialogue?: CharacterDialogueDefinition;
@@ -244,7 +283,7 @@ export interface KnowledgeDrivenDialogue {
   ): Promise<{
     readonly playerInput: string;
     readonly response: string;
-    readonly operation?: LearnNarrativeFactOperation;
+    readonly operation?: LearnNarrativeFactOperation | RecordTestimonyOperation;
   }>;
   learn(
     state: KnowledgeDrivenDialogueState,
@@ -284,6 +323,7 @@ export function createKnowledgeDrivenDialogue(
             character.dialogue?.state ?? null,
           ]),
         ),
+        testimonies: [],
       };
     },
     requiresProvider() {
@@ -340,6 +380,8 @@ export function createKnowledgeDrivenDialogue(
       );
       let strategy: ResponseStrategy;
       let fact: DialogueFactCandidate | undefined;
+      let claim: DialogueClaimCandidate | undefined;
+      let concealedFactId: string | undefined;
       if (interpretation.factId === null) {
         strategy = interpretation.reason === "ambiguous"
           ? "clarify"
@@ -358,7 +400,21 @@ export function createKnowledgeDrivenDialogue(
           strategy = "answer";
           fact = candidate;
         } else {
-          strategy = project.characters[input.speaker]!.dialogue!.behavior?.withholding ?? "withhold";
+          const coverStory = project.characters[input.speaker]!.dialogue!.coverStories?.find(
+            ({ concealsFactId }) => concealsFactId === candidate.id,
+          );
+          if (coverStory) {
+            const claimDefinition = project.claims?.[coverStory.claimId];
+            if (!claimDefinition) throw new Error("Cover Story selected an unknown Claim.");
+            strategy = "cover-story";
+            claim = Object.freeze({
+              id: coverStory.claimId,
+              proposition: claimDefinition.proposition,
+            });
+            concealedFactId = candidate.id;
+          } else {
+            strategy = project.characters[input.speaker]!.dialogue!.behavior?.withholding ?? "withhold";
+          }
         }
       }
       const response = await provider.verbalize(Object.freeze({
@@ -367,6 +423,7 @@ export function createKnowledgeDrivenDialogue(
         listener: input.listener,
         strategy,
         ...(fact ? { fact } : {}),
+        ...(claim ? { claim } : {}),
         profile,
       }));
       if (typeof response !== "string" || !response.trim()) {
@@ -380,6 +437,14 @@ export function createKnowledgeDrivenDialogue(
             type: "learn-narrative-fact" as const,
             character: input.listener,
             factId: fact.id,
+          }),
+        } : claim && concealedFactId ? {
+          operation: Object.freeze({
+            type: "record-testimony" as const,
+            speaker: input.speaker,
+            listener: input.listener,
+            concealsFactId: concealedFactId,
+            claimId: claim.id,
           }),
         } : {}),
       });
@@ -406,6 +471,38 @@ export function createKnowledgeDrivenDialogue(
     },
     applyOperation(state: KnowledgeDrivenDialogueState, operation: DialogueGameOperation) {
       if (operation.type === "learn-narrative-fact") return this.learn(state, operation);
+      if (operation.type === "record-testimony") {
+        if (!hasOwn(project.characters, operation.speaker)) {
+          throw new Error(`Unknown speaking Character '${operation.speaker}'.`);
+        }
+        if (!hasOwn(project.characters, operation.listener)) {
+          throw new Error(`Unknown listening Character '${operation.listener}'.`);
+        }
+        if (!hasOwn(project.claims ?? {}, operation.claimId)) {
+          throw new Error(`Unknown Claim '${operation.claimId}'.`);
+        }
+        if (!hasCoverStory(
+          project,
+          operation.speaker,
+          operation.claimId,
+          operation.concealsFactId,
+        )) {
+          throw new Error("The Testimony does not match an authored Cover Story.");
+        }
+        if (state.testimonies.some((testimony) =>
+          testimony.speaker === operation.speaker &&
+          testimony.listener === operation.listener &&
+          testimony.claimId === operation.claimId
+        )) return state;
+        return {
+          ...state,
+          testimonies: [...state.testimonies, {
+            speaker: operation.speaker,
+            listener: operation.listener,
+            claimId: operation.claimId,
+          }].sort(compareTestimony),
+        };
+      }
       if (operation.type === "set-trust") {
         const relationship = state.relationships[operation.character]?.[operation.towards];
         if (!relationship) {
@@ -437,10 +534,11 @@ export function createKnowledgeDrivenDialogue(
     },
     isValidState(value: unknown): value is KnowledgeDrivenDialogueState {
       if (!isRecord(value) ||
-          !hasExactKeys(value, ["characterKnowledge", "relationships", "dialogueStates"]) ||
+          !hasExactKeys(value, ["characterKnowledge", "relationships", "dialogueStates", "testimonies"]) ||
           !isRecord(value.characterKnowledge) || !sameKeys(value.characterKnowledge, project.characters) ||
           !isRecord(value.relationships) || !sameKeys(value.relationships, project.characters) ||
-          !isRecord(value.dialogueStates) || !sameKeys(value.dialogueStates, project.characters)) return false;
+          !isRecord(value.dialogueStates) || !sameKeys(value.dialogueStates, project.characters) ||
+          !Array.isArray(value.testimonies)) return false;
       const validKnowledge = Object.entries(value.characterKnowledge).every(([characterId, knowledge]) => {
         if (!Array.isArray(knowledge) ||
             !knowledge.every((factId): factId is string =>
@@ -460,8 +558,32 @@ export function createKnowledgeDrivenDialogue(
         );
       });
       if (!validRelationships) return false;
-      return Object.entries(value.dialogueStates).every(([, dialogueState]) =>
+      const validDialogueStates = Object.entries(value.dialogueStates).every(([, dialogueState]) =>
         dialogueState === null || isDialogueState(dialogueState)
+      );
+      if (!validDialogueStates) return false;
+      const testimonies: Testimony[] = [];
+      for (const testimony of value.testimonies) {
+        if (!isRecord(testimony) || !hasExactKeys(testimony, ["speaker", "listener", "claimId"]) ||
+            typeof testimony.speaker !== "string" || !hasOwn(project.characters, testimony.speaker) ||
+            typeof testimony.listener !== "string" || !hasOwn(project.characters, testimony.listener) ||
+            typeof testimony.claimId !== "string" || !hasOwn(project.claims ?? {}, testimony.claimId) ||
+            !hasCoverStory(project, testimony.speaker, testimony.claimId)) {
+          return false;
+        }
+        if (testimonies.some((remembered) =>
+          remembered.speaker === testimony.speaker &&
+          remembered.listener === testimony.listener &&
+          remembered.claimId === testimony.claimId
+        )) return false;
+        testimonies.push({
+          speaker: testimony.speaker,
+          listener: testimony.listener,
+          claimId: testimony.claimId,
+        });
+      }
+      return testimonies.every((testimony, index) =>
+        index === 0 || compareTestimony(testimonies[index - 1]!, testimony) < 0
       );
     },
   });
@@ -514,7 +636,8 @@ export function isDialogueGameOperation(
   operation: { readonly type: string },
 ): operation is DialogueGameOperation {
   return operation.type === "learn-narrative-fact" ||
-    operation.type === "set-trust" || operation.type === "set-dialogue-state";
+    operation.type === "set-trust" || operation.type === "set-dialogue-state" ||
+    operation.type === "record-testimony";
 }
 
 /** Validates static references and values of one Dialogue-owned Game Operation. */
@@ -525,6 +648,41 @@ export function validateDialogueGameOperation(
 ): readonly AuthoringDiagnostic[] {
   if (operation.type === "learn-narrative-fact") {
     return validateLearnNarrativeFactOperation(operation, path, project);
+  }
+  if (operation.type === "record-testimony") {
+    const diagnostics: AuthoringDiagnostic[] = [];
+    for (const [role, character] of [
+      ["speaker", operation.speaker],
+      ["listener", operation.listener],
+    ] as const) {
+      if (!hasOwn(project.characters, character)) {
+        diagnostics.push({
+          code: `reference.testimony.${role}`,
+          family: "reference", owner: "dialogue", path: `${path}.${role}`,
+          message: `Character '${character}' does not exist.`,
+        });
+      }
+    }
+    if (!hasOwn(project.claims ?? {}, operation.claimId)) {
+      diagnostics.push({
+        code: "reference.testimony.claim",
+        family: "reference", owner: "dialogue", path: `${path}.claimId`,
+        message: `Claim '${operation.claimId}' does not exist.`,
+      });
+    }
+    if (hasOwn(project.characters, operation.speaker) && !hasCoverStory(
+      project,
+      operation.speaker,
+      operation.claimId,
+      operation.concealsFactId,
+    )) {
+      diagnostics.push({
+        code: "reference.testimony.cover-story",
+        family: "reference", owner: "dialogue", path,
+        message: "Testimony must match a Cover Story declared by its speaker.",
+      });
+    }
+    return diagnostics;
   }
   const diagnostics: AuthoringDiagnostic[] = [];
   if (!hasOwn(project.characters, operation.character)) {
@@ -620,6 +778,28 @@ export function validateKnowledgeDrivenDialogueProject(
     }
   }
 
+  for (const [claimId, claim] of Object.entries(project.claims ?? {})) {
+    if (!claimId.trim()) {
+      diagnostics.push({
+        code: "definition.claim.identity",
+        family: "definition",
+        owner: "dialogue",
+        path: "claims",
+        message: "A Claim registry key cannot be empty.",
+      });
+    }
+    if (!isRecord(claim) || !hasExactKeys(claim, ["proposition"]) ||
+        typeof claim.proposition !== "string" || !claim.proposition.trim()) {
+      diagnostics.push({
+        code: "definition.claim.proposition",
+        family: "definition",
+        owner: "dialogue",
+        path: `claims.${claimId}.proposition`,
+        message: "A Claim proposition cannot be empty.",
+      });
+    }
+  }
+
   for (const [characterId, character] of Object.entries(project.characters)) {
     const basePath = `characters.${characterId}.dialogue`;
     const dialogue = character.dialogue as unknown;
@@ -681,6 +861,72 @@ export function validateKnowledgeDrivenDialogueProject(
         });
       }
       if (typeof knowledge.factId === "string") seen.add(knowledge.factId);
+    }
+    const coverStories = dialogue.coverStories;
+    if (coverStories !== undefined && !Array.isArray(coverStories)) {
+      diagnostics.push({
+        code: "definition.cover-story.collection",
+        family: "definition", owner: "dialogue", path: `${basePath}.coverStories`,
+        message: "Cover Stories must be an array.",
+      });
+    }
+    const concealedFacts = new Set<string>();
+    for (const [index, coverStory] of (
+      Array.isArray(coverStories) ? coverStories : []
+    ).entries()) {
+      const itemPath = `${basePath}.coverStories[${index}]`;
+      if (!isRecord(coverStory) ||
+          !hasExactKeys(coverStory, ["concealsFactId", "claimId"])) {
+        diagnostics.push({
+          code: "definition.cover-story.item",
+          family: "definition", owner: "dialogue", path: itemPath,
+          message: "A Cover Story must associate one concealed Narrative Fact with one Claim.",
+        });
+        continue;
+      }
+      const concealsFactId = coverStory.concealsFactId;
+      const claimId = coverStory.claimId;
+      const knowledge = typeof concealsFactId === "string"
+        ? (Array.isArray(knowledgeEntries) ? knowledgeEntries : []).find(
+            (entry) => isRecord(entry) && entry.factId === concealsFactId,
+          )
+        : undefined;
+      if (typeof concealsFactId !== "string" ||
+          !hasOwn(project.narrativeFacts, concealsFactId)) {
+        diagnostics.push({
+          code: "reference.cover-story.fact",
+          family: "reference", owner: "dialogue", path: `${itemPath}.concealsFactId`,
+          message: `Narrative Fact '${String(concealsFactId)}' does not exist.`,
+        });
+      } else if (!knowledge) {
+        diagnostics.push({
+          code: "reference.cover-story.knowledge",
+          family: "reference", owner: "dialogue", path: `${itemPath}.concealsFactId`,
+          message: `Character '${characterId}' does not know Narrative Fact '${concealsFactId}'.`,
+        });
+      } else if (knowledge && isRecord(knowledge.disclosure) &&
+                 knowledge.disclosure.level === "open") {
+        diagnostics.push({
+          code: "definition.cover-story.disclosure",
+          family: "definition", owner: "dialogue", path: `${itemPath}.concealsFactId`,
+          message: "A Cover Story can conceal only guarded or secret Character Knowledge.",
+        });
+      }
+      if (typeof claimId !== "string" || !hasOwn(project.claims ?? {}, claimId)) {
+        diagnostics.push({
+          code: "reference.cover-story.claim",
+          family: "reference", owner: "dialogue", path: `${itemPath}.claimId`,
+          message: `Claim '${String(claimId)}' does not exist.`,
+        });
+      }
+      if (typeof concealsFactId === "string" && concealedFacts.has(concealsFactId)) {
+        diagnostics.push({
+          code: "definition.cover-story.duplicate",
+          family: "definition", owner: "dialogue", path: `${itemPath}.concealsFactId`,
+          message: `A Cover Story already conceals Narrative Fact '${concealsFactId}'.`,
+        });
+      }
+      if (typeof concealsFactId === "string") concealedFacts.add(concealsFactId);
     }
     validateQualitativeProfile(dialogue as unknown as CharacterDialogueDefinition, basePath, diagnostics);
     const relationships = dialogue.relationships;
@@ -783,6 +1029,24 @@ function isQualitativeLevel(value: unknown): value is QualitativeLevel {
 
 function isDialogueState(value: unknown): value is DialogueState {
   return value === "calm" || value === "afraid" || value === "angry" || value === "drunk";
+}
+
+function hasCoverStory(
+  project: KnowledgeDrivenDialogueProjectView,
+  speaker: string,
+  claimId: string,
+  concealsFactId?: string,
+): boolean {
+  return project.characters[speaker]?.dialogue?.coverStories?.some((coverStory) =>
+    coverStory.claimId === claimId &&
+    (concealsFactId === undefined || coverStory.concealsFactId === concealsFactId)
+  ) ?? false;
+}
+
+function compareTestimony(left: Testimony, right: Testimony): number {
+  return left.speaker.localeCompare(right.speaker) ||
+    left.listener.localeCompare(right.listener) ||
+    left.claimId.localeCompare(right.claimId);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
