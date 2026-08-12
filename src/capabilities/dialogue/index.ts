@@ -105,9 +105,12 @@ export interface DialogueInterpretationRequest {
 }
 
 /** Structured technical output returned by a Dialogue Provider. */
-export interface DialogueInterpretation {
-  readonly factId: string | null;
-}
+export type DialogueInterpretation =
+  | { readonly factId: string }
+  | {
+      readonly factId: null;
+      readonly reason: "ambiguous" | "no-relevant-fact";
+    };
 
 /** Engine-selected semantic approach for one Dialogue Turn. */
 export type ResponseStrategy = "answer" | "withhold" | "evade" | "refuse" | "clarify";
@@ -140,7 +143,10 @@ export interface DialogueProvider {
 /** Deterministic, dependency-free Dialogue Provider for tests and technical fixtures. */
 export class FakeDialogueProvider implements DialogueProvider {
   constructor(private readonly responses: {
-    readonly interpretations: Readonly<Record<string, string | null>>;
+    readonly interpretations: Readonly<Record<
+      string,
+      string | null | { readonly reason: "ambiguous" | "no-relevant-fact" }
+    >>;
     readonly verbalizations: Readonly<Record<string, string>>;
   }) {}
 
@@ -148,8 +154,12 @@ export class FakeDialogueProvider implements DialogueProvider {
     if (!hasOwn(this.responses.interpretations, request.playerInput)) {
       return Promise.reject(new Error("Fake Dialogue Provider has no matching interpretation."));
     }
-    const factId = this.responses.interpretations[request.playerInput]!;
-    return Promise.resolve({ factId });
+    const interpretation = this.responses.interpretations[request.playerInput]!;
+    if (typeof interpretation === "string") return Promise.resolve({ factId: interpretation });
+    return Promise.resolve({
+      factId: null,
+      reason: interpretation?.reason ?? "ambiguous",
+    });
   }
 
   verbalize(request: DialogueVerbalizationRequest): Promise<string> {
@@ -321,8 +331,7 @@ export function createKnowledgeDrivenDialogue(
         candidates,
       });
       const interpretation = await provider.interpret(request);
-      if (!isRecord(interpretation) ||
-          (interpretation.factId !== null && typeof interpretation.factId !== "string")) {
+      if (!isValidInterpretation(interpretation)) {
         throw new Error("Dialogue Provider selected an unknown Narrative Fact.");
       }
       const profile = portrayalProfile(
@@ -332,7 +341,9 @@ export function createKnowledgeDrivenDialogue(
       let strategy: ResponseStrategy;
       let fact: DialogueFactCandidate | undefined;
       if (interpretation.factId === null) {
-        strategy = "clarify";
+        strategy = interpretation.reason === "ambiguous"
+          ? "clarify"
+          : project.characters[input.speaker]!.dialogue!.behavior?.withholding ?? "withhold";
       } else {
         const candidate = candidates.find(({ id }) => id === interpretation.factId);
         if (!candidate) throw new Error("Dialogue Provider selected an unknown Narrative Fact.");
@@ -466,6 +477,13 @@ function portrayalProfile(
     ...(dialogue.voice === undefined ? {} : { voice: dialogue.voice }),
     ...(state === null ? {} : { state }),
   });
+}
+
+function isValidInterpretation(value: unknown): value is DialogueInterpretation {
+  if (!isRecord(value)) return false;
+  if (typeof value.factId === "string") return hasExactKeys(value, ["factId"]);
+  return value.factId === null && hasExactKeys(value, ["factId", "reason"]) &&
+    (value.reason === "ambiguous" || value.reason === "no-relevant-fact");
 }
 
 function disclosureAllows(
@@ -743,7 +761,7 @@ function validateQualitativeProfile(
        !["simple", "ordinary", "formal"].includes(dialogue.voice.vocabulary as string))) {
     diagnostics.push(profileDiagnostic("voice", `${path}.voice`, "Voice must use the qualitative verbosity, tone and vocabulary values."));
   }
-  if (dialogue.state !== undefined && !["calm", "afraid", "angry", "drunk"].includes(dialogue.state)) {
+  if (dialogue.state !== undefined && !isDialogueState(dialogue.state)) {
     diagnostics.push(profileDiagnostic("state", `${path}.state`, "Dialogue State must be calm, afraid, angry or drunk."));
   }
 }

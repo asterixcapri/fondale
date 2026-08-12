@@ -289,7 +289,7 @@ test("a Dialogue Turn exposes only known open candidates and stages one Engine o
   });
 });
 
-test("the Behaviour Engine deterministically authorises answer, withholding and clarification", async () => {
+test("Dialogue policy deterministically authorises answer, withholding and clarification", async () => {
   const dialogue = createKnowledgeDrivenDialogue({
     narrativeFacts: {
       open: { proposition: "The chain was cut." },
@@ -325,9 +325,13 @@ test("the Behaviour Engine deterministically authorises answer, withholding and 
     readonly profile?: unknown;
   }> = [];
   const provider: DialogueProvider = {
-    interpret: ({ playerInput }) => Promise.resolve({
-      factId: playerInput === "ambiguous" ? null : playerInput,
-    } as unknown as { factId: string }),
+    interpret: ({ playerInput }) => Promise.resolve(
+      playerInput === "ambiguous"
+        ? { factId: null, reason: "ambiguous" as const }
+        : playerInput === "noRelevant"
+          ? { factId: null, reason: "no-relevant-fact" as const }
+          : { factId: playerInput },
+    ),
     verbalize: (request) => {
       const policyRequest = request as typeof verbalizationRequests[number];
       verbalizationRequests.push(policyRequest);
@@ -351,6 +355,21 @@ test("the Behaviour Engine deterministically authorises answer, withholding and 
   }, provider);
   const ambiguous = await dialogue.respond(state, {
     speaker: "antonio", listener: "player", playerInput: "ambiguous",
+  }, provider);
+  const noRelevant = await dialogue.respond(state, {
+    speaker: "antonio", listener: "player", playerInput: "noRelevant",
+  }, provider);
+  const lowTrust = await dialogue.respond({
+    ...state,
+    relationships: {
+      ...state.relationships,
+      antonio: { player: { trust: "low" } },
+    },
+  }, {
+    speaker: "antonio", listener: "player", playerInput: "guarded",
+  }, provider);
+  const guardedByFalseVariable = await dialogue.respond(state, {
+    speaker: "antonio", listener: "player", playerInput: "guardedByVariable",
   }, provider);
   const unlockedState = {
     ...state,
@@ -379,6 +398,12 @@ test("the Behaviour Engine deterministically authorises answer, withholding and 
   expect(guarded).toMatchObject({ response: "answer:guarded" });
   expect(secret).toEqual({ playerInput: "secret", response: "evade:none" });
   expect(ambiguous).toEqual({ playerInput: "ambiguous", response: "clarify:none" });
+  expect(noRelevant).toEqual({ playerInput: "noRelevant", response: "evade:none" });
+  expect(lowTrust).toEqual({ playerInput: "guarded", response: "evade:none" });
+  expect(guardedByFalseVariable).toEqual({
+    playerInput: "guardedByVariable",
+    response: "evade:none",
+  });
   expect(guardedByVariable).toMatchObject({ response: "answer:guardedByVariable" });
   expect(secretUnlocked).toMatchObject({ response: "answer:secret" });
   expect(highTrustWithoutUnlock).toEqual({ playerInput: "secret", response: "evade:none" });

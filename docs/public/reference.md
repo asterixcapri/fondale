@@ -78,9 +78,9 @@ interface keeps `interpret`, `verbalize`, and `reset` as separate
 responsibilities. Interpretation receives untrusted `playerInput`, speaker and
 listener identities, and the known `DialogueFactCandidate` values relevant to
 that Conversation. Its `DialogueInterpretation` selects one declared `factId`
-or `null` when the input is ambiguous.
+or returns `null` with a `reason` of `ambiguous` or `no-relevant-fact`.
 
-After validating the interpretation, the deterministic Behaviour Engine applies
+After validating the interpretation, deterministic Dialogue policy applies
 Disclosure, directional Trust, Game Variables and Dialogue Behavior. Fondale
 sends a `DialogueVerbalizationRequest` with an authorised `ResponseStrategy`,
 qualitative portrayal data, and a fact only for `answer`; blocked and `clarify`
@@ -224,7 +224,7 @@ identifies the capability or browser adapter responsible for the rule.
 | `DialogueGameOperation` | Dialogue-owned canonical transition | learn fact, set Trust, set Dialogue State | participates in an atomic operation batch | operation/reference diagnostics | [Dialogue authoring](game-authoring.md) |
 | `DialogueFactCandidate` | known fact eligible for interpretation | stable id and canonical proposition | Disclosure is applied after interpretation | unknown selections are rejected | [Dialogue authoring](game-authoring.md) |
 | `DialogueInterpretationRequest` | untrusted speech interpretation input | playerInput, speaker, listener, candidates | candidates are frozen and capability-authorised | provider failure rejects the turn | [Dialogue authoring](game-authoring.md) |
-| `DialogueInterpretation` | provider-selected semantic reference | declared factId or null | carries no Game Operation authority | unknown fact ID rejects before verbalization | [Dialogue authoring](game-authoring.md) |
+| `DialogueInterpretation` | provider-selected semantic reference | declared factId, or null with an unresolved reason | ambiguity clarifies; no relevant fact withholds | unknown fact ID or reason rejects before verbalization | [Dialogue authoring](game-authoring.md) |
 | `ResponseStrategy` | Engine-authorised conversational approach | answer, withhold, evade, refuse, clarify | selected deterministically before verbalisation | invalid provider output rejects the turn | [Dialogue authoring](game-authoring.md) |
 | `DialoguePortrayalProfile` | provider-visible qualitative portrayal | optional biography, Personality, Voice and Dialogue State | carries no semantic authority | validated at startup | [Dialogue authoring](game-authoring.md) |
 | `DialogueVerbalizationRequest` | authorised expression input | speech identities, strategy, portrayal and optional fact | a blocked fact is absent | empty response rejects the turn | [Dialogue authoring](game-authoring.md) |
@@ -233,7 +233,7 @@ identifies the capability or browser adapter responsible for the rule.
 | `ObjectDefinition` | persistent Object | initial values, appearances, Inventory PNG, noun | begins in one Scene | Object/asset diagnostics | [Inventory](recipes/inventory.ts) |
 | `InteractionCondition` | state predicate | variable equality or held Object | omission is unconditional | missing-reference diagnostics | [Command](recipes/command-case.ts) |
 | `InventoryOperation` | Inventory and Object lifecycle change | collect target, place selected, place named, consume selected | World owns placement validity; Animation owns Appearance validity | Interaction/World/Animation diagnostics | [Inventory](recipes/inventory.ts) |
-| `GameOperation` | atomic state change | eight declared operation variants | order matters; group atomic | operation/reference diagnostics | [Inventory](recipes/inventory.ts) |
+| `GameOperation` | atomic state change | ten declared operation variants | order matters; group atomic | operation/reference diagnostics | [Inventory](recipes/inventory.ts) |
 | `HotspotTarget` | interaction subject | Background, Character, Object, Scenery | target is required | target reference diagnostic | [Interaction](recipes/interaction.ts) |
 | `ApproachPoint` | interaction destination | groundPoint and facing | must be walkable and HUD-safe | approach diagnostics | [Interaction](recipes/interaction.ts) |
 | `HotspotDefinition` | Scene interaction surface | target, area, approach, condition; local noun only for Background | target kind discriminates Noun ownership; later overlap wins hit-test | geometry, target and owner-Noun diagnostics | [Interaction](recipes/interaction.ts) |
