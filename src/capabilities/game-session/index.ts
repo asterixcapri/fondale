@@ -78,6 +78,7 @@ import {
   type CharacterKnowledgeState,
   type CharacterDialogueState,
   type DialogueProvider,
+  type DialogueTurnContext,
   type KnowledgeDrivenDialogueState,
   type LearnNarrativeFactOperation,
   type RecordTestimonyOperation,
@@ -344,34 +345,28 @@ export function createCoreSession(
       }
       conversationStatus = "pending";
       conversationError = undefined;
-      const currentTurn = beginProviderTurn("conversation");
-      const cancelled = { ok: false as const, message: "Dialogue Turn was cancelled." };
-      try {
-        const turn = await dialogue.respond(state, {
+      return runProviderTurn(
+        "conversation",
+        "Dialogue Turn was cancelled.",
+        (context) => dialogue.respond(state, {
           speaker: activity.character,
           listener: playerCharacter,
           playerInput,
-        }, dialogueProvider, {
-          turnId: currentTurn.turnId,
-          signal: currentTurn.controller.signal,
-        });
-        if (providerTurnWasCancelled(currentTurn)) return cancelled;
-        dialogueCompletion = {
-          character: activity.character,
-          playerInput: turn.playerInput,
-          response: turn.response,
-          ...(turn.operation ? { operation: turn.operation } : {}),
-          playerCharacter,
-        };
-        return { ok: true };
-      } catch (cause) {
-        if (providerTurnWasCancelled(currentTurn)) return cancelled;
-        pendingProviderTurn = null;
-        const message = cause instanceof Error ? cause.message : String(cause);
-        conversationStatus = "error";
-        conversationError = message;
-        return { ok: false, message };
-      }
+        }, dialogueProvider, context),
+        (turn) => {
+          dialogueCompletion = {
+            character: activity.character,
+            playerInput: turn.playerInput,
+            response: turn.response,
+            ...(turn.operation ? { operation: turn.operation } : {}),
+            playerCharacter,
+          };
+        },
+        (message) => {
+          conversationStatus = "error";
+          conversationError = message;
+        },
+      );
     },
     async submitReflection(playerInput) {
       const playerCharacter = projectViews.world.playerCharacter;
@@ -383,27 +378,21 @@ export function createCoreSession(
       }
       reflectionStatus = "pending";
       reflectionError = undefined;
-      const currentTurn = beginProviderTurn("reflection");
-      const cancelled = { ok: false as const, message: "Reflection turn was cancelled." };
-      try {
-        const turn = await dialogue.reflect(state, {
+      return runProviderTurn(
+        "reflection",
+        "Reflection turn was cancelled.",
+        (context) => dialogue.reflect(state, {
           character: playerCharacter,
           playerInput,
-        }, dialogueProvider, {
-          turnId: currentTurn.turnId,
-          signal: currentTurn.controller.signal,
-        });
-        if (providerTurnWasCancelled(currentTurn)) return cancelled;
-        reflectionCompletion = { response: turn.response, playerCharacter };
-        return { ok: true };
-      } catch (cause) {
-        if (providerTurnWasCancelled(currentTurn)) return cancelled;
-        pendingProviderTurn = null;
-        const message = cause instanceof Error ? cause.message : String(cause);
-        reflectionStatus = "error";
-        reflectionError = message;
-        return { ok: false, message };
-      }
+        }, dialogueProvider, context),
+        (turn) => {
+          reflectionCompletion = { response: turn.response, playerCharacter };
+        },
+        (message) => {
+          reflectionStatus = "error";
+          reflectionError = message;
+        },
+      );
     },
     stop() {
       if (status === "stopped") return;
@@ -427,6 +416,33 @@ export function createCoreSession(
     } as const;
     pendingProviderTurn = turn;
     return turn;
+  }
+
+  async function runProviderTurn<T>(
+    mode: "conversation" | "reflection",
+    cancellationMessage: string,
+    execute: (context: DialogueTurnContext) => Promise<T>,
+    complete: (result: T) => void,
+    fail: (message: string) => void,
+  ): Promise<DialogueSubmissionResult> {
+    const currentTurn = beginProviderTurn(mode);
+    const context = { turnId: currentTurn.turnId, signal: currentTurn.controller.signal };
+    try {
+      const result = await execute(context);
+      if (providerTurnWasCancelled(currentTurn)) {
+        return { ok: false, message: cancellationMessage };
+      }
+      complete(result);
+      return { ok: true };
+    } catch (cause) {
+      if (providerTurnWasCancelled(currentTurn)) {
+        return { ok: false, message: cancellationMessage };
+      }
+      pendingProviderTurn = null;
+      const message = cause instanceof Error ? cause.message : String(cause);
+      fail(message);
+      return { ok: false, message };
+    }
   }
 
   function invalidateProviderTurn(mode?: "conversation" | "reflection"): void {
