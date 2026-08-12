@@ -11,6 +11,7 @@ import {
 import type { InteractionCondition, NounDefinition } from "../interaction";
 import type { PassageDirection } from "../hud";
 import type { DirectionStep, DirectedSubject, MotionDirection } from "../sequence";
+import type { CharacterDialogueDefinition } from "../dialogue";
 import { isInside, navigationPath, nearestPoint } from "./geometry";
 
 export { isInside, navigationPath, nearestPoint } from "./geometry";
@@ -48,6 +49,7 @@ export interface CharacterDefinition {
   readonly appearances: Readonly<Record<string, EntityAppearance>>;
   readonly movementSpeed: number;
   readonly noun?: NounDefinition;
+  readonly dialogue?: CharacterDialogueDefinition;
 }
 
 /** Reports every local Character Authoring Diagnostic without a Game Project. */

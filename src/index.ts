@@ -30,9 +30,14 @@ export {
   type Appearance,
 } from "./capabilities/animation";
 export {
+  type CharacterDialogueDefinition,
+  type CharacterKnowledgeDefinition,
   type GameProject,
   type LogicalResolution,
   type GameOperation,
+  type LearnNarrativeFactOperation,
+  type NarrativeFactDefinition,
+  type OpenDisclosure,
 } from "./capabilities/game-project";
 export {
   type ArrivalSequenceRule,

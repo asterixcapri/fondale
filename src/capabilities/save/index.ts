@@ -16,6 +16,10 @@ import {
   type SaveGameProjectView,
 } from "../game-project";
 import { createWorld, type Point, type World } from "../world";
+import {
+  createKnowledgeDrivenDialogue,
+  type KnowledgeDrivenDialogue,
+} from "../dialogue";
 
 /** JSON-safe representation of the latest committed Game State. */
 export interface SaveSnapshot {
@@ -52,6 +56,7 @@ interface SaveValidationContext {
   readonly world: World;
   readonly animation: AnimationProjectView;
   readonly sequence: Sequence;
+  readonly dialogue: KnowledgeDrivenDialogue;
 }
 
 /** Creates or returns the Save module composed for one Game Project. */
@@ -65,6 +70,7 @@ export function createSave(project: CompiledGameProject): Save {
     world: createWorld(views.world),
     animation: views.animation,
     sequence: createSequence(views.sequences),
+    dialogue: createKnowledgeDrivenDialogue(views.dialogue),
   };
   const save: Save = Object.freeze({
     validate(value: unknown) {
@@ -148,7 +154,7 @@ function validStateShape(
   context: SaveValidationContext,
 ): value is GameState {
   const { animation, project, world } = context;
-  if (!isRecord(value) || !hasExactKeys(value, ["currentScene", "characters", "scenery", "objects", "inventory", "command", "variables", "activity", "tick"])) return false;
+  if (!isRecord(value) || !hasExactKeys(value, ["currentScene", "characters", "scenery", "objects", "inventory", "command", "variables", "characterKnowledge", "activity", "tick"])) return false;
   if (!Number.isInteger(value.tick) || (value.tick as number) < 0) return false;
   if (!world.isValidState(value) || !isValidAnimationState(animation, value)) return false;
   const inventoryLocations: string[] = [];
@@ -164,6 +170,7 @@ function validStateShape(
   if (!interactionSaveValidation.isCommandState(value.command, value.inventory.objects)) return false;
   if (!isRecord(value.variables) || !sameKeys(value.variables, project.variables)) return false;
   if (!Object.values(value.variables).every((variable) => typeof variable === "boolean")) return false;
+  if (!context.dialogue.isValidState(value.characterKnowledge)) return false;
   if (!validActivity(value.activity, value as unknown as GameState, context)) return false;
   return isJsonSafe(value);
 }

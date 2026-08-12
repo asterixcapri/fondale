@@ -11,6 +11,7 @@ export type AuthoringDiagnosticFamily =
 export type AuthoringDiagnosticOwner =
   | "game-project"
   | "game-session"
+  | "dialogue"
   | "world"
   | "interaction"
   | "sequence"

@@ -82,6 +82,59 @@ defaults to the Logical Resolution during compilation. Other optional
 registries default to empty registries and `letterboxColor` defaults to
 `#000000`.
 
+## Initial Character Knowledge
+
+Knowledge-Driven Dialogue begins with ordinary declarative data. Narrative
+Facts live once in the Game Project registry; a Character's optional `dialogue`
+profile refers to those identities and declares open Disclosure:
+
+```ts
+import {
+  type CharacterDefinition,
+  type CharacterDialogueDefinition,
+  type NarrativeFactDefinition,
+} from "@asterixcapri/fondale";
+
+const harbourFact = {
+  proposition: "The harbour chain was cut.",
+} satisfies NarrativeFactDefinition;
+
+const antonioDialogue = {
+  knowledge: [{
+    factId: "harbour-chain-cut",
+    disclosure: { level: "open" },
+  }],
+} satisfies CharacterDialogueDefinition;
+
+const antonio = {
+  initialScene: "harbour",
+  initialGroundPoint: { x: 180, y: 120 },
+  initialFacing: "left",
+  initialAppearance: "idle",
+  appearances: {
+    idle: {
+      animations: {
+        idle: { frames: [new URL("./antonio.png", import.meta.url)], framesPerSecond: 1 },
+      },
+      roles: { default: "idle" },
+    },
+  },
+  movementSpeed: 60,
+  dialogue: antonioDialogue,
+} satisfies CharacterDefinition;
+
+const dialogueProject = {
+  ...project,
+  narrativeFacts: { "harbour-chain-cut": harbourFact },
+  characters: { antonio },
+};
+```
+
+Startup rejects empty propositions, missing fact references and duplicate
+Character Knowledge. The Engine copies valid initial knowledge into Game State;
+`learn-narrative-fact` operations add it atomically and idempotently, and Save
+Snapshots validate and restore it exactly.
+
 ## Startup diagnostics
 
 Invalid projects reject before the target, environment, Runtime Assets, or

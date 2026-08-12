@@ -54,10 +54,19 @@ match the resolved Scene Size; its startup diagnostic reports actual and
 expected dimensions.
 
 `CharacterDefinition` describes a persistent Character with initial Scene, Ground
-Point, Facing, Appearance, positive `movementSpeed`, optional Noun, and named
-Appearances. Every Appearance owns named Animations and a required default
+Point, Facing, Appearance, positive `movementSpeed`, optional Noun, optional
+`CharacterDialogueDefinition`, and named Appearances. Every Appearance owns named Animations and a required default
 Animation Role. The Player Character also requires a walking Role; directional
 walking uses side/front/back strips and mirrors the side strip when facing left.
+
+`NarrativeFactDefinition` is a non-empty canonical `proposition` identified by
+its `narrativeFacts` registry key. A `CharacterDialogueDefinition` contains the
+Character's initial `knowledge`; every `CharacterKnowledgeDefinition` refers to
+one fact through `factId` and, in this first capability slice, uses only
+`OpenDisclosure` with `level: "open"`. Repeated references are invalid. The
+Engine copies Character Knowledge into independent Game State; Characters
+without dialogue data begin with an empty set and otherwise keep their existing
+authored behaviour.
 
 `ObjectDefinition` describes an Object with initial Scene, Ground Point, Appearance,
 named animated Appearances, square `inventoryAppearance`, and optional Noun. An
@@ -85,7 +94,8 @@ Narration, Choice, and Direction facts without resolving authored paths again.
 
 `GameProject` is ordinary declarative TypeScript data, commonly checked with
 `satisfies`. Required values are identity, version, Logical Resolution, Scene
-registry and initial Scene. `startGame` validates and creates a private deeply
+registry and initial Scene; the optional `narrativeFacts` registry defaults
+empty. `startGame` validates and creates a private deeply
 immutable snapshot. Optional registries default empty; letterbox has default
 `#000000` (that is, default `#000000`). Registry keys are identities. Cross-references, geometry,
 conditions, operation targets, Nouns, fallbacks and assets are validated before
@@ -100,7 +110,9 @@ target remains the distinct `reference.hotspot.target` failure.
 `InteractionCondition` reads a boolean Variable or held Object. `GameOperation`
 can set a Variable or Appearance, start a Sequence, collect the target Object,
 place the selected first Object, place a named Object, or consume the selected
-Object. Operations in one group see
+Object. It also includes `LearnNarrativeFactOperation`, whose
+`learn-narrative-fact` discriminator, Character identity and `factId` add
+declared Character Knowledge monotonically. Operations in one group see
 earlier writes and either commit together or fail without a partial commit.
 Conditions always read the latest committed Game State.
 
@@ -120,7 +132,7 @@ unowned `target` and optional unknown `snapshot`. `GameSession` exposes
 `stop`.
 
 A `SaveSnapshot` records format/project identity/project version and canonical
-state, including an incomplete Command. Stored values are passed as `unknown`
+state, including an incomplete Command and Character Knowledge. Stored values are passed as `unknown`
 to `startGame`; malformed, incompatible or semantically invalid values reject
 with Save-owned diagnostics before browser effects.
 Camera position, hover, pointer position and Player Preferences are not saved.
@@ -154,11 +166,16 @@ identifies the capability or browser adapter responsible for the rule.
 | `EntityAppearance` | Character/Object visual condition | definitive animated Appearance | alias preserves entity-specific signatures | Appearance diagnostics | [Character](recipes/character-walking.ts) |
 | `SceneryAppearance` | Scenery visual condition | animated Appearance or Background Region | Background Regions remain tied to their Scene | Appearance/polygon diagnostics | [Scene](recipes/first-scene.ts) |
 | `BackgroundRegionAppearance` | Background cut-out | background-region and polygon | belongs to owning Background | polygon and bounds diagnostics | [Scene](recipes/first-scene.ts) |
-| `CharacterDefinition` | persistent Character | initial values, appearances, speed, noun | initial point is walkable | Character/reference diagnostics | [Character](recipes/character-walking.ts) |
+| `CharacterDefinition` | persistent Character | initial values, appearances, speed, noun, dialogue | initial point is walkable | Character/reference diagnostics | [Character](recipes/character-walking.ts) |
+| `NarrativeFactDefinition` | canonical authored truth | non-empty proposition | registry key is stable identity | Narrative Fact definition diagnostics | [Dialogue authoring](game-authoring.md) |
+| `OpenDisclosure` | initially unrestricted Disclosure | open level | cannot encode guarded or secret policy yet | compile-time restriction | [Dialogue authoring](game-authoring.md) |
+| `CharacterKnowledgeDefinition` | initial known fact reference | factId and open Disclosure | one reference per Character and fact | knowledge reference/duplicate diagnostics | [Dialogue authoring](game-authoring.md) |
+| `CharacterDialogueDefinition` | optional Character dialogue profile | initial knowledge | omission preserves authored behaviour | dialogue capability diagnostics | [Dialogue authoring](game-authoring.md) |
+| `LearnNarrativeFactOperation` | monotonic Character Knowledge change | Character and Narrative Fact identities | repeated learning is idempotent | Character/fact reference diagnostics | [Dialogue authoring](game-authoring.md) |
 | `ObjectDefinition` | persistent Object | initial values, appearances, Inventory PNG, noun | begins in one Scene | Object/asset diagnostics | [Inventory](recipes/inventory.ts) |
 | `InteractionCondition` | state predicate | variable equality or held Object | omission is unconditional | missing-reference diagnostics | [Command](recipes/command-case.ts) |
 | `InventoryOperation` | Inventory and Object lifecycle change | collect target, place selected, place named, consume selected | World owns placement validity; Animation owns Appearance validity | Interaction/World/Animation diagnostics | [Inventory](recipes/inventory.ts) |
-| `GameOperation` | atomic state change | seven declared operation variants | order matters; group atomic | operation/reference diagnostics | [Inventory](recipes/inventory.ts) |
+| `GameOperation` | atomic state change | eight declared operation variants | order matters; group atomic | operation/reference diagnostics | [Inventory](recipes/inventory.ts) |
 | `HotspotTarget` | interaction subject | Background, Character, Object, Scenery | target is required | target reference diagnostic | [Interaction](recipes/interaction.ts) |
 | `ApproachPoint` | interaction destination | groundPoint and facing | must be walkable and HUD-safe | approach diagnostics | [Interaction](recipes/interaction.ts) |
 | `HotspotDefinition` | Scene interaction surface | target, area, approach, condition; local noun only for Background | target kind discriminates Noun ownership; later overlap wins hit-test | geometry, target and owner-Noun diagnostics | [Interaction](recipes/interaction.ts) |
@@ -198,7 +215,7 @@ identifies the capability or browser adapter responsible for the rule.
 | `PassageDirection` | Passage cursor direction | left, right, up, down, enter | every Passage declares one | cursor/reference diagnostics | [Scene](recipes/first-scene.ts) |
 | `HUDTheme` | project visual language | font, colours, opacity, width, cursors, speech colours | complete local asset set | theme/asset diagnostics | [HUD Theme](recipes/hud-theme.ts) |
 | `AuthoringDiagnosticFamily` | rejecting layer | six stable category strings | category is always present | no independent failure | [Scene](recipes/first-scene.ts) |
-| `AuthoringDiagnosticOwner` | rule owner | nine capabilities or browser adapter | owner is always present | no independent failure | [Scene](recipes/first-scene.ts) |
+| `AuthoringDiagnosticOwner` | rule owner | ten capabilities or browser adapter | owner is always present | no independent failure | [Scene](recipes/first-scene.ts) |
 | `AuthoringDiagnostic` | one author-facing issue | code, family, owner, path, message, suggestion, cause | stable code/path ordering | describes owning failure | [Scene](recipes/first-scene.ts) |
 | `AuthoringError` | aggregate failure | read-only diagnostics | one error per startup layer | thrown by startup | [Scene](recipes/first-scene.ts) |
 | `SaveSnapshot` | JSON-safe committed state | format, project identities and state | exact fields only | save validation diagnostics | [Save](recipes/save-snapshot.ts) |
@@ -220,7 +237,9 @@ Exact reachable fields also include `x`, `y`, `width`, `height`, `kind`,
 `skipOutcome`, `subject`, `animation`, `animationStartedTick`, `startAfter`, `cue`, `duration`, `mode`,
 `point`, `from`, `to`, `directions`,
 `identity`, `version`,
-`logicalResolution`, `scenes`, `characters`, `playerCharacter`, `objects`,
+`logicalResolution`, `scenes`, `narrativeFacts`, `proposition`, `characters`,
+`dialogue`, `knowledge`, `factId`, `disclosure`, `level`, `characterKnowledge`,
+`playerCharacter`, `objects`,
 `sequences`, `variables`, `inventoryAppearanceSize`, `initialScene`,
 `letterboxColor`, `commandLexicon`, `commandFallbacks`, `hudTheme`, `verb`,
 `line`, `audio`, `firstNoun`, `response`, `operations`, `fallbacks`,
@@ -255,6 +274,10 @@ Definition codes: `definition.approach.bounds`,
 `definition.point.finite`, `definition.polygon.degenerate`,
 `definition.polygon.self-intersection`, `definition.polygon.vertices`,
 `definition.project.identity`, `definition.project.version`,
+`definition.narrative-fact.identity`,
+`definition.narrative-fact.proposition`,
+`definition.character-knowledge.duplicate`,
+`definition.character-knowledge.disclosure`,
 `definition.scene-space.bounds`, `definition.scenery.baseline`,
 `definition.sequence.cycle`, `definition.sequence.nested`,
 `definition.sequence.skip-outcome`, `definition.sequence.skip-outcome.unused`,
@@ -287,6 +310,9 @@ Reference codes: `reference.appearance`, `reference.appearance.initial`,
 `reference.animation.walking-role`, `reference.animation.cue`,
 `reference.animation.line`, `reference.camera.subject`,
 `reference.camera.subject-scene`, and `reference.variable`.
+Knowledge-Driven Dialogue references use
+`reference.character-knowledge.character` and
+`reference.character-knowledge.fact`.
 
 Runtime, save, asset and environment codes: `state.operation.invalid`,
 `save.shape`, `save.fields.unexpected`, `save.format.version`,

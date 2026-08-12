@@ -95,7 +95,7 @@ test("Camera presentation does not add fields to a Save Snapshot", async ({ page
     Object.keys(window.__cameraTest!.session.createSaveSnapshot().state).sort(),
   );
   expect(stateKeys).toEqual([
-    "activity", "characters", "command", "currentScene", "inventory",
+    "activity", "characterKnowledge", "characters", "command", "currentScene", "inventory",
     "objects", "scenery", "tick", "variables",
   ]);
 });

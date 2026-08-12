@@ -132,7 +132,7 @@
       <h2>CoreSession: coordinatore deterministico</h2>
       <div class="session-grid">
         <article class="card"><h3>Possiede</h3><p>Game State canonico, logical tick, coda input, ciclo di vita, Game Activity dominante e commit atomico.</p></article>
-        <article class="card"><h3>Delega</h3><p>Command resolution a Interaction, movimento a World, flusso temporale a Sequence, visual facts alle capability di presentazione.</p></article>
+        <article class="card"><h3>Delega</h3><p>Command resolution a Interaction, movimento a World, flusso temporale a Sequence, Character Knowledge a Knowledge-Driven Dialogue e visual facts alle capability di presentazione.</p></article>
         <article class="card"><h3>Garantisce</h3><p>Snapshot ed effetti difensivi, ordine riproducibile, restore esatto e nessun riferimento mutabile allo stato globale.</p></article>
       </div>
       <div class="timeline" aria-label="Un logical tick in quattro fasi">
@@ -149,6 +149,7 @@
         <article class="card"><h3>Game Project</h3><p>Dati dichiarativi dell’Author; internamente coordina compilazione, Project Identity/Version e aggregazione degli Authoring Diagnostic.</p></article>
         <article class="card"><h3>World</h3><p>Scene Space, presenza, geometria, navigazione, Motion e Scene Passage.</p></article>
         <article class="card"><h3>Interaction</h3><p>Noun, Command, condizioni, Player Intent, Inventory e conseguenze.</p></article>
+        <article class="card"><h3>Knowledge-Driven Dialogue</h3><p>Narrative Fact, Character Knowledge, validazione dei riferimenti e apprendimento monotono; World non possiede questa policy.</p></article>
         <article class="card"><h3>Sequence</h3><p>Step, ordine, concorrenza, Cue, Line, Narration, Choice, branch e Skip Outcome.</p></article>
         <article class="card"><h3>Animation</h3><p>Appearance, Animation Role, frame, durata, Cue visuali e Visual Anchor.</p></article>
         <article class="card"><h3>Camera</h3><p>Follow del Player e regia cut/move/hold/follow indipendente da PixiJS.</p></article>
@@ -163,7 +164,7 @@
       <p class="lede">Le frecce indicano chi può chiedere una decisione o consegnare un fatto. Non autorizzano l’accesso ai dettagli privati: ogni scambio attraversa l’interfaccia dichiarata del proprietario.</p>
       <ol class="route-map">
         <li class="route"><span class="route-path">Browser adapter → Game Session</span><p>DOM, pointer e tastiera traducono gli eventi fisici senza scegliere conseguenze di dominio.</p><span class="route-data">CoreInput · HUD intention</span></li>
-        <li class="route"><span class="route-path">Game Session → Interaction / World / Sequence</span><p>CoreSession passa viste immutabili e coordina i risultati espliciti restituiti dai proprietari.</p><span class="route-data">state view · decision · Game Operation</span></li>
+        <li class="route"><span class="route-path">Game Session → Interaction / World / Sequence / Knowledge-Driven Dialogue</span><p>CoreSession passa viste immutabili e coordina i risultati espliciti restituiti dai proprietari.</p><span class="route-data">state view · decision · Game Operation</span></li>
         <li class="route"><span class="route-path">Sequence → Animation / World / Camera</span><p>Sequence condivide la timeline del Direction Step; ciascuna capability conserva la propria semantica.</p><span class="route-data">direction timing · Animation Cue · local tick</span></li>
         <li class="route"><span class="route-path">Capability → browser adapter</span><p>World, Animation, Camera e HUD espongono fatti già risolti che PixiJS e DOM si limitano a presentare.</p><span class="route-data">presentation facts · CoreEffect</span></li>
         <li class="route"><span class="route-path">Game Session ↔ Save</span><p>La sessione consegna stato committed; Save produce o valida uno snapshot. Il restore crea uno stato completo soltanto dopo una validazione riuscita.</p><span class="route-data">Game State · Save Snapshot · validation result</span></li>
@@ -185,7 +186,7 @@
     <section id="save">
       <h2>Save e restore non controllano la sessione</h2>
       <div class="save-loop">
-        <article class="card"><h3>Game State committed</h3><p>CoreSession espone una copia difensiva dei fatti canonici necessari.</p></article>
+        <article class="card"><h3>Game State committed</h3><p>CoreSession espone una copia difensiva dei fatti canonici necessari, inclusa la Character Knowledge di ogni Character.</p></article>
         <div class="loop-arrow" aria-hidden="true">⇄</div>
         <article class="card"><h3>Save Snapshot validato</h3><p>Save verifica formato, Project Identity, Project Version e attività in corso prima di creare una nuova sessione. localStorage resta nel browser.</p></article>
       </div>
@@ -213,6 +214,7 @@
       <dl class="glossary">
         <div class="term"><dt>Game Project</dt><dd>Il contenuto e le impostazioni che definiscono una singola avventura.</dd></div>
         <div class="term"><dt>Game Session</dt><dd>Una esecuzione isolata del progetto, coordinata da CoreSession.</dd></div>
+        <div class="term"><dt>Character Knowledge</dt><dd>Riferimenti ai Narrative Fact disponibili a un Character nella Game Session.</dd></div>
         <div class="term"><dt>Game State</dt><dd>I fatti canonici committed che determinano come il mondo può evolvere.</dd></div>
         <div class="term"><dt>Game Activity</dt><dd>L’attività dominante: Player Intent, Sequence o risposta temporanea.</dd></div>
         <div class="term"><dt>Game Operation</dt><dd>Una richiesta validata che cambia lo stato in modo atomico.</dd></div>

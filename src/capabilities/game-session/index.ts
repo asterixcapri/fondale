@@ -71,6 +71,11 @@ import {
   type AnimationPresentation,
 } from "../animation";
 import { Camera, type CameraPresentation } from "../camera";
+import {
+  createKnowledgeDrivenDialogue,
+  isLearnNarrativeFactOperation,
+  type CharacterKnowledgeState,
+} from "../dialogue";
 
 export type { CharacterState, ObjectLocation, ObjectState } from "../world";
 
@@ -86,6 +91,7 @@ export interface GameState extends WorldState {
   inventory: { objects: string[] };
   command: CommandState;
   variables: Record<string, boolean>;
+  characterKnowledge: CharacterKnowledgeState;
   activity: GameActivityState | null;
   tick: number;
 }
@@ -139,10 +145,11 @@ export function createCoreSession(
   });
   const hud = createHUD(projectViews.hud);
   const sequenceCapability = createSequence(projectViews.sequences);
+  const dialogue = createKnowledgeDrivenDialogue(projectViews.dialogue);
   const save = createSave(project);
   let state = restored
     ? save.restore(restored)
-    : initialState(projectViews.gameProject, world.initialState());
+    : initialState(projectViews.gameProject, world.initialState(), dialogue.initialState());
   let status: "running" | "failed" | "stopped" = "running";
   let failureDiagnostics: readonly AuthoringDiagnostic[] = [];
   const inputs: CoreInput[] = [];
@@ -539,7 +546,9 @@ export function createCoreSession(
     target: HotspotTarget,
     firstNounObject?: string,
   ): void {
-    if (operation.type === "set-variable") {
+    if (isLearnNarrativeFactOperation(operation)) {
+      draft.characterKnowledge = dialogue.learn(draft.characterKnowledge, operation);
+    } else if (operation.type === "set-variable") {
       if (!(operation.variable in projectViews.gameProject.variables)) throw new Error(`Unknown Game Variable '${operation.variable}'.`);
       draft.variables[operation.variable] = operation.value;
     } else if (operation.type === "set-appearance") {
@@ -774,12 +783,17 @@ export function createCoreSession(
   return session;
 }
 
-function initialState(data: GameSessionGameProjectView, world: WorldState): GameState {
+function initialState(
+  data: GameSessionGameProjectView,
+  world: WorldState,
+  characterKnowledge: CharacterKnowledgeState,
+): GameState {
   return {
     ...world,
     inventory: { objects: [] },
     command: { verb: "walk-to", firstNoun: null },
     variables: { ...data.variables },
+    characterKnowledge,
     activity: null,
     tick: 0,
   };

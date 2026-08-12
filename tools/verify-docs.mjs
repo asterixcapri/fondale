@@ -17,6 +17,7 @@ if (undocumented.length > 0) {
 
 const contractSources = [
   "src/capabilities/game-project/index.ts",
+  "src/capabilities/dialogue/index.ts",
   "src/capabilities/interaction/index.ts",
   "src/capabilities/sequence/index.ts",
   "src/capabilities/hud/index.ts",

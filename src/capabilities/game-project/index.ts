@@ -27,6 +27,21 @@ import {
   validateNounReferences,
 } from "../interaction";
 import {
+  isLearnNarrativeFactOperation,
+  validateKnowledgeDrivenDialogueProject,
+  validateLearnNarrativeFactOperation,
+  type KnowledgeDrivenDialogueProjectView,
+  type LearnNarrativeFactOperation,
+  type NarrativeFactDefinition,
+} from "../dialogue";
+export type {
+  CharacterDialogueDefinition,
+  CharacterKnowledgeDefinition,
+  NarrativeFactDefinition,
+  LearnNarrativeFactOperation,
+  OpenDisclosure,
+} from "../dialogue";
+import {
   validateHUDProjectReferences,
   validateHUDTheme,
   type HUDProjectView,
@@ -117,7 +132,8 @@ export type GameOperation =
       readonly appearance: string;
     }
   | { readonly type: "start-sequence"; readonly sequence: string }
-  | InventoryOperation;
+  | InventoryOperation
+  | LearnNarrativeFactOperation;
 
 /** Ordinary declarative Game Project data. Registry keys are definition identities. */
 export interface GameProject {
@@ -125,6 +141,7 @@ export interface GameProject {
   readonly version: string;
   readonly logicalResolution: LogicalResolution;
   readonly scenes: Readonly<Record<string, SceneDefinition>>;
+  readonly narrativeFacts?: Readonly<Record<string, NarrativeFactDefinition>>;
   readonly characters?: Readonly<Record<string, CharacterDefinition>>;
   readonly playerCharacter?: string;
   readonly objects?: Readonly<Record<string, ObjectDefinition>>;
@@ -147,13 +164,14 @@ export interface CompiledGameProject {
 
 /** Fully expanded representation kept inside the Game Project implementation. */
 interface GameProjectData
-  extends Omit<GameProject, "scenes" | "characters" | "objects" | "sequences" | "variables"> {
+  extends Omit<GameProject, "scenes" | "characters" | "objects" | "sequences" | "variables" | "narrativeFacts"> {
   readonly scenes: Readonly<Record<string, ResolvedSceneDefinition>>;
   readonly letterboxColor: string;
   readonly characters: Readonly<Record<string, CharacterDefinition>>;
   readonly objects: Readonly<Record<string, ObjectDefinition>>;
   readonly sequences: Readonly<Record<string, SequenceDefinition>>;
   readonly variables: Readonly<Record<string, boolean>>;
+  readonly narrativeFacts: Readonly<Record<string, NarrativeFactDefinition>>;
 }
 
 /** @internal Project-owned identity and variable registry needed by Save. */
@@ -170,6 +188,7 @@ export interface SaveCompositionView {
   readonly world: WorldProjectView;
   readonly animation: AnimationProjectView;
   readonly sequences: Readonly<Record<string, SequenceDefinition>>;
+  readonly dialogue: KnowledgeDrivenDialogueProjectView;
 }
 
 /** @internal Project-owned registries used while coordinating one Game Session. */
@@ -185,6 +204,7 @@ export interface GameSessionCompositionView {
   readonly animation: AnimationProjectView;
   readonly hud: HUDProjectView;
   readonly sequences: Readonly<Record<string, SequenceDefinition>>;
+  readonly dialogue: KnowledgeDrivenDialogueProjectView;
 }
 
 /** @internal Authored assets needed by the browser asset adapter. */
@@ -233,6 +253,7 @@ export function compileGameProject(input: GameProject): GameProjectCompilation {
   const objects = input.objects ?? {};
   const sequences = input.sequences ?? {};
   const variables = input.variables ?? {};
+  const narrativeFacts = input.narrativeFacts ?? {};
   for (const [sceneId, scene] of Object.entries(input.scenes)) {
     diagnostics.push(...validateSceneDefinition(scene, `scenes.${sceneId}`));
   }
@@ -256,6 +277,10 @@ export function compileGameProject(input: GameProject): GameProjectCompilation {
     scenes: input.scenes,
     characters,
     objects,
+  }));
+  diagnostics.push(...validateKnowledgeDrivenDialogueProject({
+    narrativeFacts,
+    characters,
   }));
   validateProjectDefinitions(input, characters, objects, sequences, variables, diagnostics);
   diagnostics.push(...validateAnimationProjectSettings(input.inventoryAppearanceSize));
@@ -304,6 +329,7 @@ export function compileGameProject(input: GameProject): GameProjectCompilation {
     objects: cloned.objects ?? {},
     sequences: cloned.sequences ?? {},
     variables: cloned.variables ?? {},
+    narrativeFacts: cloned.narrativeFacts ?? {},
     letterboxColor: cloned.letterboxColor ?? "#000000",
   });
   const project = Object.freeze({}) as CompiledGameProject;
@@ -345,6 +371,7 @@ export function getGameSessionCompositionView(project: CompiledGameProject): Gam
       ...(data.hudTheme === undefined ? {} : { theme: data.hudTheme }),
     }),
     sequences: data.sequences,
+    dialogue: dialogueProjectView(data),
   });
 }
 
@@ -396,6 +423,14 @@ export function getSaveCompositionView(project: CompiledGameProject): SaveCompos
     }),
     animation: animationProjectView(data),
     sequences: data.sequences,
+    dialogue: dialogueProjectView(data),
+  });
+}
+
+function dialogueProjectView(data: GameProjectData): KnowledgeDrivenDialogueProjectView {
+  return Object.freeze({
+    narrativeFacts: data.narrativeFacts,
+    characters: data.characters,
   });
 }
 
@@ -430,7 +465,12 @@ function cloneAuthoredValue<T>(value: T, seen = new WeakMap<object, object>()): 
   const clone: Record<string, unknown> = {};
   seen.set(value, clone);
   for (const [key, child] of Object.entries(value)) {
-    clone[key] = cloneAuthoredValue(child, seen);
+    Object.defineProperty(clone, key, {
+      value: cloneAuthoredValue(child, seen),
+      enumerable: true,
+      configurable: true,
+      writable: true,
+    });
   }
   return clone as T;
 }
@@ -497,6 +537,7 @@ function validateProjectDefinitions(
     sequences: new Set(Object.keys(sequences)),
     commandFallbacks: input.commandFallbacks,
   };
+  const dialogueReferences = { narrativeFacts: input.narrativeFacts ?? {}, characters };
   diagnostics.push(...validateInteractionComposition({
     commandLexicon: input.commandLexicon,
     scenes: input.scenes,
@@ -514,6 +555,14 @@ function validateProjectDefinitions(
     const operationDiagnostics: AuthoringDiagnostic[] = [];
     values.forEach((operation, index) => {
       const operationPath = `${path}[${index}]`;
+      if (isLearnNarrativeFactOperation(operation)) {
+        operationDiagnostics.push(...validateLearnNarrativeFactOperation(
+          operation,
+          operationPath,
+          dialogueReferences,
+        ));
+        return;
+      }
       if (isInventoryOperation(operation)) {
         operationDiagnostics.push(...validateInventoryOperation(
           operation,

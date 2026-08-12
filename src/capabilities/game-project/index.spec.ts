@@ -432,3 +432,52 @@ test("Game Project delegates every local definition to capability validators", (
     ]));
   }
 });
+
+test("Game Project aggregates Knowledge-Driven Dialogue diagnostics at startup", () => {
+  const result = compileGameProject({
+    identity: "example.dialogue-diagnostics",
+    version: "1",
+    logicalResolution: { width: 320, height: 180 },
+    scenes: { opening },
+    narrativeFacts: {
+      empty: { proposition: " " },
+    },
+    characters: {
+      antonio: {
+        initialScene: "opening",
+        initialGroundPoint: { x: 160, y: 90 },
+        initialFacing: "front",
+        initialAppearance: "normal",
+        appearances: {
+          normal: {
+            animations: {
+              idle: { frames: ["antonio.png"], framesPerSecond: 1 },
+            },
+            roles: { default: "idle" },
+          },
+        },
+        movementSpeed: 60,
+        dialogue: {
+          knowledge: [{ factId: "missing", disclosure: { level: "open" } }],
+        },
+      },
+    },
+    initialScene: "opening",
+  });
+
+  expect(result).toMatchObject({
+    ok: false,
+    diagnostics: [
+      expect.objectContaining({
+        code: "reference.character-knowledge.fact",
+        owner: "dialogue",
+        path: "characters.antonio.dialogue.knowledge[0].factId",
+      }),
+      expect.objectContaining({
+        code: "definition.narrative-fact.proposition",
+        owner: "dialogue",
+        path: "narrativeFacts.empty.proposition",
+      }),
+    ],
+  });
+});

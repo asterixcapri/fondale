@@ -9,6 +9,7 @@ const historical = [join(sourceRoot, "public"), join(sourceRoot, "internal")];
 const capabilityOwners = new Set([
   "animation",
   "camera",
+  "dialogue",
   "game-project",
   "game-session",
   "hud",
