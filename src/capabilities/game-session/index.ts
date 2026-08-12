@@ -111,6 +111,7 @@ export interface GameState extends WorldState {
   relationships: RelationshipState;
   dialogueStates: CharacterDialogueState;
   testimonies: Testimony[];
+  conversationContinuation?: ConversationActivityState;
   activity: GameActivityState | null;
   tick: number;
 }
@@ -486,14 +487,15 @@ export function createCoreSession(
       if (input.type === "escape") {
         invalidateDialogueTurn();
         dialogueTurn = null;
-        state.activity = null;
-        emitted.push({ type: "conversation-changed" });
+        closeOrHandoffConversation(state.activity.character);
       } else if (input.type === "advance-conversation-line" && dialogueTurn) {
         if (dialogueTurn.phase === "player") {
           dialogueTurn.phase = "character";
         } else {
           dialogueTurn = null;
-          conversationStatus = "ready";
+          if (!startConversationHandoff(state.activity.character)) {
+            conversationStatus = "ready";
+          }
         }
         emitted.push({ type: "conversation-changed" });
       }
@@ -629,8 +631,11 @@ export function createCoreSession(
       failOperation(cause instanceof Error ? cause.message : String(cause), cause);
       return;
     }
-    draft.activity = null;
+    const continuation = draft.conversationContinuation;
+    delete draft.conversationContinuation;
+    draft.activity = continuation ?? null;
     state = draft;
+    if (continuation) prepareResumedConversation();
     emitted.push({ type: "sequence-changed" });
   }
 
@@ -698,6 +703,29 @@ export function createCoreSession(
     conversationStatus = "ready";
     conversationError = undefined;
     emitted.push({ type: "conversation-changed" });
+    return true;
+  }
+
+  function closeOrHandoffConversation(character: string): void {
+    if (!startConversationHandoff(character)) {
+      state.activity = null;
+      emitted.push({ type: "conversation-changed" });
+    }
+  }
+
+  function startConversationHandoff(character: string): boolean {
+    const handoff = dialogue.handoff(character, conditionMatches);
+    if (!handoff) return false;
+    invalidateDialogueTurn();
+    dialogueTurn = null;
+    if (handoff.after === "resume") {
+      state.conversationContinuation = { type: "conversation", character };
+    } else {
+      delete state.conversationContinuation;
+    }
+    state.activity = sequenceCapability.start(handoff.sequence, state.currentScene);
+    emitted.push({ type: "sequence-changed" });
+    advanceSequence();
     return true;
   }
 
@@ -818,7 +846,7 @@ export function createCoreSession(
       return;
     }
     if (decision.type === "complete") {
-      state.activity = null;
+      resumeConversationAfterSequence();
       emitted.push({ type: "sequence-changed" });
       return;
     }
@@ -827,6 +855,22 @@ export function createCoreSession(
     if (decision.type === "apply-operations") {
       applyOperations(decision.operations, { kind: "background" });
     }
+  }
+
+  function resumeConversationAfterSequence(): void {
+    const continuation = state.conversationContinuation;
+    delete state.conversationContinuation;
+    state.activity = continuation ?? null;
+    if (!continuation) return;
+    prepareResumedConversation();
+  }
+
+  function prepareResumedConversation(): void {
+    dialogueTurn = null;
+    dialogueCompletion = null;
+    conversationStatus = "ready";
+    conversationError = undefined;
+    emitted.push({ type: "conversation-changed" });
   }
 
   function sequenceRuntimeContext() {

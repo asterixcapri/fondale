@@ -1,4 +1,5 @@
 import type { AuthoringDiagnostic } from "../game-project";
+import type { InteractionCondition } from "../interaction";
 
 /** One true canonical proposition identified by its Narrative Fact registry key. */
 export interface NarrativeFactDefinition {
@@ -87,6 +88,13 @@ export interface RelationshipDefinition {
   readonly trust: Trust;
 }
 
+/** Authored transition from exploratory Conversation to an exact Sequence. */
+export interface ConversationHandoffDefinition {
+  readonly when: InteractionCondition;
+  readonly sequence: string;
+  readonly after: "close" | "resume";
+}
+
 /** Optional Knowledge-Driven Dialogue data authored beside a Character's World definition. */
 export interface CharacterDialogueDefinition {
   readonly biography?: string;
@@ -97,6 +105,7 @@ export interface CharacterDialogueDefinition {
   readonly knowledge: readonly CharacterKnowledgeDefinition[];
   readonly coverStories?: readonly CoverStoryDefinition[];
   readonly relationships?: Readonly<Record<string, RelationshipDefinition>>;
+  readonly handoffs?: readonly ConversationHandoffDefinition[];
 }
 
 /** Maximum Player speech accepted by one Dialogue Turn. */
@@ -372,6 +381,10 @@ export interface KnowledgeDrivenDialogue {
   initialState(): KnowledgeDrivenDialogueState;
   requiresProvider(): boolean;
   hasProfile(character: string): boolean;
+  handoff(
+    character: string,
+    conditionMatches: (condition: InteractionCondition) => boolean,
+  ): ConversationHandoffDefinition | undefined;
   respond(
     state: KnowledgeDrivenDialogueState & { readonly variables: Record<string, boolean> },
     input: {
@@ -435,6 +448,15 @@ export function createKnowledgeDrivenDialogue(
     hasProfile(character: string) {
       return hasOwn(project.characters, character) &&
         project.characters[character]!.dialogue !== undefined;
+    },
+    handoff(
+      character: string,
+      conditionMatches: (condition: InteractionCondition) => boolean,
+    ) {
+      const handoff = project.characters[character]?.dialogue?.handoffs?.find(({ when }) =>
+        conditionMatches(when)
+      );
+      return handoff ? structuredClone(handoff) : undefined;
     },
     async respond(
       state: KnowledgeDrivenDialogueState & { readonly variables: Record<string, boolean> },
@@ -1032,6 +1054,32 @@ export function validateKnowledgeDrivenDialogueProject(
         });
       }
       if (typeof concealsFactId === "string") concealedFacts.add(concealsFactId);
+    }
+    const handoffs = dialogue.handoffs;
+    if (handoffs !== undefined && !Array.isArray(handoffs)) {
+      diagnostics.push({
+        code: "definition.dialogue.handoffs",
+        family: "definition",
+        owner: "dialogue",
+        path: `${basePath}.handoffs`,
+        message: "Conversation handoffs must be an array.",
+      });
+    }
+    for (const [index, handoff] of (
+      Array.isArray(handoffs) ? handoffs : []
+    ).entries()) {
+      if (!isRecord(handoff) ||
+          !hasExactKeys(handoff, ["when", "sequence", "after"]) ||
+          typeof handoff.sequence !== "string" || !handoff.sequence.trim() ||
+          (handoff.after !== "close" && handoff.after !== "resume")) {
+        diagnostics.push({
+          code: "definition.dialogue.handoff",
+          family: "definition",
+          owner: "dialogue",
+          path: `${basePath}.handoffs[${index}]`,
+          message: "A Conversation handoff requires a condition, a named Sequence and an explicit close or resume outcome.",
+        });
+      }
     }
     validateQualitativeProfile(dialogue as unknown as CharacterDialogueDefinition, basePath, diagnostics);
     const relationships = dialogue.relationships;

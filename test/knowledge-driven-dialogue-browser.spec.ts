@@ -11,6 +11,17 @@ async function openAntonioConversation(page: Page): Promise<void> {
   );
 }
 
+async function openLuciaConversation(page: Page): Promise<void> {
+  await page.goto("/test/fixtures/knowledge-driven-dialogue.html");
+  const canvas = page.locator("[data-fondale-frame] canvas");
+  const bounds = await canvas.boundingBox();
+  if (!bounds) throw new Error("Fondale canvas is not visible.");
+  await page.mouse.click(
+    bounds.x + (80 / 426) * bounds.width,
+    bounds.y + (150 / 240) * bounds.height,
+  );
+}
+
 test("the browser fixture completes an open-fact Conversation without external dependencies", async ({
   page,
 }) => {
@@ -51,6 +62,32 @@ test("the browser fixture completes an open-fact Conversation without external d
     window.__dialogueSession?.createSaveSnapshot().state.characterKnowledge.player
   );
   expect(learned).toEqual(["harbour-chain-cut"]);
+});
+
+test("an authored Sequence takes over the browser and then resumes its Conversation", async ({
+  page,
+}) => {
+  await openLuciaConversation(page);
+  const conversation = page.locator("[data-fondale-conversation]");
+  const input = conversation.locator("[data-fondale-dialogue-input]");
+  await expect(conversation).toContainText("Ask lucia");
+  await input.fill("Begin the exact account.");
+  await conversation.getByRole("button", { name: "Ask" }).click();
+
+  await expect(page.locator('[data-fondale-line][data-fondale-speaker="player"]'))
+    .toContainText("Begin the exact account.");
+  await page.locator("[data-fondale-frame]").focus();
+  await page.keyboard.press(".");
+  await expect(page.locator('[data-fondale-line][data-fondale-speaker="lucia"]'))
+    .toContainText("I saw the harbour chain being cut.");
+  await page.keyboard.press(".");
+
+  await expect(conversation).toBeHidden();
+  await expect(page.locator('[data-fondale-line][data-fondale-speaker="lucia"]'))
+    .toContainText("Meet me beneath the harbour clock at midnight.");
+  await page.keyboard.press(".");
+  await expect(conversation).toBeVisible();
+  await expect(conversation).toContainText("Ask lucia");
 });
 
 test("the Player can leave a pending Conversation and its late response stays invisible", async ({

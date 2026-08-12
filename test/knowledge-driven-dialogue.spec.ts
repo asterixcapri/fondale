@@ -11,6 +11,7 @@ import {
   type GameProject,
   type NounDefinition,
   type SceneDefinition,
+  type SequenceDefinition,
 } from "../src/index";
 import { compileGameProject } from "../src/capabilities/game-project";
 
@@ -250,6 +251,40 @@ function coverStoryProject(): GameProject {
           cases: [{
             verb: "talk-to",
             line: { character: "antonio", text: "Authored fallback." },
+          }],
+        },
+      },
+    },
+  } satisfies GameProject;
+}
+
+function conversationHandoffProject(
+  after: "close" | "resume",
+  handoffReady = true,
+): GameProject {
+  const base = coverStoryProject();
+  return {
+    ...base,
+    variables: { ...base.variables, handoffReady },
+    sequences: {
+      exactAccount: {
+        steps: [{
+          type: "line",
+          character: "antonio",
+          text: "This exact account is authored.",
+        }],
+      } satisfies SequenceDefinition,
+    },
+    characters: {
+      ...base.characters,
+      antonio: {
+        ...base.characters!.antonio!,
+        dialogue: {
+          ...base.characters!.antonio!.dialogue!,
+          handoffs: [{
+            when: { variable: "handoffReady", equals: true },
+            sequence: "exactAccount",
+            after,
           }],
         },
       },
@@ -565,6 +600,216 @@ test("Talk To completes an open-fact Conversation through the Dialogue Provider"
     session.steps();
     expect(session.conversation()).toMatchObject({ status: "ready" });
   }
+});
+
+test("an authored handoff runs a Sequence after a Dialogue Turn and resumes the Conversation", async () => {
+  const project = conversationHandoffProject("resume");
+  const provider = new FakeDialogueProvider({
+    interpretations: { "Were you aboard?": "santa-lucia" },
+    verbalizations: { denial: "I was never aboard that ship." },
+  });
+  const session = createTestSession(project, undefined, provider);
+  openAntonioConversation(session);
+
+  await expect(session.submitDialogue("Were you aboard?")).resolves.toEqual({ ok: true });
+  session.steps();
+  expect(session.snapshot().testimonies).toEqual([{
+    speaker: "antonio",
+    listener: "player",
+    claimId: "denial",
+  }]);
+
+  session.input({ type: "advance-conversation-line" });
+  session.steps();
+  expect(session.hud().narrative).toMatchObject({
+    speaker: "antonio",
+    text: "I was never aboard that ship.",
+  });
+
+  session.input({ type: "advance-conversation-line" });
+  session.steps();
+  expect(session.snapshot().activity).toMatchObject({
+    type: "sequence",
+    sequence: "exactAccount",
+  });
+  expect(session.hud().narrative).toMatchObject({
+    speaker: "antonio",
+    text: "This exact account is authored.",
+  });
+
+  session.input({ type: "advance-sequence" });
+  session.steps();
+  expect(session.conversation()).toMatchObject({ character: "antonio", status: "ready" });
+});
+
+test("Conversation handoffs reject invalid conditions, Sequence references and outcomes at startup", () => {
+  const project = conversationHandoffProject("resume");
+  const result = compileGameProject({
+    ...project,
+    characters: {
+      ...project.characters,
+      antonio: {
+        ...project.characters!.antonio!,
+        dialogue: {
+          ...project.characters!.antonio!.dialogue!,
+          handoffs: [{
+            when: { variable: "missing", equals: true },
+            sequence: "missing",
+            after: "later",
+          }],
+        },
+      },
+    },
+  } as unknown as GameProject);
+
+  expect(result).toMatchObject({
+    ok: false,
+    diagnostics: expect.arrayContaining([
+      expect.objectContaining({
+        code: "definition.dialogue.handoff",
+        owner: "dialogue",
+      }),
+      expect.objectContaining({ code: "reference.variable" }),
+      expect.objectContaining({ code: "reference.sequence" }),
+    ]),
+  });
+});
+
+test("an authored handoff can close the Conversation after its Sequence", async () => {
+  const project = conversationHandoffProject("close");
+  const provider = new FakeDialogueProvider({
+    interpretations: { "Were you aboard?": "santa-lucia" },
+    verbalizations: { denial: "I was never aboard that ship." },
+  });
+  const session = createTestSession(project, undefined, provider);
+  openAntonioConversation(session);
+  await session.submitDialogue("Were you aboard?");
+  session.steps();
+
+  for (const input of [
+    { type: "advance-conversation-line" as const },
+    { type: "advance-conversation-line" as const },
+    { type: "advance-sequence" as const },
+  ]) {
+    session.input(input);
+    session.steps();
+  }
+
+  expect(session.snapshot().activity).toBeNull();
+  expect(session.conversation()).toBeNull();
+});
+
+test("a Conversation closes normally when no authored handoff condition matches", async () => {
+  const project = conversationHandoffProject("resume", false);
+  const provider = new FakeDialogueProvider({
+    interpretations: { "Were you aboard?": "santa-lucia" },
+    verbalizations: { denial: "I was never aboard that ship." },
+  });
+  const session = createTestSession(project, undefined, provider);
+  openAntonioConversation(session);
+  await session.submitDialogue("Were you aboard?");
+  session.steps();
+  session.input({ type: "advance-conversation-line" });
+  session.steps();
+  session.input({ type: "advance-conversation-line" });
+  session.steps();
+
+  expect(session.conversation()).toMatchObject({ status: "ready" });
+  session.input({ type: "escape" });
+  session.steps();
+  expect(session.snapshot().activity).toBeNull();
+});
+
+test("leaving for an authored Sequence cancels a pending Dialogue Turn before takeover", async () => {
+  const project = conversationHandoffProject("resume");
+  const provider = new FakeDialogueProvider({
+    interpretations: {
+      "Wait for me.": {
+        outcome: "pending",
+        value: "santa-lucia",
+        ignoreCancellation: true,
+      },
+    },
+    verbalizations: { denial: "I was never aboard that ship." },
+  });
+  const session = createTestSession(project, undefined, provider);
+  openAntonioConversation(session);
+  const pending = session.submitDialogue("Wait for me.");
+  await Promise.resolve();
+  const [turnId] = provider.pendingTurnIds();
+
+  session.input({ type: "escape" });
+  session.steps();
+
+  await expect(pending).resolves.toEqual({
+    ok: false,
+    message: "Dialogue Turn was cancelled.",
+  });
+  expect(session.snapshot().activity).toMatchObject({
+    type: "sequence",
+    sequence: "exactAccount",
+  });
+  expect(turnId && provider.release(turnId)).toBe(true);
+  await Promise.resolve();
+  session.steps();
+  expect(session.snapshot().testimonies).toEqual([]);
+});
+
+test("Save restores an authored Conversation continuation without provider memory", async () => {
+  const project = conversationHandoffProject("resume");
+  const provider = new FakeDialogueProvider({
+    interpretations: { "Were you aboard?": "santa-lucia" },
+    verbalizations: { denial: "I was never aboard that ship." },
+  });
+  const session = createTestSession(project, undefined, provider);
+  openAntonioConversation(session);
+  await session.submitDialogue("Were you aboard?");
+  session.steps();
+  session.input({ type: "advance-conversation-line" });
+  session.steps();
+  session.input({ type: "advance-conversation-line" });
+  session.steps();
+
+  const raw = JSON.parse(JSON.stringify(session.createSaveSnapshot())) as unknown;
+  const validation = validateTestSaveSnapshot(project, raw);
+  expect(validation.ok).toBe(true);
+  if (!validation.ok) return;
+  const restored = createTestSession(project, validation.snapshot, provider);
+  restored.input({ type: "advance-sequence" });
+  restored.steps();
+
+  expect(restored.conversation()).toMatchObject({ character: "antonio", status: "ready" });
+});
+
+test("skipping an authored handoff Sequence applies its outcome before resuming", async () => {
+  const base = conversationHandoffProject("resume");
+  const project = {
+    ...base,
+    sequences: {
+      exactAccount: {
+        ...base.sequences!.exactAccount!,
+        skippable: true,
+        skipOutcome: [{
+          type: "set-variable",
+          variable: "confessionUnlocked",
+          value: true,
+        }],
+      },
+    },
+  } satisfies GameProject;
+  const session = createTestSession(project, undefined, new FakeDialogueProvider({
+    interpretations: {},
+    verbalizations: {},
+  }));
+  openAntonioConversation(session);
+  session.input({ type: "escape" });
+  session.steps();
+
+  session.input({ type: "skip-sequence" });
+  session.steps();
+
+  expect(session.snapshot().variables.confessionUnlocked).toBe(true);
+  expect(session.conversation()).toMatchObject({ character: "antonio", status: "ready" });
 });
 
 test("a successful Cover Story commits one idempotent Testimony and Save restores it exactly", async () => {

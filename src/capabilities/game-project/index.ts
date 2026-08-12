@@ -715,6 +715,25 @@ function validateProjectDefinitions(
         "Character",
       ));
     }
+    character.dialogue?.handoffs?.forEach((handoff, index) => {
+      const path = `characters.${characterId}.dialogue.handoffs[${index}]`;
+      if (handoff && typeof handoff === "object" && "when" in handoff) {
+        condition(handoff.when, `${path}.when`);
+      }
+      if (!handoff || typeof handoff !== "object" ||
+          !("sequence" in handoff) || typeof handoff.sequence !== "string") return;
+      diagnostics.push(...validateSequenceStartReference(handoff.sequence, `${path}.sequence`, sequences));
+      const sequence = sequences[handoff.sequence];
+      if (sequence?.scene !== undefined && sequence.scene !== character.initialScene) {
+        diagnostics.push({
+          code: "reference.sequence.scene",
+          family: "reference",
+          owner: "sequence",
+          path: `${path}.sequence`,
+          message: `Sequence '${handoff.sequence}' belongs to Scene '${sequence.scene}'.`,
+        });
+      }
+    });
   }
   for (const [objectId, object] of Object.entries(objects)) {
     noun(

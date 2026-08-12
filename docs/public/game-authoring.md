@@ -134,6 +134,11 @@ const antonioDialogue = {
     concealsFactId: "antonio-cut-chain",
     claimId: "antonio-denial",
   }],
+  handoffs: [{
+    when: { variable: "antonio-ready-to-confess", equals: true },
+    sequence: "antonio-confession",
+    after: "resume",
+  }],
 } satisfies CharacterDialogueDefinition;
 
 const antonio = {
@@ -167,7 +172,10 @@ const dialogueProject = {
 
 Startup rejects empty propositions, missing fact, Claim or Relationship
 references, incoherent Cover Stories or Disclosure, and unsupported qualitative
-values. When Dialogue policy selects a Cover Story, the provider receives its
+values. A Conversation handoff evaluates its authored condition against
+committed Game State, gives control to its named Sequence, and explicitly
+`close`s or `resume`s the Conversation when that Sequence ends. Generated
+wording cannot trigger the handoff. When Dialogue policy selects a Cover Story, the provider receives its
 Claim but not the concealed Narrative Fact. A successful turn records one
 idempotent Testimony containing speaker, listener and Claim ID; it does not add
 the Claim to Character Knowledge or save generated wording. The Engine copies

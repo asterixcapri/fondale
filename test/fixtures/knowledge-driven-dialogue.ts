@@ -39,6 +39,14 @@ const noun = ({
     line: { character: "antonio", text: "This authored fallback must not run." },
   }],
 } satisfies NounDefinition);
+const luciaNoun = ({
+  labels: [{ text: "Lucia" }],
+  preferredVerbs: [{ verb: "talk-to" }],
+  cases: [{
+    verb: "talk-to",
+    line: { character: "lucia", text: "This authored fallback must not run." },
+  }],
+} satisfies NounDefinition);
 const appearance = {
   animations: { idle: { frames: [characterUrl], framesPerSecond: 1, loop: true } },
   roles: { default: "idle", walking: "idle" },
@@ -65,7 +73,7 @@ const project = ({
     "harbour-chain-cut": { proposition: "The harbour chain was cut." },
     "antonio-ordered-sabotage": { proposition: "Antonio ordered the sabotage." },
   },
-  variables: { confessionUnlocked: false },
+  variables: { confessionUnlocked: false, handoffReady: true },
   characters: {
     player: character(180, { dialogue: { knowledge: [] } }),
     antonio: character(315, {
@@ -84,6 +92,29 @@ const project = ({
         }],
       },
     }),
+    lucia: character(80, {
+      noun: luciaNoun,
+      dialogue: {
+        knowledge: [{
+          factId: "harbour-chain-cut",
+          disclosure: { level: "open" },
+        }],
+        handoffs: [{
+          when: { variable: "handoffReady", equals: true },
+          sequence: "luciaExactAccount",
+          after: "resume",
+        }],
+      },
+    }),
+  },
+  sequences: {
+    luciaExactAccount: {
+      steps: [{
+        type: "line",
+        character: "lucia",
+        text: "Meet me beneath the harbour clock at midnight.",
+      }],
+    },
   },
   scenes: {
     opening: ({
@@ -95,6 +126,10 @@ const project = ({
         target: { kind: "character", character: "antonio" },
         area: [{ x: 285, y: 110 }, { x: 345, y: 110 }, { x: 345, y: 190 }, { x: 285, y: 190 }],
         approach: { groundPoint: { x: 275, y: 170 }, facing: "right" },
+      }, {
+        target: { kind: "character", character: "lucia" },
+        area: [{ x: 50, y: 110 }, { x: 110, y: 110 }, { x: 110, y: 190 }, { x: 50, y: 190 }],
+        approach: { groundPoint: { x: 120, y: 170 }, facing: "left" },
       }],
     } satisfies SceneDefinition),
   },
@@ -115,6 +150,7 @@ const dialogueProvider = new FakeDialogueProvider({
       value: "harbour-chain-cut",
       ignoreCancellation: true,
     },
+    "Begin the exact account.": "harbour-chain-cut",
   },
   verbalizations: {
     "harbour-chain-cut": "I saw the harbour chain being cut.",

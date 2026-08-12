@@ -64,7 +64,9 @@ its `narrativeFacts` registry key. `ClaimDefinition` is a non-canonical,
 non-empty `proposition` identified independently by its `claims` registry key.
 A `CharacterDialogueDefinition` contains the
 Character's initial Character Knowledge, directional Relationships and optional
-qualitative Dialogue State and portrayal profile. Every
+qualitative Dialogue State, portrayal profile and Conversation handoffs. A
+`ConversationHandoffDefinition` names an authored condition, one Sequence and
+an explicit `close` or `resume` result. Every
 `CharacterKnowledgeDefinition` refers to one fact through `factId` and declares
 `open`, `guarded`, or `secret` Disclosure. Guarded facts require minimum Trust
 or a boolean Game Variable; secret facts always require an explicit Game
@@ -103,7 +105,11 @@ Only one Dialogue Turn may be pending. Leaving, saving, loading, or stopping
 the Game Session aborts it and ignores late provider results. Loading awaits
 `DialogueProvider.reset()` before a restored Conversation accepts new speech;
 provider-owned transcript, thread, model and usage data never enter a Save
-Snapshot.
+Snapshot. After an accepted turn's canonical effects commit, the Engine may
+evaluate a matching authored Conversation handoff. Its Sequence becomes the
+dominant Game Activity and retains ownership of exact Lines, Choices, timing
+and skip behavior. A resumable handoff stores only the canonical Conversation
+continuation; provider memory remains external and is still reset by Load.
 
 `FakeDialogueProvider` is the deterministic adapter used by Engine tests and
 browser fixtures. Its `interpretations` map multiple exact Player formulations
@@ -121,7 +127,7 @@ The authored condition fields are `trustAtLeast`, `variable`, and `equals`.
 Qualitative profile fields are `biography`, `personality`, `behavior`, `voice`,
 `relationships`, `talkativeness`, `honesty`, `discretion`, `suspiciousness`,
 `withholding`, `verbosity`, `tone`, `vocabulary`, `trust`, `coverStories`,
-`concealsFactId`, and `claimId`. Provider requests carry Engine-selected
+`concealsFactId`, `claimId`, `handoffs`, and `after`. Provider requests carry Engine-selected
 `strategy`, `profile`, and optional `claim` fields. A directional Trust
 operation names its target with `towards`.
 
@@ -245,7 +251,8 @@ identifies the capability or browser adapter responsible for the rule.
 | `RelationshipDefinition` | initial directional social state | qualitative Trust | source and target identities remain distinct | Character/Trust diagnostics | [Dialogue authoring](game-authoring.md) |
 | `CharacterKnowledgeDefinition` | initial known fact reference | factId and Disclosure | one reference per Character and fact | knowledge reference/duplicate diagnostics | [Dialogue authoring](game-authoring.md) |
 | `CoverStoryDefinition` | controlled false account | concealed fact and Claim identities | fact must be guarded/secret and known by the Character | Cover Story definition/reference diagnostics | [Dialogue authoring](game-authoring.md) |
-| `CharacterDialogueDefinition` | optional Character dialogue profile | knowledge, Cover Stories, Relationships, qualitative portrayal and state | omission preserves authored behaviour | dialogue capability diagnostics | [Dialogue authoring](game-authoring.md) |
+| `ConversationHandoffDefinition` | authored transition from Conversation to Sequence | condition, Sequence identity, close or resume outcome | evaluates committed Game State; generated wording has no authority | condition/Sequence/profile diagnostics | [Dialogue authoring](game-authoring.md) |
+| `CharacterDialogueDefinition` | optional Character dialogue profile | knowledge, Cover Stories, Relationships, handoffs, qualitative portrayal and state | omission preserves authored behaviour | dialogue capability diagnostics | [Dialogue authoring](game-authoring.md) |
 | `LearnNarrativeFactOperation` | monotonic Character Knowledge change | Character and Narrative Fact identities | repeated learning is idempotent | Character/fact reference diagnostics | [Dialogue authoring](game-authoring.md) |
 | `RecordTestimonyOperation` | remember a communicated Claim | speaker, listener, concealed fact and Claim identities | must match the speaker's authored Cover Story; repeated testimony is idempotent | Character/Claim/Cover Story reference diagnostics | [Dialogue authoring](game-authoring.md) |
 | `SetTrustOperation` | directional Relationship change | source, target and qualitative Trust | only a declared Relationship edge may change | Character/Relationship diagnostics | [Dialogue authoring](game-authoring.md) |
@@ -425,7 +432,8 @@ Knowledge-Driven Dialogue definition and operation codes include
 `definition.relationship.collection`, `definition.relationship.trust`,
 `definition.dialogue.profile`, `definition.dialogue.biography`,
 `definition.dialogue.personality`, `definition.dialogue.behavior`,
-`definition.dialogue.voice`, `definition.dialogue.state`, and
+`definition.dialogue.voice`, `definition.dialogue.state`,
+`definition.dialogue.handoffs`, `definition.dialogue.handoff`, and
 `reference.dialogue-operation.character`.
 
 Runtime, save, asset and environment codes: `state.operation.invalid`,
