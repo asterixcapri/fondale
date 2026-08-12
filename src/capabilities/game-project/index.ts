@@ -1,4 +1,8 @@
-import { AuthoringError, type AuthoringDiagnostic } from "./diagnostics";
+import {
+  AuthoringError,
+  freezeAuthoringDiagnostics,
+  type AuthoringDiagnostic,
+} from "./diagnostics";
 export {
   AuthoringError,
   type AuthoringDiagnostic,
@@ -222,8 +226,13 @@ export interface BrowserProjectView {
 
 const projectData = new WeakMap<GameProject, GameProjectData>();
 
-/** Composes named definitions into one validated and immutable Game Project. */
-export function defineGame(input: GameInput): GameProject {
+/** @internal Ordinary result of compiling one authored Game Project snapshot. */
+export type GameProjectCompilation =
+  | { readonly ok: true; readonly project: GameProject }
+  | { readonly ok: false; readonly diagnostics: readonly AuthoringDiagnostic[] };
+
+/** @internal Validates and compiles one browser-independent Game Project snapshot. */
+export function compileGameProject(input: GameInput): GameProjectCompilation {
   const diagnostics: AuthoringDiagnostic[] = [];
   const characters = input.characters ?? {};
   const objects = input.objects ?? {};
@@ -281,25 +290,37 @@ export function defineGame(input: GameInput): GameProject {
       });
     }
   }
-  if (diagnostics.length > 0) throw new AuthoringError(diagnostics);
+  if (diagnostics.length > 0) {
+    return Object.freeze({
+      ok: false,
+      diagnostics: freezeAuthoringDiagnostics(diagnostics),
+    });
+  }
 
-  const scenes = Object.fromEntries(Object.entries(input.scenes).map(([sceneId, scene]) => [
+  const cloned = cloneAuthoredValue(input);
+  const scenes = Object.fromEntries(Object.entries(cloned.scenes).map(([sceneId, scene]) => [
     sceneId,
-    { ...scene, size: { ...(scene.size ?? input.logicalResolution) } },
+    { ...scene, size: { ...(scene.size ?? cloned.logicalResolution) } },
   ])) as Readonly<Record<string, ResolvedSceneDefinition>>;
   const data = deepFreeze({
-    ...input,
-    logicalResolution: { ...input.logicalResolution },
+    ...cloned,
     scenes,
-    characters: { ...characters },
-    objects: { ...objects },
-    sequences: { ...sequences },
-    variables: { ...variables },
-    letterboxColor: input.letterboxColor ?? "#000000",
+    characters: cloned.characters ?? {},
+    objects: cloned.objects ?? {},
+    sequences: cloned.sequences ?? {},
+    variables: cloned.variables ?? {},
+    letterboxColor: cloned.letterboxColor ?? "#000000",
   });
   const project = Object.freeze({}) as GameProject;
   projectData.set(project, data);
-  return project;
+  return Object.freeze({ ok: true, project });
+}
+
+/** Composes named definitions into one validated and immutable Game Project. */
+export function defineGame(input: GameInput): GameProject {
+  const compilation = compileGameProject(input);
+  if (!compilation.ok) throw new AuthoringError(compilation.diagnostics);
+  return compilation.project;
 }
 
 function requireGameProjectData(project: GameProject): GameProjectData {
@@ -400,11 +421,68 @@ function animationProjectView(data: GameProjectData): AnimationProjectView {
 }
 
 function deepFreeze<T>(value: T): T {
-  if (value && typeof value === "object" && !(value instanceof URL) && !Object.isFrozen(value)) {
-    Object.freeze(value);
+  if (value && typeof value === "object" && !Object.isFrozen(value)) {
     for (const child of Object.values(value)) deepFreeze(child);
+    Object.freeze(value);
   }
   return value;
+}
+
+function cloneAuthoredValue<T>(value: T, seen = new WeakMap<object, object>()): T {
+  if (value instanceof URL) return cloneImmutableURL(value) as T;
+  if (value === null || typeof value !== "object") return value;
+  const existing = seen.get(value);
+  if (existing) return existing as T;
+  if (Array.isArray(value)) {
+    const clone: unknown[] = [];
+    seen.set(value, clone);
+    clone.push(...value.map((child) => cloneAuthoredValue(child, seen)));
+    return clone as T;
+  }
+  const clone: Record<string, unknown> = {};
+  seen.set(value, clone);
+  for (const [key, child] of Object.entries(value)) {
+    clone[key] = cloneAuthoredValue(child, seen);
+  }
+  return clone as T;
+}
+
+const urlSearchParamsMutators = new Set<PropertyKey>(["append", "delete", "set", "sort"]);
+
+function cloneImmutableURL(value: URL): URL {
+  const target = new URL(value.href);
+  const searchParamsTarget = new URLSearchParams(target.searchParams);
+  let searchParams: URLSearchParams;
+  searchParams = new Proxy(searchParamsTarget, {
+    get(innerTarget, property) {
+      if (urlSearchParamsMutators.has(property)) return immutableURLMutation;
+      if (property === "forEach") {
+        return (
+          callback: (value: string, key: string, parent: URLSearchParams) => void,
+          thisArg?: unknown,
+        ) => innerTarget.forEach((entryValue, key) => {
+          callback.call(thisArg, entryValue, key, searchParams);
+        });
+      }
+      const member = Reflect.get(innerTarget, property, innerTarget) as unknown;
+      return typeof member === "function" ? member.bind(innerTarget) : member;
+    },
+    set: immutableURLMutation,
+  });
+  Object.freeze(searchParams);
+  const clone = new Proxy(target, {
+    get(innerTarget, property) {
+      if (property === "searchParams") return searchParams;
+      const member = Reflect.get(innerTarget, property, innerTarget) as unknown;
+      return typeof member === "function" ? member.bind(innerTarget) : member;
+    },
+    set: immutableURLMutation,
+  });
+  return Object.freeze(clone);
+}
+
+function immutableURLMutation(): never {
+  throw new TypeError("Compiled URL references are immutable.");
 }
 
 function validateProjectDefinitions(

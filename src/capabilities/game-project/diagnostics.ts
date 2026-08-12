@@ -36,16 +36,27 @@ export interface AuthoringDiagnostic {
   readonly cause?: unknown;
 }
 
+/** @internal Creates the stable immutable ordering used by validation boundaries. */
+export function freezeAuthoringDiagnostics(
+  diagnostics: readonly AuthoringDiagnostic[],
+): readonly AuthoringDiagnostic[] {
+  return Object.freeze(
+    diagnostics
+      .map((diagnostic) => Object.freeze({ ...diagnostic }))
+      .sort((left, right) =>
+        `${left.path}\0${left.code}`.localeCompare(`${right.path}\0${right.code}`),
+      ),
+  );
+}
+
 /** The single error thrown when authored definitions contain one or more problems. */
 export class AuthoringError extends Error {
   readonly diagnostics: readonly AuthoringDiagnostic[];
 
   constructor(diagnostics: readonly AuthoringDiagnostic[]) {
-    const ordered = diagnostics.map((diagnostic) => Object.freeze({ ...diagnostic })).sort((left, right) =>
-      `${left.path}\0${left.code}`.localeCompare(`${right.path}\0${right.code}`),
-    );
+    const ordered = freezeAuthoringDiagnostics(diagnostics);
     super(ordered.map(({ path, message }) => `${path}: ${message}`).join("\n"));
     this.name = "AuthoringError";
-    this.diagnostics = Object.freeze(ordered);
+    this.diagnostics = ordered;
   }
 }
