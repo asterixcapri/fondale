@@ -6,6 +6,8 @@ import type {
   ReflectionResponse,
 } from "@asterixcapri/fondale";
 
+import { throwIfAborted } from "./cancellation";
+
 export interface VisibleDialogueLine {
   readonly role: "player" | "character";
   readonly text: string;
@@ -76,10 +78,6 @@ export class DeterministicDialogueModel implements DialogueModel {
       summary: `${remembered.join(" ")} ${historyDescription(history)}`.trim(),
     });
   }
-}
-
-function throwIfAborted(signal: AbortSignal): void {
-  if (signal.aborted) throw signal.reason ?? new DOMException("Aborted", "AbortError");
 }
 
 function historyDescription(history: readonly VisibleDialogueLine[]): string {

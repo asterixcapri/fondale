@@ -9,6 +9,7 @@ import type {
   ReflectionResponse,
 } from "@asterixcapri/fondale";
 
+import { throwIfAborted } from "./cancellation";
 import type { DialogueModel, VisibleDialogueLine } from "./dialogue-model";
 
 export interface PostgresDialogueProvider extends DialogueProvider {
@@ -246,10 +247,6 @@ function threadIdentity(
 
 function digest(value: string): string {
   return createHash("sha256").update(value).digest("hex").slice(0, 32);
-}
-
-function throwIfAborted(signal: AbortSignal): void {
-  if (signal.aborted) throw signal.reason ?? new DOMException("Aborted", "AbortError");
 }
 
 function formatReflection(response: ReflectionResponse): string {
