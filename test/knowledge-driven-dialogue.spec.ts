@@ -152,6 +152,61 @@ function rollbackProject(operations: readonly GameOperation[]): GameProject {
   } satisfies GameProject;
 }
 
+function relationshipProject(operations: readonly GameOperation[]): GameProject {
+  const base = knowledgeProject();
+  const opening = base.scenes.opening!;
+  const hotspot = opening.hotspots![0]!;
+  if (hotspot.target.kind !== "background" || !hotspot.noun) {
+    throw new Error("Expected the knowledge hotspot.");
+  }
+  const knowledgeNoun = hotspot.noun;
+  return {
+    ...base,
+    characters: {
+      ...base.characters,
+      antonio: character({
+        knowledge: [{ factId: "harbour-chain-cut", disclosure: { level: "open" } }],
+        relationships: { player: { trust: "low" } },
+        state: "afraid",
+      }),
+    },
+    scenes: {
+      opening: {
+        ...opening,
+        hotspots: [{
+          target: { kind: "background" },
+          area: hotspot.area,
+          approach: hotspot.approach,
+          ...(hotspot.when ? { when: hotspot.when } : {}),
+          noun: {
+            ...knowledgeNoun,
+            cases: [{
+              verb: "look-at",
+              response: { text: "Antonio steadies himself." },
+              operations,
+            }],
+          },
+        }],
+      },
+    },
+  } satisfies GameProject;
+}
+
+function dialogueRollbackProject(operations: readonly GameOperation[]): GameProject {
+  const base = rollbackProject(operations);
+  return {
+    ...base,
+    characters: {
+      ...base.characters,
+      antonio: character({
+        knowledge: [],
+        relationships: { player: { trust: "low" } },
+        state: "afraid",
+      }),
+    },
+  } satisfies GameProject;
+}
+
 test("Game Session copies initial Character Knowledge and learns idempotently", () => {
   const project = knowledgeProject();
   const session = createTestSession(project);
@@ -201,6 +256,50 @@ test("Save Snapshot validates and exactly restores Character Knowledge", () => {
   });
 });
 
+test("Game Operations change directional Trust and Dialogue State atomically and Save restores them", () => {
+  const project = relationshipProject([
+    {
+      type: "set-trust",
+      character: "antonio",
+      towards: "player",
+      trust: "high",
+    },
+    {
+      type: "set-dialogue-state",
+      character: "antonio",
+      state: "calm",
+    },
+  ]);
+  const session = createTestSession(project);
+
+  expect(session.snapshot().relationships).toEqual({
+    player: {},
+    antonio: { player: { trust: "low" } },
+    bystander: {},
+  });
+  expect(session.snapshot().dialogueStates).toEqual({
+    player: null,
+    antonio: "afraid",
+    bystander: null,
+  });
+
+  session.input({ type: "select-verb", verb: "look-at" });
+  session.input({ type: "activate-hotspot", hotspot: 0 });
+  session.steps(2);
+
+  expect(session.snapshot().relationships.antonio!.player).toEqual({ trust: "high" });
+  expect(session.snapshot().relationships.player!.antonio).toBeUndefined();
+  expect(session.snapshot().dialogueStates.antonio).toBe("calm");
+
+  const validation = validateTestSaveSnapshot(
+    project,
+    JSON.parse(JSON.stringify(session.createSaveSnapshot())) as unknown,
+  );
+  expect(validation.ok).toBe(true);
+  if (!validation.ok) return;
+  expect(createTestSession(project, validation.snapshot).snapshot()).toEqual(session.snapshot());
+});
+
 test("invalid Character Knowledge operation references reject project startup", () => {
   const result = compileGameProject(rollbackProject([{
     type: "learn-narrative-fact",
@@ -248,6 +347,24 @@ test("a later operation failure rolls back Character Knowledge with the complete
   });
 });
 
+test("a later operation failure rolls back Trust and Dialogue State with the complete batch", () => {
+  const session = createTestSession(dialogueRollbackProject([
+    { type: "set-trust", character: "antonio", towards: "player", trust: "high" },
+    { type: "set-dialogue-state", character: "antonio", state: "calm" },
+    { type: "collect-target-object" },
+    { type: "collect-target-object" },
+  ]));
+
+  session.input({ type: "select-verb", verb: "pick-up" });
+  session.input({ type: "activate-hotspot", hotspot: 0 });
+  session.steps(2);
+
+  expect(session.lifecycle()).toBe("failed");
+  expect(session.snapshot().relationships.antonio!.player).toEqual({ trust: "low" });
+  expect(session.snapshot().dialogueStates.antonio).toBe("afraid");
+  expect(session.snapshot().inventory.objects).toEqual([]);
+});
+
 test("Save Snapshot rejects incomplete, duplicate or unknown Character Knowledge", () => {
   const project = knowledgeProject();
   const snapshot = createTestSession(project).createSaveSnapshot();
@@ -264,6 +381,32 @@ test("Save Snapshot rejects incomplete, duplicate or unknown Character Knowledge
       state: { ...snapshot.state, characterKnowledge },
     });
     expect(result.ok).toBe(false);
+  }
+});
+
+test("Save Snapshot rejects malformed Relationships and Dialogue State", () => {
+  const project = relationshipProject([]);
+  const snapshot = createTestSession(project).createSaveSnapshot();
+  const stateVariants = [
+    {
+      ...snapshot.state,
+      relationships: {
+        ...snapshot.state.relationships,
+        antonio: { player: { trust: 50 } },
+      },
+    },
+    {
+      ...snapshot.state,
+      relationships: { ...snapshot.state.relationships, antonio: {} },
+    },
+    {
+      ...snapshot.state,
+      dialogueStates: { ...snapshot.state.dialogueStates, antonio: 0.75 },
+    },
+  ];
+
+  for (const state of stateVariants) {
+    expect(validateTestSaveSnapshot(project, { ...snapshot, state }).ok).toBe(false);
   }
 });
 

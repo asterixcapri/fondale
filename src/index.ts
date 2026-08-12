@@ -36,6 +36,18 @@ export {
   type DialogueInterpretation,
   type DialogueInterpretationRequest,
   type DialogueProvider,
+  type DialogueBehaviorDefinition,
+  type DialoguePortrayalProfile,
+  type DialogueState,
+  type Disclosure,
+  type GuardedDisclosure,
+  type PersonalityDefinition,
+  type QualitativeLevel,
+  type RelationshipDefinition,
+  type ResponseStrategy,
+  type SecretDisclosure,
+  type Trust,
+  type VoiceDefinition,
   type DialogueVerbalizationRequest,
 } from "./capabilities/dialogue";
 export {
@@ -47,6 +59,8 @@ export {
   type LearnNarrativeFactOperation,
   type NarrativeFactDefinition,
   type OpenDisclosure,
+  type SetDialogueStateOperation,
+  type SetTrustOperation,
 } from "./capabilities/game-project";
 export {
   type ArrivalSequenceRule,

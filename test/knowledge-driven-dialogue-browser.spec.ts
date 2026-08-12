@@ -27,6 +27,24 @@ test("the browser fixture completes an open-fact Conversation without external d
   await expect(page.locator('[data-fondale-line][data-fondale-speaker="antonio"]'))
     .toContainText("I saw the harbour chain being cut.");
 
+  await page.keyboard.press(".");
+  await input.fill("What are you hiding?");
+  await page.locator("[data-fondale-conversation]").getByRole("button", { name: "Ask" }).click();
+  await expect(page.locator('[data-fondale-line][data-fondale-speaker="player"]'))
+    .toContainText("What are you hiding?");
+  await page.keyboard.press(".");
+  await expect(page.locator('[data-fondale-line][data-fondale-speaker="antonio"]'))
+    .toContainText("I would rather not say.");
+
+  await page.keyboard.press(".");
+  await input.fill("I do not know what to ask.");
+  await page.locator("[data-fondale-conversation]").getByRole("button", { name: "Ask" }).click();
+  await expect(page.locator('[data-fondale-line][data-fondale-speaker="player"]'))
+    .toContainText("I do not know what to ask.");
+  await page.keyboard.press(".");
+  await expect(page.locator('[data-fondale-line][data-fondale-speaker="antonio"]'))
+    .toContainText("What exactly do you want to know?");
+
   const learned = await page.evaluate(() =>
     window.__dialogueSession?.createSaveSnapshot().state.characterKnowledge.player
   );

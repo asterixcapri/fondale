@@ -27,11 +27,11 @@ import {
   validateNounReferences,
 } from "../interaction";
 import {
-  isLearnNarrativeFactOperation,
+  isDialogueGameOperation,
+  validateDialogueGameOperation,
   validateKnowledgeDrivenDialogueProject,
-  validateLearnNarrativeFactOperation,
   type KnowledgeDrivenDialogueProjectView,
-  type LearnNarrativeFactOperation,
+  type DialogueGameOperation,
   type NarrativeFactDefinition,
 } from "../dialogue";
 export type {
@@ -39,6 +39,8 @@ export type {
   CharacterKnowledgeDefinition,
   NarrativeFactDefinition,
   LearnNarrativeFactOperation,
+  SetDialogueStateOperation,
+  SetTrustOperation,
   OpenDisclosure,
 } from "../dialogue";
 import {
@@ -133,7 +135,7 @@ export type GameOperation =
     }
   | { readonly type: "start-sequence"; readonly sequence: string }
   | InventoryOperation
-  | LearnNarrativeFactOperation;
+  | DialogueGameOperation;
 
 /** Ordinary declarative Game Project data. Registry keys are definition identities. */
 export interface GameProject {
@@ -280,6 +282,7 @@ export function compileGameProject(input: GameProject): GameProjectCompilation {
   }));
   diagnostics.push(...validateKnowledgeDrivenDialogueProject({
     narrativeFacts,
+    variables,
     characters,
   }));
   validateProjectDefinitions(input, characters, objects, sequences, variables, diagnostics);
@@ -430,6 +433,7 @@ export function getSaveCompositionView(project: CompiledGameProject): SaveCompos
 function dialogueProjectView(data: GameProjectData): KnowledgeDrivenDialogueProjectView {
   return Object.freeze({
     narrativeFacts: data.narrativeFacts,
+    variables: data.variables,
     characters: data.characters,
   });
 }
@@ -537,7 +541,11 @@ function validateProjectDefinitions(
     sequences: new Set(Object.keys(sequences)),
     commandFallbacks: input.commandFallbacks,
   };
-  const dialogueReferences = { narrativeFacts: input.narrativeFacts ?? {}, characters };
+  const dialogueReferences = {
+    narrativeFacts: input.narrativeFacts ?? {},
+    variables,
+    characters,
+  };
   diagnostics.push(...validateInteractionComposition({
     commandLexicon: input.commandLexicon,
     scenes: input.scenes,
@@ -555,8 +563,8 @@ function validateProjectDefinitions(
     const operationDiagnostics: AuthoringDiagnostic[] = [];
     values.forEach((operation, index) => {
       const operationPath = `${path}[${index}]`;
-      if (isLearnNarrativeFactOperation(operation)) {
-        operationDiagnostics.push(...validateLearnNarrativeFactOperation(
+      if (isDialogueGameOperation(operation)) {
+        operationDiagnostics.push(...validateDialogueGameOperation(
           operation,
           operationPath,
           dialogueReferences,

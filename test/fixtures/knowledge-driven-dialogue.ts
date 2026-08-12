@@ -62,15 +62,24 @@ const project = ({
   playerCharacter: "player",
   narrativeFacts: {
     "harbour-chain-cut": { proposition: "The harbour chain was cut." },
+    "antonio-ordered-sabotage": { proposition: "Antonio ordered the sabotage." },
   },
+  variables: { confessionUnlocked: false },
   characters: {
     player: character(180, { dialogue: { knowledge: [] } }),
     antonio: character(315, {
       noun,
       dialogue: {
+        behavior: { withholding: "evade" },
         knowledge: [{
           factId: "harbour-chain-cut",
           disclosure: { level: "open" },
+        }, {
+          factId: "antonio-ordered-sabotage",
+          disclosure: {
+            level: "secret",
+            when: { variable: "confessionUnlocked", equals: true },
+          },
         }],
       },
     }),
@@ -98,9 +107,13 @@ const dialogueProvider = new FakeDialogueProvider({
   interpretations: {
     "Who cut the chain?": "harbour-chain-cut",
     "What happened to the chain?": "harbour-chain-cut",
+    "What are you hiding?": "antonio-ordered-sabotage",
+    "I do not know what to ask.": null,
   },
   verbalizations: {
     "harbour-chain-cut": "I saw the harbour chain being cut.",
+    evade: "I would rather not say.",
+    clarify: "What exactly do you want to know?",
   },
 });
 

@@ -86,7 +86,8 @@ registries default to empty registries and `letterboxColor` defaults to
 
 Knowledge-Driven Dialogue begins with ordinary declarative data. Narrative
 Facts live once in the Game Project registry; a Character's optional `dialogue`
-profile refers to those identities and declares open Disclosure:
+profile refers to those identities and declares Character-specific Disclosure,
+directional Relationships and qualitative portrayal:
 
 ```ts
 import {
@@ -100,10 +101,29 @@ const harbourFact = {
 } satisfies NarrativeFactDefinition;
 
 const antonioDialogue = {
-  knowledge: [{
-    factId: "harbour-chain-cut",
-    disclosure: { level: "open" },
-  }],
+  personality: {
+    talkativeness: "low",
+    honesty: "medium",
+    discretion: "high",
+    suspiciousness: "high",
+  },
+  behavior: { withholding: "evade" },
+  voice: { verbosity: "short", tone: "dry", vocabulary: "simple" },
+  state: "afraid",
+  relationships: { michele: { trust: "low" } },
+  knowledge: [
+    {
+      factId: "harbour-chain-cut",
+      disclosure: { level: "open" },
+    },
+    {
+      factId: "antonio-cut-chain",
+      disclosure: {
+        level: "secret",
+        when: { variable: "antonio-ready-to-confess", equals: true },
+      },
+    },
+  ],
 } satisfies CharacterDialogueDefinition;
 
 const antonio = {
@@ -125,15 +145,21 @@ const antonio = {
 
 const dialogueProject = {
   ...project,
-  narrativeFacts: { "harbour-chain-cut": harbourFact },
+  variables: { "antonio-ready-to-confess": false },
+  narrativeFacts: {
+    "harbour-chain-cut": harbourFact,
+    "antonio-cut-chain": { proposition: "Antonio cut the harbour chain." },
+  },
   characters: { antonio },
 };
 ```
 
-Startup rejects empty propositions, missing fact references and duplicate
-Character Knowledge. The Engine copies valid initial knowledge into Game State;
-`learn-narrative-fact` operations add it atomically and idempotently, and Save
-Snapshots validate and restore it exactly.
+Startup rejects empty propositions, missing fact or Relationship references,
+incoherent Disclosure and unsupported qualitative values. The Engine copies
+valid Character Knowledge, Relationships and Dialogue State into Game State;
+`learn-narrative-fact`, `set-trust` and `set-dialogue-state` operations change
+it atomically, and Save Snapshots validate and restore it exactly. Trust is
+directional, and Trust alone can never unlock a `secret` fact.
 
 ## Startup diagnostics
 

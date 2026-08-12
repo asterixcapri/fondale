@@ -74,10 +74,13 @@ import { Camera, type CameraPresentation } from "../camera";
 import {
   createKnowledgeDrivenDialogue,
   dialogueInputMaxLength,
-  isLearnNarrativeFactOperation,
+  isDialogueGameOperation,
   type CharacterKnowledgeState,
+  type CharacterDialogueState,
   type DialogueProvider,
+  type KnowledgeDrivenDialogueState,
   type LearnNarrativeFactOperation,
+  type RelationshipState,
 } from "../dialogue";
 
 export type { CharacterState, ObjectLocation, ObjectState } from "../world";
@@ -103,6 +106,8 @@ export interface GameState extends WorldState {
   command: CommandState;
   variables: Record<string, boolean>;
   characterKnowledge: CharacterKnowledgeState;
+  relationships: RelationshipState;
+  dialogueStates: CharacterDialogueState;
   activity: GameActivityState | null;
   tick: number;
 }
@@ -199,7 +204,7 @@ export function createCoreSession(
   let conversationStatus: ConversationPresentation["status"] = "ready";
   let conversationError: string | undefined;
   let dialogueCompletion: DialogueTurnContent & {
-    readonly operation: LearnNarrativeFactOperation;
+    readonly operation?: LearnNarrativeFactOperation;
   } | null = null;
 
   const session: CoreSession = {
@@ -280,7 +285,7 @@ export function createCoreSession(
       conversationStatus = "pending";
       conversationError = undefined;
       try {
-        const turn = await dialogue.respond(state.characterKnowledge, {
+        const turn = await dialogue.respond(state, {
           speaker: activity.character,
           listener: playerCharacter,
           playerInput,
@@ -289,7 +294,7 @@ export function createCoreSession(
           character: activity.character,
           playerInput: turn.playerInput,
           response: turn.response,
-          operation: turn.operation,
+          ...(turn.operation ? { operation: turn.operation } : {}),
           playerCharacter,
         };
         return { ok: true };
@@ -420,7 +425,7 @@ export function createCoreSession(
     if (state.activity?.type !== "conversation" ||
         state.activity.character !== completion.character) return;
     const draft = structuredClone(state);
-    draft.characterKnowledge = dialogue.learn(draft.characterKnowledge, completion.operation);
+    if (completion.operation) Object.assign(draft, dialogue.learn(draft, completion.operation));
     state = draft;
     const { operation: _committedOperation, ...content } = completion;
     dialogueTurn = {
@@ -698,8 +703,8 @@ export function createCoreSession(
     target: HotspotTarget,
     firstNounObject?: string,
   ): void {
-    if (isLearnNarrativeFactOperation(operation)) {
-      draft.characterKnowledge = dialogue.learn(draft.characterKnowledge, operation);
+    if (isDialogueGameOperation(operation)) {
+      Object.assign(draft, dialogue.applyOperation(draft, operation));
     } else if (operation.type === "set-variable") {
       if (!(operation.variable in projectViews.gameProject.variables)) throw new Error(`Unknown Game Variable '${operation.variable}'.`);
       draft.variables[operation.variable] = operation.value;
@@ -945,14 +950,14 @@ export function createCoreSession(
 function initialState(
   data: GameSessionGameProjectView,
   world: WorldState,
-  characterKnowledge: CharacterKnowledgeState,
+  dialogueState: KnowledgeDrivenDialogueState,
 ): GameState {
   return {
     ...world,
     inventory: { objects: [] },
     command: { verb: "walk-to", firstNoun: null },
     variables: { ...data.variables },
-    characterKnowledge,
+    ...dialogueState,
     activity: null,
     tick: 0,
   };

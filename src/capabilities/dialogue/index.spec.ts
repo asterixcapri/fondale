@@ -19,6 +19,7 @@ test("Knowledge-Driven Dialogue reports invalid Narrative Facts and Character Kn
       known: { proposition: "The harbour chain was cut." },
       other: { proposition: "The lighthouse is unlit." },
     },
+    variables: {},
     characters: {
       antonio: {
         dialogue: {
@@ -55,7 +56,7 @@ test("Knowledge-Driven Dialogue reports invalid Narrative Facts and Character Kn
     expect.objectContaining({
       code: "definition.character-knowledge.disclosure",
       owner: "dialogue",
-      path: "characters.antonio.dialogue.knowledge[2].disclosure.level",
+      path: "characters.antonio.dialogue.knowledge[2].disclosure",
     }),
     expect.objectContaining({
       code: "definition.character-knowledge.duplicate",
@@ -65,11 +66,100 @@ test("Knowledge-Driven Dialogue reports invalid Narrative Facts and Character Kn
   ]);
 });
 
+test("Knowledge-Driven Dialogue accepts guarded, secret and qualitative authoring", () => {
+  const project = {
+    narrativeFacts: {
+      guarded: { proposition: "Antonio saw who cut the chain." },
+      secret: { proposition: "Antonio cut the chain himself." },
+    },
+    variables: { confessionUnlocked: false },
+    characters: {
+      player: { dialogue: { knowledge: [] } },
+      antonio: {
+        dialogue: {
+          biography: "A guarded former sailor.",
+          personality: {
+            talkativeness: "low",
+            honesty: "medium",
+            discretion: "high",
+            suspiciousness: "high",
+          },
+          behavior: { withholding: "evade" },
+          voice: { verbosity: "short", tone: "dry", vocabulary: "simple" },
+          state: "afraid",
+          knowledge: [
+            { factId: "guarded", disclosure: { level: "guarded", when: { trustAtLeast: "medium" } } },
+            { factId: "secret", disclosure: { level: "secret", when: { variable: "confessionUnlocked", equals: true } } },
+          ],
+          relationships: { player: { trust: "medium" } },
+        },
+      },
+    },
+  } as unknown as KnowledgeDrivenDialogueProjectView;
+
+  expect(validateKnowledgeDrivenDialogueProject(project)).toEqual([]);
+});
+
+test("Knowledge-Driven Dialogue rejects incoherent Disclosure, Relationships and numeric profiles", () => {
+  const project = {
+    narrativeFacts: { known: { proposition: "The harbour chain was cut." } },
+    variables: { declared: false },
+    characters: {
+      antonio: {
+        dialogue: {
+          knowledge: [
+            { factId: "known", disclosure: { level: "guarded" } },
+            { factId: "known", disclosure: { level: "secret", when: { trustAtLeast: "high" } } },
+          ],
+          personality: {
+            talkativeness: 0.2, honesty: "medium", discretion: "high", suspiciousness: "high",
+          },
+          behavior: { withholding: "random" },
+          voice: { verbosity: 20, tone: "dry", vocabulary: "simple" },
+          state: 0.8,
+          relationships: { missing: { trust: 50 } },
+        },
+      },
+    },
+  } as unknown as KnowledgeDrivenDialogueProjectView;
+
+  expect(validateKnowledgeDrivenDialogueProject(project)).toEqual(expect.arrayContaining([
+    expect.objectContaining({ code: "definition.character-knowledge.disclosure" }),
+    expect.objectContaining({ code: "definition.dialogue.personality" }),
+    expect.objectContaining({ code: "definition.dialogue.behavior" }),
+    expect.objectContaining({ code: "definition.dialogue.voice" }),
+    expect.objectContaining({ code: "definition.dialogue.state" }),
+    expect.objectContaining({ code: "reference.relationship.character" }),
+    expect.objectContaining({ code: "definition.relationship.trust" }),
+  ]));
+});
+
+test("Knowledge-Driven Dialogue reports malformed profile collections without throwing", () => {
+  const project = {
+    narrativeFacts: {},
+    variables: {},
+    characters: {
+      antonio: {
+        dialogue: {
+          knowledge: 12,
+          relationships: "everyone",
+        },
+      },
+    },
+  } as unknown as KnowledgeDrivenDialogueProjectView;
+
+  expect(validateKnowledgeDrivenDialogueProject(project)).toEqual(expect.arrayContaining([
+    expect.objectContaining({ code: "definition.character-knowledge.collection" }),
+    expect.objectContaining({ code: "definition.relationship.collection" }),
+  ]));
+});
+
 test("Knowledge-Driven Dialogue creates independent state and learns monotonically", () => {
   const dialogue = createKnowledgeDrivenDialogue({
     narrativeFacts: {
       harbour: { proposition: "The harbour chain was cut." },
     },
+    variables: {},
     characters: {
       antonio: {
         dialogue: {
@@ -93,9 +183,16 @@ test("Knowledge-Driven Dialogue creates independent state and learns monotonical
     factId: "harbour",
   });
 
-  expect(initial).toEqual({ antonio: ["harbour"], michele: [] });
+  expect(initial).toEqual({
+    characterKnowledge: { antonio: ["harbour"], michele: [] },
+    relationships: { antonio: {}, michele: {} },
+    dialogueStates: { antonio: null, michele: null },
+  });
   expect(independent).toEqual(initial);
-  expect(learned).toEqual({ antonio: ["harbour"], michele: ["harbour"] });
+  expect(learned).toEqual({
+    ...initial,
+    characterKnowledge: { antonio: ["harbour"], michele: ["harbour"] },
+  });
   expect(repeated).toEqual(learned);
   expect(learned).not.toBe(initial);
   expect(repeated).toBe(learned);
@@ -104,6 +201,7 @@ test("Knowledge-Driven Dialogue creates independent state and learns monotonical
 test("Knowledge-Driven Dialogue rejects inherited object names as undeclared identities", () => {
   const project = {
     narrativeFacts: {},
+    variables: {},
     characters: {
       michele: {
         dialogue: {
@@ -138,6 +236,7 @@ test("a Dialogue Turn exposes only known open candidates and stages one Engine o
       known: { proposition: "The harbour chain was cut." },
       hidden: { proposition: "Antonio hid the winch." },
     },
+    variables: {},
     characters: {
       player: { dialogue: { knowledge: [] } },
       antonio: {
@@ -163,7 +262,7 @@ test("a Dialogue Turn exposes only known open candidates and stages one Engine o
     },
   };
 
-  const turn = await dialogue.respond(dialogue.initialState(), {
+  const turn = await dialogue.respond({ ...dialogue.initialState(), variables: {} }, {
     speaker: "antonio",
     listener: "player",
     playerInput: "  What happened?  ",
@@ -179,7 +278,9 @@ test("a Dialogue Turn exposes only known open candidates and stages one Engine o
     playerInput: "What happened?",
     speaker: "antonio",
     listener: "player",
+    strategy: "answer",
     fact: { id: "known", proposition: "The harbour chain was cut." },
+    profile: {},
   });
   expect(turn).toEqual({
     playerInput: "What happened?",
@@ -188,9 +289,119 @@ test("a Dialogue Turn exposes only known open candidates and stages one Engine o
   });
 });
 
+test("the Behaviour Engine deterministically authorises answer, withholding and clarification", async () => {
+  const dialogue = createKnowledgeDrivenDialogue({
+    narrativeFacts: {
+      open: { proposition: "The chain was cut." },
+      guarded: { proposition: "Raffaele carried the saw." },
+      guardedByVariable: { proposition: "Raffaele borrowed the saw." },
+      secret: { proposition: "Antonio ordered the sabotage." },
+    },
+    variables: { confessionUnlocked: false },
+    characters: {
+      player: { dialogue: { knowledge: [] } },
+      antonio: {
+        dialogue: {
+          biography: "A guarded former sailor.",
+          personality: {
+            talkativeness: "low", honesty: "medium", discretion: "high", suspiciousness: "high",
+          },
+          behavior: { withholding: "evade" },
+          voice: { verbosity: "short", tone: "dry", vocabulary: "simple" },
+          state: "afraid",
+          relationships: { player: { trust: "medium" } },
+          knowledge: [
+            { factId: "open", disclosure: { level: "open" } },
+            { factId: "guarded", disclosure: { level: "guarded", when: { trustAtLeast: "medium" } } },
+            { factId: "guardedByVariable", disclosure: { level: "guarded", when: { variable: "confessionUnlocked", equals: true } } },
+            { factId: "secret", disclosure: { level: "secret", when: { variable: "confessionUnlocked", equals: true } } },
+          ],
+        },
+      },
+    },
+  });
+  const verbalizationRequests: Array<DialogueVerbalizationRequest & {
+    readonly strategy: string;
+    readonly profile?: unknown;
+  }> = [];
+  const provider: DialogueProvider = {
+    interpret: ({ playerInput }) => Promise.resolve({
+      factId: playerInput === "ambiguous" ? null : playerInput,
+    } as unknown as { factId: string }),
+    verbalize: (request) => {
+      const policyRequest = request as typeof verbalizationRequests[number];
+      verbalizationRequests.push(policyRequest);
+      return Promise.resolve(`${policyRequest.strategy}:${request.fact?.id ?? "none"}`);
+    },
+    reset: () => Promise.resolve(),
+  };
+  const state = {
+    ...dialogue.initialState(),
+    variables: { confessionUnlocked: false },
+  };
+
+  const open = await dialogue.respond(state, {
+    speaker: "antonio", listener: "player", playerInput: "open",
+  }, provider);
+  const guarded = await dialogue.respond(state, {
+    speaker: "antonio", listener: "player", playerInput: "guarded",
+  }, provider);
+  const secret = await dialogue.respond(state, {
+    speaker: "antonio", listener: "player", playerInput: "secret",
+  }, provider);
+  const ambiguous = await dialogue.respond(state, {
+    speaker: "antonio", listener: "player", playerInput: "ambiguous",
+  }, provider);
+  const unlockedState = {
+    ...state,
+    variables: { confessionUnlocked: true },
+  };
+  const guardedByVariable = await dialogue.respond(unlockedState, {
+    speaker: "antonio", listener: "player", playerInput: "guardedByVariable",
+  }, provider);
+  const secretUnlocked = await dialogue.respond(unlockedState, {
+    speaker: "antonio", listener: "player", playerInput: "secret",
+  }, provider);
+  const highTrustWithoutUnlock = await dialogue.respond({
+    ...state,
+    relationships: {
+      ...state.relationships,
+      antonio: { player: { trust: "high" } },
+    },
+  }, {
+    speaker: "antonio", listener: "player", playerInput: "secret",
+  }, provider);
+
+  expect(open).toMatchObject({
+    response: "answer:open",
+    operation: { type: "learn-narrative-fact", character: "player", factId: "open" },
+  });
+  expect(guarded).toMatchObject({ response: "answer:guarded" });
+  expect(secret).toEqual({ playerInput: "secret", response: "evade:none" });
+  expect(ambiguous).toEqual({ playerInput: "ambiguous", response: "clarify:none" });
+  expect(guardedByVariable).toMatchObject({ response: "answer:guardedByVariable" });
+  expect(secretUnlocked).toMatchObject({ response: "answer:secret" });
+  expect(highTrustWithoutUnlock).toEqual({ playerInput: "secret", response: "evade:none" });
+  expect(verbalizationRequests[0]).toMatchObject({
+    strategy: "answer",
+    fact: { id: "open", proposition: "The chain was cut." },
+    profile: {
+      biography: "A guarded former sailor.",
+      personality: { talkativeness: "low" },
+      voice: { verbosity: "short" },
+      state: "afraid",
+    },
+  });
+  expect(verbalizationRequests[2]).toEqual(expect.objectContaining({ strategy: "evade" }));
+  expect(verbalizationRequests[2]).not.toHaveProperty("fact");
+  expect(verbalizationRequests[3]).toEqual(expect.objectContaining({ strategy: "clarify" }));
+  expect(verbalizationRequests[3]).not.toHaveProperty("fact");
+});
+
 test("a Dialogue Turn rejects an unknown interpreted ID before verbalization", async () => {
   const dialogue = createKnowledgeDrivenDialogue({
     narrativeFacts: { known: { proposition: "The harbour chain was cut." } },
+    variables: {},
     characters: {
       player: { dialogue: { knowledge: [] } },
       antonio: {
@@ -210,7 +421,7 @@ test("a Dialogue Turn rejects an unknown interpreted ID before verbalization", a
     reset: () => Promise.resolve(),
   };
 
-  await expect(dialogue.respond(dialogue.initialState(), {
+  await expect(dialogue.respond({ ...dialogue.initialState(), variables: {} }, {
     speaker: "antonio",
     listener: "player",
     playerInput: "What happened?",

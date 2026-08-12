@@ -154,7 +154,7 @@ function validStateShape(
   context: SaveValidationContext,
 ): value is GameState {
   const { animation, project, world } = context;
-  if (!isRecord(value) || !hasExactKeys(value, ["currentScene", "characters", "scenery", "objects", "inventory", "command", "variables", "characterKnowledge", "activity", "tick"])) return false;
+  if (!isRecord(value) || !hasExactKeys(value, ["currentScene", "characters", "scenery", "objects", "inventory", "command", "variables", "characterKnowledge", "relationships", "dialogueStates", "activity", "tick"])) return false;
   if (!Number.isInteger(value.tick) || (value.tick as number) < 0) return false;
   if (!world.isValidState(value) || !isValidAnimationState(animation, value)) return false;
   const inventoryLocations: string[] = [];
@@ -170,7 +170,11 @@ function validStateShape(
   if (!interactionSaveValidation.isCommandState(value.command, value.inventory.objects)) return false;
   if (!isRecord(value.variables) || !sameKeys(value.variables, project.variables)) return false;
   if (!Object.values(value.variables).every((variable) => typeof variable === "boolean")) return false;
-  if (!context.dialogue.isValidState(value.characterKnowledge)) return false;
+  if (!context.dialogue.isValidState({
+    characterKnowledge: value.characterKnowledge,
+    relationships: value.relationships,
+    dialogueStates: value.dialogueStates,
+  })) return false;
   if (!validActivity(value.activity, value as unknown as GameState, context)) return false;
   return isJsonSafe(value);
 }
