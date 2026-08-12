@@ -134,6 +134,13 @@ export type DialogueSubmissionResult =
   | { readonly ok: true }
   | { readonly ok: false; readonly message: string };
 
+interface DialogueTurnContent {
+  readonly character: string;
+  readonly playerInput: string;
+  readonly response: string;
+  readonly playerCharacter: string;
+}
+
 export type CoreWorldTarget = WorldTarget;
 
 /** Internal deterministic seam shared by browser and tests. */
@@ -186,21 +193,13 @@ export function createCoreSession(
   const emitted: CoreEffect[] = [];
   const camera = new Camera();
   let cameraPresentation: CameraPresentation;
-  let dialogueTurn: {
+  let dialogueTurn: DialogueTurnContent & {
     phase: "player" | "character";
-    readonly playerInput: string;
-    readonly response: string;
-    readonly playerCharacter: string;
-    readonly character: string;
   } | null = null;
   let conversationStatus: ConversationPresentation["status"] = "ready";
   let conversationError: string | undefined;
-  let dialogueCompletion: {
-    readonly character: string;
-    readonly playerInput: string;
-    readonly response: string;
+  let dialogueCompletion: DialogueTurnContent & {
     readonly operation: LearnNarrativeFactOperation;
-    readonly playerCharacter: string;
   } | null = null;
 
   const session: CoreSession = {
@@ -423,12 +422,10 @@ export function createCoreSession(
     const draft = structuredClone(state);
     draft.characterKnowledge = dialogue.learn(draft.characterKnowledge, completion.operation);
     state = draft;
+    const { operation: _committedOperation, ...content } = completion;
     dialogueTurn = {
+      ...content,
       phase: "player",
-      playerInput: completion.playerInput,
-      response: completion.response,
-      playerCharacter: completion.playerCharacter,
-      character: completion.character,
     };
     conversationStatus = "line";
     emitted.push({ type: "conversation-changed" });
