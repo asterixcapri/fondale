@@ -675,6 +675,31 @@ test("Conversation handoffs reject invalid conditions, Sequence references and o
   });
 });
 
+test("a malformed Conversation handoff collection produces diagnostics without throwing", () => {
+  const project = conversationHandoffProject("resume");
+  const result = compileGameProject({
+    ...project,
+    characters: {
+      ...project.characters,
+      antonio: {
+        ...project.characters!.antonio!,
+        dialogue: {
+          ...project.characters!.antonio!.dialogue!,
+          handoffs: {},
+        },
+      },
+    },
+  } as unknown as GameProject);
+
+  expect(result).toMatchObject({
+    ok: false,
+    diagnostics: [expect.objectContaining({
+      code: "definition.dialogue.handoffs",
+      owner: "dialogue",
+    })],
+  });
+});
+
 test("an authored handoff can close the Conversation after its Sequence", async () => {
   const project = conversationHandoffProject("close");
   const provider = new FakeDialogueProvider({

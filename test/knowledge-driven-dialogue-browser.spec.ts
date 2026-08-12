@@ -1,23 +1,12 @@
 import { expect, test, type Page } from "@playwright/test";
 
-async function openAntonioConversation(page: Page): Promise<void> {
+async function openCharacterConversation(page: Page, characterX: number): Promise<void> {
   await page.goto("/test/fixtures/knowledge-driven-dialogue.html");
   const canvas = page.locator("[data-fondale-frame] canvas");
   const bounds = await canvas.boundingBox();
   if (!bounds) throw new Error("Fondale canvas is not visible.");
   await page.mouse.click(
-    bounds.x + (315 / 426) * bounds.width,
-    bounds.y + (150 / 240) * bounds.height,
-  );
-}
-
-async function openLuciaConversation(page: Page): Promise<void> {
-  await page.goto("/test/fixtures/knowledge-driven-dialogue.html");
-  const canvas = page.locator("[data-fondale-frame] canvas");
-  const bounds = await canvas.boundingBox();
-  if (!bounds) throw new Error("Fondale canvas is not visible.");
-  await page.mouse.click(
-    bounds.x + (80 / 426) * bounds.width,
+    bounds.x + (characterX / 426) * bounds.width,
     bounds.y + (150 / 240) * bounds.height,
   );
 }
@@ -25,7 +14,7 @@ async function openLuciaConversation(page: Page): Promise<void> {
 test("the browser fixture completes an open-fact Conversation without external dependencies", async ({
   page,
 }) => {
-  await openAntonioConversation(page);
+  await openCharacterConversation(page, 315);
 
   const input = page.locator("[data-fondale-dialogue-input]");
   await expect(input).toBeVisible();
@@ -67,7 +56,7 @@ test("the browser fixture completes an open-fact Conversation without external d
 test("an authored Sequence takes over the browser and then resumes its Conversation", async ({
   page,
 }) => {
-  await openLuciaConversation(page);
+  await openCharacterConversation(page, 80);
   const conversation = page.locator("[data-fondale-conversation]");
   const input = conversation.locator("[data-fondale-dialogue-input]");
   await expect(conversation).toContainText("Ask lucia");
@@ -90,10 +79,69 @@ test("an authored Sequence takes over the browser and then resumes its Conversat
   await expect(conversation).toContainText("Ask lucia");
 });
 
+test("an authored Sequence can close its browser Conversation", async ({ page }) => {
+  await openCharacterConversation(page, 390);
+  const conversation = page.locator("[data-fondale-conversation]");
+  const input = conversation.locator("[data-fondale-dialogue-input]");
+  await input.fill("Close after the exact account.");
+  await conversation.getByRole("button", { name: "Ask" }).click();
+  await page.locator("[data-fondale-frame]").focus();
+
+  await expect(page.locator('[data-fondale-line][data-fondale-speaker="player"]'))
+    .toContainText("Close after the exact account.");
+  await page.keyboard.press(".");
+  await expect(page.locator('[data-fondale-line][data-fondale-speaker="marco"]'))
+    .toContainText("I saw the harbour chain being cut.");
+  await page.keyboard.press(".");
+  await expect(page.locator('[data-fondale-line][data-fondale-speaker="marco"]'))
+    .toContainText("This closes our exploratory conversation.");
+  await page.keyboard.press(".");
+
+  await expect(conversation).toBeHidden();
+  await expect.poll(() => page.evaluate(() =>
+    window.__dialogueSession?.createSaveSnapshot().state.activity
+  )).toBeNull();
+});
+
+test("a pending browser turn is cancelled before its authored Sequence takes over", async ({
+  page,
+}) => {
+  await openCharacterConversation(page, 80);
+  const conversation = page.locator("[data-fondale-conversation]");
+  const input = conversation.locator("[data-fondale-dialogue-input]");
+  await input.fill("Wait before the exact account.");
+  await conversation.getByRole("button", { name: "Ask" }).click();
+  await expect(input).toBeDisabled();
+
+  await conversation.getByRole("button", { name: "Leave" }).click();
+  await expect(conversation).toBeHidden();
+  await expect(page.locator('[data-fondale-line][data-fondale-speaker="lucia"]'))
+    .toContainText("Meet me beneath the harbour clock at midnight.");
+  const released = await page.evaluate(() => {
+    const [turnId] = window.__dialogueProvider?.pendingTurnIds() ?? [];
+    return turnId ? window.__dialogueProvider?.release(turnId) : false;
+  });
+  expect(released).toBe(true);
+  await page.waitForTimeout(0);
+  expect(await page.evaluate(() =>
+    window.__dialogueSession?.createSaveSnapshot().state.characterKnowledge.player
+  )).toEqual([]);
+});
+
+test("a browser Talk To keeps the authored fallback for a Character without a Dialogue Profile", async ({
+  page,
+}) => {
+  await openCharacterConversation(page, 25);
+
+  await expect(page.locator("[data-fondale-conversation]")).toBeHidden();
+  await expect(page.locator('[data-fondale-line][data-fondale-speaker="bystander"]'))
+    .toContainText("Authored words from Bystander.");
+});
+
 test("the Player can leave a pending Conversation and its late response stays invisible", async ({
   page,
 }) => {
-  await openAntonioConversation(page);
+  await openCharacterConversation(page, 315);
 
   const conversation = page.locator("[data-fondale-conversation]");
   const input = conversation.locator("[data-fondale-dialogue-input]");
@@ -119,7 +167,7 @@ test("the Player can leave a pending Conversation and its late response stays in
 });
 
 test("Load resets provider memory before restoring an active Conversation", async ({ page }) => {
-  await openAntonioConversation(page);
+  await openCharacterConversation(page, 315);
   const conversation = page.locator("[data-fondale-conversation]");
   const input = conversation.locator("[data-fondale-dialogue-input]");
   await expect(input).toBeVisible();

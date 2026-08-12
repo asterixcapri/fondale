@@ -715,7 +715,8 @@ function validateProjectDefinitions(
         "Character",
       ));
     }
-    character.dialogue?.handoffs?.forEach((handoff, index) => {
+    const handoffs = character.dialogue?.handoffs;
+    if (Array.isArray(handoffs)) handoffs.forEach((handoff, index) => {
       const path = `characters.${characterId}.dialogue.handoffs[${index}]`;
       if (handoff && typeof handoff === "object" && "when" in handoff) {
         condition(handoff.when, `${path}.when`);

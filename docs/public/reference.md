@@ -124,10 +124,11 @@ adapter result. The fake's internal `resets` count is exposed through
 `resetCount()`.
 
 The authored condition fields are `trustAtLeast`, `variable`, and `equals`.
-Qualitative profile fields are `biography`, `personality`, `behavior`, `voice`,
+Conversation handoff fields are `handoffs` and `after`. Qualitative profile
+fields are `biography`, `personality`, `behavior`, `voice`,
 `relationships`, `talkativeness`, `honesty`, `discretion`, `suspiciousness`,
 `withholding`, `verbosity`, `tone`, `vocabulary`, `trust`, `coverStories`,
-`concealsFactId`, `claimId`, `handoffs`, and `after`. Provider requests carry Engine-selected
+`concealsFactId`, and `claimId`. Provider requests carry Engine-selected
 `strategy`, `profile`, and optional `claim` fields. A directional Trust
 operation names its target with `towards`.
 

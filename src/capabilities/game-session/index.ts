@@ -631,11 +631,7 @@ export function createCoreSession(
       failOperation(cause instanceof Error ? cause.message : String(cause), cause);
       return;
     }
-    const continuation = draft.conversationContinuation;
-    delete draft.conversationContinuation;
-    draft.activity = continuation ?? null;
-    state = draft;
-    if (continuation) prepareResumedConversation();
+    finishSequence(draft);
     emitted.push({ type: "sequence-changed" });
   }
 
@@ -846,7 +842,7 @@ export function createCoreSession(
       return;
     }
     if (decision.type === "complete") {
-      resumeConversationAfterSequence();
+      finishSequence(state);
       emitted.push({ type: "sequence-changed" });
       return;
     }
@@ -857,10 +853,11 @@ export function createCoreSession(
     }
   }
 
-  function resumeConversationAfterSequence(): void {
-    const continuation = state.conversationContinuation;
-    delete state.conversationContinuation;
-    state.activity = continuation ?? null;
+  function finishSequence(next: GameState): void {
+    const continuation = next.conversationContinuation;
+    delete next.conversationContinuation;
+    next.activity = continuation ?? null;
+    state = next;
     if (!continuation) return;
     prepareResumedConversation();
   }

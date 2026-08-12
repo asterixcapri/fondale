@@ -31,22 +31,15 @@ const commandLexicon = ({
   },
 } satisfies CommandLexicon);
 const fallback = { text: "That does not help." };
-const noun = ({
-  labels: [{ text: "Antonio" }],
+const talkToNoun = (character: string, label: string): NounDefinition => ({
+  labels: [{ text: label }],
   preferredVerbs: [{ verb: "talk-to" }],
   cases: [{
     verb: "talk-to",
-    line: { character: "antonio", text: "This authored fallback must not run." },
+    line: { character, text: `Authored words from ${label}.` },
   }],
-} satisfies NounDefinition);
-const luciaNoun = ({
-  labels: [{ text: "Lucia" }],
-  preferredVerbs: [{ verb: "talk-to" }],
-  cases: [{
-    verb: "talk-to",
-    line: { character: "lucia", text: "This authored fallback must not run." },
-  }],
-} satisfies NounDefinition);
+});
+const noun = talkToNoun("antonio", "Antonio");
 const appearance = {
   animations: { idle: { frames: [characterUrl], framesPerSecond: 1, loop: true } },
   roles: { default: "idle", walking: "idle" },
@@ -93,7 +86,7 @@ const project = ({
       },
     }),
     lucia: character(80, {
-      noun: luciaNoun,
+      noun: talkToNoun("lucia", "Lucia"),
       dialogue: {
         knowledge: [{
           factId: "harbour-chain-cut",
@@ -106,6 +99,23 @@ const project = ({
         }],
       },
     }),
+    marco: character(390, {
+      noun: talkToNoun("marco", "Marco"),
+      dialogue: {
+        knowledge: [{
+          factId: "harbour-chain-cut",
+          disclosure: { level: "open" },
+        }],
+        handoffs: [{
+          when: { variable: "handoffReady", equals: true },
+          sequence: "marcoExactAccount",
+          after: "close",
+        }],
+      },
+    }),
+    bystander: character(25, {
+      noun: talkToNoun("bystander", "Bystander"),
+    }),
   },
   sequences: {
     luciaExactAccount: {
@@ -113,6 +123,13 @@ const project = ({
         type: "line",
         character: "lucia",
         text: "Meet me beneath the harbour clock at midnight.",
+      }],
+    },
+    marcoExactAccount: {
+      steps: [{
+        type: "line",
+        character: "marco",
+        text: "This closes our exploratory conversation.",
       }],
     },
   },
@@ -130,6 +147,14 @@ const project = ({
         target: { kind: "character", character: "lucia" },
         area: [{ x: 50, y: 110 }, { x: 110, y: 110 }, { x: 110, y: 190 }, { x: 50, y: 190 }],
         approach: { groundPoint: { x: 120, y: 170 }, facing: "left" },
+      }, {
+        target: { kind: "character", character: "marco" },
+        area: [{ x: 360, y: 110 }, { x: 425, y: 110 }, { x: 425, y: 190 }, { x: 360, y: 190 }],
+        approach: { groundPoint: { x: 350, y: 170 }, facing: "right" },
+      }, {
+        target: { kind: "character", character: "bystander" },
+        area: [{ x: 0, y: 110 }, { x: 45, y: 110 }, { x: 45, y: 190 }, { x: 0, y: 190 }],
+        approach: { groundPoint: { x: 50, y: 170 }, facing: "left" },
       }],
     } satisfies SceneDefinition),
   },
@@ -151,6 +176,12 @@ const dialogueProvider = new FakeDialogueProvider({
       ignoreCancellation: true,
     },
     "Begin the exact account.": "harbour-chain-cut",
+    "Close after the exact account.": "harbour-chain-cut",
+    "Wait before the exact account.": {
+      outcome: "pending",
+      value: "harbour-chain-cut",
+      ignoreCancellation: true,
+    },
   },
   verbalizations: {
     "harbour-chain-cut": "I saw the harbour chain being cut.",

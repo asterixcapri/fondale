@@ -177,12 +177,7 @@ function validStateShape(
     testimonies: value.testimonies,
   })) return false;
   if (value.conversationContinuation !== undefined) {
-    if (!isRecord(value.conversationContinuation) ||
-        !hasExactKeys(value.conversationContinuation, ["type", "character"]) ||
-        value.conversationContinuation.type !== "conversation" ||
-        typeof value.conversationContinuation.character !== "string" ||
-        !world.hasCharacter(value.conversationContinuation.character) ||
-        !context.dialogue.hasProfile(value.conversationContinuation.character) ||
+    if (!validConversationActivity(value.conversationContinuation, context) ||
         !isRecord(value.activity) || value.activity.type !== "sequence") return false;
   }
   if (!validActivity(value.activity, value as unknown as GameState, context)) return false;
@@ -207,10 +202,7 @@ function validActivity(
       isValidLineAnimation(animation, state, value.line.character, value.line.animation as string | undefined);
   }
   if (value.type === "conversation") {
-    return hasExactKeys(value, ["type", "character"]) &&
-      typeof value.character === "string" &&
-      world.hasCharacter(value.character) &&
-      context.dialogue.hasProfile(value.character);
+    return validConversationActivity(value, context);
   }
   if (value.type === "player-intent") {
     if (!project.playerCharacter ||
@@ -289,6 +281,15 @@ function validActivity(
     });
   }
   return false;
+}
+
+function validConversationActivity(
+  value: unknown,
+  context: Pick<SaveValidationContext, "world" | "dialogue">,
+): boolean {
+  return isRecord(value) && hasExactKeys(value, ["type", "character"]) &&
+    value.type === "conversation" && typeof value.character === "string" &&
+    context.world.hasCharacter(value.character) && context.dialogue.hasProfile(value.character);
 }
 
 function validOptionalFacing(value: unknown): boolean {
