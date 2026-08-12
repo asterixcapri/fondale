@@ -1,5 +1,9 @@
 import type { AuthoringDiagnostic, GameOperation } from "../game-project";
-import type { InteractionCondition } from "../interaction";
+import {
+  eligibleAlternativeIndexes,
+  exceedsEligibleAlternativeLimit,
+  type InteractionCondition,
+} from "../interaction";
 import {
   validateMotionDirection,
   type ArrivalSequenceRule,
@@ -276,7 +280,7 @@ export function validateSequenceDefinition(
           }
         });
       } else if (step.type === "choice") {
-        if (maximumEligibleAlternatives(step.alternatives) > 6) {
+        if (exceedsEligibleAlternativeLimit(step.alternatives)) {
           diagnostics.push({
             code: "definition.choice.limit",
             family: "definition", owner: "sequence",
@@ -881,7 +885,7 @@ export function createSequence(
         }
         if (step.type === "narration") return next({ kind: "narration", path });
         if (step.type === "choice") {
-          const eligible = eligibleAlternativeIndexes(step, context.conditionMatches);
+          const eligible = eligibleAlternativeIndexes(step.alternatives, context.conditionMatches);
           return next({
             kind: "choice",
             path,
@@ -1089,7 +1093,7 @@ export function createSequence(
           !isSequenceStep(step) || step.type !== "choice" ||
           !Array.isArray(active.eligibleAlternatives) ||
           !active.eligibleAlternatives.every((index) => Number.isInteger(index))) return false;
-      const eligible = eligibleAlternativeIndexes(step, context.conditionMatches);
+      const eligible = eligibleAlternativeIndexes(step.alternatives, context.conditionMatches);
       return sameNumbers(
         active.eligibleAlternatives as number[],
         eligible.length > 0 ? eligible : [-1],
@@ -1097,25 +1101,6 @@ export function createSequence(
     },
   };
   return sequence;
-}
-
-function maximumEligibleAlternatives(alternatives: readonly ChoiceAlternative[]): number {
-  let simultaneouslyEligible = 0;
-  const variableCases = new Map<string, { true: number; false: number }>();
-  for (const alternative of alternatives) {
-    const condition = alternative.when;
-    if (!condition || "hasObject" in condition) {
-      simultaneouslyEligible += 1;
-      continue;
-    }
-    const counts = variableCases.get(condition.variable) ?? { true: 0, false: 0 };
-    counts[String(condition.equals) as "true" | "false"] += 1;
-    variableCases.set(condition.variable, counts);
-  }
-  for (const counts of variableCases.values()) {
-    simultaneouslyEligible += Math.max(counts.true, counts.false);
-  }
-  return simultaneouslyEligible;
 }
 
 function childPath(path: string, child: string): string {
@@ -1158,7 +1143,7 @@ function validChoiceSpeechPending(
   outerPending: readonly string[],
   conditionMatches: (condition?: InteractionCondition) => boolean,
 ): boolean {
-  const eligible = eligibleAlternativeIndexes(step, conditionMatches);
+  const eligible = eligibleAlternativeIndexes(step.alternatives, conditionMatches);
   const choices = eligible.length > 0
     ? eligible.map((index) => ({
         choice: step.alternatives[index]!,
@@ -1175,15 +1160,6 @@ function validChoiceSpeechPending(
 function isSequenceStep(value: unknown): value is SequenceStep {
   return isRecord(value) &&
     ["line", "narration", "operations", "choice", "branch", "direction"].includes(String(value.type));
-}
-
-function eligibleAlternativeIndexes(
-  step: ChoiceStep,
-  conditionMatches: (condition?: InteractionCondition) => boolean,
-): number[] {
-  return step.alternatives.flatMap((alternative, index) =>
-    conditionMatches(alternative.when) ? [index] : [],
-  );
 }
 
 function validAnimationStartedTick(value: unknown, currentTick: number): boolean {

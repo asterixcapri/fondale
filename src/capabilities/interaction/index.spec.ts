@@ -2,7 +2,12 @@ import { expect, test } from "@playwright/test";
 
 import {
   commandVerbs,
+  conditionMatchesState,
   createInteraction,
+  eligibleAlternativeIndexes,
+  exceedsEligibleAlternativeLimit,
+  maximumEligibleAlternatives,
+  type ConditionalAlternative,
   type CommandLexicon,
   type NounDefinition,
   type InteractionStateView,
@@ -553,4 +558,44 @@ test("a Passage Walk To action requests an approach before its transition", () =
     target: { kind: "passage", index: 0 },
     intent: { kind: "passage", scene: "courtyard", passage: 0 },
   });
+});
+
+test("only alternatives whose condition holds in the committed Game State are eligible", () => {
+  const alternatives = [
+    { when: undefined },
+    { when: { variable: "met-raffaele", equals: true } },
+    { when: { variable: "met-raffaele", equals: false } },
+    { when: { hasObject: "key" } },
+    { when: { hasObject: "rope" } },
+  ] as const satisfies readonly ConditionalAlternative[];
+
+  expect(eligibleAlternativeIndexes(alternatives, (condition) =>
+    conditionMatchesState(condition, {
+      variables: { "met-raffaele": true },
+      inventory: { objects: ["key"] },
+    }),
+  )).toEqual([0, 1, 3]);
+});
+
+test("the eligibility limit counts the alternatives that can be eligible together", () => {
+  const unconditional = Array.from({ length: 5 }, () => ({}));
+  const exclusive = [
+    { when: { variable: "well-open", equals: true } },
+    { when: { variable: "well-open", equals: false } },
+  ] as const satisfies readonly ConditionalAlternative[];
+
+  expect(exceedsEligibleAlternativeLimit([...unconditional, ...exclusive])).toBe(false);
+  expect(exceedsEligibleAlternativeLimit([...unconditional, {}, ...exclusive])).toBe(true);
+  expect(exceedsEligibleAlternativeLimit(
+    Array.from({ length: maximumEligibleAlternatives }, () => ({})),
+  )).toBe(false);
+  expect(exceedsEligibleAlternativeLimit(
+    Array.from({ length: maximumEligibleAlternatives + 1 }, () => ({})),
+  )).toBe(true);
+});
+
+test("an Inventory condition is counted as always eligible by the limit", () => {
+  expect(exceedsEligibleAlternativeLimit(
+    Array.from({ length: maximumEligibleAlternatives + 1 }, () => ({ when: { hasObject: "key" } })),
+  )).toBe(true);
 });

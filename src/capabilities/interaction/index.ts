@@ -11,6 +11,12 @@ import type {
 } from "../world";
 import { conditionMatchesState } from "./state-queries";
 export { conditionMatchesState };
+export {
+  eligibleAlternativeIndexes,
+  exceedsEligibleAlternativeLimit,
+  maximumEligibleAlternatives,
+  type ConditionalAlternative,
+} from "./alternative-eligibility";
 
 /** The semantic actions available to authored Commands. */
 export const commandVerbs = [
