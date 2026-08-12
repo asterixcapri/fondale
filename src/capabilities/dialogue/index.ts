@@ -187,7 +187,7 @@ export interface FakeDialogueFailureOutcome {
 
 type FakeDialogueOutcome<T> = T | FakeDialoguePendingOutcome<T> | FakeDialogueFailureOutcome;
 
-interface PendingFakeDialogueOutcome {
+interface PendingFakeDialogueControl {
   readonly release: () => void;
   readonly reject: (cause: Error) => void;
   readonly cancel?: () => void;
@@ -195,7 +195,7 @@ interface PendingFakeDialogueOutcome {
 
 /** Deterministic, dependency-free Dialogue Provider for tests and technical fixtures. */
 export class FakeDialogueProvider implements DialogueProvider {
-  private readonly pending = new Map<string, PendingFakeDialogueOutcome>();
+  private readonly pending = new Map<string, PendingFakeDialogueControl>();
   private resets = 0;
 
   constructor(private readonly responses: {

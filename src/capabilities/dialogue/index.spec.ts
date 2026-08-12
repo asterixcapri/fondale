@@ -12,6 +12,21 @@ import {
   type CharacterKnowledgeDefinition,
 } from ".";
 
+function dialogueTurnLifecycleFixture() {
+  return createKnowledgeDrivenDialogue({
+    narrativeFacts: { chain: { proposition: "The harbour chain was cut." } },
+    variables: {},
+    characters: {
+      player: { dialogue: { knowledge: [] } },
+      antonio: {
+        dialogue: {
+          knowledge: [{ factId: "chain", disclosure: { level: "open" } }],
+        },
+      },
+    },
+  });
+}
+
 test("Knowledge-Driven Dialogue reports invalid Narrative Facts and Character Knowledge", () => {
   const project = {
     narrativeFacts: {
@@ -734,18 +749,7 @@ test("a Dialogue Turn rejects an unknown interpreted ID before verbalization", a
 });
 
 test("a Dialogue Turn shares one transient identity and cancellation across provider phases", async () => {
-  const dialogue = createKnowledgeDrivenDialogue({
-    narrativeFacts: { chain: { proposition: "The harbour chain was cut." } },
-    variables: {},
-    characters: {
-      player: { dialogue: { knowledge: [] } },
-      antonio: {
-        dialogue: {
-          knowledge: [{ factId: "chain", disclosure: { level: "open" } }],
-        },
-      },
-    },
-  });
+  const dialogue = dialogueTurnLifecycleFixture();
   let finishInterpretation!: (value: { readonly factId: string }) => void;
   const contexts: Array<{ readonly turnId: string; readonly signal: AbortSignal }> = [];
   let verbalized = false;
@@ -787,18 +791,7 @@ test("a Dialogue Turn shares one transient identity and cancellation across prov
 });
 
 test("FakeDialogueProvider deterministically controls pending, late, failed and reset outcomes", async () => {
-  const dialogue = createKnowledgeDrivenDialogue({
-    narrativeFacts: { chain: { proposition: "The harbour chain was cut." } },
-    variables: {},
-    characters: {
-      player: { dialogue: { knowledge: [] } },
-      antonio: {
-        dialogue: {
-          knowledge: [{ factId: "chain", disclosure: { level: "open" } }],
-        },
-      },
-    },
-  });
+  const dialogue = dialogueTurnLifecycleFixture();
   const provider = new FakeDialogueProvider({
     interpretations: {
       pending: {

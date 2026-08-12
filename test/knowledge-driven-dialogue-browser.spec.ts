@@ -101,10 +101,24 @@ test("Load resets provider memory before restoring an active Conversation", asyn
   const [pendingTurnId] = await page.evaluate(() =>
     window.__dialogueProvider?.pendingTurnIds() ?? []
   );
-  const frame = page.locator("[data-fondale-frame]");
-  await frame.focus();
-  await page.keyboard.press("Control+l");
-  await page.locator('[data-fondale-load-slot="0"]').click();
+  const lifecycle = await page.evaluate(async (turnId) => {
+    if (!turnId || !window.__dialogueProvider?.release(turnId)) {
+      return { released: false, staged: false };
+    }
+    for (let microtask = 0; microtask < 10; microtask += 1) await Promise.resolve();
+    const staged = document.querySelector<HTMLInputElement>(
+      "[data-fondale-dialogue-input]",
+    )?.value === "";
+    const frame = document.querySelector<HTMLElement>("[data-fondale-frame]");
+    frame?.dispatchEvent(new KeyboardEvent("keydown", {
+      key: "l",
+      ctrlKey: true,
+      bubbles: true,
+    }));
+    document.querySelector<HTMLButtonElement>('[data-fondale-load-slot="0"]')?.click();
+    return { released: true, staged };
+  }, pendingTurnId);
+  expect(lifecycle).toEqual({ released: true, staged: true });
 
   await expect(input).toBeVisible();
   await expect(input).toBeEnabled();

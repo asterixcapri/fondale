@@ -754,6 +754,31 @@ test("Save discards a completed Dialogue Turn before its logical commit", async 
   expect(session.conversation()).toMatchObject({ status: "ready" });
 });
 
+test("Leave and stop discard a completed Dialogue Turn before its logical commit", async () => {
+  for (const lifecycle of ["leave", "stop"] as const) {
+    const project = coverStoryProject();
+    const provider = new FakeDialogueProvider({
+      interpretations: { "Were you aboard?": "santa-lucia" },
+      verbalizations: { denial: "I was never aboard that ship." },
+    });
+    const session = createTestSession(project, undefined, provider);
+    openAntonioConversation(session);
+    await expect(session.submitDialogue("Were you aboard?")).resolves.toEqual({ ok: true });
+
+    if (lifecycle === "leave") {
+      session.input({ type: "escape" });
+      session.steps();
+      expect(session.conversation()).toBeNull();
+    } else {
+      session.stop();
+      expect(session.lifecycle()).toBe("stopped");
+    }
+
+    expect(session.snapshot().testimonies).toEqual([]);
+    expect(session.hud().narrative).toBeNull();
+  }
+});
+
 test("failed Dialogue Turn phases leave Game State unchanged and allow a retry", async () => {
   const provider: DialogueProvider = {
     interpret: ({ playerInput }) => {
