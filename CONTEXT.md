@@ -142,9 +142,12 @@ _Avoid_: Prompt, request, Line, partial state update
 **Conversation**:
 The dominant Game Activity in which the Player conducts Knowledge-Driven
 Dialogue with one Character over one or more Dialogue Turns, normally opened by
-resolving Talk To against a Character configured for it. Its provider-owned
-transcript and context memory are not Game State and reset when a Save Snapshot
-is loaded.
+resolving Talk To against a Character configured for it. It may present
+authored alternatives and free-form input together, leaving the Player free to
+choose either at any point: an authored alternative yields exact authored
+language and never reaches a Dialogue Provider, while free-form input opens a
+Dialogue Turn. Its provider-owned transcript and context memory are not Game
+State and reset when a Save Snapshot is loaded.
 _Avoid_: Sequence, dialogue tree, arbitrary input prompt, Save Snapshot transcript
 
 **Reflection**:
