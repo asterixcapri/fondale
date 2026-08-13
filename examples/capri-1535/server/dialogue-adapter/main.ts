@@ -1,13 +1,13 @@
 import { readAdapterConfiguration } from "./configuration";
 import { createDialogueAdapterServer } from "./http-server";
-import { selectDialogueModel } from "./model-selection";
+import { createLiveDialogueModelFromEnvironment } from "./live-dialogue-model";
 import { createDialogueProvider } from "./dialogue-provider";
 
 const { databaseUrl, host, port } = readAdapterConfiguration(process.env);
 
 // Technical observations stay on the server console: latency, model and token
 // cost never travel to the browser and never enter Game State.
-const model = selectDialogueModel(process.env, (diagnostic) => {
+const model = createLiveDialogueModelFromEnvironment(process.env, (diagnostic) => {
   console.log(
     `dialogue ${diagnostic.phase} via ${diagnostic.modelId} in ${diagnostic.latencyMs}ms` +
       ` (in ${diagnostic.inputTokens ?? "?"} / out ${diagnostic.outputTokens ?? "?"} tokens` +

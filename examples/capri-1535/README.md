@@ -120,9 +120,8 @@ To discard only this adapter's local database volume as well, run
 
 ## Live model spike
 
-The same adapter can answer through a real model. Set `DIALOGUE_ADAPTER_MODEL`
-to `live` and put a `DIALOGUE_MODEL_API_KEY` in `.env.local`, which Git
-ignores. The initial model is `deepseek/deepseek-v4-flash-0731` reached through
+The adapter always answers through a real model, so it needs a
+`DIALOGUE_MODEL_API_KEY` in `.env.local`, which Git ignores. The initial model is `deepseek/deepseek-v4-flash-0731` reached through
 OpenRouter; a different compatible model needs only `DIALOGUE_MODEL_ID`, and a
 different vendor only `DIALOGUE_MODEL_PROVIDER_ID` and `DIALOGUE_MODEL_BASE_URL`
 on the server. Which vendor hosts the model is configuration, so changing it

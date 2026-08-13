@@ -35,7 +35,6 @@ export default defineConfig({
     reuseExistingServer: false,
     timeout: 60_000,
     env: {
-      DIALOGUE_ADAPTER_MODEL: "live",
       DIALOGUE_ADAPTER_PORT: String(adapterPort),
       DATABASE_URL: environment.DIALOGUE_ADAPTER_TEST_DATABASE_URL ?? "",
     },

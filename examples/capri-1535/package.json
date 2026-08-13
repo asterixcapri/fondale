@@ -13,7 +13,7 @@
     "build": "npm run typecheck && npm run verify:project && vite build",
     "preview": "vite preview",
     "verify": "playwright test",
-    "verify:dialogue-adapter": "node --import tsx --test \"server/dialogue-adapter/*.spec.ts\"",
+    "verify:dialogue-adapter": "node --import tsx --test \"server/dialogue-adapter/*.spec.ts\" \"src/*.spec.ts\"",
     "verify:dialogue-live": "playwright test --config playwright.live.config.ts"
   },
   "dependencies": {
