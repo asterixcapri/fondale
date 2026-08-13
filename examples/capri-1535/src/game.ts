@@ -11,7 +11,7 @@ import { winchInstallation } from "./sequences/winch-installation";
 
 export const project = ({
   identity: "org.asterixcapri.capri-1535-example",
-  version: "7",
+  version: "8",
   logicalResolution: { width: 1280, height: 720 },
   inventoryAppearanceSize: 32,
   letterboxColor: "#15101d",

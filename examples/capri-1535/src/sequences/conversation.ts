@@ -12,14 +12,15 @@ export const conversation = ({
           steps: [
             {
               type: "operations",
-              operations: [
-                { type: "set-variable", variable: "promiseMade", value: true },
-                {
-                  type: "set-appearance",
-                  target: { kind: "character", character: "michele" },
-                  appearance: "determined",
-                },
-              ],
+              operations: [{ type: "set-variable", variable: "promiseMade", value: true }],
+            },
+            {
+              type: "direction",
+              directions: [{
+                type: "animation",
+                subject: { kind: "character", character: "michele" },
+                animation: "resolve",
+              }],
             },
             {
               type: "line",
