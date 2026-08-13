@@ -1,4 +1,19 @@
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
+
+export async function logicalPoint(
+  canvas: Locator,
+  x: number,
+  y: number,
+  width = 426,
+  height = 240,
+): Promise<{ x: number; y: number }> {
+  const box = await canvas.boundingBox();
+  if (!box) throw new Error("Fondale canvas is not visible.");
+  return {
+    x: box.x + x / width * box.width,
+    y: box.y + y / height * box.height,
+  };
+}
 
 export async function clickLogical(
   page: Page,
@@ -6,15 +21,21 @@ export async function clickLogical(
   y: number,
   width = 426,
   height = 240,
+  canvas = page.locator("[data-fondale-frame] canvas"),
 ): Promise<void> {
-  const box = await page.locator("[data-fondale-frame] canvas").boundingBox();
-  if (!box) throw new Error("Fondale canvas is not visible.");
-  await page.mouse.click(box.x + x / width * box.width, box.y + y / height * box.height);
+  const point = await logicalPoint(canvas, x, y, width, height);
+  await page.mouse.click(point.x, point.y);
 }
 
-export async function renderedPixel(page: Page, x: number, y: number): Promise<number[]> {
+export async function renderedPixel(
+  page: Page,
+  x: number,
+  y: number,
+  width = 426,
+  height = 240,
+): Promise<number[]> {
   const screenshot = await page.locator("[data-fondale-frame] canvas").screenshot();
-  return page.evaluate(async ({ dataUrl, x, y }) => {
+  return page.evaluate(async ({ dataUrl, x, y, width, height }) => {
     const image = new Image();
     image.src = dataUrl;
     await image.decode();
@@ -24,6 +45,17 @@ export async function renderedPixel(page: Page, x: number, y: number): Promise<n
     const context = copy.getContext("2d", { willReadFrequently: true });
     if (!context) throw new Error("A 2D canvas is required to inspect the rendered pixel.");
     context.drawImage(image, 0, 0);
-    return [...context.getImageData(x, y, 1, 1).data];
-  }, { dataUrl: `data:image/png;base64,${screenshot.toString("base64")}`, x, y });
+    return [...context.getImageData(
+      Math.round(x / width * image.width),
+      Math.round(y / height * image.height),
+      1,
+      1,
+    ).data];
+  }, {
+    dataUrl: `data:image/png;base64,${screenshot.toString("base64")}`,
+    x,
+    y,
+    width,
+    height,
+  });
 }

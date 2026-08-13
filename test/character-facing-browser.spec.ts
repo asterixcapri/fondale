@@ -65,7 +65,10 @@ test("a directed Facing change keeps the Character Animation phase and Ground Po
     ? started.tick - started.activity.active.elapsedTicks
     : undefined;
   expect(startedTick).toBeDefined();
-  await expect.poll(async () => (await state(page)).characters.player?.facing).toBe("right");
+  await expect.poll(
+    async () => (await state(page)).characters.player?.facing,
+    { timeout: 7_000 },
+  ).toBe("right");
   await expect.poll(async () => {
     const current = await state(page);
     const character = current.characters.player!;
@@ -84,16 +87,24 @@ test("a directed Facing change keeps the Character Animation phase and Ground Po
   expect(player.groundPoint).toEqual({ x: 223, y: 180 });
   expect(await renderedPixel(page, player.groundPoint.x + 3, player.groundPoint.y - 5)).toEqual([255, 255, 0, 255]);
 
-  await expect.poll(
-    async () => (await state(page)).tick - startedTick!,
-    { timeout: 5_000, intervals: [10] },
-  ).toBeGreaterThanOrEqual(210);
-  const beforeCompletion = await state(page);
-  expect(beforeCompletion.tick - startedTick!).toBeLessThan(300);
-  expect(beforeCompletion.activity?.type).toBe("sequence");
-  await expect.poll(async () => (await state(page)).activity, { timeout: 7_000 }).toBeNull();
+  await expect.poll(async () => {
+    const current = await state(page);
+    const elapsed = current.activity?.type === "sequence" &&
+        current.activity.active?.kind === "direction"
+      ? current.activity.active.elapsedTicks
+      : undefined;
+    if (elapsed === undefined || elapsed < 360 || elapsed >= 480) return false;
+    const character = current.characters.player!;
+    return JSON.stringify(await renderedPixel(
+      page,
+      character.groundPoint.x - 4,
+      character.groundPoint.y - 5,
+    )) === JSON.stringify([0, 0, 255, 255]);
+  }, { timeout: 10_000, intervals: [10] }).toBe(true);
+
+  await expect.poll(async () => (await state(page)).activity, { timeout: 12_000 }).toBeNull();
   const completed = await state(page);
   expect(completed.characters.player!.groundPoint).toEqual({ x: 223, y: 180 });
-  expect(completed.tick - startedTick!).toBeGreaterThanOrEqual(300);
+  expect(completed.tick - startedTick!).toBeGreaterThanOrEqual(540);
   expect(initial.groundPoint).toEqual({ x: 213, y: 180 });
 });

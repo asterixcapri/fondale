@@ -1,19 +1,11 @@
 import { expect, test, type Page } from "@playwright/test";
 
-async function clickViewport(page: Page, x: number, y: number): Promise<void> {
-  const canvas = page.locator("[data-fondale-frame] canvas");
-  const box = await canvas.boundingBox();
-  if (!box) throw new Error("Camera fixture canvas is not visible.");
-  await page.mouse.click(box.x + (x / 426) * box.width, box.y + (y / 240) * box.height);
-}
+import { clickLogical, logicalPoint, renderedPixel } from "./browser-support";
+
+const clickViewport = clickLogical;
 
 async function canvasPoint(page: Page, x: number, y: number): Promise<{ x: number; y: number }> {
-  const box = await page.locator("[data-fondale-frame] canvas").boundingBox();
-  if (!box) throw new Error("Camera fixture canvas is not visible.");
-  return {
-    x: box.x + (x / 426) * box.width,
-    y: box.y + (y / 240) * box.height,
-  };
+  return logicalPoint(page.locator("[data-fondale-frame] canvas"), x, y);
 }
 
 async function playerPoint(page: Page): Promise<{ x: number; y: number }> {
@@ -32,31 +24,6 @@ async function waitForIdle(page: Page): Promise<void> {
   await expect.poll(async () => page.evaluate(() =>
     window.__cameraTest!.session.createSaveSnapshot().state.activity,
   )).toBeNull();
-}
-
-async function renderedPixel(page: Page, x: number, y: number) {
-  const screenshot = await page.locator("[data-fondale-frame] canvas").screenshot();
-  return page.evaluate(async ({ dataUrl, x, y }) => {
-    const image = new Image();
-    image.src = dataUrl;
-    await image.decode();
-    const copy = document.createElement("canvas");
-    copy.width = image.width;
-    copy.height = image.height;
-    const context = copy.getContext("2d", { willReadFrequently: true });
-    if (!context) throw new Error("A 2D canvas is required to inspect the rendered pixel.");
-    context.drawImage(image, 0, 0);
-    return [...context.getImageData(
-      Math.round((x / 426) * image.width),
-      Math.round((y / 240) * image.height),
-      1,
-      1,
-    ).data];
-  }, {
-    dataUrl: `data:image/png;base64,${screenshot.toString("base64")}`,
-    x,
-    y,
-  });
 }
 
 async function moveViewport(page: Page, x: number, y: number): Promise<void> {

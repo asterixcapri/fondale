@@ -1,16 +1,13 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
+import { logicalPoint as canvasLogicalPoint } from "./browser-support";
+
 async function logicalPoint(frame: Locator, x: number, y: number): Promise<{ x: number; y: number }> {
-  const bounds = await frame.locator("canvas").boundingBox();
-  if (!bounds) throw new Error("missing canvas bounds");
-  return {
-    x: bounds.x + (x / 426) * bounds.width,
-    y: bounds.y + (y / 240) * bounds.height,
-  };
+  return canvasLogicalPoint(frame.locator("canvas"), x, y);
 }
 
 async function clickLogical(page: Page, frame: Locator, x: number, y: number): Promise<void> {
-  const point = await logicalPoint(frame, x, y);
+  const point = await canvasLogicalPoint(frame.locator("canvas"), x, y);
   await page.mouse.click(point.x, point.y);
 }
 

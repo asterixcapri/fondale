@@ -1,10 +1,9 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
+import { clickLogical as clickCanvasLogical } from "./browser-support";
+
 async function clickLogical(page: Page, target: Locator, x: number, y: number): Promise<void> {
-  const canvas = target.locator("canvas");
-  const box = await canvas.boundingBox();
-  if (!box) throw new Error("Recipe canvas is not visible.");
-  await page.mouse.click(box.x + (x / 100) * box.width, box.y + (y / 100) * box.height);
+  await clickCanvasLogical(page, x, y, 100, 100, target.locator("canvas"));
 }
 
 test("Command recipes execute through the installed public package", async ({ page }) => {
