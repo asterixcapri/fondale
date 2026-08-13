@@ -1,5 +1,15 @@
 # Fondale Scene package
 
+## Contents
+
+- [Deliverables](#deliverables)
+- [Separation rules](#separation-rules)
+- [Background integration](#background-integration)
+- [Scenery placement](#scenery-placement)
+- [Asset checks](#asset-checks)
+- [Geometry checks](#geometry-checks)
+- [Engine checks](#engine-checks)
+
 Use the current repository as the schema source of truth. Read `CONTEXT.md` for
 the ubiquitous language and inspect the exported Scene interfaces before
 writing definitions; do not rely on cached field lists in this reference.
@@ -30,7 +40,8 @@ A completed Scene package contains:
    interface and using canonical Fondale terms.
 6. **Diagnostic artifact** — a labelled rendering of the Scene geometry,
    including Walkable Region, Hotspots, passages, entrances, Approach Points,
-   Scenery Baselines, and Perspective Scale stops.
+   Scenery bounds, footprints, positions, Baselines, Visual Anchors, and
+   Perspective Scale stops at the exact Runtime Background dimensions.
 
 Follow the target Game Project's layout when it already has one. In the Fondale
 example convention, preserve Art Masters under `art/scenes/<scene-id>/` and put
@@ -68,6 +79,22 @@ Runtime Assets and `index.ts` under `src/scenes/<scene-id>/`.
 - Recompose every Appearance over the clean Background and compare it with the
   accepted Composition Art Master at actual play size.
 
+## Scenery placement
+
+- Establish placement in Scene Space before cropping or generating the isolated
+  asset. Record visible bounds and ground contact on the full-Scene spatial plan.
+- Derive `position`, `baseline`, and `visualAnchor` from that recorded placement;
+  do not estimate them independently after asset generation.
+- Use the union of every Appearance's visible bounds when reserving surrounding
+  space and checking overlaps.
+- Align each Scenery asset by its Visual Anchor, then verify its ground contact
+  against the Background at 1:1 pixels.
+- Keep blocking Scenery outside the Walkable Region or make its ground-contact
+  footprint define part of the Region boundary. Do not place an apparent solid
+  obstacle inside walkable ground.
+- Verify intentional occlusion with Characters immediately in front of and
+  behind the Scenery Baseline.
+
 ## Asset checks
 
 - Background Runtime Asset dimensions equal the resolved Scene Size.
@@ -86,6 +113,10 @@ Runtime Assets and `index.ts` under `src/scenes/<scene-id>/`.
 
 ## Geometry checks
 
+- The diagnostic overlay, Runtime Background, and Scene Space share the same
+  width, height, origin, and 1:1 coordinate system.
+- Every coordinate comes from the final full-resolution artwork or authored
+  geometry, never a thumbnail, scaled screenshot, or approximate visual guess.
 - The Walkable Region is a valid non-self-intersecting polygon inside Scene
   Space.
 - The Walkable Region is one broad connected surface without holes, using the
@@ -94,9 +125,17 @@ Runtime Assets and `index.ts` under `src/scenes/<scene-id>/`.
   the art does not imply collisions the navigation model cannot express.
 - Representative routes between entrances, approaches, and focal areas remain
   wide, direct, and free of corner-grazing detours.
+- Walkable boundaries follow the visible ground and are inset from solid forms
+  enough to keep the widest required Character silhouette from clipping at the
+  applicable Perspective Scale.
+- Every required route has enough visual width for that Character, not merely
+  enough mathematical width for its Ground Point.
 - Every Scene Entrance and Approach Point lies in or on the Walkable Region.
 - Every Hotspot and Scene Passage has a valid in-bounds area.
 - Scenery positions and Baselines remain inside the Scene Size.
+- Every Scenery visible bound, ground contact, position, Baseline, and Visual
+  Anchor agrees between the spatial plan, isolated asset, recomposition, and
+  TypeScript definition.
 - Perspective Scale stops are ordered by depth, use positive scales, and make
   Characters visually compatible with the painted perspective.
 - Passage destinations and entrance names resolve within the Game Project.

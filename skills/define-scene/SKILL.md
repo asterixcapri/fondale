@@ -59,6 +59,12 @@ Approach Points, Scene Entrances, Scene Passages, and HUD-safe composition.
 Reserve clear silhouettes for interactive targets and enough negative space for
 Characters to move and speak without covering essential information.
 
+Create a full-Scene spatial plan at the exact Runtime Background dimensions.
+For every planned Scenery element, record its Scene Space visible bounds,
+ground-contact footprint, position, Baseline, Visual Anchor, maximum extent
+across Appearances, depth role, and Approach Point. Measure coordinates on this
+1:1 plan, never on a resized preview or an image-generation approximation.
+
 Make navigation-first composition the default. Design one broad connected
 walking surface expressible as a simple polygon with the fewest purposeful
 vertices. Place furniture, columns, rocks, vegetation, and other blocking forms
@@ -66,10 +72,11 @@ outside it or along its boundary. Avoid isolated floor obstacles, narrow
 channels, unnecessary concavities, and decorative geometry that forces a
 complicated route. Add complexity only when it carries confirmed gameplay.
 
-Create a labelled blocking image or SVG when geometry cannot be read clearly
-from prose. Finish when every required point and polygon can be expressed in
-Scene Space coordinates without contradiction and representative routes remain
-direct, wide, and visually obvious.
+Create a labelled 1:1 geometry SVG over the blocking image. Show the Walkable
+Region, Scenery bounds and footprints, Baselines, Visual Anchors, Perspective
+Scale stops, Hotspots, Approach Points, Scene Entrances, and Scene Passages.
+Finish when every required point and polygon has an exact coordinate and
+representative routes remain direct, wide, and visually obvious.
 
 ### 4. Create the composition Art Master
 
@@ -81,7 +88,9 @@ perspective, overlap, lighting, contact, and negative space are solved together
 with the Background. Keep geometry stable after accepting the composition.
 
 Finish when the composition satisfies every art-direction check and supports the
-blocked gameplay at actual play size.
+blocked gameplay at actual play size. Then align the spatial plan to the final
+artwork, correct every boundary and Scenery measurement that changed, and freeze
+the geometry before asset separation.
 
 ### 5. Separate production artwork
 
@@ -99,7 +108,7 @@ alignment by recomposing every Scenery Appearance over the clean Background.
 Also inspect the clean Background alone so removed Scenery leaves a complete,
 plausible surface. Finish only when each recomposition matches the accepted
 composition and every stateful or depth-sensitive element is independently
-usable.
+usable at the exact position recorded in the spatial plan.
 
 ### 6. Author the playable Scene
 
@@ -109,9 +118,11 @@ Scale, Scenery, Hotspots, Approach Points, Scene Entrances, Scene Passages, and
 required Arrival Sequences. Keep narrative rules in the owning Game Project
 definitions rather than encoding them into artwork.
 
-Add a diagnostic overlay or preview that labels polygons, Ground Points,
-Baselines, and scale stops. Finish when every visual target maps to the intended
-definition and every authored coordinate lies inside its valid bounds.
+Update the 1:1 diagnostic overlay from the authored values and render it over
+the final recomposed Scene. Finish when it agrees with the spatial plan, every
+Scenery asset lands on its intended pixel and ground contact, every visual target
+maps to the intended definition, and every authored coordinate lies inside its
+valid bounds.
 
 ### 7. Verify in the Engine
 
