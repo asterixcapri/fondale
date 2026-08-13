@@ -5,8 +5,8 @@ import inventoryUrl from "./inventory.png";
 import sceneUrl from "./scene.png";
 
 export const winchHandle = ({
-  initialScene: "cloister",
-  initialGroundPoint: { x: 575, y: 211 },
+  initialScene: "harbour",
+  initialGroundPoint: { x: 920, y: 585 },
   initialAppearance: "loose",
   appearances: {
     loose: { animations: { idle: { frames: [sceneUrl], framesPerSecond: 1, loop: true } }, roles: { default: "idle" } },
@@ -20,17 +20,12 @@ export const winchHandle = ({
     cases: [
       {
         verb: "pick-up",
-        when: { variable: "wellFreed", equals: true },
-        response: { text: "Ora posso restituire la manovella a Raffaele." },
+        response: { text: "Prendo la manovella. L'argano è qui accanto." },
         operations: [{ type: "collect-target-object" }],
       },
       {
-        verb: "pick-up",
-        response: { text: "La carrucola è bloccata: togliendola adesso lascerei il secchio nel pozzo." },
-      },
-      {
         verb: "look-at",
-        response: { text: "La manovella dell'argano, promossa temporaneamente a manovella del pozzo." },
+        response: { text: "La manovella che manca all'argano del porto." },
       },
     ],
   } satisfies NounDefinition),

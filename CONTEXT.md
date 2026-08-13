@@ -399,8 +399,10 @@ _Avoid_: Animation, asset, sprite, texture
 The transient visual performance of a Character, Object, or Scenery, such as
 walking, speaking, gesturing, or turning. It may accompany an Appearance
 change or depict travel, but does not itself change Game State or position in
-Scene Space. A Sequence that explicitly names an unavailable Animation is
-invalid authoring.
+Scene Space. Every Character Animation owns synchronized authored left, right,
+front, and back presentations; the Engine selects the presentation matching the
+Character's Facing without transforming another presentation. A Sequence that
+explicitly names an unavailable Animation is invalid authoring.
 _Avoid_: Appearance, Game Operation, animation frame
 
 **Motion**:
@@ -440,6 +442,12 @@ _Avoid_: Sprite origin, center point
 The point within a visual asset that aligns it to a Ground Point or Baseline
 and remains consistent across its animation frames.
 _Avoid_: Pivot, sprite origin
+
+**Facing**:
+The discrete left, right, front, or back direction toward which a Character is
+oriented; it selects corresponding authored presentation rather than
+transforming artwork owned by another Facing.
+_Avoid_: Sprite flip, inferred direction, Motion
 
 **Baseline**:
 The Scene Space depth at which Scenery meets the ground and joins the world's

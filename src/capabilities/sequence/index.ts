@@ -15,7 +15,7 @@ import {
   animationDurationTicks,
   validateAnimationReference,
   type AnimationDefinition,
-  type Appearance,
+  type AnimationBearingAppearance,
 } from "../animation";
 import {
   validateCameraDirection,
@@ -36,7 +36,7 @@ export function validateLineReferences(
   path: string,
   context: {
     readonly characterExists: (character: string) => boolean;
-    readonly appearancesForCharacter: (character: string) => readonly Appearance[];
+    readonly appearancesForCharacter: (character: string) => readonly AnimationBearingAppearance[];
   },
 ): readonly AuthoringDiagnostic[] {
   if (!line) return [];
@@ -361,7 +361,7 @@ export function validateDirectionStep(
 /** @internal */
 export interface DirectionStepReferenceContext {
   readonly hasScene: boolean;
-  readonly appearancesForSubject: (subject: DirectedSubject) => readonly Appearance[];
+  readonly appearancesForSubject: (subject: DirectedSubject) => readonly AnimationBearingAppearance[];
   readonly subjectBelongsToScene: (subject: DirectedSubject) => boolean;
   readonly cameraSubjectExists: (subject: DirectedSubject) => boolean;
   readonly pointInScene: (point: Point) => boolean;
@@ -441,11 +441,11 @@ export interface SequenceReferenceContext {
   readonly playerCharacter?: string;
   readonly sceneExists: (scene: string) => boolean;
   readonly characterExists: (character: string) => boolean;
-  readonly appearancesForCharacter: (character: string) => readonly Appearance[];
+  readonly appearancesForCharacter: (character: string) => readonly AnimationBearingAppearance[];
   readonly appearancesForSubject: (
     subject: DirectedSubject,
     scene?: string,
-  ) => readonly Appearance[];
+  ) => readonly AnimationBearingAppearance[];
   readonly initialObjectsInScene: (scene?: string) => ReadonlySet<string>;
   readonly hasDirectedSubject: (
     scene: string,

@@ -56,8 +56,9 @@ expected dimensions.
 `CharacterDefinition` describes a persistent Character with initial Scene, Ground
 Point, Facing, Appearance, positive `movementSpeed`, optional Noun, optional
 `CharacterDialogueDefinition`, and named Appearances. Every Appearance owns named Animations and a required default
-Animation Role. The Player Character also requires a walking Role; directional
-walking uses side/front/back strips and mirrors the side strip when facing left.
+Animation Role. Every Character Animation owns synchronized `left`, `right`,
+`front`, and `back` strips. The Engine selects the strip matching Facing and
+never mirrors authored pixels. The Player Character also requires a walking Role.
 
 `NarrativeFactDefinition` is a non-empty canonical `proposition` identified by
 its `narrativeFacts` registry key, with an optional `setsVariable` naming a
@@ -280,11 +281,14 @@ identifies the capability or browser adapter responsible for the rule.
 | `SceneSize` | complete Scene Space extent | positive integer width and height | omission defaults to Logical Resolution; neither axis may be smaller | Scene-size diagnostics | [Scene](recipes/first-scene.ts) |
 | `Facing` | authored orientation | front, back, left, right | required where present | type and reference validation | [Character](recipes/character-walking.ts) |
 | `AnimationStrip` | horizontal frame source | image and positive count | directions share one declarative shape | frame and asset diagnostics | [Character](recipes/character-walking.ts) |
-| `AnimationFrames` | Animation frame source | image list or side/front/back strips | concrete frames remain derived | frame and asset diagnostics | [Sequence](recipes/sequence.ts) |
+| `AnimationFrames` | non-directional Animation frame source | image list or one horizontal strip | concrete frames remain derived | frame and asset diagnostics | [Sequence](recipes/sequence.ts) |
+| `CharacterAnimationFrames` | Character Animation presentations | left, right, front, and back strips | all four share frame count and Runtime cell dimensions | Facing, frame, and asset diagnostics | [Character](recipes/character-walking.ts) |
 | `AnimationDefinition` | transient visual performance | frames, positive rate, loop, named Cues | loop defaults false | Animation/Cue diagnostics | [Sequence](recipes/sequence.ts) |
+| `CharacterAnimationDefinition` | transient Character performance | four synchronized Facing strips, positive rate, loop, named Cues | timing and Cues are shared across Facing | Animation/Cue diagnostics | [Character](recipes/character-walking.ts) |
 | `AnimationRoles` | semantic Engine selections | default, optional speaking and walking names | default is required; speaking falls back to default | missing Animation diagnostics | [Character](recipes/character-walking.ts) |
-| `Appearance` | persistent semantic visual condition | named Animations, roles, optional anchor | registry key identifies selected condition | Animation, role, asset, and anchor diagnostics | [Character](recipes/character-walking.ts) |
-| `EntityAppearance` | Character/Object visual condition | definitive animated Appearance | alias preserves entity-specific signatures | Appearance diagnostics | [Character](recipes/character-walking.ts) |
+| `Appearance` | persistent non-directional visual condition | named Animations, roles, optional anchor | registry key identifies selected condition | Animation, role, asset, and anchor diagnostics | [Interaction](recipes/interaction.ts) |
+| `CharacterAppearance` | persistent Character visual condition | named four-Facing Animations, roles, optional anchor | every Animation is directionally complete | Appearance and Facing diagnostics | [Character](recipes/character-walking.ts) |
+| `EntityAppearance` | Object visual condition | definitive animated Appearance | retains the non-directional contract | Appearance diagnostics | [Interaction](recipes/interaction.ts) |
 | `SceneryAppearance` | Scenery visual condition | animated Appearance or Background Region | Background Regions remain tied to their Scene | Appearance/polygon diagnostics | [Scene](recipes/first-scene.ts) |
 | `BackgroundRegionAppearance` | Background cut-out | background-region and polygon | belongs to owning Background | polygon and bounds diagnostics | [Scene](recipes/first-scene.ts) |
 | `CharacterDefinition` | persistent Character | initial values, appearances, speed, noun, dialogue | initial point is walkable | Character/reference diagnostics | [Character](recipes/character-walking.ts) |
@@ -382,7 +386,7 @@ identifies the capability or browser adapter responsible for the rule.
 | `GameSession` | running lifecycle handle | save, start Reflection, status, diagnostics, stop | Reflection starts only while idle; stop is idempotent and terminal | lifecycle diagnostics | [Save](recipes/save-snapshot.ts) |
 
 Exact reachable fields also include `x`, `y`, `width`, `height`, `kind`,
-`image`, `visualAnchor`, `frames`, `side`, `front`, `back`, `framesPerSecond`,
+`image`, `visualAnchor`, `frames`, `left`, `right`, `front`, `back`, `framesPerSecond`,
 `count`, `loop`, `cues`, `animations`, `roles`, `default`, `speaking`, `walking`,
 `area`, `facing`, `font`, `initialScene`, `initialGroundPoint`, `initialFacing`,
 `initialAppearance`, `appearances`, `movementSpeed`, `noun`, `source`, `family`,

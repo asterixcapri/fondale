@@ -1,9 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import {
-  createTestSession,
-  validateTestSaveSnapshot,
-} from "./support";
+import { createTestSession, validateTestSaveSnapshot } from "./support";
 import {
   type CharacterDefinition,
   type CommandLexicon,
@@ -26,7 +23,7 @@ function projectFixture(
     { x: 100, y: 100 },
     { x: 0, y: 100 },
   ];
-  const opening = ({
+  const opening = {
     background: "opening.png",
     walkableRegion: square,
     scenery: {
@@ -37,33 +34,42 @@ function projectFixture(
           closed: { kind: "background-region", area: square },
           open: { kind: "background-region", area: square },
         },
-        noun: ({
+        noun: {
           labels: [{ text: "Gate" }],
           preferredVerbs: [{ verb: "look-at" }],
-          cases: [{
-            verb: "look-at",
-            response: { text: "A locked gate." },
-          }, {
-            verb: "use",
-            firstNoun: "key",
-            response: { text: "The lock opens." },
-            operations: [
-              { type: "set-variable", variable: "gateOpen", value: true },
-              {
-                type: "set-appearance",
-                target: { kind: "scenery", scene: "opening", scenery: "gate" },
-                appearance: "open",
-              },
-              ...(consumeSelectedObject
-                ? [{ type: "consume-selected-object" } as const]
-                : [{
-                    type: "place-selected-object",
-                    groundPoint: { x: 75, y: 75 },
-                    appearance: "used",
-                  } as const]),
-            ],
-          }],
-        } satisfies NounDefinition),
+          cases: [
+            {
+              verb: "look-at",
+              response: { text: "A locked gate." },
+            },
+            {
+              verb: "use",
+              firstNoun: "key",
+              response: { text: "The lock opens." },
+              operations: [
+                { type: "set-variable", variable: "gateOpen", value: true },
+                {
+                  type: "set-appearance",
+                  target: {
+                    kind: "scenery",
+                    scene: "opening",
+                    scenery: "gate",
+                  },
+                  appearance: "open",
+                },
+                ...(consumeSelectedObject
+                  ? [{ type: "consume-selected-object" } as const]
+                  : [
+                      {
+                        type: "place-selected-object",
+                        groundPoint: { x: 75, y: 75 },
+                        appearance: "used",
+                      } as const,
+                    ]),
+              ],
+            },
+          ],
+        } satisfies NounDefinition,
       },
     },
     hotspots: [
@@ -89,55 +95,100 @@ function projectFixture(
         area: square,
         approach: { groundPoint: { x: 90, y: 90 }, facing: "back" },
         when: { variable: "gateOpen", equals: true },
-        noun: ({
+        noun: {
           labels: [{ text: "Ending" }],
           preferredVerbs: [{ verb: "walk-to" }],
           cases: [],
-        } satisfies NounDefinition),
+        } satisfies NounDefinition,
         direction: "right",
         destination: { scene: "ending", entrance: "fromOpening" },
       },
     ],
-  } satisfies SceneDefinition);
-  const ending = ({
+  } satisfies SceneDefinition;
+  const ending = {
     background: "ending.png",
     walkableRegion: square,
-    entrances: { fromOpening: { groundPoint: { x: 5, y: 5 }, facing: "right" } },
-  } satisfies SceneDefinition);
-  const player = ({
+    entrances: {
+      fromOpening: { groundPoint: { x: 5, y: 5 }, facing: "right" },
+    },
+  } satisfies SceneDefinition;
+  const player = {
     initialScene: "opening",
     initialGroundPoint: { x: 10, y: 10 },
     initialFacing: "front",
     initialAppearance: "normal",
     appearances: {
-      normal: { animations: { idle: { frames: ["normal.png"], framesPerSecond: 1, loop: true } }, roles: { default: "idle", walking: "idle" } },
-      happy: { animations: { idle: { frames: ["happy.png"], framesPerSecond: 1, loop: true } }, roles: { default: "idle", walking: "idle" } },
+      normal: {
+        animations: {
+          idle: {
+            frames: {
+              left: { image: "normal.png", count: 1 },
+              right: { image: "normal.png", count: 1 },
+              front: { image: "normal.png", count: 1 },
+              back: { image: "normal.png", count: 1 },
+            },
+            framesPerSecond: 1,
+            loop: true,
+          },
+        },
+        roles: { default: "idle", walking: "idle" },
+      },
+      happy: {
+        animations: {
+          idle: {
+            frames: {
+              left: { image: "happy.png", count: 1 },
+              right: { image: "happy.png", count: 1 },
+              front: { image: "happy.png", count: 1 },
+              back: { image: "happy.png", count: 1 },
+            },
+            framesPerSecond: 1,
+            loop: true,
+          },
+        },
+        roles: { default: "idle", walking: "idle" },
+      },
     },
     movementSpeed: 600,
-    noun: ({
+    noun: {
       labels: [{ text: "Player" }],
       preferredVerbs: [{ verb: "talk-to" }],
-      cases: [{
-        verb: "talk-to",
-        when: { variable: "gateOpen", equals: true },
-        line: { character: "player", text: "The way is open." },
-        operations: [{ type: "set-variable", variable: "behaviorRan", value: true }],
-      }, {
-        verb: "talk-to",
-        sequence: "conversation",
-      }],
-    } satisfies NounDefinition),
-  } satisfies CharacterDefinition);
-  const key = ({
+      cases: [
+        {
+          verb: "talk-to",
+          when: { variable: "gateOpen", equals: true },
+          line: { character: "player", text: "The way is open." },
+          operations: [
+            { type: "set-variable", variable: "behaviorRan", value: true },
+          ],
+        },
+        {
+          verb: "talk-to",
+          sequence: "conversation",
+        },
+      ],
+    } satisfies NounDefinition,
+  } satisfies CharacterDefinition;
+  const key = {
     initialScene: "opening",
     initialGroundPoint: { x: 40, y: 40 },
     initialAppearance: "new",
     appearances: {
-      new: { animations: { idle: { frames: ["key.png"], framesPerSecond: 1, loop: true } }, roles: { default: "idle" } },
-      used: { animations: { idle: { frames: ["used-key.png"], framesPerSecond: 1, loop: true } }, roles: { default: "idle" } },
+      new: {
+        animations: {
+          idle: { frames: ["key.png"], framesPerSecond: 1, loop: true },
+        },
+        roles: { default: "idle" },
+      },
+      used: {
+        animations: {
+          idle: { frames: ["used-key.png"], framesPerSecond: 1, loop: true },
+        },
+        roles: { default: "idle" },
+      },
     },
     inventoryAppearance: "key-inventory.png",
-    noun: ({
+    noun: {
       labels: [
         { when: { variable: "keyCleaned", equals: true }, text: "Clean key" },
         { text: "Dirty key" },
@@ -147,40 +198,63 @@ function projectFixture(
         { verb: "pick-up" },
       ],
       secondaryVerbs: [{ verb: "look-at" }],
-      cases: [{
-        verb: "pick-up",
-        response: { text: "You take the key." },
-        operations: [
-          { type: "collect-target-object" },
-          ...(duplicateCollection ? [{ type: "collect-target-object" } as const] : []),
-        ],
-      }, {
-        verb: "look-at",
-        response: { text: "A small key." },
-        operations: [{ type: "set-variable", variable: "keyCleaned", value: true }],
-      }],
-    } satisfies NounDefinition),
-  } satisfies ObjectDefinition);
-  const coin = ({
+      cases: [
+        {
+          verb: "pick-up",
+          response: { text: "You take the key." },
+          operations: [
+            { type: "collect-target-object" },
+            ...(duplicateCollection
+              ? [{ type: "collect-target-object" } as const]
+              : []),
+          ],
+        },
+        {
+          verb: "look-at",
+          response: { text: "A small key." },
+          operations: [
+            { type: "set-variable", variable: "keyCleaned", value: true },
+          ],
+        },
+      ],
+    } satisfies NounDefinition,
+  } satisfies ObjectDefinition;
+  const coin = {
     initialScene: "opening",
     initialGroundPoint: { x: 30, y: 30 },
     initialAppearance: "new",
     appearances: {
-      new: { animations: { idle: { frames: ["coin.png"], framesPerSecond: 1, loop: true } }, roles: { default: "idle" } },
-      polished: { animations: { idle: { frames: ["polished-coin.png"], framesPerSecond: 1, loop: true } }, roles: { default: "idle" } },
+      new: {
+        animations: {
+          idle: { frames: ["coin.png"], framesPerSecond: 1, loop: true },
+        },
+        roles: { default: "idle" },
+      },
+      polished: {
+        animations: {
+          idle: {
+            frames: ["polished-coin.png"],
+            framesPerSecond: 1,
+            loop: true,
+          },
+        },
+        roles: { default: "idle" },
+      },
     },
     inventoryAppearance: "coin-inventory.png",
-    noun: ({
+    noun: {
       labels: [{ text: "Coin" }],
       preferredVerbs: [{ verb: "pick-up" }],
-      cases: [{
-        verb: "pick-up",
-        response: { text: "You take the coin." },
-        operations: [{ type: "collect-target-object" }],
-      }],
-    } satisfies NounDefinition),
-  } satisfies ObjectDefinition);
-  const conversation = ({
+      cases: [
+        {
+          verb: "pick-up",
+          response: { text: "You take the coin." },
+          operations: [{ type: "collect-target-object" }],
+        },
+      ],
+    } satisfies NounDefinition,
+  } satisfies ObjectDefinition;
+  const conversation = {
     skippable: true,
     skipOutcome: [],
     steps: [
@@ -212,9 +286,9 @@ function projectFixture(
       { type: "narration", text: "The road still waits." },
       { type: "line", character: "player", text: "The conversation ends." },
     ],
-  } satisfies SequenceDefinition);
+  } satisfies SequenceDefinition;
 
-  return ({
+  return {
     identity,
     version: "1",
     logicalResolution: { width: 100, height: 200 },
@@ -224,32 +298,62 @@ function projectFixture(
     playerCharacter: "player",
     objects: { key, ...(includeSecondObject ? { coin } : {}) },
     sequences: { conversation },
-    variables: { met: false, gateOpen: false, behaviorRan: false, keyCleaned: false },
-    commandLexicon: ({
+    variables: {
+      met: false,
+      gateOpen: false,
+      behaviorRan: false,
+      keyCleaned: false,
+    },
+    commandLexicon: {
       inventory: { select: "Hold {noun}", deselect: "Put back {noun}" },
       verbs: {
-        open: "Open", "pick-up": "Pick up", push: "Push", close: "Close",
-        "look-at": "Look at", pull: "Pull", give: "Give", "talk-to": "Talk to", use: "Use",
+        open: "Open",
+        "pick-up": "Pick up",
+        push: "Push",
+        close: "Close",
+        "look-at": "Look at",
+        pull: "Pull",
+        give: "Give",
+        "talk-to": "Talk to",
+        use: "Use",
       },
       patterns: {
-        unary: "{verb} {noun}", give: "{verb} {first} to {second}", use: "{verb} {first} with {second}",
+        unary: "{verb} {noun}",
+        give: "{verb} {first} to {second}",
+        use: "{verb} {first} with {second}",
       },
-    } satisfies CommandLexicon),
-    commandFallbacks: Object.fromEntries([
-      "open", "pick-up", "push", "close", "look-at", "pull", "give", "talk-to", "use",
-    ].map((verb) => [verb, { text: "That does not help." }])) as never,
+    } satisfies CommandLexicon,
+    commandFallbacks: Object.fromEntries(
+      [
+        "open",
+        "pick-up",
+        "push",
+        "close",
+        "look-at",
+        "pull",
+        "give",
+        "talk-to",
+        "use",
+      ].map((verb) => [verb, { text: "That does not help." }]),
+    ) as never,
     initialScene: "opening",
-  } satisfies GameProject);
+  } satisfies GameProject;
 }
 
-function interact(session: ReturnType<typeof createTestSession>, hotspot: number) {
+function interact(
+  session: ReturnType<typeof createTestSession>,
+  hotspot: number,
+) {
   const verbs = ["talk-to", "pick-up", "look-at"] as const;
   session.input({ type: "select-verb", verb: verbs[hotspot]! });
   session.input({ type: "activate-hotspot", hotspot });
   session.steps(20);
 }
 
-function useKeyOn(session: ReturnType<typeof createTestSession>, hotspot: number) {
+function useKeyOn(
+  session: ReturnType<typeof createTestSession>,
+  hotspot: number,
+) {
   session.input({ type: "select-verb", verb: "use" });
   session.input({ type: "activate-object", object: "key" });
   session.input({ type: "activate-hotspot", hotspot });
@@ -259,7 +363,10 @@ function useKeyOn(session: ReturnType<typeof createTestSession>, hotspot: number
 test("a modal Sequence exposes a resumable Line and Choice, then commits its branch", () => {
   const session = createTestSession(projectFixture());
   interact(session, 0);
-  expect(session.snapshot().activity).toMatchObject({ type: "sequence", active: { kind: "line" } });
+  expect(session.snapshot().activity).toMatchObject({
+    type: "sequence",
+    active: { kind: "line" },
+  });
 
   session.input({ type: "move", point: { x: 99, y: 99 } });
   session.input({ type: "advance-sequence" });
@@ -278,7 +385,10 @@ test("a modal Sequence exposes a resumable Line and Choice, then commits its bra
   expect(session.snapshot().variables.met).toBe(false);
   session.input({ type: "advance-sequence" });
   session.steps();
-  expect(session.snapshot().activity).toMatchObject({ type: "sequence", active: { kind: "narration" } });
+  expect(session.snapshot().activity).toMatchObject({
+    type: "sequence",
+    active: { kind: "narration" },
+  });
   expect(session.snapshot().variables.met).toBe(true);
   expect(session.snapshot().characters.player!.appearance).toBe("happy");
 
@@ -288,15 +398,23 @@ test("a modal Sequence exposes a resumable Line and Choice, then commits its bra
   );
   expect(validation.ok).toBe(true);
   if (!validation.ok) return;
-  expect(createTestSession(projectFixture(), validation.snapshot).snapshot().activity)
-    .toMatchObject({ type: "sequence", active: { kind: "narration" } });
+  expect(
+    createTestSession(projectFixture(), validation.snapshot).snapshot()
+      .activity,
+  ).toMatchObject({ type: "sequence", active: { kind: "narration" } });
 
   session.input({ type: "advance-sequence" });
   session.steps();
-  expect(session.snapshot().activity).toMatchObject({ type: "sequence", active: { kind: "narration" } });
+  expect(session.snapshot().activity).toMatchObject({
+    type: "sequence",
+    active: { kind: "narration" },
+  });
   session.input({ type: "advance-sequence" });
   session.steps();
-  expect(session.snapshot().activity).toMatchObject({ type: "sequence", active: { kind: "line" } });
+  expect(session.snapshot().activity).toMatchObject({
+    type: "sequence",
+    active: { kind: "line" },
+  });
   session.input({ type: "advance-sequence" });
   session.steps();
   expect(session.snapshot().activity).toBeNull();
@@ -309,7 +427,9 @@ test("Save Snapshot validation restores the exact active Choice", () => {
   uninterrupted.input({ type: "advance-sequence" });
   uninterrupted.steps();
 
-  const raw = JSON.parse(JSON.stringify(uninterrupted.createSaveSnapshot())) as unknown;
+  const raw = JSON.parse(
+    JSON.stringify(uninterrupted.createSaveSnapshot()),
+  ) as unknown;
   const validation = validateTestSaveSnapshot(project, raw);
   expect(validation.ok).toBe(true);
   if (!validation.ok) return;
@@ -353,7 +473,8 @@ test("Save round trip preserves Inventory order, Object location, selection, and
 
   const validation = validateTestSaveSnapshot(project, raw);
   expect(validation.ok).toBe(true);
-  if (!validation.ok) throw new Error("Expected the Inventory Save Snapshot to be valid.");
+  if (!validation.ok)
+    throw new Error("Expected the Inventory Save Snapshot to be valid.");
   const restored = createTestSession(project, validation.snapshot);
   expect(restored.createSaveSnapshot().state).toEqual(raw.state);
 });
@@ -479,7 +600,10 @@ test("selecting a Verb cancels a Player Intent that is still approaching its Nou
   session.steps();
 
   expect(session.snapshot().activity).toBeNull();
-  expect(session.snapshot().command).toEqual({ verb: "look-at", firstNoun: null });
+  expect(session.snapshot().command).toEqual({
+    verb: "look-at",
+    firstNoun: null,
+  });
 });
 
 test("Save Snapshot validation rejects malformed or unavailable Command Nouns", () => {
@@ -494,10 +618,12 @@ test("Save Snapshot validation rejects malformed or unavailable Command Nouns", 
   });
   expect(result.ok).toBe(false);
   if (!result.ok) {
-    expect(result.diagnostics).toContainEqual(expect.objectContaining({
-      code: "save.state.command-noun",
-      path: "Save Snapshot.state.command.firstNoun.object",
-    }));
+    expect(result.diagnostics).toContainEqual(
+      expect.objectContaining({
+        code: "save.state.command-noun",
+        path: "Save Snapshot.state.command.firstNoun.object",
+      }),
+    );
   }
 });
 
@@ -510,7 +636,9 @@ test("Save Snapshot validation identifies an unavailable pending Command Noun", 
   session.input({ type: "activate-hotspot", hotspot: 2 });
   session.steps();
   const snapshot = session.createSaveSnapshot();
-  const activity = structuredClone(snapshot.state.activity) as unknown as Record<string, unknown>;
+  const activity = structuredClone(
+    snapshot.state.activity,
+  ) as unknown as Record<string, unknown>;
   const intent = activity.intent as Record<string, unknown>;
   intent.command = { ...(intent.command as object), firstNoun: "missing" };
   const result = validateTestSaveSnapshot(project, {
@@ -520,10 +648,12 @@ test("Save Snapshot validation identifies an unavailable pending Command Noun", 
 
   expect(result.ok).toBe(false);
   if (!result.ok) {
-    expect(result.diagnostics).toContainEqual(expect.objectContaining({
-      code: "save.state.intent-command-noun",
-      path: "Save Snapshot.state.activity.intent.command.firstNoun",
-    }));
+    expect(result.diagnostics).toContainEqual(
+      expect.objectContaining({
+        code: "save.state.intent-command-noun",
+        path: "Save Snapshot.state.activity.intent.command.firstNoun",
+      }),
+    );
   }
 });
 
@@ -534,7 +664,9 @@ test("Save Snapshot validation identifies malformed pending Command metadata", (
   session.input({ type: "activate-hotspot", hotspot: 0 });
   session.steps();
   const snapshot = session.createSaveSnapshot();
-  const activity = structuredClone(snapshot.state.activity) as unknown as Record<string, unknown>;
+  const activity = structuredClone(
+    snapshot.state.activity,
+  ) as unknown as Record<string, unknown>;
   const intent = activity.intent as Record<string, unknown>;
   intent.command = { ...(intent.command as object), preserveState: "yes" };
   const result = validateTestSaveSnapshot(project, {
@@ -543,10 +675,13 @@ test("Save Snapshot validation identifies malformed pending Command metadata", (
   });
 
   expect(result.ok).toBe(false);
-  if (!result.ok) expect(result.diagnostics).toContainEqual(expect.objectContaining({
-    code: "save.state.intent-command",
-    path: "Save Snapshot.state.activity.intent.command",
-  }));
+  if (!result.ok)
+    expect(result.diagnostics).toContainEqual(
+      expect.objectContaining({
+        code: "save.state.intent-command",
+        path: "Save Snapshot.state.activity.intent.command",
+      }),
+    );
 });
 
 test("a binary Use preserves its first Noun on failure and relocates it atomically on success", () => {
@@ -559,7 +694,10 @@ test("a binary Use preserves its first Noun on failure and relocates it atomical
   session.input({ type: "activate-object", object: "key" });
   session.input({ type: "activate-hotspot", hotspot: 0 });
   session.steps(20);
-  expect(session.snapshot().command).toEqual({ verb: "walk-to", firstNoun: null });
+  expect(session.snapshot().command).toEqual({
+    verb: "walk-to",
+    firstNoun: null,
+  });
   expect(session.snapshot().inventory.objects).toEqual(["key"]);
   expect(session.takeEffects()).toContainEqual({
     type: "interaction-response",
@@ -570,7 +708,11 @@ test("a binary Use preserves its first Noun on failure and relocates it atomical
   useKeyOn(session, 2);
   expect(session.snapshot().inventory).toEqual({ objects: [] });
   expect(session.snapshot().objects.key).toMatchObject({
-    location: { kind: "scene", scene: "opening", groundPoint: { x: 75, y: 75 } },
+    location: {
+      kind: "scene",
+      scene: "opening",
+      groundPoint: { x: 75, y: 75 },
+    },
     appearance: "used",
   });
   expect(session.snapshot().variables.gateOpen).toBe(true);
@@ -590,18 +732,29 @@ test("a failed Command operation leaves Game State uncommitted and emits no resp
     groundPoint: { x: 40, y: 40 },
   });
   expect(session.snapshot().inventory.objects).toEqual([]);
-  expect(session.snapshot().command).toEqual({ verb: "pick-up", firstNoun: null });
-  expect(session.effects()).not.toContainEqual(expect.objectContaining({
-    type: "interaction-response",
-  }));
-  expect(session.diagnostics()).toContainEqual(expect.objectContaining({
-    code: "state.operation.invalid",
-    owner: "game-session",
-  }));
-  const exposedDiagnostics = session.diagnostics() as unknown as { message: string }[];
+  expect(session.snapshot().command).toEqual({
+    verb: "pick-up",
+    firstNoun: null,
+  });
+  expect(session.effects()).not.toContainEqual(
+    expect.objectContaining({
+      type: "interaction-response",
+    }),
+  );
+  expect(session.diagnostics()).toContainEqual(
+    expect.objectContaining({
+      code: "state.operation.invalid",
+      owner: "game-session",
+    }),
+  );
+  const exposedDiagnostics = session.diagnostics() as unknown as {
+    message: string;
+  }[];
   exposedDiagnostics[0]!.message = "Changed outside CoreSession";
 
-  expect(session.diagnostics()[0]!.message).not.toBe("Changed outside CoreSession");
+  expect(session.diagnostics()[0]!.message).not.toBe(
+    "Changed outside CoreSession",
+  );
 });
 
 test("a successful binary Use can consume its first Object terminally", () => {
@@ -610,9 +763,13 @@ test("a successful binary Use can consume its first Object terminally", () => {
   useKeyOn(session, 2);
 
   expect(session.snapshot().inventory).toEqual({ objects: [] });
-  expect(session.snapshot().objects.key!.location).toEqual({ kind: "consumed" });
+  expect(session.snapshot().objects.key!.location).toEqual({
+    kind: "consumed",
+  });
   session.steps(10);
-  expect(session.snapshot().objects.key!.location).toEqual({ kind: "consumed" });
+  expect(session.snapshot().objects.key!.location).toEqual({
+    kind: "consumed",
+  });
 });
 
 test("contextual input resolves an Object selection queued in the same step", () => {
@@ -625,23 +782,37 @@ test("contextual input resolves an Object selection queued in the same step", ()
 
   expect(session.snapshot().variables.gateOpen).toBe(true);
   expect(session.snapshot().inventory.objects).toEqual([]);
-  expect(session.snapshot().command).toEqual({ verb: "walk-to", firstNoun: null });
+  expect(session.snapshot().command).toEqual({
+    verb: "walk-to",
+    firstNoun: null,
+  });
 });
 
 test("Inventory contextual input selects an Object or executes its secondary Verb", () => {
   const session = createTestSession(projectFixture());
   interact(session, 1);
 
-  session.input({ type: "contextual-object", object: "key", action: "secondary" });
+  session.input({
+    type: "contextual-object",
+    object: "key",
+    action: "secondary",
+  });
   session.steps();
   expect(session.takeEffects()).toContainEqual({
     type: "interaction-response",
     text: "A small key.",
     response: { text: "A small key." },
   });
-  expect(session.snapshot().command).toEqual({ verb: "walk-to", firstNoun: null });
+  expect(session.snapshot().command).toEqual({
+    verb: "walk-to",
+    firstNoun: null,
+  });
 
-  session.input({ type: "contextual-object", object: "key", action: "primary" });
+  session.input({
+    type: "contextual-object",
+    object: "key",
+    action: "primary",
+  });
   session.steps();
   expect(session.snapshot().command).toEqual({
     verb: "use",
@@ -651,28 +822,44 @@ test("Inventory contextual input selects an Object or executes its secondary Ver
 
 test("one Object Noun updates its conditional label in the world and Inventory", () => {
   const session = createTestSession(projectFixture());
-  expect(session.hud().nouns.find(({ target }) =>
-    target.kind === "hotspot" && target.index === 1
-  )?.label).toBe("Dirty key");
+  expect(
+    session
+      .hud()
+      .nouns.find(
+        ({ target }) => target.kind === "hotspot" && target.index === 1,
+      )?.label,
+  ).toBe("Dirty key");
 
   interact(session, 1);
-  expect(session.hud().inventory.entries).toContainEqual(expect.objectContaining({
-    object: "key",
-    label: "Dirty key",
-  }));
+  expect(session.hud().inventory.entries).toContainEqual(
+    expect.objectContaining({
+      object: "key",
+      label: "Dirty key",
+    }),
+  );
 
-  session.input({ type: "contextual-object", object: "key", action: "secondary" });
+  session.input({
+    type: "contextual-object",
+    object: "key",
+    action: "secondary",
+  });
   session.steps();
   expect(session.snapshot().variables.keyCleaned).toBe(true);
-  expect(session.hud().inventory.entries).toContainEqual(expect.objectContaining({
-    object: "key",
-    label: "Clean key",
-  }));
+  expect(session.hud().inventory.entries).toContainEqual(
+    expect.objectContaining({
+      object: "key",
+      label: "Clean key",
+    }),
+  );
 
   useKeyOn(session, 2);
-  expect(session.hud().nouns.find(({ target }) =>
-    target.kind === "hotspot" && target.index === 1
-  )?.label).toBe("Clean key");
+  expect(
+    session
+      .hud()
+      .nouns.find(
+        ({ target }) => target.kind === "hotspot" && target.index === 1,
+      )?.label,
+  ).toBe("Clean key");
 });
 
 test("a declarative Command commits operations and an enabled passage transitions atomically", () => {
@@ -715,7 +902,9 @@ test("incompatible external save data returns diagnostics instead of throwing", 
   });
   expect(result.ok).toBe(false);
   if (result.ok) return;
-  expect(result.diagnostics.map(({ code }) => code)).toContain("save.project.identity");
+  expect(result.diagnostics.map(({ code }) => code)).toContain(
+    "save.project.identity",
+  );
 });
 
 test("a 0.3 Save Snapshot receives explicit incompatibility diagnostics", () => {
@@ -775,10 +964,12 @@ test("Save Snapshot validation rejects a Character outside its Scene Space", () 
 
   expect(result.ok).toBe(false);
   if (!result.ok) {
-    expect(result.diagnostics).toContainEqual(expect.objectContaining({
-      code: "save.state.invalid",
-      owner: "save",
-    }));
+    expect(result.diagnostics).toContainEqual(
+      expect.objectContaining({
+        code: "save.state.invalid",
+        owner: "save",
+      }),
+    );
   }
 });
 
@@ -812,8 +1003,12 @@ test("Save Snapshot validation rejects impossible Sequence control state", () =>
   session.steps();
   const snapshot = session.createSaveSnapshot();
   const activity = snapshot.state.activity;
-  expect(activity).toMatchObject({ type: "sequence", active: { kind: "choice" } });
-  if (activity?.type !== "sequence" || activity.active?.kind !== "choice") return;
+  expect(activity).toMatchObject({
+    type: "sequence",
+    active: { kind: "choice" },
+  });
+  if (activity?.type !== "sequence" || activity.active?.kind !== "choice")
+    return;
 
   const result = validateTestSaveSnapshot(project, {
     ...snapshot,
@@ -821,12 +1016,19 @@ test("Save Snapshot validation rejects impossible Sequence control state", () =>
       ...snapshot.state,
       activity: {
         ...activity,
-        active: { ...activity.active, path: "steps/999", eligibleAlternatives: [42] },
+        active: {
+          ...activity.active,
+          path: "steps/999",
+          eligibleAlternatives: [42],
+        },
       },
     },
   });
   expect(result.ok).toBe(false);
-  if (!result.ok) expect(result.diagnostics.map(({ code }) => code)).toContain("save.state.invalid");
+  if (!result.ok)
+    expect(result.diagnostics.map(({ code }) => code)).toContain(
+      "save.state.invalid",
+    );
 });
 
 test("Save Snapshot validation rejects a structurally real but rewound Sequence queue", () => {
@@ -837,22 +1039,31 @@ test("Save Snapshot validation rejects a structurally real but rewound Sequence 
   session.steps();
   const snapshot = session.createSaveSnapshot();
   const activity = snapshot.state.activity;
-  if (activity?.type !== "sequence" || activity.active?.kind !== "choice") return;
+  if (activity?.type !== "sequence" || activity.active?.kind !== "choice")
+    return;
 
   const result = validateTestSaveSnapshot(project, {
     ...snapshot,
     state: {
       ...snapshot.state,
-      activity: { ...activity, pendingPaths: [...activity.pendingPaths].reverse() },
+      activity: {
+        ...activity,
+        pendingPaths: [...activity.pendingPaths].reverse(),
+      },
     },
   });
   expect(result.ok).toBe(false);
-  if (!result.ok) expect(result.diagnostics.map(({ code }) => code)).toContain("save.state.invalid");
+  if (!result.ok)
+    expect(result.diagnostics.map(({ code }) => code)).toContain(
+      "save.state.invalid",
+    );
 });
 
 test("restore accepts a structurally valid untrusted snapshot", () => {
   const project = projectFixture();
-  const raw: unknown = structuredClone(createTestSession(project).createSaveSnapshot());
+  const raw: unknown = structuredClone(
+    createTestSession(project).createSaveSnapshot(),
+  );
   expect(() => createTestSession(project, raw)).not.toThrow();
 });
 
@@ -881,9 +1092,9 @@ test("restore revalidates a Save Snapshot against the destination Game Project",
   if (!validation.ok) return;
 
   const incompatibleProject = projectFixture();
-  expect(() => createTestSession(incompatibleProject, validation.snapshot)).toThrow(
-    /invalid Game State/,
-  );
+  expect(() =>
+    createTestSession(incompatibleProject, validation.snapshot),
+  ).toThrow(/invalid Game State/);
 });
 
 test("successful validation isolates restoration from later stored-data mutation", () => {

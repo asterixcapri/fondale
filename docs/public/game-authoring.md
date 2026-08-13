@@ -66,7 +66,15 @@ export const host = {
   appearances: {
     idle: {
       animations: {
-        idle: { frames: [new URL("./host.png", import.meta.url)], framesPerSecond: 1 },
+        idle: {
+          frames: {
+            left: { image: new URL("./host.png", import.meta.url), count: 1 },
+            right: { image: new URL("./host.png", import.meta.url), count: 1 },
+            front: { image: new URL("./host.png", import.meta.url), count: 1 },
+            back: { image: new URL("./host.png", import.meta.url), count: 1 },
+          },
+          framesPerSecond: 1,
+        },
       },
       roles: { default: "idle" },
     },
@@ -163,7 +171,15 @@ const antonio = {
   appearances: {
     idle: {
       animations: {
-        idle: { frames: [new URL("./antonio.png", import.meta.url)], framesPerSecond: 1 },
+        idle: {
+          frames: {
+            left: { image: new URL("./antonio.png", import.meta.url), count: 1 },
+            right: { image: new URL("./antonio.png", import.meta.url), count: 1 },
+            front: { image: new URL("./antonio.png", import.meta.url), count: 1 },
+            back: { image: new URL("./antonio.png", import.meta.url), count: 1 },
+          },
+          framesPerSecond: 1,
+        },
       },
       roles: { default: "idle" },
     },

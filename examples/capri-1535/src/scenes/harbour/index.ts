@@ -2,39 +2,72 @@ import { type NounDefinition, type SceneDefinition } from "@asterixcapri/fondale
 
 import { rectangle } from "../../geometry";
 import backgroundUrl from "./background.png";
-import winchLubricatedUrl from "./winch-lubricated.png";
-import winchRepairedUrl from "./winch-repaired.png";
-import winchStuckUrl from "./winch-stuck.png";
+import harbourBoatUrl from "./harbour-boat.png";
+import winchWithHandleUrl from "./winch-with-handle.png";
+import winchWithoutHandleUrl from "./winch-without-handle.png";
 
 export const harbour = ({
   background: backgroundUrl,
-  size: { width: 640, height: 240 },
-  walkableRegion: rectangle(8, 162, 632, 230),
-  perspectiveScale: [{ y: 162, scale: 0.74 }, { y: 230, scale: 0.96 }],
+  size: { width: 1920, height: 720 },
+  walkableRegion: [
+    { x: 24, y: 438 },
+    { x: 250, y: 402 },
+    { x: 500, y: 377 },
+    { x: 790, y: 392 },
+    { x: 1080, y: 407 },
+    { x: 1370, y: 390 },
+    { x: 1450, y: 420 },
+    { x: 1450, y: 690 },
+    { x: 30, y: 690 },
+  ],
+  perspectiveScale: [
+    { y: 410, scale: 0.7 },
+    { y: 535, scale: 1 },
+    { y: 645, scale: 1 },
+  ],
   scenery: {
-    winch: {
-      baseline: 210,
-      position: { x: 552, y: 210 },
-      initialAppearance: "stuck",
+    harbourBoat: {
+      baseline: 390,
+      position: { x: 480, y: 390 },
+      initialAppearance: "moored",
       appearances: {
-        stuck: {
+        moored: {
           animations: {
-            idle: { frames: [winchStuckUrl], framesPerSecond: 1, loop: true },
-            engaging: {
-              frames: [winchStuckUrl, winchLubricatedUrl, winchRepairedUrl],
-              framesPerSecond: 6,
-            },
+            idle: { frames: [harbourBoatUrl], framesPerSecond: 1, loop: true },
           },
           roles: { default: "idle" },
-          visualAnchor: { x: 37, y: 57 },
+          visualAnchor: { x: 260, y: 235 },
         },
-        repaired: {
+      },
+      noun: ({
+        labels: [{ text: "Barca ormeggiata" }],
+        preferredVerbs: [{ verb: "look-at" }],
+        cases: [{
+          verb: "look-at",
+          response: { text: "Una barca da lavoro, legata stretta al molo." },
+        }],
+      } satisfies NounDefinition),
+    },
+    winch: {
+      baseline: 505,
+      position: { x: 1630, y: 505 },
+      initialAppearance: "withoutHandle",
+      appearances: {
+        withoutHandle: {
           animations: {
-            idle: { frames: [winchRepairedUrl], framesPerSecond: 1, loop: true },
-            engaging: { frames: [winchRepairedUrl], framesPerSecond: 1 },
+            idle: { frames: [winchWithoutHandleUrl], framesPerSecond: 1, loop: true },
+            engaging: { frames: [winchWithoutHandleUrl], framesPerSecond: 1 },
           },
           roles: { default: "idle" },
-          visualAnchor: { x: 37, y: 57 },
+          visualAnchor: { x: 120, y: 164 },
+        },
+        withHandle: {
+          animations: {
+            idle: { frames: [winchWithHandleUrl], framesPerSecond: 1, loop: true },
+            engaging: { frames: [winchWithHandleUrl], framesPerSecond: 1 },
+          },
+          roles: { default: "idle" },
+          visualAnchor: { x: 120, y: 164 },
         },
       },
       noun: ({
@@ -43,10 +76,10 @@ export const harbour = ({
         cases: [{
           verb: "look-at",
           when: { variable: "boatReady", equals: true },
-          response: { text: "La manovella gira. Il piccolo gozzo per la torre può salpare." },
+          response: { text: "La manovella è al suo posto. L'argano può tornare a lavorare." },
         }, {
           verb: "look-at",
-          response: { text: "Senza la sua manovella, l'argano è soltanto un monumento alla fretta di Raffaele." },
+          response: { text: "L'argano è robusto, ma senza manovella non può girare." },
         }, {
           verb: "use",
           firstNoun: "winchHandle",
@@ -54,45 +87,47 @@ export const harbour = ({
         }],
       } satisfies NounDefinition),
     },
+    leftForeground: {
+      baseline: 716,
+      initialAppearance: "default",
+      appearances: {
+        default: {
+          kind: "background-region",
+          area: [{ x: 0, y: 438 }, { x: 90, y: 426 }, { x: 210, y: 720 }, { x: 0, y: 720 }],
+        },
+      },
+    },
+    rightForeground: {
+      baseline: 716,
+      initialAppearance: "default",
+      appearances: {
+        default: {
+          kind: "background-region",
+          area: [
+            { x: 1800, y: 432 },
+            { x: 1920, y: 440 },
+            { x: 1920, y: 720 },
+            { x: 1740, y: 720 },
+          ],
+        },
+      },
+    },
   },
   hotspots: [{
     target: { kind: "character", character: "raffaele" },
-    area: rectangle(408, 150, 452, 224),
-    approach: { groundPoint: { x: 390, y: 208 }, facing: "right" },
+    area: rectangle(1008, 240, 1112, 540),
+    approach: { groundPoint: { x: 1000, y: 535 }, facing: "right" },
   }, {
-    target: { kind: "object", object: "oilFlask" },
-    area: rectangle(480, 181, 520, 226),
-    approach: { groundPoint: { x: 468, y: 211 }, facing: "right" },
-    when: { variable: "jobAccepted", equals: true },
+    target: { kind: "object", object: "winchHandle" },
+    area: rectangle(890, 540, 950, 610),
+    approach: { groundPoint: { x: 860, y: 585 }, facing: "right" },
+  }, {
+    target: { kind: "scenery", scenery: "harbourBoat" },
+    area: rectangle(220, 155, 740, 390),
+    approach: { groundPoint: { x: 720, y: 425 }, facing: "back" },
   }, {
     target: { kind: "scenery", scenery: "winch" },
-    area: rectangle(505, 132, 625, 228),
-    approach: { groundPoint: { x: 492, y: 211 }, facing: "right" },
-  }],
-  entrances: {
-    fromTownSquare: { groundPoint: { x: 595, y: 210 }, facing: "left" },
-    fromFortification: { groundPoint: { x: 80, y: 210 }, facing: "right" },
-  },
-  passages: [{
-    area: rectangle(588, 90, 640, 228),
-    approach: { groundPoint: { x: 602, y: 210 }, facing: "right" },
-    noun: ({
-      labels: [{ text: "Salita verso la piazza" }],
-      preferredVerbs: [{ verb: "walk-to" }],
-      cases: [],
-    } satisfies NounDefinition),
-    direction: "right",
-    destination: { scene: "townSquare", entrance: "fromHarbour" },
-  }, {
-    area: rectangle(0, 112, 180, 228),
-    approach: { groundPoint: { x: 160, y: 208 }, facing: "left" },
-    when: { variable: "boatReady", equals: true },
-    noun: ({
-      labels: [{ text: "Gozzo per la torre" }],
-      preferredVerbs: [{ verb: "walk-to" }],
-      cases: [],
-    } satisfies NounDefinition),
-    direction: "left",
-    destination: { scene: "coastalFortification", entrance: "fromHarbour" },
+    area: rectangle(1510, 341, 1750, 505),
+    approach: { groundPoint: { x: 1390, y: 525 }, facing: "right" },
   }],
 } satisfies SceneDefinition);

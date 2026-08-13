@@ -10,6 +10,7 @@ import {
   type SceneDefinition,
   type SequenceDefinition,
   type Appearance,
+  type CharacterAppearance,
   type CameraDirection,
 } from "../src/index";
 import {
@@ -26,7 +27,9 @@ function validateTestGameProject<T extends GameProject>(project: T): T {
   return project;
 }
 
-function validateTestCharacterDefinition<T extends CharacterDefinition>(character: T): T {
+function validateTestCharacterDefinition<T extends CharacterDefinition>(
+  character: T,
+): T {
   return validateTestDefinition(character, validateCharacterDefinition);
 }
 
@@ -41,19 +44,50 @@ const staticAppearance = (image: string): Appearance => ({
   roles: { default: "idle" },
 });
 
-test("an Appearance owns authored Animations and semantic Animation Roles", () => {
-  const appearance: Appearance = {
+const staticCharacterAppearance = (image: string): CharacterAppearance => ({
+  animations: {
+    idle: {
+      frames: {
+        left: { image, count: 1 },
+        right: { image, count: 1 },
+        front: { image, count: 1 },
+        back: { image, count: 1 },
+      },
+      framesPerSecond: 1,
+      loop: true,
+    },
+  },
+  roles: { default: "idle" },
+});
+
+test("a Character Appearance owns authored Facing presentations and semantic Animation Roles", () => {
+  const appearance: CharacterAppearance = {
     animations: {
-      idle: { frames: ["idle-1.png", "idle-2.png"], framesPerSecond: 4, loop: true },
+      idle: {
+        frames: {
+          left: { image: "idle.png", count: 2 },
+          right: { image: "idle.png", count: 2 },
+          front: { image: "idle.png", count: 2 },
+          back: { image: "idle.png", count: 2 },
+        },
+        framesPerSecond: 4,
+        loop: true,
+      },
       speaking: {
-        frames: ["speak-1.png", "speak-2.png"],
+        frames: {
+          left: { image: "speak.png", count: 2 },
+          right: { image: "speak.png", count: 2 },
+          front: { image: "speak.png", count: 2 },
+          back: { image: "speak.png", count: 2 },
+        },
         framesPerSecond: 8,
         loop: true,
         cues: { syllable: 0.125 },
       },
       walking: {
         frames: {
-          side: { image: "walk-side.png", count: 4 },
+          left: { image: "walk-left.png", count: 4 },
+          right: { image: "walk-right.png", count: 4 },
           front: { image: "walk-front.png", count: 4 },
           back: { image: "walk-back.png", count: 4 },
         },
@@ -65,107 +99,144 @@ test("an Appearance owns authored Animations and semantic Animation Roles", () =
     visualAnchor: { x: 8, y: 16 },
   };
 
-  const character = (validateTestCharacterDefinition({
+  const character = validateTestCharacterDefinition({
     initialScene: "room",
     initialGroundPoint: { x: 10, y: 10 },
     initialFacing: "front",
     initialAppearance: "normal",
     appearances: { normal: appearance },
     movementSpeed: 60,
-  } satisfies CharacterDefinition));
+  } satisfies CharacterDefinition);
 
   expect(character.appearances.normal).toEqual(appearance);
-  const result = character.appearances.normal as Appearance;
+  const result = character.appearances.normal;
   expect(Object.isFrozen(result.animations.speaking!.cues)).toBe(false);
   expect(Object.isFrozen(result.roles)).toBe(false);
 });
 
 test("Appearance validation aggregates invalid Animation values and Role references", () => {
-  expect(() => (validateTestCharacterDefinition({
-    initialScene: "room",
-    initialGroundPoint: { x: 10, y: 10 },
-    initialFacing: "front",
-    initialAppearance: "normal",
-    appearances: {
-      normal: {
-        animations: {
-          idle: { frames: [], framesPerSecond: 0, cues: { late: -1 } },
-        },
-        roles: { default: "missing", speaking: "also-missing" },
-      },
-    },
-    movementSpeed: 60,
-  } satisfies CharacterDefinition))).toThrow(AuthoringError);
-
-  try {
-    (validateTestCharacterDefinition({
+  expect(() =>
+    validateTestCharacterDefinition({
       initialScene: "room",
       initialGroundPoint: { x: 10, y: 10 },
       initialFacing: "front",
       initialAppearance: "normal",
       appearances: {
         normal: {
-          animations: { idle: { frames: ["idle.png"], framesPerSecond: 1 } },
+          animations: {
+            idle: {
+              frames: {
+                left: { image: "", count: 0 },
+                right: { image: "", count: 0 },
+                front: { image: "", count: 0 },
+                back: { image: "", count: 0 },
+              },
+              framesPerSecond: 0,
+              cues: { late: -1 },
+            },
+          },
+          roles: { default: "missing", speaking: "also-missing" },
+        },
+      },
+      movementSpeed: 60,
+    } satisfies CharacterDefinition),
+  ).toThrow(AuthoringError);
+
+  try {
+    validateTestCharacterDefinition({
+      initialScene: "room",
+      initialGroundPoint: { x: 10, y: 10 },
+      initialFacing: "front",
+      initialAppearance: "normal",
+      appearances: {
+        normal: {
+          animations: {
+            idle: {
+              frames: {
+                left: { image: "idle.png", count: 1 },
+                right: { image: "idle.png", count: 1 },
+                front: { image: "idle.png", count: 1 },
+                back: { image: "idle.png", count: 1 },
+              },
+              framesPerSecond: 1,
+            },
+          },
           roles: {} as never,
         },
       },
       movementSpeed: 60,
-    } satisfies CharacterDefinition));
+    } satisfies CharacterDefinition);
     throw new Error("Expected Character validation to reject the Appearance.");
   } catch (error) {
     expect(error).toBeInstanceOf(AuthoringError);
-    expect((error as AuthoringError).diagnostics).toContainEqual(expect.objectContaining({
-      code: "definition.appearance.default-role",
-      path: "appearances.normal.roles.default",
-    }));
+    expect((error as AuthoringError).diagnostics).toContainEqual(
+      expect.objectContaining({
+        code: "definition.appearance.default-role",
+        path: "appearances.normal.roles.default",
+      }),
+    );
   }
 });
 
 test("composition validates Command Line overrides and directed subject locality", () => {
   const square = [
-    { x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }, { x: 0, y: 100 },
+    { x: 0, y: 0 },
+    { x: 100, y: 0 },
+    { x: 100, y: 100 },
+    { x: 0, y: 100 },
   ];
-  const actor = (validateTestCharacterDefinition({
+  const actor = validateTestCharacterDefinition({
     initialScene: "elsewhere",
     initialGroundPoint: { x: 10, y: 10 },
     initialFacing: "front",
     initialAppearance: "normal",
-    appearances: { normal: staticAppearance("actor.png") },
+    appearances: { normal: staticCharacterAppearance("actor.png") },
     movementSpeed: 60,
-    noun: ({
+    noun: {
       labels: [{ text: "Actor" }],
       preferredVerbs: [{ verb: "look-at" }],
-      cases: [{
-        verb: "look-at",
-        line: { character: "actor", animation: "missing", text: "Hello." },
-      }],
-    } satisfies NounDefinition),
-  } satisfies CharacterDefinition));
-  const action = ({
+      cases: [
+        {
+          verb: "look-at",
+          line: { character: "actor", animation: "missing", text: "Hello." },
+        },
+      ],
+    } satisfies NounDefinition,
+  } satisfies CharacterDefinition);
+  const action = {
     scene: "room",
-    steps: [{
-      type: "direction",
-      directions: [{
-        type: "camera",
-        mode: "follow",
-        subject: { kind: "character", character: "actor" },
-        duration: 1,
-      }],
-    }],
-  } satisfies SequenceDefinition);
-  const room = ({ background: "room.png", walkableRegion: square } satisfies SceneDefinition);
-  const elsewhere = ({
+    steps: [
+      {
+        type: "direction",
+        directions: [
+          {
+            type: "camera",
+            mode: "follow",
+            subject: { kind: "character", character: "actor" },
+            duration: 1,
+          },
+        ],
+      },
+    ],
+  } satisfies SequenceDefinition;
+  const room = {
+    background: "room.png",
+    walkableRegion: square,
+  } satisfies SceneDefinition;
+  const elsewhere = {
     background: "elsewhere.png",
     walkableRegion: square,
-    hotspots: [{
-      target: { kind: "character", character: "actor" },
-      area: square,
-      approach: { groundPoint: { x: 10, y: 10 }, facing: "front" },
-    }],
-  } satisfies SceneDefinition);
+    hotspots: [
+      {
+        target: { kind: "character", character: "actor" },
+        area: square,
+        approach: { groundPoint: { x: 10, y: 10 }, facing: "front" },
+      },
+    ],
+  } satisfies SceneDefinition;
 
   try {
-    (validateTestGameProject({
+    validateTestGameProject({
       identity: "test.line-and-subject-references",
       version: "1",
       logicalResolution: { width: 100, height: 100 },
@@ -173,40 +244,68 @@ test("composition validates Command Line overrides and directed subject locality
       characters: { actor },
       sequences: { action },
       initialScene: "room",
-      commandLexicon: ({
+      commandLexicon: {
         inventory: { select: "Hold {noun}", deselect: "Put back {noun}" },
         verbs: {
-          open: "Open", "pick-up": "Pick up", push: "Push", close: "Close",
-          "look-at": "Look", pull: "Pull", give: "Give", "talk-to": "Talk", use: "Use",
+          open: "Open",
+          "pick-up": "Pick up",
+          push: "Push",
+          close: "Close",
+          "look-at": "Look",
+          pull: "Pull",
+          give: "Give",
+          "talk-to": "Talk",
+          use: "Use",
         },
-        patterns: { unary: "{verb} {noun}", give: "{verb} {first} to {second}", use: "{verb} {first} with {second}" },
-      } satisfies CommandLexicon),
-      commandFallbacks: Object.fromEntries([
-        "open", "pick-up", "push", "close", "look-at", "pull", "give", "talk-to", "use",
-      ].map((verb) => [verb, { text: "No." }])) as never,
-    } satisfies GameProject));
-    throw new Error("Expected Game Project compilation to reject invalid references.");
+        patterns: {
+          unary: "{verb} {noun}",
+          give: "{verb} {first} to {second}",
+          use: "{verb} {first} with {second}",
+        },
+      } satisfies CommandLexicon,
+      commandFallbacks: Object.fromEntries(
+        [
+          "open",
+          "pick-up",
+          "push",
+          "close",
+          "look-at",
+          "pull",
+          "give",
+          "talk-to",
+          "use",
+        ].map((verb) => [verb, { text: "No." }]),
+      ) as never,
+    } satisfies GameProject);
+    throw new Error(
+      "Expected Game Project compilation to reject invalid references.",
+    );
   } catch (error) {
     expect(error).toBeInstanceOf(AuthoringError);
-    expect((error as AuthoringError).diagnostics).toEqual(expect.arrayContaining([
-      expect.objectContaining({
-        code: "reference.animation.line",
-        owner: "animation",
-        path: "characters.actor.noun.cases[0].line.animation",
-      }),
-      expect.objectContaining({
-        code: "reference.camera.subject-scene",
-        path: "sequences.action.steps[0].directions[0].subject",
-      }),
-    ]));
+    expect((error as AuthoringError).diagnostics).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "reference.animation.line",
+          owner: "animation",
+          path: "characters.actor.noun.cases[0].line.animation",
+        }),
+        expect.objectContaining({
+          code: "reference.camera.subject-scene",
+          path: "sequences.action.steps[0].directions[0].subject",
+        }),
+      ]),
+    );
   }
 });
 
 test("composition requires the final Scenery Motion to end at its resting position", () => {
   const square = [
-    { x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }, { x: 0, y: 100 },
+    { x: 0, y: 0 },
+    { x: 100, y: 0 },
+    { x: 100, y: 100 },
+    { x: 0, y: 100 },
   ];
-  const room = ({
+  const room = {
     background: "room.png",
     walkableRegion: square,
     scenery: {
@@ -229,180 +328,252 @@ test("composition requires the final Scenery Motion to end at its resting positi
         },
       },
     },
-  } satisfies SceneDefinition);
-  const action = ({
+  } satisfies SceneDefinition;
+  const action = {
     scene: "room",
-    steps: [{
-      type: "direction",
-      directions: [{
-        type: "motion",
-        subject: { kind: "scenery", scenery: "marker" },
-        path: [{ x: 20, y: 20 }, { x: 50, y: 30 }],
-        duration: 1,
-      }],
-    }],
-  } satisfies SequenceDefinition);
+    steps: [
+      {
+        type: "direction",
+        directions: [
+          {
+            type: "motion",
+            subject: { kind: "scenery", scenery: "marker" },
+            path: [
+              { x: 20, y: 20 },
+              { x: 50, y: 30 },
+            ],
+            duration: 1,
+          },
+        ],
+      },
+    ],
+  } satisfies SequenceDefinition;
 
-  expect(() => (validateTestGameProject({
-    identity: "test.scenery-motion-rest",
-    version: "1",
-    logicalResolution: { width: 100, height: 100 },
-    scenes: { room },
-    sequences: { action },
-    initialScene: "room",
-  } satisfies GameProject))).toThrow(/resting position/);
+  expect(() =>
+    validateTestGameProject({
+      identity: "test.scenery-motion-rest",
+      version: "1",
+      logicalResolution: { width: 100, height: 100 },
+      scenes: { room },
+      sequences: { action },
+      initialScene: "room",
+    } satisfies GameProject),
+  ).toThrow(/resting position/);
 
-  const interrupted = ({
+  const interrupted = {
     scene: "room",
-    steps: [action.steps[0]!, { type: "narration", text: "A visible pause." }, {
-      type: "direction",
-      directions: [{
-        type: "motion",
-        subject: { kind: "scenery", scenery: "marker" },
-        path: [{ x: 50, y: 30 }, { x: 60, y: 30 }],
-        duration: 1,
-      }],
-    }],
-  } satisfies SequenceDefinition);
-  expect(() => (validateTestGameProject({
-    identity: "test.interrupted-scenery-motion",
-    version: "1",
-    logicalResolution: { width: 100, height: 100 },
-    scenes: { room },
-    sequences: { interrupted },
-    initialScene: "room",
-  } satisfies GameProject))).toThrow(/resting position/);
+    steps: [
+      action.steps[0]!,
+      { type: "narration", text: "A visible pause." },
+      {
+        type: "direction",
+        directions: [
+          {
+            type: "motion",
+            subject: { kind: "scenery", scenery: "marker" },
+            path: [
+              { x: 50, y: 30 },
+              { x: 60, y: 30 },
+            ],
+            duration: 1,
+          },
+        ],
+      },
+    ],
+  } satisfies SequenceDefinition;
+  expect(() =>
+    validateTestGameProject({
+      identity: "test.interrupted-scenery-motion",
+      version: "1",
+      logicalResolution: { width: 100, height: 100 },
+      scenes: { room },
+      sequences: { interrupted },
+      initialScene: "room",
+    } satisfies GameProject),
+  ).toThrow(/resting position/);
 
-  const delayedContinuation = ({
+  const delayedContinuation = {
     scene: "room",
-    steps: [action.steps[0]!, {
-      type: "direction",
-      directions: [{
-        type: "animation",
-        subject: { kind: "scenery", scenery: "marker" },
-        animation: "idle",
-      }, {
-        type: "motion",
-        subject: { kind: "scenery", scenery: "marker" },
-        path: [{ x: 50, y: 30 }, { x: 60, y: 30 }],
-        duration: 1,
-        startAfter: { direction: 0, cue: "later" },
-      }],
-    }],
-  } satisfies SequenceDefinition);
-  expect(() => (validateTestGameProject({
-    identity: "test.delayed-scenery-motion",
-    version: "1",
-    logicalResolution: { width: 100, height: 100 },
-    scenes: { room },
-    sequences: { delayedContinuation },
-    initialScene: "room",
-  } satisfies GameProject))).toThrow(/resting position/);
+    steps: [
+      action.steps[0]!,
+      {
+        type: "direction",
+        directions: [
+          {
+            type: "animation",
+            subject: { kind: "scenery", scenery: "marker" },
+            animation: "idle",
+          },
+          {
+            type: "motion",
+            subject: { kind: "scenery", scenery: "marker" },
+            path: [
+              { x: 50, y: 30 },
+              { x: 60, y: 30 },
+            ],
+            duration: 1,
+            startAfter: { direction: 0, cue: "later" },
+          },
+        ],
+      },
+    ],
+  } satisfies SequenceDefinition;
+  expect(() =>
+    validateTestGameProject({
+      identity: "test.delayed-scenery-motion",
+      version: "1",
+      logicalResolution: { width: 100, height: 100 },
+      scenes: { room },
+      sequences: { delayedContinuation },
+      initialScene: "room",
+    } satisfies GameProject),
+  ).toThrow(/resting position/);
 });
 
 test("an Object placed earlier in a Sequence may be directed in its owning Scene", () => {
   const square = [
-    { x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }, { x: 0, y: 100 },
+    { x: 0, y: 0 },
+    { x: 100, y: 0 },
+    { x: 100, y: 100 },
+    { x: 0, y: 100 },
   ];
-  const prop = ({
+  const prop = {
     initialScene: "elsewhere",
     initialGroundPoint: { x: 10, y: 10 },
     initialAppearance: "normal",
     appearances: { normal: staticAppearance("prop.png") },
     inventoryAppearance: "prop-inventory.png",
-  } satisfies ObjectDefinition);
-  const action = ({
+  } satisfies ObjectDefinition;
+  const action = {
     scene: "room",
-    steps: [{
-      type: "operations",
-      operations: [{
-        type: "place-object",
-        object: "prop",
-        scene: "room",
-        groundPoint: { x: 20, y: 20 },
-      }],
-    }, {
-      type: "direction",
-      directions: [{
-        type: "motion",
-        subject: { kind: "object", object: "prop" },
-        path: [{ x: 20, y: 20 }, { x: 30, y: 20 }],
-        duration: 1,
-      }],
-    }],
-  } satisfies SequenceDefinition);
+    steps: [
+      {
+        type: "operations",
+        operations: [
+          {
+            type: "place-object",
+            object: "prop",
+            scene: "room",
+            groundPoint: { x: 20, y: 20 },
+          },
+        ],
+      },
+      {
+        type: "direction",
+        directions: [
+          {
+            type: "motion",
+            subject: { kind: "object", object: "prop" },
+            path: [
+              { x: 20, y: 20 },
+              { x: 30, y: 20 },
+            ],
+            duration: 1,
+          },
+        ],
+      },
+    ],
+  } satisfies SequenceDefinition;
 
-  expect((validateTestGameProject({
-    identity: "test.placed-directed-object",
-    version: "1",
-    logicalResolution: { width: 100, height: 100 },
-    scenes: {
-      room: ({ background: "room.png", walkableRegion: square } satisfies SceneDefinition),
-      elsewhere: ({ background: "elsewhere.png", walkableRegion: square } satisfies SceneDefinition),
-    },
-    objects: { prop },
-    sequences: { action },
-    initialScene: "room",
-  } satisfies GameProject))).toBeDefined();
+  expect(
+    validateTestGameProject({
+      identity: "test.placed-directed-object",
+      version: "1",
+      logicalResolution: { width: 100, height: 100 },
+      scenes: {
+        room: {
+          background: "room.png",
+          walkableRegion: square,
+        } satisfies SceneDefinition,
+        elsewhere: {
+          background: "elsewhere.png",
+          walkableRegion: square,
+        } satisfies SceneDefinition,
+      },
+      objects: { prop },
+      sequences: { action },
+      initialScene: "room",
+    } satisfies GameProject),
+  ).toBeDefined();
 
-  const unavailable = ({
+  const unavailable = {
     scene: "room",
     steps: action.steps.slice(1),
-  } satisfies SequenceDefinition);
+  } satisfies SequenceDefinition;
   try {
-    (validateTestGameProject({
+    validateTestGameProject({
       identity: "test.unavailable-directed-object",
       version: "1",
       logicalResolution: { width: 100, height: 100 },
       scenes: {
-        room: ({ background: "room.png", walkableRegion: square } satisfies SceneDefinition),
-        elsewhere: ({ background: "elsewhere.png", walkableRegion: square } satisfies SceneDefinition),
+        room: {
+          background: "room.png",
+          walkableRegion: square,
+        } satisfies SceneDefinition,
+        elsewhere: {
+          background: "elsewhere.png",
+          walkableRegion: square,
+        } satisfies SceneDefinition,
       },
       objects: { prop },
       sequences: { unavailable },
       initialScene: "room",
-    } satisfies GameProject));
-    throw new Error("Expected Game Project compilation to reject the unavailable Object.");
+    } satisfies GameProject);
+    throw new Error(
+      "Expected Game Project compilation to reject the unavailable Object.",
+    );
   } catch (error) {
     expect(error).toBeInstanceOf(AuthoringError);
-    expect((error as AuthoringError).diagnostics).toContainEqual(expect.objectContaining({
-      code: "reference.sequence.subject-scene",
-      owner: "world",
-      path: "sequences.unavailable.steps[0].directions[0].subject",
-    }));
+    expect((error as AuthoringError).diagnostics).toContainEqual(
+      expect.objectContaining({
+        code: "reference.sequence.subject-scene",
+        owner: "world",
+        path: "sequences.unavailable.steps[0].directions[0].subject",
+      }),
+    );
   }
 });
 
 test("Sequence rejects selected-Object operations from its local outcomes", () => {
-  const diagnostics = validateSequenceDefinition({
-    skippable: true,
-    skipOutcome: [{ type: "consume-selected-object" }],
-    steps: [{ type: "narration", text: "Done." }],
-  }, "sequences.invalidOutcome");
+  const diagnostics = validateSequenceDefinition(
+    {
+      skippable: true,
+      skipOutcome: [{ type: "consume-selected-object" }],
+      steps: [{ type: "narration", text: "Done." }],
+    },
+    "sequences.invalidOutcome",
+  );
 
-  expect(diagnostics).toContainEqual(expect.objectContaining({
-    code: "definition.sequence.selected-object-operation",
-    owner: "sequence",
-    path: "sequences.invalidOutcome.skipOutcome[0]",
-  }));
+  expect(diagnostics).toContainEqual(
+    expect.objectContaining({
+      code: "definition.sequence.selected-object-operation",
+      owner: "sequence",
+      path: "sequences.invalidOutcome.skipOutcome[0]",
+    }),
+  );
 });
 
 test("composition diagnoses a movable Player Appearance without a walking Role", () => {
-  const scene = ({
+  const scene = {
     background: "room.png",
-    walkableRegion: [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }, { x: 0, y: 100 }],
-  } satisfies SceneDefinition);
-  const player = (validateTestCharacterDefinition({
+    walkableRegion: [
+      { x: 0, y: 0 },
+      { x: 100, y: 0 },
+      { x: 100, y: 100 },
+      { x: 0, y: 100 },
+    ],
+  } satisfies SceneDefinition;
+  const player = validateTestCharacterDefinition({
     initialScene: "room",
     initialGroundPoint: { x: 10, y: 10 },
     initialFacing: "front",
     initialAppearance: "normal",
-    appearances: { normal: staticAppearance("player.png") },
+    appearances: { normal: staticCharacterAppearance("player.png") },
     movementSpeed: 60,
-  } satisfies CharacterDefinition));
+  } satisfies CharacterDefinition);
 
   try {
-    (validateTestGameProject({
+    validateTestGameProject({
       identity: "test.missing-walking-role",
       version: "1",
       logicalResolution: { width: 100, height: 100 },
@@ -410,22 +581,29 @@ test("composition diagnoses a movable Player Appearance without a walking Role",
       characters: { player },
       playerCharacter: "player",
       initialScene: "room",
-    } satisfies GameProject));
+    } satisfies GameProject);
     throw new Error("Expected Game Project compilation to reject the project.");
   } catch (error) {
     expect(error).toBeInstanceOf(AuthoringError);
-    expect((error as AuthoringError).diagnostics).toContainEqual(expect.objectContaining({
-      code: "reference.animation.walking-role",
-      owner: "animation",
-      path: "characters.player.appearances.normal.roles.walking",
-    }));
+    expect((error as AuthoringError).diagnostics).toContainEqual(
+      expect.objectContaining({
+        code: "reference.animation.walking-role",
+        owner: "animation",
+        path: "characters.player.appearances.normal.roles.walking",
+      }),
+    );
   }
 });
 
 test("composition diagnoses nested directed Sequences and Motion outside their Scene", () => {
-  const scene = ({
+  const scene = {
     background: "room.png",
-    walkableRegion: [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }, { x: 0, y: 100 }],
+    walkableRegion: [
+      { x: 0, y: 0 },
+      { x: 100, y: 0 },
+      { x: 100, y: 100 },
+      { x: 0, y: 100 },
+    ],
     scenery: {
       marker: {
         baseline: 20,
@@ -433,28 +611,36 @@ test("composition diagnoses nested directed Sequences and Motion outside their S
         appearances: { normal: staticAppearance("marker.png") },
       },
     },
-  } satisfies SceneDefinition);
-  const nested = ({
-    steps: [{
-      type: "branch",
-      cases: [{
-        when: { variable: "enabled", equals: true },
-        steps: [{
-          type: "direction",
-          directions: [{
-            type: "motion",
-            subject: { kind: "scenery", scenery: "marker" },
-            path: [{ x: 101, y: 20 }],
-            duration: 1,
-          }],
-        }],
-      }],
-      fallback: [],
-    }],
-  } satisfies SequenceDefinition);
+  } satisfies SceneDefinition;
+  const nested = {
+    steps: [
+      {
+        type: "branch",
+        cases: [
+          {
+            when: { variable: "enabled", equals: true },
+            steps: [
+              {
+                type: "direction",
+                directions: [
+                  {
+                    type: "motion",
+                    subject: { kind: "scenery", scenery: "marker" },
+                    path: [{ x: 101, y: 20 }],
+                    duration: 1,
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+        fallback: [],
+      },
+    ],
+  } satisfies SequenceDefinition;
 
   try {
-    (validateTestGameProject({
+    validateTestGameProject({
       identity: "test.invalid-directed-scene",
       version: "1",
       logicalResolution: { width: 100, height: 100 },
@@ -462,26 +648,30 @@ test("composition diagnoses nested directed Sequences and Motion outside their S
       sequences: { nested },
       variables: { enabled: true },
       initialScene: "room",
-    } satisfies GameProject));
+    } satisfies GameProject);
     throw new Error("Expected Game Project compilation to reject the project.");
   } catch (error) {
     expect(error).toBeInstanceOf(AuthoringError);
-    expect((error as AuthoringError).diagnostics).toContainEqual(expect.objectContaining({
-      code: "reference.sequence.scene",
-      path: "sequences.nested.scene",
-    }));
+    expect((error as AuthoringError).diagnostics).toContainEqual(
+      expect.objectContaining({
+        code: "reference.sequence.scene",
+        path: "sequences.nested.scene",
+      }),
+    );
   }
 
-  const bounded = ({ ...nested, scene: "room" } satisfies SequenceDefinition);
-  expect(() => (validateTestGameProject({
-    identity: "test.invalid-motion-bounds",
-    version: "1",
-    logicalResolution: { width: 100, height: 100 },
-    scenes: { room: scene },
-    sequences: { bounded },
-    variables: { enabled: true },
-    initialScene: "room",
-  } satisfies GameProject))).toThrow(/Motion path point/);
+  const bounded = { ...nested, scene: "room" } satisfies SequenceDefinition;
+  expect(() =>
+    validateTestGameProject({
+      identity: "test.invalid-motion-bounds",
+      version: "1",
+      logicalResolution: { width: 100, height: 100 },
+      scenes: { room: scene },
+      sequences: { bounded },
+      variables: { enabled: true },
+      initialScene: "room",
+    } satisfies GameProject),
+  ).toThrow(/Motion path point/);
 });
 
 export { staticAppearance };
@@ -492,13 +682,20 @@ function directedProject(
   cameraDirections: readonly CameraDirection[] = [
     { type: "camera", mode: "hold", point: { x: 50, y: 50 }, duration: 2 / 60 },
     { type: "camera", mode: "hold", point: { x: 50, y: 50 } },
-    { type: "camera", mode: "follow", subject: { kind: "character", character: "actor" } },
+    {
+      type: "camera",
+      mode: "follow",
+      subject: { kind: "character", character: "actor" },
+    },
   ],
 ) {
   const square = [
-    { x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }, { x: 0, y: 100 },
+    { x: 0, y: 0 },
+    { x: 100, y: 0 },
+    { x: 100, y: 100 },
+    { x: 0, y: 100 },
   ];
-  const actor = (validateTestCharacterDefinition({
+  const actor = validateTestCharacterDefinition({
     initialScene: "room",
     initialGroundPoint: { x: 10, y: 10 },
     initialFacing: "front",
@@ -506,15 +703,30 @@ function directedProject(
     appearances: {
       normal: {
         animations: {
-          idle: { frames: ["idle.png"], framesPerSecond: 1, loop: true },
+          idle: {
+            frames: {
+              left: { image: "idle.png", count: 1 },
+              right: { image: "idle.png", count: 1 },
+              front: { image: "idle.png", count: 1 },
+              back: { image: "idle.png", count: 1 },
+            },
+            framesPerSecond: 1,
+            loop: true,
+          },
           gesture: {
-            frames: ["gesture-1.png", "gesture-2.png"],
+            frames: {
+              left: { image: "gesture-1.png", count: 2 },
+              right: { image: "gesture-1.png", count: 2 },
+              front: { image: "gesture-1.png", count: 2 },
+              back: { image: "gesture-1.png", count: 2 },
+            },
             framesPerSecond: 60,
             cues: { contact: 1 / 60 },
           },
           walk: {
             frames: {
-              side: { image: "walk-side.png", count: 2 },
+              left: { image: "walk-left.png", count: 2 },
+              right: { image: "walk-right.png", count: 2 },
               front: { image: "walk-front.png", count: 2 },
               back: { image: "walk-back.png", count: 2 },
             },
@@ -526,17 +738,27 @@ function directedProject(
       },
     },
     movementSpeed: 60,
-  } satisfies CharacterDefinition));
-  const action = ({
+  } satisfies CharacterDefinition);
+  const action = {
     scene: "room",
-    ...(skippable ? {
-      skippable: true,
-      skipOutcome: [{ type: "set-variable" as const, variable: "finished", value: true }],
-    } : {}),
+    ...(skippable
+      ? {
+          skippable: true,
+          skipOutcome: [
+            {
+              type: "set-variable" as const,
+              variable: "finished",
+              value: true,
+            },
+          ],
+        }
+      : {}),
     steps: [
       {
         type: "direction",
-        ...(directionDuration === undefined ? {} : { duration: directionDuration }),
+        ...(directionDuration === undefined
+          ? {}
+          : { duration: directionDuration }),
         directions: [
           {
             type: "animation",
@@ -546,7 +768,10 @@ function directedProject(
           {
             type: "motion",
             subject: { kind: "scenery", scenery: "marker" },
-            path: [{ x: 20, y: 20 }, { x: 60, y: 30 }],
+            path: [
+              { x: 20, y: 20 },
+              { x: 60, y: 30 },
+            ],
             duration: 2 / 60,
           },
           {
@@ -565,11 +790,13 @@ function directedProject(
       },
       {
         type: "operations",
-        operations: [{ type: "set-variable", variable: "finished", value: true }],
+        operations: [
+          { type: "set-variable", variable: "finished", value: true },
+        ],
       },
     ],
-  } satisfies SequenceDefinition);
-  const scene = ({
+  } satisfies SequenceDefinition;
+  const scene = {
     background: "room.png",
     walkableRegion: square,
     scenery: {
@@ -581,25 +808,30 @@ function directedProject(
           normal: {
             animations: {
               idle: { frames: ["marker.png"], framesPerSecond: 1, loop: true },
-              react: { frames: ["react-1.png", "react-2.png"], framesPerSecond: 60 },
+              react: {
+                frames: ["react-1.png", "react-2.png"],
+                framesPerSecond: 60,
+              },
             },
             roles: { default: "idle" },
           },
         },
       },
     },
-    hotspots: [{
-      target: { kind: "background" },
-      area: square,
-      approach: { groundPoint: { x: 10, y: 10 }, facing: "front" },
-      noun: ({
-        labels: [{ text: "Action" }],
-        preferredVerbs: [{ verb: "use" }],
-        cases: [{ verb: "use", sequence: "action" }],
-      } satisfies NounDefinition),
-    }],
-  } satisfies SceneDefinition);
-  return (validateTestGameProject({
+    hotspots: [
+      {
+        target: { kind: "background" },
+        area: square,
+        approach: { groundPoint: { x: 10, y: 10 }, facing: "front" },
+        noun: {
+          labels: [{ text: "Action" }],
+          preferredVerbs: [{ verb: "use" }],
+          cases: [{ verb: "use", sequence: "action" }],
+        } satisfies NounDefinition,
+      },
+    ],
+  } satisfies SceneDefinition;
+  return validateTestGameProject({
     identity: "test.animated-sequences",
     version: "1",
     logicalResolution: { width: 100, height: 100 },
@@ -609,21 +841,44 @@ function directedProject(
     sequences: { action },
     variables: { finished: false },
     initialScene: "room",
-    commandLexicon: ({
+    commandLexicon: {
       inventory: { select: "Hold {noun}", deselect: "Put back {noun}" },
       verbs: {
-        open: "Open", "pick-up": "Pick up", push: "Push", close: "Close",
-        "look-at": "Look", pull: "Pull", give: "Give", "talk-to": "Talk", use: "Use",
+        open: "Open",
+        "pick-up": "Pick up",
+        push: "Push",
+        close: "Close",
+        "look-at": "Look",
+        pull: "Pull",
+        give: "Give",
+        "talk-to": "Talk",
+        use: "Use",
       },
-      patterns: { unary: "{verb} {noun}", give: "{verb} {first} to {second}", use: "{verb} {first} with {second}" },
-    } satisfies CommandLexicon),
-    commandFallbacks: Object.fromEntries([
-      "open", "pick-up", "push", "close", "look-at", "pull", "give", "talk-to", "use",
-    ].map((verb) => [verb, { text: "No." }])) as never,
-  } satisfies GameProject));
+      patterns: {
+        unary: "{verb} {noun}",
+        give: "{verb} {first} to {second}",
+        use: "{verb} {first} with {second}",
+      },
+    } satisfies CommandLexicon,
+    commandFallbacks: Object.fromEntries(
+      [
+        "open",
+        "pick-up",
+        "push",
+        "close",
+        "look-at",
+        "pull",
+        "give",
+        "talk-to",
+        "use",
+      ].map((verb) => [verb, { text: "No." }]),
+    ) as never,
+  } satisfies GameProject);
 }
 
-function startDirectedSequence(session: ReturnType<typeof createTestSession>): void {
+function startDirectedSequence(
+  session: ReturnType<typeof createTestSession>,
+): void {
   session.input({ type: "quick-hotspot", hotspot: 0, verb: "use" });
   session.steps();
 }
@@ -640,21 +895,34 @@ test("CoreSession exposes Camera facts from the shared Direction Step interpreta
 });
 
 test("CoreSession gives Camera the Cue-local time interpreted by Sequence", () => {
-  const session = createTestSession(directedProject(false, undefined, [{
-    type: "camera",
-    mode: "move",
-    from: { x: 50, y: 50 },
-    to: { x: 90, y: 90 },
-    duration: 2 / 60,
-    startAfter: { direction: 0, cue: "contact" },
-  }]));
+  const session = createTestSession(
+    directedProject(false, undefined, [
+      {
+        type: "camera",
+        mode: "move",
+        from: { x: 50, y: 50 },
+        to: { x: 90, y: 90 },
+        duration: 2 / 60,
+        startAfter: { direction: 0, cue: "contact" },
+      },
+    ]),
+  );
   startDirectedSequence(session);
 
-  expect(session.camera()).toMatchObject({ directed: false, focus: { x: 10, y: 10 } });
+  expect(session.camera()).toMatchObject({
+    directed: false,
+    focus: { x: 10, y: 10 },
+  });
   session.steps();
-  expect(session.camera()).toMatchObject({ directed: true, focus: { x: 50, y: 50 } });
+  expect(session.camera()).toMatchObject({
+    directed: true,
+    focus: { x: 50, y: 50 },
+  });
   session.steps();
-  expect(session.camera()).toMatchObject({ directed: true, focus: { x: 70, y: 70 } });
+  expect(session.camera()).toMatchObject({
+    directed: true,
+    focus: { x: 70, y: 70 },
+  });
 });
 
 test("a directed Sequence completes mixed finite, looping, held, and following directions", () => {
@@ -676,7 +944,10 @@ test("a directed Sequence completes mixed finite, looping, held, and following d
   session.steps();
   expect(session.snapshot().activity).toBeNull();
   expect(session.snapshot().variables.finished).toBe(true);
-  expect(session.snapshot().characters.actor!.groundPoint).toEqual({ x: 10, y: 10 });
+  expect(session.snapshot().characters.actor!.groundPoint).toEqual({
+    x: 10,
+    y: 10,
+  });
 });
 
 test("an authored Direction Step duration completes before longer finite directions", () => {
@@ -752,60 +1023,84 @@ test("skip before and after a Cue applies the explicit Skip Outcome exactly once
 
 test("directed Character navigation and Object Motion commit their canonical destinations", () => {
   const square = [
-    { x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }, { x: 0, y: 100 },
+    { x: 0, y: 0 },
+    { x: 100, y: 0 },
+    { x: 100, y: 100 },
+    { x: 0, y: 100 },
   ];
-  const actor = (validateTestCharacterDefinition({
+  const actor = validateTestCharacterDefinition({
     initialScene: "room",
     initialGroundPoint: { x: 10, y: 10 },
     initialFacing: "front",
     initialAppearance: "normal",
     appearances: {
       normal: {
-        animations: { idle: { frames: ["actor.png"], framesPerSecond: 1, loop: true } },
+        animations: {
+          idle: {
+            frames: {
+              left: { image: "actor.png", count: 1 },
+              right: { image: "actor.png", count: 1 },
+              front: { image: "actor.png", count: 1 },
+              back: { image: "actor.png", count: 1 },
+            },
+            framesPerSecond: 1,
+            loop: true,
+          },
+        },
         roles: { default: "idle", walking: "idle" },
       },
     },
     movementSpeed: 60,
-  } satisfies CharacterDefinition));
-  const prop = ({
+  } satisfies CharacterDefinition);
+  const prop = {
     initialScene: "room",
     initialGroundPoint: { x: 20, y: 20 },
     initialAppearance: "normal",
     appearances: { normal: staticAppearance("prop.png") },
     inventoryAppearance: "prop-inventory.png",
-  } satisfies ObjectDefinition);
-  const action = ({
+  } satisfies ObjectDefinition;
+  const action = {
     scene: "room",
-    steps: [{
-      type: "direction",
-      directions: [{
-        type: "motion",
-        subject: { kind: "character", character: "actor" },
-        path: [{ x: 12, y: 10 }],
-        facing: "left",
-      }, {
-        type: "motion",
-        subject: { kind: "object", object: "prop" },
-        path: [{ x: 20, y: 20 }, { x: 30, y: 20 }],
-        duration: 2 / 60,
-      }],
-    }],
-  } satisfies SequenceDefinition);
-  const scene = ({
+    steps: [
+      {
+        type: "direction",
+        directions: [
+          {
+            type: "motion",
+            subject: { kind: "character", character: "actor" },
+            path: [{ x: 12, y: 10 }],
+            facing: "left",
+          },
+          {
+            type: "motion",
+            subject: { kind: "object", object: "prop" },
+            path: [
+              { x: 20, y: 20 },
+              { x: 30, y: 20 },
+            ],
+            duration: 2 / 60,
+          },
+        ],
+      },
+    ],
+  } satisfies SequenceDefinition;
+  const scene = {
     background: "room.png",
     walkableRegion: square,
-    hotspots: [{
-      target: { kind: "background" },
-      area: square,
-      approach: { groundPoint: { x: 10, y: 10 }, facing: "front" },
-      noun: ({
-        labels: [{ text: "Action" }],
-        preferredVerbs: [{ verb: "use" }],
-        cases: [{ verb: "use", sequence: "action" }],
-      } satisfies NounDefinition),
-    }],
-  } satisfies SceneDefinition);
-  const project = (validateTestGameProject({
+    hotspots: [
+      {
+        target: { kind: "background" },
+        area: square,
+        approach: { groundPoint: { x: 10, y: 10 }, facing: "front" },
+        noun: {
+          labels: [{ text: "Action" }],
+          preferredVerbs: [{ verb: "use" }],
+          cases: [{ verb: "use", sequence: "action" }],
+        } satisfies NounDefinition,
+      },
+    ],
+  } satisfies SceneDefinition;
+  const project = validateTestGameProject({
     identity: "test.directed-motion",
     version: "1",
     logicalResolution: { width: 100, height: 100 },
@@ -815,18 +1110,39 @@ test("directed Character navigation and Object Motion commit their canonical des
     objects: { prop },
     sequences: { action },
     initialScene: "room",
-    commandLexicon: ({
+    commandLexicon: {
       inventory: { select: "Hold {noun}", deselect: "Put back {noun}" },
       verbs: {
-        open: "Open", "pick-up": "Pick up", push: "Push", close: "Close",
-        "look-at": "Look", pull: "Pull", give: "Give", "talk-to": "Talk", use: "Use",
+        open: "Open",
+        "pick-up": "Pick up",
+        push: "Push",
+        close: "Close",
+        "look-at": "Look",
+        pull: "Pull",
+        give: "Give",
+        "talk-to": "Talk",
+        use: "Use",
       },
-      patterns: { unary: "{verb} {noun}", give: "{verb} {first} to {second}", use: "{verb} {first} with {second}" },
-    } satisfies CommandLexicon),
-    commandFallbacks: Object.fromEntries([
-      "open", "pick-up", "push", "close", "look-at", "pull", "give", "talk-to", "use",
-    ].map((verb) => [verb, { text: "No." }])) as never,
-  } satisfies GameProject));
+      patterns: {
+        unary: "{verb} {noun}",
+        give: "{verb} {first} to {second}",
+        use: "{verb} {first} with {second}",
+      },
+    } satisfies CommandLexicon,
+    commandFallbacks: Object.fromEntries(
+      [
+        "open",
+        "pick-up",
+        "push",
+        "close",
+        "look-at",
+        "pull",
+        "give",
+        "talk-to",
+        "use",
+      ].map((verb) => [verb, { text: "No." }]),
+    ) as never,
+  } satisfies GameProject);
   const session = createTestSession(project);
   startDirectedSequence(session);
   session.steps(2);
@@ -845,43 +1161,54 @@ test("directed Character navigation and Object Motion commit their canonical des
 
 function arrivalProject(audio?: URL) {
   const square = [
-    { x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }, { x: 0, y: 100 },
+    { x: 0, y: 0 },
+    { x: 100, y: 0 },
+    { x: 100, y: 100 },
+    { x: 0, y: 100 },
   ];
-  const passageNoun = ({
+  const passageNoun = {
     labels: [{ text: "Door" }],
     preferredVerbs: [{ verb: "walk-to" }],
     cases: [],
-  } satisfies NounDefinition);
-  const room = ({
+  } satisfies NounDefinition;
+  const room = {
     background: "room.png",
     walkableRegion: square,
-    entrances: { fromTower: { groundPoint: { x: 10, y: 10 }, facing: "right" } },
-    passages: [{
-      area: square,
-      approach: { groundPoint: { x: 10, y: 10 }, facing: "right" },
-      noun: passageNoun,
-      direction: "right",
-      destination: { scene: "tower", entrance: "fromRoom" },
-    }],
-  } satisfies SceneDefinition);
-  const tower = ({
+    entrances: {
+      fromTower: { groundPoint: { x: 10, y: 10 }, facing: "right" },
+    },
+    passages: [
+      {
+        area: square,
+        approach: { groundPoint: { x: 10, y: 10 }, facing: "right" },
+        noun: passageNoun,
+        direction: "right",
+        destination: { scene: "tower", entrance: "fromRoom" },
+      },
+    ],
+  } satisfies SceneDefinition;
+  const tower = {
     background: "tower.png",
     walkableRegion: square,
     entrances: { fromRoom: { groundPoint: { x: 5, y: 5 }, facing: "left" } },
-    arrivalSequences: [{
-      entrance: "fromRoom",
-      when: { variable: "arrived", equals: false },
-      sequence: "arrival",
-    }],
-    passages: [{
-      area: square,
-      approach: { groundPoint: { x: 5, y: 5 }, facing: "left" },
-      noun: passageNoun,
-      direction: "left",
-      destination: { scene: "room", entrance: "fromTower" },
-    }],
-  } satisfies SceneDefinition);
-  const player = (validateTestCharacterDefinition({
+    arrivalSequences: [
+      {
+        entrance: "fromRoom",
+        when: { variable: "arrived", equals: false },
+        sequence: "arrival",
+      },
+    ],
+    passages: [
+      {
+        area: square,
+        approach: { groundPoint: { x: 5, y: 5 }, facing: "left" },
+        noun: passageNoun,
+        direction: "left",
+        destination: { scene: "room", entrance: "fromTower" },
+      },
+    ],
+  } satisfies SceneDefinition;
+  const player = validateTestCharacterDefinition({
     initialScene: "room",
     initialGroundPoint: { x: 10, y: 10 },
     initialFacing: "right",
@@ -889,10 +1216,20 @@ function arrivalProject(audio?: URL) {
     appearances: {
       normal: {
         animations: {
-          idle: { frames: ["idle.png"], framesPerSecond: 1, loop: true },
+          idle: {
+            frames: {
+              left: { image: "idle.png", count: 1 },
+              right: { image: "idle.png", count: 1 },
+              front: { image: "idle.png", count: 1 },
+              back: { image: "idle.png", count: 1 },
+            },
+            framesPerSecond: 1,
+            loop: true,
+          },
           walk: {
             frames: {
-              side: { image: "walk-side.png", count: 2 },
+              left: { image: "walk-left.png", count: 2 },
+              right: { image: "walk-right.png", count: 2 },
               front: { image: "walk-front.png", count: 2 },
               back: { image: "walk-back.png", count: 2 },
             },
@@ -904,16 +1241,21 @@ function arrivalProject(audio?: URL) {
       },
     },
     movementSpeed: 60,
-  } satisfies CharacterDefinition));
-  const arrival = ({
+  } satisfies CharacterDefinition);
+  const arrival = {
     steps: [
       audio === undefined
         ? { type: "narration", text: "A boat appears." }
         : { type: "line", character: "player", text: "A boat appears.", audio },
-      { type: "operations", operations: [{ type: "set-variable", variable: "arrived", value: true }] },
+      {
+        type: "operations",
+        operations: [
+          { type: "set-variable", variable: "arrived", value: true },
+        ],
+      },
     ],
-  } satisfies SequenceDefinition);
-  return (validateTestGameProject({
+  } satisfies SequenceDefinition;
+  return validateTestGameProject({
     identity: "test.arrival-sequence",
     version: "1",
     logicalResolution: { width: 100, height: 100 },
@@ -923,18 +1265,39 @@ function arrivalProject(audio?: URL) {
     sequences: { arrival },
     variables: { arrived: false },
     initialScene: "room",
-    commandLexicon: ({
+    commandLexicon: {
       inventory: { select: "Hold {noun}", deselect: "Put back {noun}" },
       verbs: {
-        open: "Open", "pick-up": "Pick up", push: "Push", close: "Close",
-        "look-at": "Look", pull: "Pull", give: "Give", "talk-to": "Talk", use: "Use",
+        open: "Open",
+        "pick-up": "Pick up",
+        push: "Push",
+        close: "Close",
+        "look-at": "Look",
+        pull: "Pull",
+        give: "Give",
+        "talk-to": "Talk",
+        use: "Use",
       },
-      patterns: { unary: "{verb} {noun}", give: "{verb} {first} to {second}", use: "{verb} {first} with {second}" },
-    } satisfies CommandLexicon),
-    commandFallbacks: Object.fromEntries([
-      "open", "pick-up", "push", "close", "look-at", "pull", "give", "talk-to", "use",
-    ].map((verb) => [verb, { text: "No." }])) as never,
-  } satisfies GameProject));
+      patterns: {
+        unary: "{verb} {noun}",
+        give: "{verb} {first} to {second}",
+        use: "{verb} {first} with {second}",
+      },
+    } satisfies CommandLexicon,
+    commandFallbacks: Object.fromEntries(
+      [
+        "open",
+        "pick-up",
+        "push",
+        "close",
+        "look-at",
+        "pull",
+        "give",
+        "talk-to",
+        "use",
+      ].map((verb) => [verb, { text: "No." }]),
+    ) as never,
+  } satisfies GameProject);
 }
 
 test("CoreSession exposes defensive Sequence Line facts with URL audio", () => {
@@ -946,8 +1309,13 @@ test("CoreSession exposes defensive Sequence Line facts with URL audio", () => {
   const first = session.sequence();
   const second = session.sequence();
   expect(first).toMatchObject({ kind: "line", character: "player", audio });
-  if (first?.kind !== "line" || second?.kind !== "line" ||
-      !(first.audio instanceof URL) || !(second.audio instanceof URL)) return;
+  if (
+    first?.kind !== "line" ||
+    second?.kind !== "line" ||
+    !(first.audio instanceof URL) ||
+    !(second.audio instanceof URL)
+  )
+    return;
   expect(first.audio).not.toBe(audio);
   expect(first.audio).not.toBe(second.audio);
 });
@@ -959,8 +1327,14 @@ test("a Scene arrival starts its Sequence after the passage commit and before pl
 
   expect(session.snapshot()).toMatchObject({
     currentScene: "tower",
-    characters: { player: { scene: "tower", groundPoint: { x: 5, y: 5 }, facing: "left" } },
-    activity: { type: "sequence", sequence: "arrival", active: { kind: "narration" } },
+    characters: {
+      player: { scene: "tower", groundPoint: { x: 5, y: 5 }, facing: "left" },
+    },
+    activity: {
+      type: "sequence",
+      sequence: "arrival",
+      active: { kind: "narration" },
+    },
   });
   session.input({ type: "move", point: { x: 90, y: 90 } });
   session.input({ type: "advance-sequence" });

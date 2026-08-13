@@ -41,7 +41,18 @@ const talkToNoun = (character: string, label: string): NounDefinition => ({
 });
 const noun = talkToNoun("antonio", "Antonio");
 const appearance = {
-  animations: { idle: { frames: [characterUrl], framesPerSecond: 1, loop: true } },
+  animations: {
+    idle: {
+      frames: {
+        left: { image: characterUrl, count: 1 },
+        right: { image: characterUrl, count: 1 },
+        front: { image: characterUrl, count: 1 },
+        back: { image: characterUrl, count: 1 },
+      },
+      framesPerSecond: 1,
+      loop: true,
+    },
+  },
   roles: { default: "idle", walking: "idle" },
 };
 const character = (

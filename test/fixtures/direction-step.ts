@@ -3,9 +3,7 @@ import { Application } from "pixi.js";
 import backgroundUrl from "./camera-scrolling-horizontal.png";
 import idleUrl from "./direction-idle.svg";
 import signalUrl from "./direction-signal.svg";
-import walk0Url from "./direction-walk-0.svg";
-import walk1Url from "./direction-walk-1.svg";
-import walk2Url from "./direction-walk-2.svg";
+import walkStripUrl from "./direction-walk-strip.svg";
 import {
   commandVerbs,
   type CharacterDefinition,
@@ -20,9 +18,7 @@ import {
 import { BrowserRenderer } from "../../src/browser/renderer";
 import { loadProjectAssets } from "../../src/browser/assets";
 import { createCoreSession } from "../../src/capabilities/game-session";
-import {
-  getBrowserProjectView,
-} from "../../src/capabilities/game-project";
+import { getBrowserProjectView } from "../../src/capabilities/game-project";
 import { compileTestGameProject } from "../support";
 
 declare global {
@@ -41,9 +37,12 @@ const live = parameters.has("live");
 const completion = parameters.has("complete");
 const cameraModes = parameters.has("cameraModes");
 const square = [
-  { x: 0, y: 0 }, { x: 1586, y: 0 }, { x: 1586, y: 240 }, { x: 0, y: 240 },
+  { x: 0, y: 0 },
+  { x: 1586, y: 0 },
+  { x: 1586, y: 240 },
+  { x: 0, y: 240 },
 ];
-const player = ({
+const player = {
   initialScene: "stage",
   initialGroundPoint: { x: 213, y: 180 },
   initialFacing: "front",
@@ -51,74 +50,108 @@ const player = ({
   appearances: {
     normal: {
       animations: {
-        idle: { frames: [idleUrl], framesPerSecond: 1, loop: true },
-        walking: { frames: [walk0Url, walk1Url, walk2Url], framesPerSecond: 60, loop: true },
+        idle: {
+          frames: {
+            left: { image: idleUrl, count: 1 },
+            right: { image: idleUrl, count: 1 },
+            front: { image: idleUrl, count: 1 },
+            back: { image: idleUrl, count: 1 },
+          },
+          framesPerSecond: 1,
+          loop: true,
+        },
+        walking: {
+          frames: {
+            left: { image: walkStripUrl, count: 3 },
+            right: { image: walkStripUrl, count: 3 },
+            front: { image: walkStripUrl, count: 3 },
+            back: { image: walkStripUrl, count: 3 },
+          },
+          framesPerSecond: 60,
+          loop: true,
+        },
       },
       roles: { default: "idle", walking: "walking" },
       visualAnchor: { x: 5, y: 10 },
     },
   },
   movementSpeed: 60,
-} satisfies CharacterDefinition);
-const action = ({
+} satisfies CharacterDefinition;
+const action = {
   scene: "stage",
   skippable: true,
   skipOutcome: [{ type: "set-variable", variable: "skipped", value: true }],
-  steps: cameraModes ? [
-    {
-      type: "direction",
-      directions: [{ type: "camera", mode: "cut", point: { x: 300, y: 120 } }],
-    },
-    {
-      type: "direction",
-      directions: [{
-        type: "camera",
-        mode: "hold",
-        point: { x: 700, y: 120 },
-        duration: 2 / 60,
-      }],
-    },
-    {
-      type: "direction",
-      directions: [{
-        type: "camera",
-        mode: "follow",
-        subject: { kind: "scenery", scenery: "signal" },
-        duration: 2 / 60,
-      }],
-    },
-    {
-      type: "operations",
-      operations: [{ type: "set-variable", variable: "completed", value: true }],
-    },
-  ] : [
-    {
-      type: "direction",
-      directions: [{
-        type: "animation",
-        subject: { kind: "scenery", scenery: "signal" },
-        animation: "signal",
-      }, {
-        type: "motion",
-        subject: { kind: "character", character: "player" },
-        path: [{ x: live ? completion ? 600 : 1400 : 219, y: 180 }],
-        startAfter: { direction: 0, cue: "go" },
-      }, {
-        type: "camera",
-        mode: "move",
-        from: { x: 213, y: 120 },
-        to: { x: live ? 600 : 500, y: 120 },
-        duration: live ? completion ? 4 : 10 : 4 / 60,
-        startAfter: { direction: 0, cue: "go" },
-      }],
-    },
-    {
-      type: "operations",
-      operations: [{ type: "set-variable", variable: "completed", value: true }],
-    },
-  ],
-} satisfies SequenceDefinition);
-const scene = ({
+  steps: cameraModes
+    ? [
+        {
+          type: "direction",
+          directions: [
+            { type: "camera", mode: "cut", point: { x: 300, y: 120 } },
+          ],
+        },
+        {
+          type: "direction",
+          directions: [
+            {
+              type: "camera",
+              mode: "hold",
+              point: { x: 700, y: 120 },
+              duration: 2 / 60,
+            },
+          ],
+        },
+        {
+          type: "direction",
+          directions: [
+            {
+              type: "camera",
+              mode: "follow",
+              subject: { kind: "scenery", scenery: "signal" },
+              duration: 2 / 60,
+            },
+          ],
+        },
+        {
+          type: "operations",
+          operations: [
+            { type: "set-variable", variable: "completed", value: true },
+          ],
+        },
+      ]
+    : [
+        {
+          type: "direction",
+          directions: [
+            {
+              type: "animation",
+              subject: { kind: "scenery", scenery: "signal" },
+              animation: "signal",
+            },
+            {
+              type: "motion",
+              subject: { kind: "character", character: "player" },
+              path: [{ x: live ? (completion ? 600 : 1400) : 219, y: 180 }],
+              startAfter: { direction: 0, cue: "go" },
+            },
+            {
+              type: "camera",
+              mode: "move",
+              from: { x: 213, y: 120 },
+              to: { x: live ? 600 : 500, y: 120 },
+              duration: live ? (completion ? 4 : 10) : 4 / 60,
+              startAfter: { direction: 0, cue: "go" },
+            },
+          ],
+        },
+        {
+          type: "operations",
+          operations: [
+            { type: "set-variable", variable: "completed", value: true },
+          ],
+        },
+      ],
+} satisfies SequenceDefinition;
+const scene = {
   background: backgroundUrl,
   size: { width: 1586, height: 240 },
   walkableRegion: square,
@@ -133,7 +166,7 @@ const scene = ({
             idle: { frames: [signalUrl], framesPerSecond: 1, loop: true },
             signal: {
               frames: [signalUrl, signalUrl, signalUrl, signalUrl],
-              framesPerSecond: live ? completion ? 0.5 : 4 / 60 : 60,
+              framesPerSecond: live ? (completion ? 0.5 : 4 / 60) : 60,
               cues: { go: live ? 0.5 : 2 / 60 },
             },
           },
@@ -143,18 +176,25 @@ const scene = ({
       },
     },
   },
-  hotspots: [{
-    target: { kind: "background" },
-    area: [{ x: 190, y: 160 }, { x: 236, y: 160 }, { x: 236, y: 200 }, { x: 190, y: 200 }],
-    approach: { groundPoint: { x: 213, y: 180 }, facing: "front" },
-    noun: ({
-      labels: [{ text: "Direction Step" }],
-      preferredVerbs: [{ verb: "use" }],
-      cases: [{ verb: "use", sequence: "action" }],
-    } satisfies NounDefinition),
-  }],
-} satisfies SceneDefinition);
-const project = ({
+  hotspots: [
+    {
+      target: { kind: "background" },
+      area: [
+        { x: 190, y: 160 },
+        { x: 236, y: 160 },
+        { x: 236, y: 200 },
+        { x: 190, y: 200 },
+      ],
+      approach: { groundPoint: { x: 213, y: 180 }, facing: "front" },
+      noun: {
+        labels: [{ text: "Direction Step" }],
+        preferredVerbs: [{ verb: "use" }],
+        cases: [{ verb: "use", sequence: "action" }],
+      } satisfies NounDefinition,
+    },
+  ],
+} satisfies SceneDefinition;
+const project = {
   identity: "test.direction-step-browser",
   version: "1",
   logicalResolution: { width: 426, height: 240 },
@@ -164,24 +204,35 @@ const project = ({
   sequences: { action },
   variables: { completed: false, skipped: false },
   initialScene: "stage",
-  commandLexicon: ({
+  commandLexicon: {
     inventory: { select: "Hold {noun}", deselect: "Put away {noun}" },
     verbs: {
-      open: "Open", "pick-up": "Pick up", push: "Push", close: "Close",
-      "look-at": "Look at", pull: "Pull", give: "Give", "talk-to": "Talk to", use: "Use",
+      open: "Open",
+      "pick-up": "Pick up",
+      push: "Push",
+      close: "Close",
+      "look-at": "Look at",
+      pull: "Pull",
+      give: "Give",
+      "talk-to": "Talk to",
+      use: "Use",
     },
     patterns: {
-      unary: "{verb} {noun}", give: "{verb} {first} to {second}", use: "{verb} {first} with {second}",
+      unary: "{verb} {noun}",
+      give: "{verb} {first} to {second}",
+      use: "{verb} {first} with {second}",
     },
-  } satisfies CommandLexicon),
+  } satisfies CommandLexicon,
   commandFallbacks: Object.fromEntries(
     commandVerbs.map((verb) => [verb, { text: "Nothing happens." }]),
   ) as never,
-} satisfies GameProject);
+} satisfies GameProject;
 
 try {
   if (live) {
-    window.__directionStepLive = { session: await startGame(project, { target: document.body }) };
+    window.__directionStepLive = {
+      session: await startGame(project, { target: document.body }),
+    };
   } else {
     const compiledProject = compileTestGameProject(project);
     const projectView = getBrowserProjectView(compiledProject);
@@ -227,12 +278,14 @@ try {
       },
       elapsedTicks() {
         const activity = core.snapshot().activity;
-        return activity?.type === "sequence" && activity.active?.kind === "direction"
+        return activity?.type === "sequence" &&
+          activity.active?.kind === "direction"
           ? activity.active.elapsedTicks
           : undefined;
       },
     };
   }
 } catch (error) {
-  window.__directionStepError = error instanceof Error ? error.stack ?? error.message : String(error);
+  window.__directionStepError =
+    error instanceof Error ? (error.stack ?? error.message) : String(error);
 }

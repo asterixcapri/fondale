@@ -6,7 +6,9 @@ import {
   validateAppearance,
   validateAppearanceSet,
   validateInitialAppearance,
+  isImageAnimationFrames,
   type Appearance,
+  type CharacterAppearance,
 } from "../animation";
 import type { InteractionCondition, NounDefinition } from "../interaction";
 import type { PassageDirection } from "../hud";
@@ -46,7 +48,7 @@ export interface CharacterDefinition {
   readonly initialGroundPoint: Point;
   readonly initialFacing: Facing;
   readonly initialAppearance: string;
-  readonly appearances: Readonly<Record<string, EntityAppearance>>;
+  readonly appearances: Readonly<Record<string, CharacterAppearance>>;
   readonly movementSpeed: number;
   readonly noun?: NounDefinition;
   readonly dialogue?: CharacterDialogueDefinition;
@@ -1291,22 +1293,12 @@ function cloneSceneryAppearance(appearance: SceneryAppearance): SceneryAppearanc
         name,
         {
           ...animation,
-          frames: "side" in animation.frames
-            ? {
-                side: {
-                  ...animation.frames.side,
-                  image: cloneAssetReference(animation.frames.side.image),
-                },
-                front: {
-                  ...animation.frames.front,
-                  image: cloneAssetReference(animation.frames.front.image),
-                },
-                back: {
-                  ...animation.frames.back,
-                  image: cloneAssetReference(animation.frames.back.image),
-                },
-              }
-            : animation.frames.map(cloneAssetReference),
+          frames: isImageAnimationFrames(animation.frames)
+            ? animation.frames.map(cloneAssetReference)
+            : {
+                ...animation.frames,
+                image: cloneAssetReference(animation.frames.image),
+              },
           ...(animation.cues ? { cues: { ...animation.cues } } : {}),
         },
       ]),

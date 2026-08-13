@@ -28,6 +28,9 @@ export {
   type AnimationRoles,
   type AnimationStrip,
   type Appearance,
+  type CharacterAnimationDefinition,
+  type CharacterAnimationFrames,
+  type CharacterAppearance,
 } from "./capabilities/animation";
 export {
   dialogueInputMaxLength,

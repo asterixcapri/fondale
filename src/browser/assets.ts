@@ -3,7 +3,9 @@ import { Assets, Rectangle, Texture } from "pixi.js";
 import { AuthoringError, type AuthoringDiagnostic } from "../capabilities/game-project";
 import {
   isImageAnimationFrames,
+  isCharacterAnimationFrames,
   type Appearance,
+  type CharacterAppearance,
 } from "../capabilities/animation";
 import type { BrowserAssetProjectView } from "../capabilities/game-project";
 import { sequenceLines } from "../capabilities/sequence";
@@ -210,7 +212,7 @@ export async function loadProjectAssets(data: BrowserAssetProjectView): Promise<
 }
 
 function addAppearance(
-  appearance: EntityAppearance,
+  appearance: EntityAppearance | CharacterAppearance,
   path: string,
   add: (url: URL | string, path: string) => void,
 ): void {
@@ -218,24 +220,24 @@ function addAppearance(
 }
 
 function addAnimatedAppearance(
-  appearance: Appearance,
+  appearance: Appearance | CharacterAppearance,
   path: string,
   add: (url: URL | string, path: string) => void,
 ): void {
   for (const [animationId, animation] of Object.entries(appearance.animations)) {
     const animationPath = `${path}.animations.${animationId}.frames`;
     if (isImageAnimationFrames(animation.frames)) {
-      animation.frames.forEach((image, index) => add(image, `${animationPath}[${index}]`));
-    } else {
-      for (const direction of ["side", "front", "back"] as const) {
+      animation.frames.forEach((image: URL | string, index: number) => add(image, `${animationPath}[${index}]`));
+    } else if (isCharacterAnimationFrames(animation.frames)) {
+      for (const direction of ["left", "right", "front", "back"] as const) {
         add(animation.frames[direction].image, `${animationPath}.${direction}`);
       }
-    }
+    } else add(animation.frames.image, `${animationPath}.image`);
   }
 }
 
 function validateAnimatedAppearance(
-  appearance: Appearance,
+  appearance: Appearance | CharacterAppearance,
   path: string,
   textures: ReadonlyMap<string, Texture>,
   frames: Map<string, readonly Texture[]>,
@@ -244,7 +246,7 @@ function validateAnimatedAppearance(
   for (const [animationId, animation] of Object.entries(appearance.animations)) {
     const animationPath = `${path}.animations.${animationId}`;
     if (isImageAnimationFrames(animation.frames)) {
-      const animationTextures = animation.frames.flatMap((image) => {
+      const animationTextures = animation.frames.flatMap((image: URL | string) => {
         const texture = textures.get(assetUrl(image));
         return texture ? [texture] : [];
       });
@@ -254,39 +256,74 @@ function validateAnimatedAppearance(
       }
       continue;
     }
-    const directionalFrameSizes: { direction: "side" | "front" | "back"; width: number; height: number }[] = [];
-    for (const direction of ["side", "front", "back"] as const) {
-      const strip = animation.frames[direction];
-      const texture = textures.get(assetUrl(strip.image));
-      if (!texture) continue;
-      if (texture.width % strip.count !== 0) {
-        diagnostics.push({
-          code: "asset.animation-strip.frames",
-          family: "asset", owner: "browser",
-          path: `${animationPath}.frames.${direction}`,
-          message: "An Animation strip width must divide into its frame count.",
-        });
-        continue;
-      }
-      const frameWidth = texture.width / strip.count;
-      directionalFrameSizes.push({ direction, width: frameWidth, height: texture.height });
-      frames.set(`${animationPath}.${direction}`, Array.from({ length: strip.count }, (_, frame) =>
-        new Texture({ source: texture.source, frame: new Rectangle(frame * frameWidth, 0, frameWidth, texture.height) }),
-      ));
-      validateAnchor(appearance.visualAnchor, { width: frameWidth, height: texture.height } as Texture, path, diagnostics);
+    if (!isCharacterAnimationFrames(animation.frames)) {
+      sliceAnimationStrip(
+        animation.frames,
+        animationPath,
+        animationPath,
+        path,
+        appearance,
+        textures,
+        frames,
+        diagnostics,
+      );
+      continue;
+    }
+    const directionalFrameSizes: { direction: "left" | "right" | "front" | "back"; width: number; height: number }[] = [];
+    for (const direction of ["left", "right", "front", "back"] as const) {
+      const size = sliceAnimationStrip(
+        animation.frames[direction],
+        `${animationPath}.${direction}`,
+        `${animationPath}.frames.${direction}`,
+        path,
+        appearance,
+        textures,
+        frames,
+        diagnostics,
+      );
+      if (size) directionalFrameSizes.push({ direction, ...size });
     }
     const expected = directionalFrameSizes[0];
     for (const size of directionalFrameSizes.slice(1)) {
-      if (expected && size.height !== expected.height) {
+      if (expected && (size.width !== expected.width || size.height !== expected.height)) {
         diagnostics.push({
           code: "asset.animation-strip.dimensions",
           family: "asset", owner: "browser",
           path: `${animationPath}.frames.${size.direction}`,
-          message: "Directional Animation strips must produce frames with matching heights.",
+          message: "Character Facing strips must produce frames with matching Runtime cell dimensions.",
         });
       }
     }
   }
+}
+
+function sliceAnimationStrip(
+  strip: { readonly image: URL | string; readonly count: number },
+  frameKey: string,
+  diagnosticPath: string,
+  anchorPath: string,
+  appearance: Appearance | CharacterAppearance,
+  textures: ReadonlyMap<string, Texture>,
+  frames: Map<string, readonly Texture[]>,
+  diagnostics: AuthoringDiagnostic[],
+): { readonly width: number; readonly height: number } | undefined {
+  const texture = textures.get(assetUrl(strip.image));
+  if (!texture) return undefined;
+  if (texture.width % strip.count !== 0) {
+    diagnostics.push({
+      code: "asset.animation-strip.frames",
+      family: "asset", owner: "browser",
+      path: diagnosticPath,
+      message: "An Animation strip width must divide into its frame count.",
+    });
+    return undefined;
+  }
+  const width = texture.width / strip.count;
+  frames.set(frameKey, Array.from({ length: strip.count }, (_, frame) =>
+    new Texture({ source: texture.source, frame: new Rectangle(frame * width, 0, width, texture.height) }),
+  ));
+  validateAnchor(appearance.visualAnchor, { width, height: texture.height }, anchorPath, diagnostics);
+  return { width, height: texture.height };
 }
 
 function validateAnchor(

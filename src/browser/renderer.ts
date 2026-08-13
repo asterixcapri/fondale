@@ -14,7 +14,7 @@ import type {
 } from "../capabilities/game-session";
 import {
   isImageAnimationFrames,
-  type AnimationDefinition,
+  isCharacterAnimationFrames,
   type AnimationPresentation,
 } from "../capabilities/animation";
 import type {
@@ -23,6 +23,7 @@ import type {
 import {
   sameWorldTarget,
   type Point,
+  type Facing,
   type SceneryAppearance,
   type WorldPresentation,
   type WorldTarget,
@@ -47,7 +48,7 @@ interface AnimationView {
   readonly subject: DirectedSubject;
   readonly path: string;
   presentation: AnimationPresentation;
-  direction: "side" | "front" | "back";
+  direction: Facing;
 }
 
 interface CharacterView extends AnimationView {
@@ -170,12 +171,11 @@ export class BrowserRenderer {
     }
 
     for (const character of world.characters) {
-      const direction = character.facing === "left" || character.facing === "right" ? "side" : character.facing;
       const view = this.createCharacter(
         this.animationPresentation({ kind: "character", character: character.id })!,
         `characters.${character.id}.appearances.${character.appearanceName}`,
         { kind: "character", character: character.id },
-        direction,
+        character.facing,
       );
       view.container.label = `character:${character.id}`;
       this.characterViews.set(character.id, view);
@@ -213,7 +213,7 @@ export class BrowserRenderer {
     presentation: AnimationPresentation,
     path: string,
     subject: DirectedSubject,
-    selectedDirection: "side" | "front" | "back" = "front",
+    selectedDirection: Facing = "front",
   ): CharacterView {
     const container = new Container();
     const view = { container, ...this.animationView(presentation, path, subject, selectedDirection) };
@@ -229,11 +229,8 @@ export class BrowserRenderer {
       view.container.position.set(Math.round(character.groundPoint.x), Math.round(character.groundPoint.y));
       view.container.zIndex = character.groundPoint.y;
       const perspective = character.scale;
-      const direction =
-        character.facing === "left" || character.facing === "right" ? "side" : character.facing;
-      const horizontal = character.facing === "left" ? -perspective : perspective;
-      view.container.scale.set(horizontal, perspective);
-      view.direction = direction;
+      view.container.scale.set(perspective);
+      view.direction = character.facing;
     }
   }
 
@@ -259,7 +256,7 @@ export class BrowserRenderer {
     presentation: AnimationPresentation,
     path: string,
     subject: DirectedSubject,
-    direction: "side" | "front" | "back",
+    direction: Facing,
   ): AnimationView {
     const frames = this.animationFrames(
       path,
@@ -282,11 +279,12 @@ export class BrowserRenderer {
   private animationFrames(
     path: string,
     animationName: string,
-    animation: AnimationDefinition,
-    direction: "side" | "front" | "back",
+    animation: AnimationPresentation["animation"],
+    direction: Facing,
   ): readonly Texture[] {
     const base = `${path}.animations.${animationName}`;
-    return this.assets.animationFrames.get(isImageAnimationFrames(animation.frames) ? base : `${base}.${direction}`) ?? [];
+    const key = isCharacterAnimationFrames(animation.frames) ? `${base}.${direction}` : base;
+    return this.assets.animationFrames.get(key) ?? [];
   }
 
   private readonly onPointerUp = (event: PointerEvent): void => {

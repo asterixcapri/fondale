@@ -88,7 +88,12 @@ const project = ({
       initialGroundPoint: { x: 210, y: 175 },
       initialFacing: "front",
       initialAppearance: "idle",
-      appearances: { idle: { animations: { idle: { frames: ["/src/characters/brother-elia/idle.png"], framesPerSecond: 1, loop: true } }, roles: { default: "idle", walking: "idle" } } },
+      appearances: { idle: { animations: { idle: { frames: {
+        left: { image: "/src/characters/brother-elia/idle.png", count: 1 },
+        right: { image: "/src/characters/brother-elia/idle.png", count: 1 },
+        front: { image: "/src/characters/brother-elia/idle.png", count: 1 },
+        back: { image: "/src/characters/brother-elia/idle.png", count: 1 },
+      }, framesPerSecond: 1, loop: true } }, roles: { default: "idle", walking: "idle" } } },
       movementSpeed: 900,
     } satisfies CharacterDefinition),
     guide: ({
@@ -96,7 +101,12 @@ const project = ({
       initialGroundPoint: { x: 334, y: 178 },
       initialFacing: "front",
       initialAppearance: "idle",
-      appearances: { idle: { animations: { idle: { frames: ["/src/characters/raffaele/idle.png"], framesPerSecond: 1, loop: true } }, roles: { default: "idle" } } },
+      appearances: { idle: { animations: { idle: { frames: {
+        left: { image: "/src/characters/raffaele/idle.png", count: 1 },
+        right: { image: "/src/characters/raffaele/idle.png", count: 1 },
+        front: { image: "/src/characters/raffaele/idle.png", count: 1 },
+        back: { image: "/src/characters/raffaele/idle.png", count: 1 },
+      }, framesPerSecond: 1, loop: true } }, roles: { default: "idle" } } },
       movementSpeed: 60,
       noun: guideNoun,
     } satisfies CharacterDefinition),

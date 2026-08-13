@@ -8,7 +8,23 @@ export const brotherElia = ({
   initialGroundPoint: { x: 405, y: 205 },
   initialFacing: "left",
   initialAppearance: "welcoming",
-  appearances: { welcoming: { animations: { idle: { frames: [idleUrl], framesPerSecond: 1, loop: true } }, roles: { default: "idle" } } },
+  appearances: {
+    welcoming: {
+      animations: {
+        idle: {
+          frames: {
+            left: { image: idleUrl, count: 1 },
+            right: { image: idleUrl, count: 1 },
+            front: { image: idleUrl, count: 1 },
+            back: { image: idleUrl, count: 1 },
+          },
+          framesPerSecond: 1,
+          loop: true,
+        },
+      },
+      roles: { default: "idle" },
+    },
+  },
   movementSpeed: 60,
   noun: ({
     labels: [{ text: "Frate Elia" }],
@@ -56,6 +72,12 @@ export const brotherElia = ({
       text: "La carrucola gira di nuovo.",
       when: { variable: "wellFreed", equals: true },
       response: "Il secchio è risalito e la manovella è tua. Riportala prima che Raffaele cambi mare.",
+    }, {
+      // Appended last on purpose: consumed alternatives are canonical Game State
+      // recorded by index, so inserting one earlier would misread old Saves.
+      text: "Posso trattenermi un momento?",
+      sequence: "brotherEliaSmallTalk",
+      after: "resume",
     }],
   },
 } satisfies CharacterDefinition);

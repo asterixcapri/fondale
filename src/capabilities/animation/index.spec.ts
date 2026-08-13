@@ -6,11 +6,13 @@ import {
   animationFrameIndex,
   animationNameForRole,
   animationPresentationForSubject,
+  validateCharacterAppearance,
   validateAppearance,
   validateAppearanceSet,
   validateInitialAppearance,
   type AnimationProjectView,
   type Appearance,
+  type CharacterAppearance,
 } from "./index";
 import type { GameState } from "../game-session";
 import { interpretDirectionStep, type DirectionStep } from "../sequence";
@@ -47,6 +49,35 @@ test("Animation owns complete local Appearance validation", () => {
   ]));
 });
 
+test("Character Appearance validation requires four synchronized authored Facing presentations", () => {
+  const appearance = {
+    animations: {
+      idle: {
+        frames: {
+          left: { image: "left.png", count: 2 },
+          right: { image: "right.png", count: 3 },
+          front: { image: "front.png", count: 2 },
+        },
+        framesPerSecond: 6,
+      },
+    },
+    roles: { default: "idle" },
+  } as unknown as CharacterAppearance;
+
+  expect(validateCharacterAppearance(appearance, "characters.actor.appearances.normal")).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        code: "definition.animation.facing-presentation",
+        path: "characters.actor.appearances.normal.animations.idle.frames.back",
+      }),
+      expect.objectContaining({
+        code: "definition.animation.directional-frame-count",
+        path: "characters.actor.appearances.normal.animations.idle.frames",
+      }),
+    ]),
+  );
+});
+
 test("Animation owns finite duration, Cue timing, and frame progression", () => {
   const animation = {
     frames: ["one.png", "two.png", "three.png"],
@@ -64,7 +95,8 @@ test("Animation owns finite duration, Cue timing, and frame progression", () => 
 
   const directional = {
     frames: {
-      side: { image: "side.png", count: 4 },
+      left: { image: "left.png", count: 4 },
+      right: { image: "right.png", count: 4 },
       front: { image: "front.png", count: 4 },
       back: { image: "back.png", count: 4 },
     },

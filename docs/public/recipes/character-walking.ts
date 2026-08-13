@@ -11,7 +11,8 @@ export const player = ({
       animations: {
         walking: {
           frames: {
-            side: { image: new URL("./player-side.png", import.meta.url), count: 4 },
+            left: { image: new URL("./player-left.png", import.meta.url), count: 4 },
+            right: { image: new URL("./player-right.png", import.meta.url), count: 4 },
             front: { image: new URL("./player-front.png", import.meta.url), count: 4 },
             back: { image: new URL("./player-back.png", import.meta.url), count: 4 },
           },
@@ -19,7 +20,8 @@ export const player = ({
         },
         speaking: {
           frames: {
-            side: { image: new URL("./player-side.png", import.meta.url), count: 4 },
+            left: { image: new URL("./player-left.png", import.meta.url), count: 4 },
+            right: { image: new URL("./player-right.png", import.meta.url), count: 4 },
             front: { image: new URL("./player-front.png", import.meta.url), count: 4 },
             back: { image: new URL("./player-back.png", import.meta.url), count: 4 },
           },

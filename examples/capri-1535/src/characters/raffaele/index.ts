@@ -1,15 +1,41 @@
 import { type CharacterDefinition, type NounDefinition } from "@asterixcapri/fondale";
 
 import { micheleLearns } from "../learning";
-import idleUrl from "./idle.png";
+import idleUrl from "./idle-v2.png";
+import speakingUrl from "./speaking-v2.png";
 
 export const raffaele = ({
   initialScene: "harbour",
-  initialGroundPoint: { x: 430, y: 205 },
+  initialGroundPoint: { x: 1060, y: 535 },
   initialFacing: "left",
   initialAppearance: "working",
   appearances: {
-    working: { animations: { idle: { frames: [idleUrl], framesPerSecond: 1, loop: true } }, roles: { default: "idle" } },
+    working: {
+      animations: {
+        idle: {
+          frames: {
+            left: { image: idleUrl, count: 6 },
+            right: { image: idleUrl, count: 6 },
+            front: { image: idleUrl, count: 6 },
+            back: { image: idleUrl, count: 6 },
+          },
+          framesPerSecond: 4,
+          loop: true,
+        },
+        speaking: {
+          frames: {
+            left: { image: speakingUrl, count: 8 },
+            right: { image: speakingUrl, count: 8 },
+            front: { image: speakingUrl, count: 8 },
+            back: { image: speakingUrl, count: 8 },
+          },
+          framesPerSecond: 8,
+          loop: true,
+        },
+      },
+      roles: { default: "idle", speaking: "speaking" },
+      visualAnchor: { x: 48, y: 288 },
+    },
   },
   movementSpeed: 70,
   noun: ({
@@ -73,6 +99,12 @@ export const raffaele = ({
       when: { variable: "boatReady", equals: true },
       response: "L'argano tiene. Sali alla torre e controlla il segnale: al ritorno ti pago.",
       operations: micheleLearns("the-tower-watches-the-sea"),
+    }, {
+      // Appended last on purpose: consumed alternatives are canonical Game State
+      // recorded by index, so inserting one earlier would misread old Saves.
+      text: "Due parole, se hai tempo.",
+      sequence: "raffaeleSmallTalk",
+      after: "resume",
     }],
   },
 } satisfies CharacterDefinition);

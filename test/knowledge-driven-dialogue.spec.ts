@@ -27,9 +27,25 @@ const square = [
 
 const appearance = {
   animations: {
-    idle: { frames: ["idle.png"], framesPerSecond: 1, loop: true },
+    idle: {
+      frames: {
+        left: { image: "idle.png", count: 1 },
+        right: { image: "idle.png", count: 1 },
+        front: { image: "idle.png", count: 1 },
+        back: { image: "idle.png", count: 1 },
+      },
+      framesPerSecond: 1,
+      loop: true,
+    },
   },
   roles: { default: "idle", walking: "idle" },
+};
+
+const objectAppearance = {
+  animations: {
+    idle: { frames: ["idle.png"], framesPerSecond: 1, loop: true },
+  },
+  roles: { default: "idle" },
 };
 
 const commandLexicon = {
@@ -146,7 +162,7 @@ function rollbackProject(operations: readonly GameOperation[]): GameProject {
         initialScene: "opening",
         initialGroundPoint: { x: 10, y: 10 },
         initialAppearance: "normal",
-        appearances: { normal: appearance },
+        appearances: { normal: objectAppearance },
         inventoryAppearance: "key.png",
         noun,
       },

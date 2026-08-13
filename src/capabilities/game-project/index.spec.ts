@@ -9,7 +9,7 @@ import {
   type GameProject,
 } from ".";
 
-const opening = ({
+const opening = {
   background: "opening.png",
   walkableRegion: [
     { x: 0, y: 0 },
@@ -17,7 +17,7 @@ const opening = ({
     { x: 320, y: 180 },
     { x: 0, y: 180 },
   ],
-} satisfies SceneDefinition);
+} satisfies SceneDefinition;
 
 test("Game Project compilation returns ordered diagnostics without throwing", () => {
   const result = compileGameProject({
@@ -43,7 +43,10 @@ test("Game Project compilation returns ordered diagnostics without throwing", ()
     diagnostics: [
       expect.objectContaining({ owner: "game-project", path: "identity" }),
       expect.objectContaining({ owner: "world", path: "initialScene" }),
-      expect.objectContaining({ owner: "game-project", path: "logicalResolution.width" }),
+      expect.objectContaining({
+        owner: "game-project",
+        path: "logicalResolution.width",
+      }),
       expect.objectContaining({ owner: "game-project", path: "version" }),
     ],
   });
@@ -63,7 +66,11 @@ test("Game Project compilation suppresses checks derived from an invalid Scene S
       opening: {
         background: "opening.png",
         size: { width: 0, height: 100 },
-        walkableRegion: [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 0, y: 100 }],
+        walkableRegion: [
+          { x: 0, y: 0 },
+          { x: 100, y: 0 },
+          { x: 0, y: 100 },
+        ],
       },
     },
     initialScene: "opening",
@@ -71,10 +78,12 @@ test("Game Project compilation suppresses checks derived from an invalid Scene S
 
   expect(result).toMatchObject({
     ok: false,
-    diagnostics: [expect.objectContaining({
-      code: "definition.scene-size.positive-integer",
-      path: "scenes.opening.size.width",
-    })],
+    diagnostics: [
+      expect.objectContaining({
+        code: "definition.scene-size.positive-integer",
+        path: "scenes.opening.size.width",
+      }),
+    ],
   });
 });
 
@@ -107,8 +116,12 @@ test("Game Project compilation resolves defaults into a deeply isolated snapshot
   expect(session.world.scenes.opening?.size).toEqual(logicalResolution);
   expect(session.world.scenes.opening?.background).toBeInstanceOf(URL);
   expect(session.world.scenes.opening?.background).not.toBe(background);
-  expect(Object.isFrozen(session.world.scenes.opening?.walkableRegion)).toBe(true);
-  expect(Object.isFrozen(session.world.scenes.opening?.walkableRegion[0])).toBe(true);
+  expect(Object.isFrozen(session.world.scenes.opening?.walkableRegion)).toBe(
+    true,
+  );
+  expect(Object.isFrozen(session.world.scenes.opening?.walkableRegion[0])).toBe(
+    true,
+  );
 
   expect(Object.isFrozen(input)).toBe(false);
   expect(Object.isFrozen(logicalResolution)).toBe(false);
@@ -124,7 +137,9 @@ test("Game Project compilation resolves defaults into a deeply isolated snapshot
   expect(session.world.scenes.opening?.walkableRegion[0]?.x).toBe(0);
   const compiledBackground = session.world.scenes.opening?.background as URL;
   expect(compiledBackground.pathname).toBe("/opening.png");
-  expect(new URL(compiledBackground).href).toBe("https://example.test/opening.png?stable=true");
+  expect(new URL(compiledBackground).href).toBe(
+    "https://example.test/opening.png?stable=true",
+  );
   expect(() => {
     compiledBackground.pathname = "/tampered.png";
   }).toThrow(TypeError);
@@ -136,7 +151,9 @@ test("Game Project compilation resolves defaults into a deeply isolated snapshot
       leaked.set("tampered", "true");
     });
   }).toThrow(TypeError);
-  expect(compiledBackground.href).toBe("https://example.test/opening.png?stable=true");
+  expect(compiledBackground.href).toBe(
+    "https://example.test/opening.png?stable=true",
+  );
 });
 
 test("Game Project compilation severs every supported authored alias", () => {
@@ -155,7 +172,10 @@ test("Game Project compilation severs every supported authored alias", () => {
       opening: {
         background: new URL("https://example.test/background.png"),
         walkableRegion: [
-          { x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }, { x: 0, y: 100 },
+          { x: 0, y: 0 },
+          { x: 100, y: 0 },
+          { x: 100, y: 100 },
+          { x: 0, y: 100 },
         ],
         scenery: {
           curtain: {
@@ -165,7 +185,11 @@ test("Game Project compilation severs every supported authored alias", () => {
             appearances: {
               closed: {
                 kind: "background-region",
-                area: [{ x: 10, y: 10 }, { x: 20, y: 10 }, { x: 20, y: 20 }],
+                area: [
+                  { x: 10, y: 10 },
+                  { x: 20, y: 10 },
+                  { x: 20, y: 20 },
+                ],
               },
             },
           },
@@ -183,12 +207,26 @@ test("Game Project compilation severs every supported authored alias", () => {
           normal: {
             animations: {
               idle: {
-                frames: [frame],
+                frames: {
+                  left: { image: frame, count: 1 },
+                  right: { image: frame, count: 1 },
+                  front: { image: frame, count: 1 },
+                  back: { image: frame, count: 1 },
+                },
                 framesPerSecond: 1,
                 loop: true,
                 cues: { ready: 0 },
               },
-              walk: { frames: [frame], framesPerSecond: 1, loop: true },
+              walk: {
+                frames: {
+                  left: { image: frame, count: 1 },
+                  right: { image: frame, count: 1 },
+                  front: { image: frame, count: 1 },
+                  back: { image: frame, count: 1 },
+                },
+                framesPerSecond: 1,
+                loop: true,
+              },
             },
             roles: { default: "idle", walking: "walk" },
             visualAnchor: { x: 1, y: 2 },
@@ -219,21 +257,32 @@ test("Game Project compilation severs every supported authored alias", () => {
     },
     sequences: {
       memory: {
-        steps: [{
-          type: "branch",
-          cases: [{
-            when: { variable: "remembered", equals: true },
-            steps: [{ type: "narration", text: "Remembered." }],
-          }],
-          fallback: [{ type: "narration", text: "Forgotten." }],
-        }],
+        steps: [
+          {
+            type: "branch",
+            cases: [
+              {
+                when: { variable: "remembered", equals: true },
+                steps: [{ type: "narration", text: "Remembered." }],
+              },
+            ],
+            fallback: [{ type: "narration", text: "Forgotten." }],
+          },
+        ],
       },
     },
     commandLexicon: {
       inventory: { select: "Hold {noun}", deselect: "Put away {noun}" },
       verbs: {
-        open: "Open", "pick-up": "Pick up", push: "Push", close: "Close",
-        "look-at": "Look at", pull: "Pull", give: "Give", "talk-to": "Talk to", use: "Use",
+        open: "Open",
+        "pick-up": "Pick up",
+        push: "Push",
+        close: "Close",
+        "look-at": "Look at",
+        pull: "Pull",
+        give: "Give",
+        "talk-to": "Talk to",
+        use: "Use",
       },
       patterns: {
         unary: "{verb} {noun}",
@@ -242,21 +291,35 @@ test("Game Project compilation severs every supported authored alias", () => {
       },
     },
     commandFallbacks: {
-      open: { text: "Nothing happens." }, "pick-up": { text: "Nothing happens." },
-      push: { text: "Nothing happens." }, close: { text: "Nothing happens." },
-      "look-at": { text: "Nothing happens." }, pull: { text: "Nothing happens." },
-      give: { text: "Nothing happens." }, "talk-to": { text: "Nothing happens." },
+      open: { text: "Nothing happens." },
+      "pick-up": { text: "Nothing happens." },
+      push: { text: "Nothing happens." },
+      close: { text: "Nothing happens." },
+      "look-at": { text: "Nothing happens." },
+      pull: { text: "Nothing happens." },
+      give: { text: "Nothing happens." },
+      "talk-to": { text: "Nothing happens." },
       use: { text: "Nothing happens." },
     },
     hudTheme: {
       font: { family: "Fondale Test", source: font },
       colors: {
-        text: "#fff", preferred: "#f90", selected: "#0cc", backing: "#123456",
-        border: "#abc", inventoryWell: "#012",
+        text: "#fff",
+        preferred: "#f90",
+        selected: "#0cc",
+        backing: "#123456",
+        border: "#abc",
+        inventoryWell: "#012",
       },
       opacity: 0.7,
       maxSpeechWidth: 80,
-      cursors: { left: cursor, right: cursor, up: cursor, down: cursor, enter: cursor },
+      cursors: {
+        left: cursor,
+        right: cursor,
+        up: cursor,
+        down: cursor,
+        enter: cursor,
+      },
       speechColors: { player: "#fff" },
     },
   } satisfies GameProject;
@@ -267,43 +330,52 @@ test("Game Project compilation severs every supported authored alias", () => {
   if (!compilation.ok) return;
   const session = getGameSessionCompositionView(compilation.project);
   const browser = getBrowserProjectView(compilation.project);
-  const compiledAppearance = session.world.characters.player!.appearances.normal!;
+  const compiledAppearance =
+    session.world.characters.player!.appearances.normal!;
   const compiledSequence = session.sequences.memory!;
   const compiledNoun = session.world.objects.key!.noun!;
   const compiledTheme = session.hud.theme!;
-  expect(compiledAppearance).not.toBe(input.characters.player.appearances.normal);
+  expect(compiledAppearance).not.toBe(
+    input.characters.player.appearances.normal,
+  );
   expect(compiledAppearance.animations.idle!.frames).not.toBe(
     input.characters.player.appearances.normal.animations.idle.frames,
   );
-  expect((compiledAppearance.animations.idle!.frames as readonly URL[])[0]).not.toBe(frame);
+  expect(
+    compiledAppearance.animations.idle!.frames.left.image,
+  ).not.toBe(frame);
   expect(compiledSequence.steps).not.toBe(input.sequences.memory.steps);
   expect(compiledNoun.labels).not.toBe(input.objects.key.noun.labels);
   expect(compiledTheme).not.toBe(input.hudTheme);
   expect(compiledTheme.font.source).not.toBe(font);
   expect(browser.assets.objects.key!.inventoryAppearance).not.toBe(inventory);
-  expect([
-    compiledAppearance,
-    compiledAppearance.animations,
-    compiledAppearance.animations.idle,
-    compiledAppearance.animations.idle!.frames,
-    (compiledAppearance.animations.idle!.frames as readonly URL[])[0],
-    compiledSequence.steps,
-    compiledNoun.labels,
-    compiledTheme,
-    compiledTheme.colors,
-    compiledTheme.font.source,
-  ].every(Object.isFrozen)).toBe(true);
-  expect([
-    input.characters.player.appearances.normal,
-    input.characters.player.appearances.normal.animations,
-    input.characters.player.appearances.normal.animations.idle.frames,
-    input.sequences.memory.steps,
-    input.objects.key.noun.labels,
-    input.hudTheme,
-    input.hudTheme.colors,
-    frame,
-    font,
-  ].every((value) => !Object.isFrozen(value))).toBe(true);
+  expect(
+    [
+      compiledAppearance,
+      compiledAppearance.animations,
+      compiledAppearance.animations.idle,
+      compiledAppearance.animations.idle!.frames,
+      compiledAppearance.animations.idle!.frames.left.image,
+      compiledSequence.steps,
+      compiledNoun.labels,
+      compiledTheme,
+      compiledTheme.colors,
+      compiledTheme.font.source,
+    ].every(Object.isFrozen),
+  ).toBe(true);
+  expect(
+    [
+      input.characters.player.appearances.normal,
+      input.characters.player.appearances.normal.animations,
+      input.characters.player.appearances.normal.animations.idle.frames,
+      input.sequences.memory.steps,
+      input.objects.key.noun.labels,
+      input.hudTheme,
+      input.hudTheme.colors,
+      frame,
+      font,
+    ].every((value) => !Object.isFrozen(value)),
+  ).toBe(true);
 });
 
 test("Game Project compilation creates independent snapshots from each call", () => {
@@ -314,7 +386,11 @@ test("Game Project compilation creates independent snapshots from each call", ()
     scenes: {
       opening: {
         background: "opening.png",
-        walkableRegion: [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 0, y: 100 }],
+        walkableRegion: [
+          { x: 0, y: 0 },
+          { x: 100, y: 0 },
+          { x: 0, y: 100 },
+        ],
       },
     },
     variables: { gateOpen: false },
@@ -329,14 +405,19 @@ test("Game Project compilation creates independent snapshots from each call", ()
   expect(second.ok).toBe(true);
   if (!first.ok || !second.ok) return;
   expect(first.project).not.toBe(second.project);
-  expect(getGameSessionCompositionView(first.project).gameProject.variables.gateOpen).toBe(false);
-  expect(getGameSessionCompositionView(second.project).gameProject.variables.gateOpen).toBe(true);
+  expect(
+    getGameSessionCompositionView(first.project).gameProject.variables.gateOpen,
+  ).toBe(false);
+  expect(
+    getGameSessionCompositionView(second.project).gameProject.variables
+      .gateOpen,
+  ).toBe(true);
 });
 
 test("Game Project supplies immutable consumer-specific composition views", () => {
   const variables = { gateOpen: false };
   const scenes = { opening };
-  const player = ({
+  const player = {
     initialScene: "opening",
     initialGroundPoint: { x: 160, y: 90 },
     initialFacing: "front",
@@ -344,15 +425,33 @@ test("Game Project supplies immutable consumer-specific composition views", () =
     appearances: {
       normal: {
         animations: {
-          idle: { frames: ["idle.png"], framesPerSecond: 1, loop: true },
-          walk: { frames: ["walk.png"], framesPerSecond: 1, loop: true },
+          idle: {
+            frames: {
+              left: { image: "idle.png", count: 1 },
+              right: { image: "idle.png", count: 1 },
+              front: { image: "idle.png", count: 1 },
+              back: { image: "idle.png", count: 1 },
+            },
+            framesPerSecond: 1,
+            loop: true,
+          },
+          walk: {
+            frames: {
+              left: { image: "walk.png", count: 1 },
+              right: { image: "walk.png", count: 1 },
+              front: { image: "walk.png", count: 1 },
+              back: { image: "walk.png", count: 1 },
+            },
+            framesPerSecond: 1,
+            loop: true,
+          },
         },
         roles: { default: "idle", walking: "walk" },
       },
     },
     movementSpeed: 60,
-  } satisfies CharacterDefinition);
-  const authoredProject = ({
+  } satisfies CharacterDefinition;
+  const authoredProject = {
     identity: "example.composed-project",
     version: "2",
     logicalResolution: { width: 320, height: 180 },
@@ -361,7 +460,7 @@ test("Game Project supplies immutable consumer-specific composition views", () =
     playerCharacter: "player",
     variables,
     initialScene: "opening",
-  } satisfies GameProject);
+  } satisfies GameProject;
   const compilation = compileGameProject(authoredProject);
   expect(compilation.ok).toBe(true);
   if (!compilation.ok) return;
@@ -378,58 +477,80 @@ test("Game Project supplies immutable consumer-specific composition views", () =
   expect(session.world.scenes.opening).toBeDefined();
   expect(session.animation.playerCharacter).toBe("player");
   expect(browser.startup.identity).toBe("example.composed-project");
-  expect(Object.keys(browser.presentation).sort()).toEqual(["identity", "logicalResolution"]);
+  expect(Object.keys(browser.presentation).sort()).toEqual([
+    "identity",
+    "logicalResolution",
+  ]);
   expect(browser.assets.scenes.opening).toBeDefined();
   expect(save.gameProject.version).toBe("2");
-  expect([
-    session,
-    session.gameProject,
-    session.world,
-    browser,
-    browser.startup,
-    browser.assets,
-    browser.presentation,
-    save,
-    save.gameProject,
-    save.world,
-    save.animation,
-  ].every(Object.isFrozen)).toBe(true);
+  expect(
+    [
+      session,
+      session.gameProject,
+      session.world,
+      browser,
+      browser.startup,
+      browser.assets,
+      browser.presentation,
+      save,
+      save.gameProject,
+      save.world,
+      save.animation,
+    ].every(Object.isFrozen),
+  ).toBe(true);
 });
 
 test("Game Project delegates every local definition to capability validators", () => {
   const result = compileGameProject({
-      identity: "example.invalid-local-definition",
-      version: "1",
-      logicalResolution: { width: 320, height: 180 },
-      initialScene: "opening",
-      scenes: {
-        opening: {
-          background: "opening.png",
-          walkableRegion: [{ x: Number.NaN, y: 0 }, { x: 1, y: 1 }],
-        },
+    identity: "example.invalid-local-definition",
+    version: "1",
+    logicalResolution: { width: 320, height: 180 },
+    initialScene: "opening",
+    scenes: {
+      opening: {
+        background: "opening.png",
+        walkableRegion: [
+          { x: Number.NaN, y: 0 },
+          { x: 1, y: 1 },
+        ],
       },
-      characters: {
-        player: {
-          initialScene: "opening",
-          initialGroundPoint: { x: 0, y: 0 },
-          initialFacing: "front",
-          initialAppearance: "missing",
-          appearances: {},
-          movementSpeed: 0,
-        },
+    },
+    characters: {
+      player: {
+        initialScene: "opening",
+        initialGroundPoint: { x: 0, y: 0 },
+        initialFacing: "front",
+        initialAppearance: "missing",
+        appearances: {},
+        movementSpeed: 0,
       },
-      sequences: {
-        opening: { steps: [{ type: "narration", text: "" }] },
-      },
+    },
+    sequences: {
+      opening: { steps: [{ type: "narration", text: "" }] },
+    },
   });
   expect(result.ok).toBe(false);
   if (!result.ok) {
-    expect(result.diagnostics).toEqual(expect.arrayContaining([
-      expect.objectContaining({ owner: "world", path: "scenes.opening.walkableRegion[0]" }),
-      expect.objectContaining({ owner: "world", path: "characters.player.movementSpeed" }),
-      expect.objectContaining({ owner: "animation", path: "characters.player.initialAppearance" }),
-      expect.objectContaining({ owner: "sequence", path: "sequences.opening.steps[0].text" }),
-    ]));
+    expect(result.diagnostics).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          owner: "world",
+          path: "scenes.opening.walkableRegion[0]",
+        }),
+        expect.objectContaining({
+          owner: "world",
+          path: "characters.player.movementSpeed",
+        }),
+        expect.objectContaining({
+          owner: "animation",
+          path: "characters.player.initialAppearance",
+        }),
+        expect.objectContaining({
+          owner: "sequence",
+          path: "sequences.opening.steps[0].text",
+        }),
+      ]),
+    );
   }
 });
 
@@ -451,7 +572,15 @@ test("Game Project aggregates Knowledge-Driven Dialogue diagnostics at startup",
         appearances: {
           normal: {
             animations: {
-              idle: { frames: ["antonio.png"], framesPerSecond: 1 },
+              idle: {
+                frames: {
+                  left: { image: "antonio.png", count: 1 },
+                  right: { image: "antonio.png", count: 1 },
+                  front: { image: "antonio.png", count: 1 },
+                  back: { image: "antonio.png", count: 1 },
+                },
+                framesPerSecond: 1,
+              },
             },
             roles: { default: "idle" },
           },

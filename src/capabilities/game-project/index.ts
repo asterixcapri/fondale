@@ -70,11 +70,15 @@ import {
   validateObjectAppearanceReference,
   validateWalkingAppearanceRoles,
   type AnimationDefinition,
+  type AnimationBearingAppearance,
   type AnimationFrames,
   type AnimationRoles,
   type AnimationStrip,
   type AnimationProjectView,
   type Appearance,
+  type CharacterAnimationDefinition,
+  type CharacterAnimationFrames,
+  type CharacterAppearance,
 } from "../animation";
 import {
   createWorldDefinitionQueries,
@@ -119,6 +123,9 @@ export type {
   AnimationRoles,
   AnimationStrip,
   Appearance,
+  CharacterAnimationDefinition,
+  CharacterAnimationFrames,
+  CharacterAppearance,
 } from "../animation";
 
 /** The fixed dimensions of the logical viewport and Engine-owned overlay. */
@@ -758,8 +765,8 @@ function validateProjectDefinitions(
     );
   }
 
-  const appearancesForSubject = (subject: DirectedSubject, sceneId?: string): Appearance[] => {
-    const candidates: (EntityAppearance | SceneryAppearance)[] = subject.kind === "character"
+  const appearancesForSubject = (subject: DirectedSubject, sceneId?: string): AnimationBearingAppearance[] => {
+    const candidates = subject.kind === "character"
       ? Object.values(characters[subject.character]?.appearances ?? {})
       : subject.kind === "object"
         ? Object.values(objects[subject.object]?.appearances ?? {})

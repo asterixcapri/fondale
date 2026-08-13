@@ -61,6 +61,5 @@ export const capriHudTheme = ({
   speechColors: {
     michele: "#f4dfb4",
     raffaele: "#f2ad62",
-    brotherElia: "#58d6d2",
   },
 } satisfies HUDTheme);

@@ -23,11 +23,11 @@ from PIL import Image
 
 CHARACTERS_DIR = Path("src/characters")
 
-# The character's height at full scale, i.e. standing at the very front of a
-# room. Everything further back is scaled down from this, never up: enlarging
-# pixel art past its drawn size is the one operation that always looks cheap.
-NATIVE_HEIGHT = 82
-COLOURS = 32
+# Project-wide native Character height. Scene Perspective Scale may reduce this
+# at depth but must not enlarge it. Preserve full RGB colour by default; palette
+# reduction is an explicit art-direction choice made with --colours.
+NATIVE_HEIGHT = 288
+COLOURS = 0
 
 
 def runs(flags, minimum: int) -> list[tuple[int, int]]:
@@ -45,10 +45,15 @@ def runs(flags, minimum: int) -> list[tuple[int, int]]:
 
 
 def extract(sheet: Path) -> list[Image.Image]:
-    im = Image.open(sheet).convert("RGB")
+    source = Image.open(sheet)
+    im = source.convert("RGBA")
     pixels = np.asarray(im, dtype=np.int32)
-    ground = np.asarray(im.getpixel((2, 2)), dtype=np.int32)
-    content = np.abs(pixels - ground).sum(axis=2) > 60
+    has_alpha = "A" in source.getbands()
+    if has_alpha:
+        content = pixels[:, :, 3] > 1
+    else:
+        ground = np.asarray(source.convert("RGB").getpixel((2, 2)), dtype=np.int32)
+        content = np.abs(pixels[:, :, :3] - ground).sum(axis=2) > 60
 
     frames = []
     for y0, y1 in runs(content.sum(axis=1) > 3, minimum=60):
@@ -56,10 +61,17 @@ def extract(sheet: Path) -> list[Image.Image]:
             block = content[y0:y1, x0:x1]
             ys, xs = np.where(block)
             cut = im.crop((x0 + xs.min(), y0 + ys.min(), x0 + xs.max() + 1, y0 + ys.max() + 1))
-            alpha = np.where(
-                np.abs(np.asarray(cut, dtype=np.int32) - ground).sum(axis=2) > 70, 255, 0
-            ).astype(np.uint8)
-            frames.append(Image.fromarray(np.dstack([np.asarray(cut, dtype=np.uint8), alpha]), "RGBA"))
+            if has_alpha:
+                frames.append(cut)
+            else:
+                cut_pixels = np.asarray(cut, dtype=np.int32)
+                alpha = np.where(
+                    np.abs(cut_pixels[:, :, :3] - ground).sum(axis=2) > 70, 255, 0
+                ).astype(np.uint8)
+                frames.append(Image.fromarray(
+                    np.dstack([cut_pixels[:, :, :3].astype(np.uint8), alpha]),
+                    "RGBA",
+                ))
     return frames
 
 
@@ -69,7 +81,17 @@ def main() -> int:
     parser.add_argument("character")
     parser.add_argument("name")
     parser.add_argument("--height", type=int, default=NATIVE_HEIGHT)
-    parser.add_argument("--colours", type=int, default=COLOURS)
+    parser.add_argument(
+        "--cell-width",
+        type=int,
+        help="fixed frame width; useful when several Animations share one Visual Anchor",
+    )
+    parser.add_argument(
+        "--colours",
+        type=int,
+        default=COLOURS,
+        help="palette size; use 0 to preserve full RGB colour",
+    )
     args = parser.parse_args()
 
     frames = extract(args.sheet)
@@ -87,7 +109,14 @@ def main() -> int:
         for f in frames
     ]
 
-    cell_w = max(f.width for f in scaled)
+    widest = max(f.width for f in scaled)
+    cell_w = args.cell_width or widest
+    if cell_w < widest:
+        print(
+            f"cell width {cell_w} is narrower than the widest frame ({widest})",
+            file=sys.stderr,
+        )
+        return 1
     cell_h = max(f.height for f in scaled)
 
     strip = Image.new("RGBA", (cell_w * len(scaled), cell_h), (0, 0, 0, 0))
@@ -96,18 +125,25 @@ def main() -> int:
         # the midpoint of the bottom edge, which is where the feet are.
         strip.paste(frame, (i * cell_w + (cell_w - frame.width) // 2, cell_h - frame.height), frame)
 
-    # Quantise the colour, not the alpha: a palette pass over RGBA turns soft
-    # edges into a fringe, so the alpha is lifted out and put back afterwards.
-    alpha = strip.getchannel("A")
-    body = strip.convert("RGB").quantize(colors=args.colours, method=Image.MEDIANCUT).convert("RGB")
-    body.putalpha(alpha)
+    if args.colours > 0:
+        # Quantise the colour, not the alpha: a palette pass over RGBA turns soft
+        # edges into a fringe, so the alpha is lifted out and put back afterwards.
+        alpha = strip.getchannel("A")
+        body = strip.convert("RGB").quantize(
+            colors=args.colours,
+            method=Image.MEDIANCUT,
+        ).convert("RGB")
+        body.putalpha(alpha)
+    else:
+        body = strip
 
     output_dir = CHARACTERS_DIR / args.character
     output_dir.mkdir(parents=True, exist_ok=True)
     png = output_dir / f"{args.name}.png"
     body.save(png)
 
-    print(f"{png}  ({len(scaled)} frame da {cell_w}x{cell_h}, {args.colours} colori)")
+    colour_description = f"{args.colours} colori" if args.colours > 0 else "colore RGB completo"
+    print(f"{png}  ({len(scaled)} frame da {cell_w}x{cell_h}, {colour_description})")
     return 0
 
 

@@ -5,13 +5,13 @@ const outcome: readonly GameOperation[] = [
   {
     type: "set-appearance",
     target: { kind: "scenery", scene: "harbour", scenery: "winch" },
-    appearance: "repaired",
+    appearance: "withHandle",
   },
   {
     type: "place-object",
     object: "winchHandle",
     scene: "harbour",
-    groundPoint: { x: 552, y: 210 },
+    groundPoint: { x: 1630, y: 505 },
     appearance: "installed",
   },
 ];

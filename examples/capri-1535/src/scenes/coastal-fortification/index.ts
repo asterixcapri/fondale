@@ -36,26 +36,14 @@ export const coastalFortification = ({
       appearances: {
         approaching: {
           animations: {
-            idle: { frames: {
-              side: { image: boatRockingUrl, count: 4 },
-              front: { image: boatRockingUrl, count: 4 },
-              back: { image: boatRockingUrl, count: 4 },
-            }, framesPerSecond: 1 },
-            rocking: { frames: {
-              side: { image: boatRockingUrl, count: 4 },
-              front: { image: boatRockingUrl, count: 4 },
-              back: { image: boatRockingUrl, count: 4 },
-            }, framesPerSecond: 5, loop: true },
+            idle: { frames: { image: boatRockingUrl, count: 4 }, framesPerSecond: 1 },
+            rocking: { frames: { image: boatRockingUrl, count: 4 }, framesPerSecond: 5, loop: true },
           },
           roles: { default: "idle" },
           visualAnchor: { x: 32, y: 86 },
         },
         landed: {
-          animations: { rocking: { frames: {
-            side: { image: boatRockingUrl, count: 4 },
-            front: { image: boatRockingUrl, count: 4 },
-            back: { image: boatRockingUrl, count: 4 },
-          }, framesPerSecond: 3, loop: true } },
+          animations: { rocking: { frames: { image: boatRockingUrl, count: 4 }, framesPerSecond: 3, loop: true } },
           roles: { default: "rocking" },
           visualAnchor: { x: 32, y: 86 },
         },

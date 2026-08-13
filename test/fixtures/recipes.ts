@@ -26,7 +26,12 @@ const player = ({
   initialFacing: "front",
   initialAppearance: "idle",
   movementSpeed: 600,
-  appearances: { idle: { animations: { idle: { frames: [new URL("../../docs/public/recipes/key.png", import.meta.url)], framesPerSecond: 1, loop: true } }, roles: { default: "idle", walking: "idle" } } },
+  appearances: { idle: { animations: { idle: { frames: {
+    left: { image: new URL("../../docs/public/recipes/key.png", import.meta.url), count: 1 },
+    right: { image: new URL("../../docs/public/recipes/key.png", import.meta.url), count: 1 },
+    front: { image: new URL("../../docs/public/recipes/key.png", import.meta.url), count: 1 },
+    back: { image: new URL("../../docs/public/recipes/key.png", import.meta.url), count: 1 },
+  }, framesPerSecond: 1, loop: true } }, roles: { default: "idle", walking: "idle" } } },
 } satisfies CharacterDefinition);
 
 const interactionProject = ({

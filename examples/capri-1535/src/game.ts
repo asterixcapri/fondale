@@ -2,28 +2,21 @@ import { type GameProject } from "@asterixcapri/fondale";
 
 import { michele } from "./characters/michele";
 import { raffaele } from "./characters/raffaele";
-import { brotherElia } from "./characters/brother-elia";
 import { capriHudTheme, italianCommandFallbacks, italianCommandLexicon } from "./hud";
-import { oilFlask } from "./objects/oil-flask";
 import { winchHandle } from "./objects/winch-handle";
-import { cloister } from "./scenes/cloister";
-import { coastalFortification } from "./scenes/coastal-fortification";
 import { harbour } from "./scenes/harbour";
-import { townSquare } from "./scenes/town-square";
-import { brotherEliaConversation } from "./sequences/brother-elia-conversation";
-import { prologueConclusion } from "./sequences/prologue-conclusion";
+import { raffaeleSmallTalk } from "./sequences/raffaele-small-talk";
 import { raffaeleConversation } from "./sequences/raffaele-conversation";
-import { boatArrival } from "./sequences/boat-arrival";
 import { winchInstallation } from "./sequences/winch-installation";
 
 export const project = ({
   identity: "org.asterixcapri.capri-1535-example",
   version: "7",
-  logicalResolution: { width: 426, height: 240 },
+  logicalResolution: { width: 1280, height: 720 },
   inventoryAppearanceSize: 32,
   letterboxColor: "#15101d",
-  scenes: { townSquare, cloister, harbour, coastalFortification },
-  characters: { michele, raffaele, brotherElia },
+  scenes: { harbour },
+  characters: { michele, raffaele },
   playerCharacter: "michele",
   // Propositions are written in the Example's own language, because they are
   // the material a Dialogue Provider verbalises for an Italian-speaking Player
@@ -55,13 +48,11 @@ export const project = ({
         "Dalla torre della fortificazione costiera si tiene d'occhio il mare aperto.",
     },
   },
-  objects: { oilFlask, winchHandle },
+  objects: { winchHandle },
   sequences: {
     raffaeleConversation,
-    brotherEliaConversation,
-    prologueConclusion,
+    raffaeleSmallTalk,
     winchInstallation,
-    boatArrival,
   },
   commandLexicon: italianCommandLexicon,
   commandFallbacks: italianCommandFallbacks,
@@ -74,5 +65,5 @@ export const project = ({
     driftingBoatSeen: false,
     boatLanded: false,
   },
-  initialScene: "townSquare",
+  initialScene: "harbour",
 } satisfies GameProject);

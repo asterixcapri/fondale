@@ -25,7 +25,12 @@ const sequencePlayer = ({
   initialFacing: "front",
   initialAppearance: "idle",
   movementSpeed: 60,
-  appearances: { idle: { animations: { idle: { frames: ["player.png"], framesPerSecond: 1, loop: true } }, roles: { default: "idle", walking: "idle" } } },
+  appearances: { idle: { animations: { idle: { frames: {
+    left: { image: "player.png", count: 1 },
+    right: { image: "player.png", count: 1 },
+    front: { image: "player.png", count: 1 },
+    back: { image: "player.png", count: 1 },
+  }, framesPerSecond: 1, loop: true } }, roles: { default: "idle", walking: "idle" } } },
 } satisfies CharacterDefinition);
 
 test("every public recipe exposes ordinary author-owned data from the built package root", () => {

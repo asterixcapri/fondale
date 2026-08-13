@@ -36,6 +36,21 @@ const appearance = {
   roles: { default: "idle" },
 } as const;
 
+const characterAppearance = {
+  animations: {
+    idle: {
+      frames: {
+        left: { image: "idle.png", count: 1 },
+        right: { image: "idle.png", count: 1 },
+        front: { image: "idle.png", count: 1 },
+        back: { image: "idle.png", count: 1 },
+      },
+      framesPerSecond: 1,
+    },
+  },
+  roles: { default: "idle" },
+} as const;
+
 test("World validates complete local definitions with caller-provided paths", () => {
   expect(validateCharacterDefinition({
     initialScene: "opening",
@@ -153,7 +168,7 @@ test("World creates defensive initial spatial state from its project view", () =
     initialGroundPoint: { x: 10, y: 20 },
     initialFacing: "right",
     initialAppearance: "normal",
-    appearances: { normal: appearance },
+    appearances: { normal: characterAppearance },
     movementSpeed: 60,
   } satisfies CharacterDefinition));
   const object = (validateTestObjectDefinition({
@@ -266,7 +281,7 @@ test("World answers directed-subject presence and position in the current Scene"
     initialGroundPoint: { x: 10, y: 20 },
     initialFacing: "right",
     initialAppearance: "normal",
-    appearances: { normal: appearance },
+    appearances: { normal: characterAppearance },
     movementSpeed: 60,
   } satisfies CharacterDefinition));
   const object = (validateTestObjectDefinition({
@@ -326,7 +341,7 @@ test("World derives defensive presentation facts for the current Scene", () => {
     initialGroundPoint: { x: 10, y: 20 },
     initialFacing: "left",
     initialAppearance: "normal",
-    appearances: { normal: appearance },
+    appearances: { normal: characterAppearance },
     movementSpeed: 60,
   } satisfies CharacterDefinition));
   const object = (validateTestObjectDefinition({
@@ -393,7 +408,7 @@ test("World separates local Scene geometry from composed entity membership", () 
     initialGroundPoint: { x: 10, y: 20 },
     initialFacing: "right",
     initialAppearance: "normal",
-    appearances: { normal: appearance },
+    appearances: { normal: characterAppearance },
     movementSpeed: 60,
   } satisfies CharacterDefinition));
 
@@ -553,7 +568,7 @@ test("World plans and advances deterministic Character navigation without mutati
     initialGroundPoint: { x: 10, y: 10 },
     initialFacing: "front",
     initialAppearance: "normal",
-    appearances: { normal: appearance },
+    appearances: { normal: characterAppearance },
     movementSpeed: 60,
   } satisfies CharacterDefinition));
   const world = createWorld({
@@ -600,7 +615,7 @@ test("World derives every Character facing even when movement completes in one t
     initialGroundPoint: { x: 50, y: 50 },
     initialFacing: "front",
     initialAppearance: "normal",
-    appearances: { normal: appearance },
+    appearances: { normal: characterAppearance },
     movementSpeed: 60,
   } satisfies CharacterDefinition));
   const world = createWorld({
@@ -684,7 +699,7 @@ test("World advances Character, Object and Scenery Motion from shared local timi
     initialGroundPoint: { x: 10, y: 10 },
     initialFacing: "front",
     initialAppearance: "normal",
-    appearances: { normal: appearance },
+    appearances: { normal: characterAppearance },
     movementSpeed: 60,
   } satisfies CharacterDefinition));
   const object = (validateTestObjectDefinition({
@@ -782,7 +797,7 @@ test("World resolves a Passage transition and its Arrival Sequence without mutat
     initialGroundPoint: { x: 10, y: 10 },
     initialFacing: "front",
     initialAppearance: "normal",
-    appearances: { normal: appearance },
+    appearances: { normal: characterAppearance },
     movementSpeed: 60,
   } satisfies CharacterDefinition));
   const world = createWorld({

@@ -37,9 +37,13 @@ frontier is empty and the user confirms the Character contract.
 Choose the project reference Character and preserve the established
 Character-to-viewport ratio. Create a full-resolution height chart, silhouette,
 turnaround, colour plan, Ground Point, and stable Visual Anchor. Test the design
-inside representative near, middle, and far Scene compositions. Finish when
-anatomy, costume landmarks, palette, and scale remain recognisable in every
-required facing and depth band.
+inside representative near, middle, and far Scene compositions. Before deriving
+Runtime Assets, calculate the displayed pixel height at every reachable
+Perspective Scale and pass the native-resolution gate in
+[character-package.md](references/character-package.md). Finish when anatomy,
+costume landmarks, palette, and scale remain recognisable in every required
+facing and depth band, including both left-facing and right-facing side
+presentation, with no Runtime Asset enlarged by the Engine.
 
 ### 4. Create Art Masters and Animations
 
@@ -47,7 +51,12 @@ Follow [character-package.md](references/character-package.md). Create lossless
 Art Masters for every confirmed Appearance and Animation. Keep frame dimensions,
 proportions, lighting logic, and Visual Anchor stable. Derive fitted Runtime
 Assets without overwriting Art Masters. Inspect strips and individual frames at
-1:1 pixels and in motion.
+1:1 pixels and in motion. Preserve full RGB/RGBA colour and antialiased alpha by
+default; palette reduction is a confirmed art-direction decision, not a routine
+export step. Author and verify distinct `left` and `right` presentations as
+documented in [character-package.md](references/character-package.md).
+For every Appearance, create explicit looping `idle` and `speaking` Animations
+and assign them to the Default and Speaking Animation Roles respectively.
 
 Finish when every Animation loops or completes cleanly, every cue lands on the
 intended action, and no Appearance jumps at its Visual Anchor.
@@ -65,7 +74,7 @@ Appearance, Animation, cue, Scene, and Sequence remains valid.
 
 ### 6. Verify in the Engine
 
-Build and run relevant browser verification. Inspect default, walking, speaking,
+Build and run relevant browser verification. Inspect idle, walking, speaking,
 and directed Animations in every required facing, at representative Perspective
 Scales, and across Appearance changes. Exercise the Character's Hotspot and
 Noun. Finish when all checks in

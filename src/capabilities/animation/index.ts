@@ -24,23 +24,31 @@ export interface AnimationStrip {
   readonly count: number;
 }
 
-/** Frames used by one Animation, either as images or directional strips. */
-export type AnimationFrames =
-  | readonly (URL | string)[]
-  | {
-      readonly side: AnimationStrip;
-      readonly front: AnimationStrip;
-      readonly back: AnimationStrip;
-    };
+/** Non-directional images or one horizontal strip used by an Object or Scenery Animation. */
+export type AnimationFrames = readonly (URL | string)[] | AnimationStrip;
+
+/** Four synchronized authored presentations owned by one Character Animation. */
+export interface CharacterAnimationFrames {
+  readonly left: AnimationStrip;
+  readonly right: AnimationStrip;
+  readonly front: AnimationStrip;
+  readonly back: AnimationStrip;
+}
+
+type AnyAnimationFrames = AnimationFrames | CharacterAnimationFrames;
 
 /** A declarative transient visual performance owned by an Appearance. */
-export interface AnimationDefinition {
-  readonly frames: AnimationFrames;
+export interface AnimationDefinition<Frames extends AnyAnimationFrames = AnyAnimationFrames> {
+  readonly frames: Frames;
   readonly framesPerSecond: number;
   readonly loop?: boolean;
   /** Named logical seconds from the start of the Animation. */
   readonly cues?: Readonly<Record<string, number>>;
 }
+
+/** A Character Animation whose artwork is authored independently for every Facing. */
+export type CharacterAnimationDefinition = AnimationDefinition<CharacterAnimationFrames>;
+type AnyAnimationDefinition = AnimationDefinition | CharacterAnimationDefinition;
 
 /** Semantic Animation selections used automatically by the Engine. */
 export interface AnimationRoles {
@@ -49,12 +57,26 @@ export interface AnimationRoles {
   readonly walking?: string;
 }
 
-/** A persistent visual condition that owns all transient Animations available in it. */
-export interface Appearance {
+/** @internal Shared read model for any Appearance carrying Animations. */
+export interface AnimationBearingAppearance {
   readonly animations: Readonly<Record<string, AnimationDefinition>>;
   readonly roles: AnimationRoles;
   readonly visualAnchor?: VisualAnchor;
 }
+
+/** A persistent visual condition that owns all transient Animations available in it. */
+export interface Appearance {
+  readonly animations: Readonly<Record<string, AnimationDefinition<AnimationFrames>>>;
+  readonly roles: AnimationRoles;
+  readonly visualAnchor?: VisualAnchor;
+}
+
+/** A Character Appearance whose every Animation supplies all four Facing presentations. */
+export interface CharacterAppearance extends Omit<Appearance, "animations"> {
+  readonly animations: Readonly<Record<string, CharacterAnimationDefinition>>;
+}
+
+type AnyAppearance = Appearance | CharacterAppearance;
 
 /** @internal Definitions needed for Animation interpretation and Save validation. */
 export interface AnimationProjectView {
@@ -125,7 +147,7 @@ export function validateAppearanceOperationReference(
 
 /** Resolves an Engine-selected Animation Role, including the speaking fallback. */
 export function animationNameForRole(
-  appearance: Appearance,
+  appearance: AnyAppearance,
   role: keyof AnimationRoles,
 ): string | undefined {
   if (role === "speaking") return appearance.roles.speaking ?? appearance.roles.default;
@@ -134,8 +156,16 @@ export function animationNameForRole(
 
 /** Reports every local Appearance and Animation Authoring Diagnostic. */
 export function validateAppearance(
-  appearance: Appearance,
+  appearance: AnyAppearance,
   path: string,
+): readonly AuthoringDiagnostic[] {
+  return validateAppearanceContract(appearance, path, false);
+}
+
+function validateAppearanceContract(
+  appearance: AnyAppearance,
+  path: string,
+  character: boolean,
 ): readonly AuthoringDiagnostic[] {
   const diagnostics: AuthoringDiagnostic[] = [];
   const animationNames = Object.keys(appearance.animations);
@@ -185,7 +215,13 @@ export function validateAppearance(
 
   for (const [animationName, animation] of Object.entries(appearance.animations)) {
     const animationPath = `${path}.animations.${animationName}`;
-    const frameCount = validateFrames(animation.frames, animationPath, diagnostics);
+    const frameCount = character
+      ? validateCharacterFrames(
+          isCharacterAnimationFrames(animation.frames) ? animation.frames : undefined,
+          animationPath,
+          diagnostics,
+        )
+      : validateFrames(animation.frames, animationPath, diagnostics);
     if (!Number.isFinite(animation.framesPerSecond) || animation.framesPerSecond <= 0) {
       diagnostics.push({
         code: "definition.animation.frames-per-second",
@@ -207,7 +243,7 @@ export function validateAppearance(
     const duration = frameCount > 0 && animation.framesPerSecond > 0
       ? frameCount / animation.framesPerSecond
       : 0;
-    for (const [cue, at] of Object.entries(animation.cues ?? {})) {
+    for (const [cue, at] of Object.entries(animation.cues ?? {}) as [string, number][]) {
       if (!cue.trim() || !Number.isFinite(at) || at < 0 || at > duration) {
         diagnostics.push({
           code: "definition.animation.cue",
@@ -222,6 +258,14 @@ export function validateAppearance(
   return diagnostics;
 }
 
+/** Reports every local Character Appearance and synchronized Facing diagnostic. */
+export function validateCharacterAppearance(
+  appearance: CharacterAppearance,
+  path: string,
+): readonly AuthoringDiagnostic[] {
+  return validateAppearanceContract(appearance, path, true);
+}
+
 export interface AppearanceSetValidation {
   readonly path: string;
   readonly initialAppearance: string;
@@ -231,7 +275,7 @@ export interface AppearanceSetValidation {
 
 /** Reports required walking-role Authoring Diagnostic without repeating Appearance validation. */
 export function validateWalkingAppearanceRoles(
-  appearances: Readonly<Record<string, Appearance>>,
+  appearances: Readonly<Record<string, AnyAppearance>>,
   path: string,
   subject: "Character" | "Object",
 ): readonly AuthoringDiagnostic[] {
@@ -268,11 +312,13 @@ export function validateInitialAppearance(
 
 /** Validates one entity's complete set of Appearance choices and role requirements. */
 export function validateAppearanceSet(
-  appearances: Readonly<Record<string, Appearance>>,
+  appearances: Readonly<Record<string, AnyAppearance>>,
   validation: AppearanceSetValidation,
 ): readonly AuthoringDiagnostic[] {
   const diagnostics = Object.entries(appearances).flatMap(([appearanceName, appearance]) =>
-    validateAppearance(appearance, `${validation.path}.${appearanceName}`),
+    validation.subject === "Character"
+      ? validateCharacterAppearance(appearance as CharacterAppearance, `${validation.path}.${appearanceName}`)
+      : validateAppearance(appearance, `${validation.path}.${appearanceName}`),
   );
   const ownerPath = validation.path.endsWith(".appearances")
     ? validation.path.slice(0, -".appearances".length)
@@ -295,7 +341,7 @@ export function validateAppearanceSet(
 
 /** Validates that every possible Appearance can present a named Animation. */
 export function validateAnimationReference(
-  appearances: readonly Appearance[],
+  appearances: readonly AnimationBearingAppearance[],
   animation: string,
   path: string,
   code: string,
@@ -307,7 +353,7 @@ export function validateAnimationReference(
 }
 
 function validateFrames(
-  frames: AnimationFrames,
+  frames: AnyAnimationFrames,
   animationPath: string,
   diagnostics: AuthoringDiagnostic[],
 ): number {
@@ -335,27 +381,57 @@ function validateFrames(
     return frames.length;
   }
 
+  return isCharacterAnimationFrames(frames)
+    ? validateCharacterFrames(frames, animationPath, diagnostics)
+    : validateAnimationStrip(frames, `${animationPath}.frames`, diagnostics);
+}
+
+function validateAnimationStrip(
+  strip: AnimationStrip,
+  path: string,
+  diagnostics: AuthoringDiagnostic[],
+): number {
+  if (!(strip?.image instanceof URL) && (typeof strip?.image !== "string" || !strip.image.trim())) {
+    diagnostics.push({
+      code: "definition.animation.frame-source",
+      family: "definition",
+      owner: "animation",
+      path: `${path}.image`,
+      message: "An Animation strip source must be a URL or non-empty string.",
+    });
+  }
+  if (!Number.isInteger(strip?.count) || strip.count <= 0) {
+    diagnostics.push({
+      code: "definition.animation.frames",
+      family: "definition",
+      owner: "animation",
+      path: `${path}.count`,
+      message: "An Animation strip must contain a positive integer number of frames.",
+    });
+  }
+  return strip?.count ?? 0;
+}
+
+function validateCharacterFrames(
+  frames: CharacterAnimationFrames | undefined,
+  animationPath: string,
+  diagnostics: AuthoringDiagnostic[],
+): number {
   const counts = new Set<number>();
-  for (const direction of ["side", "front", "back"] as const) {
-    const strip = frames[direction];
-    if (!(strip.image instanceof URL) && (typeof strip.image !== "string" || !strip.image.trim())) {
+  for (const direction of ["left", "right", "front", "back"] as const) {
+    const strip = frames?.[direction];
+    if (!strip || typeof strip !== "object") {
       diagnostics.push({
-        code: "definition.animation.frame-source",
+        code: "definition.animation.facing-presentation",
         family: "definition",
         owner: "animation",
-        path: `${animationPath}.frames.${direction}.image`,
-        message: "An Animation strip source must be a URL or non-empty string.",
+        path: `${animationPath}.frames.${direction}`,
+        message: `A Character Animation must provide an authored ${direction} presentation.`,
       });
+      continue;
     }
-    if (!Number.isInteger(strip.count) || strip.count <= 0) {
-      diagnostics.push({
-        code: "definition.animation.frames",
-        family: "definition",
-        owner: "animation",
-        path: `${animationPath}.frames.${direction}.count`,
-        message: "An Animation strip must contain a positive integer number of frames.",
-      });
-    } else {
+    validateAnimationStrip(strip, `${animationPath}.frames.${direction}`, diagnostics);
+    if (Number.isInteger(strip.count) && strip.count > 0) {
       counts.add(strip.count);
     }
   }
@@ -368,11 +444,11 @@ function validateFrames(
       message: "Directional Animation strips must contain the same number of frames.",
     });
   }
-  return frames.front.count;
+  return frames?.front?.count ?? 0;
 }
 
 /** Animation-owned finite duration used by Sequence and browser presentation. */
-export function animationDurationTicks(animation: AnimationDefinition): number {
+export function animationDurationTicks(animation: AnyAnimationDefinition): number {
   const count = animationFrameCount(animation);
   return Math.max(1, Math.ceil(count / animation.framesPerSecond * 60));
 }
@@ -385,7 +461,7 @@ export function animationCueTick(animation: AnimationDefinition, cue: string): n
 
 /** Selects the logical frame presented at an Animation-local tick. */
 export function animationFrameIndex(
-  animation: AnimationDefinition,
+  animation: AnyAnimationDefinition,
   elapsedTicks: number,
   loop = Boolean(animation.loop),
 ): number {
@@ -394,10 +470,12 @@ export function animationFrameIndex(
   return loop ? logicalFrame % frameCount : Math.min(frameCount - 1, logicalFrame);
 }
 
-export function animationFrameCount(animation: AnimationDefinition): number {
+export function animationFrameCount(animation: AnyAnimationDefinition): number {
   return isImageAnimationFrames(animation.frames)
     ? animation.frames.length
-    : animation.frames.front.count;
+    : isCharacterAnimationFrames(animation.frames)
+      ? animation.frames.front.count
+      : animation.frames.count;
 }
 
 export interface AnimationPresentationContext {
@@ -408,9 +486,9 @@ export interface AnimationPresentationContext {
 /** Browser-independent visual facts for one animated subject. */
 export interface AnimationPresentation {
   readonly appearanceName: string;
-  readonly appearance: Appearance;
+  readonly appearance: AnyAppearance;
   readonly animationName: string;
-  readonly animation: AnimationDefinition;
+  readonly animation: AnyAnimationDefinition;
   readonly elapsedTicks: number;
   readonly frameIndex: number;
   readonly loop: boolean;
@@ -514,7 +592,7 @@ export function appearanceForSubject(
   data: AnimationProjectView,
   state: Readonly<GameState>,
   subject: DirectedSubject,
-): Appearance | undefined {
+): AnyAppearance | undefined {
   return appearanceSelectionForSubject(data, state, subject)?.appearance;
 }
 
@@ -549,7 +627,7 @@ function appearanceSelectionForSubject(
   data: AnimationProjectView,
   state: Readonly<GameState>,
   subject: DirectedSubject,
-): { readonly appearanceName: string; readonly appearance: Appearance } | undefined {
+): { readonly appearanceName: string; readonly appearance: AnyAppearance } | undefined {
   const subjectId = directedSubjectId(subject);
   const appearanceName = {
     character: state.characters[subjectId]?.appearance,
@@ -618,7 +696,13 @@ function* reverseDirectionTimings(context: NonNullable<AnimationPresentationCont
 }
 
 export function isImageAnimationFrames(
-  frames: AnimationFrames,
+  frames: AnyAnimationFrames,
 ): frames is readonly (URL | string)[] {
   return Array.isArray(frames);
+}
+
+export function isCharacterAnimationFrames(
+  frames: AnyAnimationFrames,
+): frames is CharacterAnimationFrames {
+  return !Array.isArray(frames) && frames !== null && typeof frames === "object" && "left" in frames;
 }

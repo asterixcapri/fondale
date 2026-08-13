@@ -5,6 +5,8 @@ import {
   AuthoringError,
   startGame,
   type CharacterDefinition,
+  type CharacterAnimationDefinition,
+  type CharacterAppearance,
   type CharacterDialogueDefinition,
   type CharacterKnowledgeDefinition,
   type ClaimDefinition,
@@ -66,6 +68,8 @@ const project = {
 
 const focusedTypes = {
   character: null as unknown as CharacterDefinition,
+  characterAnimation: null as unknown as CharacterAnimationDefinition,
+  characterAppearance: null as unknown as CharacterAppearance,
   characterDialogue: null as unknown as CharacterDialogueDefinition,
   characterKnowledge: null as unknown as CharacterKnowledgeDefinition,
   claim: null as unknown as ClaimDefinition,
@@ -107,6 +111,27 @@ const focusedTypes = {
 
 void focusedTypes;
 
+const incompleteCharacterAnimation: CharacterAnimationDefinition = {
+  // @ts-expect-error Character Animations require an authored back presentation.
+  frames: {
+    left: { image: "left.png", count: 1 },
+    right: { image: "right.png", count: 1 },
+    front: { image: "front.png", count: 1 },
+  },
+  framesPerSecond: 1,
+};
+const legacyCharacterAnimation: CharacterAnimationDefinition = {
+  frames: {
+    // @ts-expect-error The removed side presentation has no compatibility path.
+    side: { image: "side.png", count: 1 },
+    front: { image: "front.png", count: 1 },
+    back: { image: "back.png", count: 1 },
+  },
+  framesPerSecond: 1,
+};
+void incompleteCharacterAnimation;
+void legacyCharacterAnimation;
+
 test("the root API exposes declarative authoring types without legacy builders", () => {
   expect(project.scenes.opening).toBe(scene);
   for (const removed of [
@@ -133,18 +158,30 @@ test("startGame reports aggregated project diagnostics before reading the target
     },
   };
 
-  const promise = startGame({
-    ...project,
-    identity: " ",
-    version: " ",
-    initialScene: "missing",
-  }, options);
+  const promise = startGame(
+    {
+      ...project,
+      identity: " ",
+      version: " ",
+      initialScene: "missing",
+    },
+    options,
+  );
 
   await expect(promise).rejects.toMatchObject({
     diagnostics: [
-      expect.objectContaining({ code: "definition.project.identity", path: "identity" }),
-      expect.objectContaining({ code: "reference.scene.initial", path: "initialScene" }),
-      expect.objectContaining({ code: "definition.project.version", path: "version" }),
+      expect.objectContaining({
+        code: "definition.project.identity",
+        path: "identity",
+      }),
+      expect.objectContaining({
+        code: "reference.scene.initial",
+        path: "initialScene",
+      }),
+      expect.objectContaining({
+        code: "definition.project.version",
+        path: "version",
+      }),
     ],
   });
   expect(targetReads).toBe(0);
@@ -184,7 +221,16 @@ test("startGame requires a Dialogue Provider before reading the target", async (
         appearances: {
           idle: {
             animations: {
-              idle: { frames: ["antonio.png"], framesPerSecond: 1, loop: true },
+              idle: {
+                frames: {
+                  left: { image: "antonio.png", count: 1 },
+                  right: { image: "antonio.png", count: 1 },
+                  front: { image: "antonio.png", count: 1 },
+                  back: { image: "antonio.png", count: 1 },
+                },
+                framesPerSecond: 1,
+                loop: true,
+              },
             },
             roles: { default: "idle" },
           },
@@ -202,10 +248,12 @@ test("startGame requires a Dialogue Provider before reading the target", async (
   });
 
   await expect(promise).rejects.toMatchObject({
-    diagnostics: [expect.objectContaining({
-      code: "environment.dialogue-provider.missing",
-      path: "startGame.dialogueProvider",
-    })],
+    diagnostics: [
+      expect.objectContaining({
+        code: "environment.dialogue-provider.missing",
+        path: "startGame.dialogueProvider",
+      }),
+    ],
   });
   expect(targetReads).toBe(0);
 });

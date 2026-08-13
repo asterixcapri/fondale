@@ -13,7 +13,21 @@ export const interactionHost = ({
   initialFacing: "left",
   initialAppearance: "idle",
   appearances: {
-    idle: { animations: { idle: { frames: [new URL("./key.png", import.meta.url)], framesPerSecond: 1, loop: true } }, roles: { default: "idle" } },
+    idle: {
+      animations: {
+        idle: {
+          frames: {
+            left: { image: new URL("./key.png", import.meta.url), count: 1 },
+            right: { image: new URL("./key.png", import.meta.url), count: 1 },
+            front: { image: new URL("./key.png", import.meta.url), count: 1 },
+            back: { image: new URL("./key.png", import.meta.url), count: 1 },
+          },
+          framesPerSecond: 1,
+          loop: true,
+        },
+      },
+      roles: { default: "idle" },
+    },
   },
   movementSpeed: 60,
   noun: ({

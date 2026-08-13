@@ -37,7 +37,12 @@ const dialogueProvider = new HttpDialogueProvider({
 });
 
 const idle = (image: string) => ({
-  animations: { idle: { frames: [image], framesPerSecond: 1, loop: true } },
+  animations: { idle: { frames: {
+    left: { image, count: 1 },
+    right: { image, count: 1 },
+    front: { image, count: 1 },
+    back: { image, count: 1 },
+  }, framesPerSecond: 1, loop: true } },
   roles: { default: "idle", walking: "idle" },
 });
 
