@@ -57,6 +57,16 @@ export step. Author and verify separate `left`, `right`, `front`, and `back` Art
 Masters and Runtime strips as documented in
 [character-package.md](references/character-package.md). The Engine selects
 these presentations directly; it never mirrors or falls back between them.
+
+For a Walking Animation, follow the locomotion workflow and acceptance gates in
+[walk-cycle.md](references/walk-cycle.md). Treat generated images as pose
+proposals, not as a finished cycle. Establish contact, down, passing, and up
+keys on a registered guide before creating in-betweens. Do not ask an image
+generator for an entire production sprite sheet in one pass. Reject the cycle
+if identity, pelvis registration, Ground Point, apparent scale, gait phase, or
+directional equipment changes between frames. Do not conceal those failures
+with bounding-box normalization, duplicated poses, or frame interpolation.
+
 For every Appearance, create an explicit looping `idle` Animation and assign it
 to the Default Animation Role. When the Character design calls for a distinct
 speaking performance, author a looping `speaking` Animation and assign it to
@@ -84,6 +94,10 @@ and directed Animations in every required facing, at representative Perspective
 Scales, and across Appearance changes. Exercise the Character's Hotspot and
 Noun. Finish when all checks in
 [character-package.md](references/character-package.md) hold at actual play size.
+For walking, capture or record uninterrupted travel in each required Facing and
+apply every gate in [walk-cycle.md](references/walk-cycle.md). A still screenshot
+cannot approve a walk cycle. If a gate fails, report the Animation as a draft and
+iterate; never describe it as production-ready merely because it builds.
 
 ## Handoff
 

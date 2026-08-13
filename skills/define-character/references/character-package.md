@@ -71,6 +71,8 @@ Use current repository interfaces as the schema source of truth.
   enough to support every authored Line unless a directed performance owns a
   more specific Animation.
 - Give every moving Character a Walking Animation Role with required facings.
+- Follow [walk-cycle.md](walk-cycle.md) for every new or revised Walking
+  Animation. Approve its registered keys and motion proof before integration.
 - Keep the frame count synchronized across all four presentations. Timing,
   loop behavior, duration, and Animation Cues belong to the Animation and must
   remain shared across Facing.
