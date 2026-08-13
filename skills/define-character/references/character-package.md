@@ -5,7 +5,8 @@ Use current repository interfaces as the schema source of truth.
 ## Deliverables
 
 - lossless scale sheet, silhouette, turnaround, and colour reference;
-- Art Masters and Runtime Assets for every Appearance and Animation;
+- a separate lossless Art Master and derived Runtime strip for every `left`,
+  `right`, `front`, and `back` presentation of every Animation;
 - an explicit looping `idle` Animation for every Appearance, plus a distinct
   looping `speaking` Animation where the Character design requires one;
 - distinct left, right, front, and back Runtime strips for every Character
@@ -33,7 +34,7 @@ Use current repository interfaces as the schema source of truth.
   when the project's confirmed art direction requires it and an actual-size
   comparison shows no objectionable banding, jaggedness, or matte fringe.
 - Preserve height, body proportions, costume landmarks, and palette across
-  front, back, and side frames.
+  `left`, `right`, `front`, and `back` frames.
 - Author `left`, `right`, `front`, and `back` presentations and derive a
   separate Runtime strip for each. The Engine selects the strip matching the
   Character Facing and never mirrors Character artwork. Judge the authored
@@ -45,8 +46,8 @@ Use current repository interfaces as the schema source of truth.
   direction-specific construction and action.
 - Keep facing changes spatially centred on the same Ground Point.
 - Use one stable Visual Anchor across frames and compatible Appearances.
-- Keep lighting neutral enough to inhabit required Scenes while preserving the
-  shared material and edge language.
+- Check lighting in every required Scene so a Facing change never reverses the
+  Scene's light source; preserve the shared material and edge language.
 - Verify silhouettes against Background and Scenery at actual play size.
 - Inspect an actual-size Engine screenshot at 1:1 display pixels. The package
   fails when Character edges or interior features reveal visible upscaling,
@@ -70,6 +71,9 @@ Use current repository interfaces as the schema source of truth.
   enough to support every authored Line unless a directed performance owns a
   more specific Animation.
 - Give every moving Character a Walking Animation Role with required facings.
+- Keep the frame count synchronized across all four presentations. Timing,
+  loop behavior, duration, and Animation Cues belong to the Animation and must
+  remain shared across Facing.
 - Play every `left`, `right`, `front`, and `back` cycle and inspect each
   first-to-last transition at actual size.
 - Verify idle and speaking in every Facing in which the Character may converse,

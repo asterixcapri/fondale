@@ -49,6 +49,27 @@ test("every public recipe exposes ordinary author-owned data from the built pack
   ]);
 });
 
+test("the Character recipe authors distinct Default and Walking Animations for every Facing", () => {
+  const appearance = player.appearances.workwear;
+
+  expect(appearance.roles).toEqual({ default: "idle", walking: "walking" });
+  expect(Object.keys(appearance.animations.idle.frames)).toEqual([
+    "left",
+    "right",
+    "front",
+    "back",
+  ]);
+  expect(Object.keys(appearance.animations.walking.frames)).toEqual([
+    "left",
+    "right",
+    "front",
+    "back",
+  ]);
+  expect(appearance.animations.idle.frames.left.image).not.toEqual(
+    appearance.animations.idle.frames.right.image,
+  );
+});
+
 test("the Interaction, Sequence, and Inventory recipes compose as typed projects", () => {
   const plainScene = ({
     background: "scene.png",

@@ -53,8 +53,10 @@ proportions, lighting logic, and Visual Anchor stable. Derive fitted Runtime
 Assets without overwriting Art Masters. Inspect strips and individual frames at
 1:1 pixels and in motion. Preserve full RGB/RGBA colour and antialiased alpha by
 default; palette reduction is a confirmed art-direction decision, not a routine
-export step. Author and verify distinct `left` and `right` presentations as
-documented in [character-package.md](references/character-package.md).
+export step. Author and verify separate `left`, `right`, `front`, and `back` Art
+Masters and Runtime strips as documented in
+[character-package.md](references/character-package.md). The Engine selects
+these presentations directly; it never mirrors or falls back between them.
 For every Appearance, create an explicit looping `idle` Animation and assign it
 to the Default Animation Role. When the Character design calls for a distinct
 speaking performance, author a looping `speaking` Animation and assign it to

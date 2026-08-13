@@ -87,6 +87,22 @@ for (const invariant of [
 }
 
 const docs = [join(repository, "README.md"), ...markdownFiles(join(repository, "docs/public"))];
+const characterAuthoringGuide = readFileSync(
+  join(repository, "docs/public/game-authoring.md"),
+  "utf8",
+);
+for (const [description, pattern] of [
+  ["all four Facing presentations", /`left`, `right`, `front`, and `back`/],
+  ["no mirroring or fallback", /never mirrors or falls back/],
+  ["common Runtime cell dimensions", /common Runtime\s+cell dimensions/],
+  ["loop transition inspection", /first-to-last transition/],
+  ["handed action inspection", /handed actions/],
+  ["Scene lighting continuity", /Scene's light source/],
+]) {
+  if (!pattern.test(characterAuthoringGuide)) {
+    throw new Error(`Missing four-Facing Character authoring guidance: ${description}`);
+  }
+}
 for (const obsoleteFixedSceneClaim of [
   "A Scene fills the fixed Logical Resolution",
   "Coordinates use the shared Logical Resolution",

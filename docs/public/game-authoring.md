@@ -68,10 +68,10 @@ export const host = {
       animations: {
         idle: {
           frames: {
-            left: { image: new URL("./host.png", import.meta.url), count: 1 },
-            right: { image: new URL("./host.png", import.meta.url), count: 1 },
-            front: { image: new URL("./host.png", import.meta.url), count: 1 },
-            back: { image: new URL("./host.png", import.meta.url), count: 1 },
+            left: { image: new URL("./host-idle-left.png", import.meta.url), count: 1 },
+            right: { image: new URL("./host-idle-right.png", import.meta.url), count: 1 },
+            front: { image: new URL("./host-idle-front.png", import.meta.url), count: 1 },
+            back: { image: new URL("./host-idle-back.png", import.meta.url), count: 1 },
           },
           framesPerSecond: 1,
         },
@@ -83,6 +83,40 @@ export const host = {
   noun: hostNoun,
 } satisfies CharacterDefinition;
 ```
+
+## Four-Facing Character artwork
+
+Every Character Animation owns authored `left`, `right`, `front`, and `back`
+presentations. The Engine selects the strip whose name matches the Character's
+current Facing; it never mirrors or falls back to another presentation.
+Perspective Scale applies equally to every Facing and does not reverse the
+artwork. Objects and Scenery keep their non-directional Animation contracts.
+
+For each Animation, preserve one lossless Art Master and derive one fitted
+Runtime strip for each of the four presentations. The four Art Masters may be
+produced with any artistic technique, but acceptance judges the authored
+result rather than accepting Engine-generated directionality. Within one
+Animation, every strip has the same frame count. `framesPerSecond`, `loop`,
+duration, and Animation Cues belong to the Animation and are therefore shared
+by all four presentations.
+
+Within one Appearance, export every Facing and Animation with common Runtime
+cell dimensions and set one stable `visualAnchor`. That anchor keeps every
+frame aligned to the Character's Ground Point as Facing or Animation changes.
+`startGame` reports missing presentations, mismatched frame counts, invalid
+assets, incompatible Runtime cell dimensions, and out-of-bounds Visual Anchors
+as Authoring Diagnostics.
+
+Inspect every directional loop at 1:1 Runtime pixels and at actual play size,
+including its first-to-last transition. Check anatomy, costume construction,
+carried items, handed actions, facial and bodily asymmetry, and Ground Point
+stability in all four presentations. Review the Character in its Scene so
+illumination remains coherent with the Scene's light source when Facing
+changes. Repeat the play-size check at every reachable Perspective Scale.
+
+The [four-Facing Character recipe](recipes/character-walking.ts) shows a
+dedicated looping Default Animation and a separate Walking Animation using the
+public `CharacterDefinition` interface.
 
 Registry keys are identities. Cross-definition references use those keys and
 are resolved by the owning capability. A Scene `size` omitted at authoring
@@ -173,10 +207,10 @@ const antonio = {
       animations: {
         idle: {
           frames: {
-            left: { image: new URL("./antonio.png", import.meta.url), count: 1 },
-            right: { image: new URL("./antonio.png", import.meta.url), count: 1 },
-            front: { image: new URL("./antonio.png", import.meta.url), count: 1 },
-            back: { image: new URL("./antonio.png", import.meta.url), count: 1 },
+            left: { image: new URL("./antonio-idle-left.png", import.meta.url), count: 1 },
+            right: { image: new URL("./antonio-idle-right.png", import.meta.url), count: 1 },
+            front: { image: new URL("./antonio-idle-front.png", import.meta.url), count: 1 },
+            back: { image: new URL("./antonio-idle-back.png", import.meta.url), count: 1 },
           },
           framesPerSecond: 1,
         },
