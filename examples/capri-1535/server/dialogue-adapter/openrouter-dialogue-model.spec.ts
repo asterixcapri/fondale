@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { MockLanguageModelV4 } from "ai/test";
+import type { MastraModelConfig } from "@mastra/core/llm";
 
 import {
   createOpenRouterDialogueModel,
@@ -245,21 +245,16 @@ test("an empty first attempt is retried once with a larger spoken budget", async
   const answers = ["", "La catena è stata tagliata stanotte."];
   const model = createOpenRouterDialogueModel({
     modelId: "deepseek/deepseek-v4-flash-0731",
-    model: new MockLanguageModelV4({
-      doGenerate: (options) => {
-        calls.push(options);
-        return Promise.resolve({
-          content: [{ type: "text" as const, text: answers[calls.length - 1] ?? "" }],
-          finishReason: { unified: "length" as const, raw: "length" },
-          usage: {
-            inputTokens: { total: 12, noCache: 12, cacheRead: 0, cacheWrite: 0 },
-            outputTokens: { total: 120, text: 0, reasoning: 120 },
-            totalTokens: 132,
-          },
-          warnings: [],
-        });
+    model: scriptedModel(calls, (call) => ({
+      content: [{ type: "text" as const, text: answers[call - 1] ?? "" }],
+      finishReason: { unified: "length" as const, raw: "length" },
+      usage: {
+        inputTokens: { total: 12, noCache: 12, cacheRead: 0, cacheWrite: 0 },
+        outputTokens: { total: 120, text: 0, reasoning: 120 },
+        totalTokens: 132,
       },
-    }),
+      warnings: [],
+    } as unknown as ModelAnswer)),
   });
 
   const line = await model.verbalize({
@@ -421,26 +416,46 @@ test("interpretation reaches no model when the Character knows nothing relevant"
   assert.equal(calls.length, 0);
 });
 
-type ModelCall = MockLanguageModelV4["doGenerateCalls"][number];
+/**
+ * The language model shape Mastra routes to, taken from Mastra itself so these
+ * tests describe a model without a second AI library for their test doubles.
+ */
+type LanguageModel = Extract<MastraModelConfig, { specificationVersion: "v4" }>;
+type ModelCall = Parameters<LanguageModel["doGenerate"]>[0];
+type ModelAnswer = Awaited<ReturnType<LanguageModel["doGenerate"]>>;
+
+/** Builds a model that records every call and replays scripted answers. */
+function scriptedModel(
+  calls: ModelCall[],
+  answer: (call: number) => ModelAnswer,
+): LanguageModel {
+  return {
+    specificationVersion: "v4",
+    provider: "openrouter",
+    modelId: "test",
+    supportedUrls: {},
+    doGenerate: (options: ModelCall) => {
+      calls.push(options);
+      return Promise.resolve(answer(calls.length));
+    },
+    doStream: () => Promise.reject(new Error("These tests never stream.")),
+  } as unknown as LanguageModel;
+}
 
 function recordingModel(
   calls: ModelCall[],
   text: string,
   providerMetadata?: { readonly openrouter: { readonly usage: { readonly cost: number } } },
-): MockLanguageModelV4 {
-  const doGenerate: MockLanguageModelV4["doGenerate"] = (options) => {
-    calls.push(options);
-    return Promise.resolve({
-      ...(providerMetadata ? { providerMetadata } : {}),
-      content: [{ type: "text" as const, text }],
-      finishReason: { unified: "stop" as const, raw: "stop" },
-      usage: {
-        inputTokens: { total: 12, noCache: 12, cacheRead: 0, cacheWrite: 0 },
-        outputTokens: { total: 8, text: 8, reasoning: 0 },
-        totalTokens: 20,
-      },
-      warnings: [],
-    });
-  };
-  return new MockLanguageModelV4({ doGenerate });
+): LanguageModel {
+  return scriptedModel(calls, () => ({
+    ...(providerMetadata ? { providerMetadata } : {}),
+    content: [{ type: "text" as const, text }],
+    finishReason: { unified: "stop" as const, raw: "stop" },
+    usage: {
+      inputTokens: { total: 12, noCache: 12, cacheRead: 0, cacheWrite: 0 },
+      outputTokens: { total: 8, text: 8, reasoning: 0 },
+      totalTokens: 20,
+    },
+    warnings: [],
+  } as unknown as ModelAnswer));
 }

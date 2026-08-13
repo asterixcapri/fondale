@@ -1,5 +1,5 @@
-import { createOpenRouter } from "@openrouter/ai-sdk-provider";
-import { generateObject, generateText, NoObjectGeneratedError, type LanguageModel } from "ai";
+import { Agent } from "@mastra/core/agent";
+import type { CoreMessage, MastraModelConfig } from "@mastra/core/llm";
 import { z } from "zod";
 import type {
   DialogueInterpretation,
@@ -16,6 +16,9 @@ import type { DialogueModel, VisibleDialogueLine } from "./dialogue-model";
 
 /** The model this live spike starts from; one server-side setting selects another. */
 export const defaultOpenRouterModelId = "deepseek/deepseek-v4-flash-0731";
+
+/** OpenRouter speaks the OpenAI-compatible protocol Mastra routes to natively. */
+const openRouterBaseUrl = "https://openrouter.ai/api/v1";
 
 /** Technical observation of one live provider call, never part of Game State. */
 export interface LiveDialogueDiagnostic {
@@ -34,10 +37,20 @@ export interface LiveDialogueModel extends DialogueModel {
 
 /** Builds a Dialogue Model that reaches one OpenRouter-hosted language model. */
 export function createOpenRouterDialogueModel(options: {
-  readonly model: LanguageModel;
+  readonly model: MastraModelConfig;
   readonly modelId: string;
   readonly onDiagnostic?: (diagnostic: LiveDialogueDiagnostic) => void;
 }): LiveDialogueModel {
+  // One Agent serves every phase; each call supplies its own instructions and
+  // carries no `memory`, so nothing this Agent sees or says is ever persisted.
+  // The Dialogue Provider remains the only writer of conversational memory.
+  const agent = new Agent({
+    id: "fondale-dialogue",
+    name: `fondale-dialogue:${options.modelId}`,
+    instructions: "You serve one phase of a Fondale Dialogue Turn.",
+    model: options.model,
+  });
+
   async function measure<T extends { readonly usage?: unknown; readonly providerMetadata?: unknown }>(
     phase: LiveDialogueDiagnostic["phase"],
     call: () => Promise<T>,
@@ -73,23 +86,28 @@ export function createOpenRouterDialogueModel(options: {
     ): Promise<DialogueInterpretation> {
       const candidateIds = request.candidates.map(({ id }) => id);
       if (candidateIds.length === 0) return { factId: null, reason: "no-relevant-fact" };
-      let interpreted: { factId: string | null; reason?: "ambiguous" | "no-relevant-fact" };
-      try {
-        ({ object: interpreted } = await measure("interpret", () => generateObject({
-          ...callOptions({
-            model: options.model,
-            system: interpretationInstructions(request),
-            history,
-            playerInput: request.playerInput,
-            phase: "classify",
-            signal,
-          }),
-          schema: interpretationSchema(candidateIds),
-        })));
-      } catch (cause) {
-        if (!NoObjectGeneratedError.isInstance(cause)) throw cause;
-        interpreted = { factId: null };
-      }
+      const { object: interpreted } = await measure("interpret", () => {
+        const { messages, ...call } = callOptions({
+          system: interpretationInstructions(request),
+          history,
+          playerInput: request.playerInput,
+          phase: "classify",
+          signal,
+        });
+        return agent.generate(messages, {
+          ...call,
+          structuredOutput: {
+            schema: interpretationSchema(candidateIds),
+            // Unusable output is a harmless missing Narrative Fact, never a
+            // failed Dialogue Turn: the Engine asks the Player to rephrase.
+            errorStrategy: "fallback",
+            fallbackValue: { factId: null, reason: null } as {
+              factId: string | null;
+              reason: "ambiguous" | "no-relevant-fact" | null;
+            },
+          },
+        });
+      });
       if (interpreted.factId === null || !candidateIds.includes(interpreted.factId)) {
         return {
           factId: null,
@@ -105,17 +123,19 @@ export function createOpenRouterDialogueModel(options: {
       signal: AbortSignal,
     ): Promise<string> {
       const speak = (maxOutputTokens: number) =>
-        measure("verbalize", () => generateText({
-          ...callOptions({
-            model: options.model,
+        measure("verbalize", () => {
+          const { messages, modelSettings, ...call } = callOptions({
             system: verbalizationInstructions(request),
             history,
             playerInput: request.playerInput,
             phase: "answer",
             signal,
-          }),
-          maxOutputTokens,
-        })).then(({ text }) => singleLine(text));
+          });
+          return agent.generate(messages, {
+            ...call,
+            modelSettings: { ...modelSettings, maxOutputTokens },
+          });
+        }).then(({ text }) => singleLine(text));
 
       const budget = spokenLineBudget(request.profile);
       // A model that spends its budget before reaching any visible text leaves
@@ -130,17 +150,18 @@ export function createOpenRouterDialogueModel(options: {
       history: readonly VisibleDialogueLine[],
       signal: AbortSignal,
     ): Promise<ReflectionResponse> {
-      const { object } = await measure("reflect", () => generateObject({
-        ...callOptions({
-          model: options.model,
+      const { object } = await measure("reflect", () => {
+        const { messages, ...call } = callOptions({
           system: reflectionInstructions(request),
           history,
           playerInput: request.playerInput,
           phase: "reflect on",
           signal,
-        }),
-        schema: reflectionSchema,
-      }));
+        });
+        // A Reflection has no harmless fallback: an unusable answer must abort
+        // the turn rather than present the Player with an empty inner voice.
+        return agent.generate(messages, { ...call, structuredOutput: { schema: reflectionSchema } });
+      });
       const summary = singleLine(object.summary);
       if (!summary) throw new Error("OpenRouter returned an empty Reflection.");
       const hypotheses = nonEmptyLines(object.hypotheses);
@@ -169,7 +190,7 @@ export function createOpenRouterDialogueModelFromEnvironment(
   const modelId = environment.OPENROUTER_MODEL_ID?.trim() || defaultOpenRouterModelId;
   return createOpenRouterDialogueModel({
     modelId,
-    model: createOpenRouter({ apiKey }).chat(modelId),
+    model: { providerId: "openrouter", modelId, url: openRouterBaseUrl, apiKey },
     ...(onDiagnostic ? { onDiagnostic } : {}),
   });
 }
@@ -182,7 +203,6 @@ export function createOpenRouterDialogueModelFromEnvironment(
  * the model reaches the text Fondale actually presents.
  */
 function callOptions(request: {
-  readonly model: LanguageModel;
   readonly system: string;
   readonly history: readonly VisibleDialogueLine[];
   readonly playerInput: string;
@@ -190,11 +210,13 @@ function callOptions(request: {
   readonly signal: AbortSignal;
 }) {
   return {
-    model: request.model,
     abortSignal: request.signal,
-    maxOutputTokens: 400,
+    // One phase is one model call: the Agent never plans, never calls a tool
+    // and never loops back for a second opinion.
+    maxSteps: 1,
+    modelSettings: { maxOutputTokens: 400 },
     providerOptions: { openrouter: { reasoning: { enabled: false } } },
-    system: request.system,
+    instructions: request.system,
     messages: [
       ...conversationMessages(request.history),
       {
@@ -226,8 +248,9 @@ const reflectionSchema = z.object({
 function interpretationSchema(candidateIds: readonly string[]) {
   return z.object({
     factId: z.enum(candidateIds as [string, ...string[]]).nullable(),
-    reason: z.enum(["ambiguous", "no-relevant-fact"]).nullable().default(null)
-      .transform((reason) => reason ?? undefined),
+    // Declared without a transform on purpose: a transformed field reaches the
+    // model as an empty JSON Schema, hiding the very reasons it must choose from.
+    reason: z.enum(["ambiguous", "no-relevant-fact"]).nullable().default(null),
   });
 }
 
@@ -350,11 +373,10 @@ function singleLine(text: string): string {
   return text.replaceAll(/\s+/g, " ").trim();
 }
 
-function conversationMessages(
-  history: readonly VisibleDialogueLine[],
-): readonly { readonly role: "user" | "assistant"; readonly content: string }[] {
-  return history.map(({ role, text }) => ({
-    role: role === "player" ? "user" as const : "assistant" as const,
-    content: text,
-  }));
+function conversationMessages(history: readonly VisibleDialogueLine[]): CoreMessage[] {
+  return history.map(({ role, text }): CoreMessage =>
+    role === "player"
+      ? { role: "user", content: text }
+      : { role: "assistant", content: text }
+  );
 }
