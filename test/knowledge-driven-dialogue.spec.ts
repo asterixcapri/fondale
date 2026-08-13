@@ -7,6 +7,7 @@ import {
   type CommandLexicon,
   type DialogueProvider,
   FakeDialogueProvider,
+  type FakeDialoguePendingOutcome,
   type GameOperation,
   type GameProject,
   type NounDefinition,
@@ -292,6 +293,59 @@ function conversationHandoffProject(
       },
     },
   } satisfies GameProject;
+}
+
+function authoredAlternativesProject(): GameProject {
+  const base = coverStoryProject();
+  const antonio = base.characters!.antonio!;
+  return {
+    ...base,
+    variables: { ...base.variables, winchFound: false },
+    characters: {
+      ...base.characters,
+      antonio: {
+        ...antonio,
+        dialogue: {
+          ...antonio.dialogue!,
+          knowledge: [
+            ...antonio.dialogue!.knowledge,
+            { factId: "harbour-chain-cut", disclosure: { level: "open" } },
+          ],
+          alternatives: [
+            {
+              text: "Who cut the harbour chain?",
+              response: "I never saw who cut it.",
+            },
+            {
+              text: "Where is the winch handle?",
+              when: { variable: "winchFound", equals: true },
+              response: "Behind the customs house.",
+            },
+            {
+              text: "[wait without speaking]",
+              spoken: false,
+              response: "You are patient, I will give you that.",
+              operations: [{ type: "set-variable", variable: "winchFound", value: true }],
+            },
+          ],
+        },
+      },
+    },
+  } satisfies GameProject;
+}
+
+function chainProvider(
+  interpretation: string | FakeDialoguePendingOutcome<string>,
+): FakeDialogueProvider {
+  return new FakeDialogueProvider({
+    interpretations: { "What happened to the chain?": interpretation },
+    verbalizations: { "harbour-chain-cut": "I saw the harbour chain being cut." },
+  });
+}
+
+function advanceConversationLine(session: ReturnType<typeof createTestSession>): void {
+  session.input({ type: "advance-conversation-line" });
+  session.steps();
 }
 
 function openAntonioConversation(session: ReturnType<typeof createTestSession>): void {
@@ -777,6 +831,42 @@ test("Conversation handoffs reject invalid conditions, Sequence references and o
       }),
       expect.objectContaining({ code: "reference.variable" }),
       expect.objectContaining({ code: "reference.sequence" }),
+    ]),
+  });
+});
+
+test("authored alternatives reject unknown condition and operation references at startup", () => {
+  const project = authoredAlternativesProject();
+  const result = compileGameProject({
+    ...project,
+    characters: {
+      ...project.characters,
+      antonio: {
+        ...project.characters!.antonio!,
+        dialogue: {
+          ...project.characters!.antonio!.dialogue!,
+          alternatives: [{
+            text: "Where is the winch handle?",
+            when: { variable: "missing", equals: true },
+            response: "Behind the customs house.",
+            operations: [{ type: "set-variable", variable: "missing", value: true }],
+          }],
+        },
+      },
+    },
+  } as unknown as GameProject);
+
+  expect(result).toMatchObject({
+    ok: false,
+    diagnostics: expect.arrayContaining([
+      expect.objectContaining({
+        code: "reference.variable",
+        path: "characters.antonio.dialogue.alternatives[0].when",
+      }),
+      expect.objectContaining({
+        code: "reference.variable",
+        path: "characters.antonio.dialogue.alternatives[0].operations[0]",
+      }),
     ]),
   });
 });
@@ -1274,6 +1364,144 @@ test("Save Snapshot rejects malformed, duplicate or unknown Testimony", () => {
       state: { ...snapshot.state, testimonies },
     }).ok).toBe(false);
   }
+});
+
+test("a Conversation presents eligible authored alternatives and answers one without a provider", () => {
+  const project = authoredAlternativesProject();
+  const provider = new FakeDialogueProvider({ interpretations: {}, verbalizations: {} });
+  const session = createTestSession(project, undefined, provider);
+
+  openAntonioConversation(session);
+
+  expect(session.conversation()).toMatchObject({
+    character: "antonio",
+    status: "ready",
+    alternatives: [
+      { index: 0, text: "Who cut the harbour chain?" },
+      { index: 2, text: "[wait without speaking]" },
+    ],
+  });
+
+  session.input({ type: "select-alternative", alternative: 0 });
+  session.steps();
+
+  expect(session.conversation()).toMatchObject({ status: "line" });
+  expect(session.hud().narrative).toMatchObject({
+    kind: "line",
+    speaker: "player",
+    text: "Who cut the harbour chain?",
+  });
+
+  advanceConversationLine(session);
+  expect(session.hud().narrative).toMatchObject({
+    kind: "line",
+    speaker: "antonio",
+    text: "I never saw who cut it.",
+  });
+
+  advanceConversationLine(session);
+  expect(session.conversation()).toMatchObject({ status: "ready" });
+  expect(provider.threadKeys()).toEqual([]);
+  expect(session.snapshot().characterKnowledge.player).toEqual([]);
+});
+
+test("an unspoken authored alternative commits its Game Operations atomically", () => {
+  const project = authoredAlternativesProject();
+  const session = createTestSession(project);
+
+  openAntonioConversation(session);
+  session.input({ type: "select-alternative", alternative: 2 });
+  session.steps();
+
+  expect(session.snapshot().variables.winchFound).toBe(true);
+  expect(session.hud().narrative).toMatchObject({
+    kind: "line",
+    speaker: "antonio",
+    text: "You are patient, I will give you that.",
+  });
+
+  advanceConversationLine(session);
+  expect(session.conversation()).toMatchObject({
+    status: "ready",
+    alternatives: [
+      { index: 0, text: "Who cut the harbour chain?" },
+      { index: 1, text: "Where is the winch handle?" },
+      { index: 2, text: "[wait without speaking]" },
+    ],
+  });
+  expect(session.lifecycle()).toBe("running");
+});
+
+test("an ineligible authored alternative cannot be selected", () => {
+  const session = createTestSession(authoredAlternativesProject());
+
+  openAntonioConversation(session);
+  session.input({ type: "select-alternative", alternative: 1 });
+  session.steps();
+
+  expect(session.conversation()).toMatchObject({ status: "ready" });
+  expect(session.hud().narrative).toBeNull();
+});
+
+test("the Player alternates freely between authored alternatives and typed speech", async () => {
+  const project = authoredAlternativesProject();
+  const provider = chainProvider("harbour-chain-cut");
+  const session = createTestSession(project, undefined, provider);
+
+  openAntonioConversation(session);
+  session.input({ type: "select-alternative", alternative: 0 });
+  session.steps();
+  advanceConversationLine(session);
+  advanceConversationLine(session);
+  expect(session.conversation()).toMatchObject({ status: "ready" });
+
+  await expect(session.submitDialogue("What happened to the chain?")).resolves.toEqual({ ok: true });
+  session.steps();
+  expect(session.hud().narrative).toMatchObject({ speaker: "player", text: "What happened to the chain?" });
+  advanceConversationLine(session);
+  advanceConversationLine(session);
+  expect(session.snapshot().characterKnowledge.player).toEqual(["harbour-chain-cut"]);
+
+  session.input({ type: "select-alternative", alternative: 0 });
+  session.steps();
+  expect(session.hud().narrative).toMatchObject({
+    speaker: "player",
+    text: "Who cut the harbour chain?",
+  });
+});
+
+test("an authored alternative is refused until a pending Dialogue Turn settles", async () => {
+  const project = authoredAlternativesProject();
+  const provider = chainProvider({ outcome: "pending", value: "harbour-chain-cut" });
+  const session = createTestSession(project, undefined, provider);
+
+  openAntonioConversation(session);
+  const submission = session.submitDialogue("What happened to the chain?");
+  expect(session.conversation()).toMatchObject({ status: "pending" });
+
+  session.input({ type: "select-alternative", alternative: 0 });
+  session.steps();
+
+  expect(session.conversation()).toMatchObject({ status: "pending" });
+  expect(session.hud().narrative).toBeNull();
+
+  const [turnId] = provider.pendingTurnIds();
+  expect(provider.release(turnId!)).toBe(true);
+  await expect(submission).resolves.toEqual({ ok: true });
+  session.steps();
+  expect(session.hud().narrative).toMatchObject({
+    speaker: "player",
+    text: "What happened to the chain?",
+  });
+
+  advanceConversationLine(session);
+  advanceConversationLine(session);
+  session.input({ type: "select-alternative", alternative: 0 });
+  session.steps();
+  expect(session.hud().narrative).toMatchObject({
+    speaker: "player",
+    text: "Who cut the harbour chain?",
+  });
 });
 
 test("Talk To preserves authored dialogue for a Character without a Dialogue Profile", () => {

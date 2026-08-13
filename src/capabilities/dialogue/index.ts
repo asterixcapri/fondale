@@ -1,5 +1,9 @@
-import type { AuthoringDiagnostic } from "../game-project";
-import type { InteractionCondition } from "../interaction";
+import type { AuthoringDiagnostic, GameOperation } from "../game-project";
+import {
+  exceedsEligibleAlternativeLimit,
+  eligibleAlternativeIndexes,
+  type InteractionCondition,
+} from "../interaction";
 
 /** One true canonical proposition identified by its Narrative Fact registry key. */
 export interface NarrativeFactDefinition {
@@ -95,6 +99,19 @@ export interface ConversationHandoffDefinition {
   readonly after: "close" | "resume";
 }
 
+/**
+ * One authored question a Conversation presents beside its free-form input
+ * field, with the exact answer it yields. Selecting it reaches no Dialogue
+ * Provider.
+ */
+export interface ConversationAlternativeDefinition {
+  readonly text: string;
+  readonly when?: InteractionCondition;
+  readonly spoken?: boolean;
+  readonly response: string;
+  readonly operations?: readonly GameOperation[];
+}
+
 /** Optional Knowledge-Driven Dialogue data authored beside a Character's World definition. */
 export interface CharacterDialogueDefinition {
   readonly biography?: string;
@@ -106,6 +123,7 @@ export interface CharacterDialogueDefinition {
   readonly coverStories?: readonly CoverStoryDefinition[];
   readonly relationships?: Readonly<Record<string, RelationshipDefinition>>;
   readonly handoffs?: readonly ConversationHandoffDefinition[];
+  readonly alternatives?: readonly ConversationAlternativeDefinition[];
 }
 
 /** Maximum Player speech accepted by one Dialogue Turn. */
@@ -426,6 +444,12 @@ export interface KnowledgeDrivenDialogueProjectView {
   }>>;
 }
 
+/** @internal One authored alternative eligible against the latest committed Game State. */
+export interface EligibleConversationAlternative {
+  readonly index: number;
+  readonly definition: ConversationAlternativeDefinition;
+}
+
 /** @internal Character Knowledge lifecycle behind the capability interface. */
 export interface KnowledgeDrivenDialogue {
   initialState(): KnowledgeDrivenDialogueState;
@@ -436,6 +460,10 @@ export interface KnowledgeDrivenDialogue {
     conditionMatches: (condition: InteractionCondition) => boolean,
   ): ConversationHandoffDefinition | undefined;
   hasResumableHandoff(character: string, sequence: string): boolean;
+  alternatives(
+    character: string,
+    conditionMatches: (condition?: InteractionCondition) => boolean,
+  ): readonly EligibleConversationAlternative[];
   respond(
     state: KnowledgeDrivenDialogueState & { readonly variables: Record<string, boolean> },
     input: {
@@ -525,6 +553,16 @@ export function createKnowledgeDrivenDialogue(
       return project.characters[character]?.dialogue?.handoffs?.some((handoff) =>
         handoff.sequence === sequence && handoff.after === "resume"
       ) ?? false;
+    },
+    alternatives(
+      character: string,
+      conditionMatches: (condition?: InteractionCondition) => boolean,
+    ) {
+      const authored = project.characters[character]?.dialogue?.alternatives ?? [];
+      return eligibleAlternativeIndexes(authored, conditionMatches).map((index) => ({
+        index,
+        definition: structuredClone(authored[index]!),
+      }));
     },
     async respond(
       state: KnowledgeDrivenDialogueState & { readonly variables: Record<string, boolean> },
@@ -1232,6 +1270,7 @@ export function validateKnowledgeDrivenDialogueProject(
         });
       }
     }
+    validateConversationAlternatives(dialogue.alternatives, basePath, diagnostics);
     validateQualitativeProfile(dialogue as unknown as CharacterDialogueDefinition, basePath, diagnostics);
     const relationships = dialogue.relationships;
     if (relationships !== undefined && !isRecord(relationships)) {
@@ -1282,6 +1321,73 @@ function validDisclosure(
       typeof value.when.equals === "boolean";
   }
   return false;
+}
+
+function validateConversationAlternatives(
+  alternatives: unknown,
+  basePath: string,
+  diagnostics: AuthoringDiagnostic[],
+): void {
+  if (alternatives === undefined) return;
+  if (!Array.isArray(alternatives)) {
+    diagnostics.push({
+      code: "definition.conversation-alternative.collection",
+      family: "definition", owner: "dialogue", path: `${basePath}.alternatives`,
+      message: "Conversation alternatives must be an array.",
+    });
+    return;
+  }
+  const wellFormed: ConversationAlternativeDefinition[] = [];
+  for (const [index, alternative] of alternatives.entries()) {
+    const itemPath = `${basePath}.alternatives[${index}]`;
+    if (!isRecord(alternative) ||
+        !hasExactKeys(alternative, ["text", "response"], ["when", "spoken", "operations"]) ||
+        typeof alternative.text !== "string" || !alternative.text.trim() ||
+        typeof alternative.response !== "string" || !alternative.response.trim() ||
+        (alternative.spoken !== undefined && typeof alternative.spoken !== "boolean") ||
+        (alternative.operations !== undefined && !Array.isArray(alternative.operations))) {
+      diagnostics.push({
+        code: "definition.conversation-alternative.item",
+        family: "definition", owner: "dialogue", path: itemPath,
+        message: "A Conversation alternative requires its displayed phrase and the exact authored answer, with an optional condition, spoken flag and Game Operations.",
+      });
+      continue;
+    }
+    for (const [operationIndex, operation] of (alternative.operations ?? []).entries()) {
+      if (isRecord(operation) && operation.type === "start-sequence") {
+        diagnostics.push({
+          code: "definition.conversation-alternative.sequence",
+          family: "definition", owner: "dialogue",
+          path: `${itemPath}.operations[${operationIndex}]`,
+          message: "A Conversation alternative cannot start a Sequence.",
+        });
+      }
+    }
+    if (alternative.when !== undefined && !isInteractionCondition(alternative.when)) {
+      diagnostics.push({
+        code: "definition.conversation-alternative.condition",
+        family: "definition", owner: "dialogue", path: `${itemPath}.when`,
+        message: "A Conversation alternative condition must test one Game Variable or one carried Object.",
+      });
+      continue;
+    }
+    wellFormed.push(alternative as unknown as ConversationAlternativeDefinition);
+  }
+  if (exceedsEligibleAlternativeLimit(wellFormed)) {
+    diagnostics.push({
+      code: "definition.conversation-alternative.limit",
+      family: "definition", owner: "dialogue", path: `${basePath}.alternatives`,
+      message: "A Conversation can present at most six eligible alternatives.",
+    });
+  }
+}
+
+function isInteractionCondition(value: unknown): value is InteractionCondition {
+  if (!isRecord(value)) return false;
+  if (hasExactKeys(value, ["variable", "equals"])) {
+    return typeof value.variable === "string" && typeof value.equals === "boolean";
+  }
+  return hasExactKeys(value, ["hasObject"]) && typeof value.hasObject === "string";
 }
 
 function validateQualitativeProfile(

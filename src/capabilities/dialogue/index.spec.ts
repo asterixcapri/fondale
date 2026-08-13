@@ -246,6 +246,141 @@ test("Knowledge-Driven Dialogue rejects incoherent Disclosure, Relationships and
   ]));
 });
 
+test("Knowledge-Driven Dialogue accepts authored Conversation alternatives", () => {
+  const project = {
+    narrativeFacts: {},
+    variables: { winchFound: false },
+    characters: {
+      player: { dialogue: { knowledge: [] } },
+      antonio: {
+        dialogue: {
+          knowledge: [],
+          alternatives: [
+            { text: "Who cut the chain?", response: "I never saw who cut it." },
+            {
+              text: "Where is the winch handle?",
+              when: { variable: "winchFound", equals: true },
+              spoken: false,
+              response: "Behind the customs house.",
+              operations: [{ type: "set-variable", variable: "winchFound", value: true }],
+            },
+          ],
+        },
+      },
+    },
+  } as unknown as KnowledgeDrivenDialogueProjectView;
+
+  expect(validateKnowledgeDrivenDialogueProject(project)).toEqual([]);
+});
+
+test("Knowledge-Driven Dialogue rejects invalid Conversation alternatives", () => {
+  const project = {
+    narrativeFacts: {},
+    variables: { declared: false },
+    characters: {
+      antonio: {
+        dialogue: {
+          knowledge: [],
+          alternatives: [
+            { text: "   ", response: "An answer without a question." },
+            { text: "An unanswered question?", response: "" },
+            { text: "A silent question?", response: "An answer.", spoken: "yes" },
+            { text: "An unknown shape?", response: "An answer.", sequence: "elsewhere" },
+            { text: "A malformed condition?", response: "An answer.", when: "winchFound" },
+          ],
+        },
+      },
+      bystander: { dialogue: { knowledge: [], alternatives: "many" } },
+    },
+  } as unknown as KnowledgeDrivenDialogueProjectView;
+
+  expect(validateKnowledgeDrivenDialogueProject(project)).toEqual([
+    ...[0, 1, 2, 3].map((index) => expect.objectContaining({
+      code: "definition.conversation-alternative.item",
+      owner: "dialogue",
+      path: `characters.antonio.dialogue.alternatives[${index}]`,
+    })),
+    expect.objectContaining({
+      code: "definition.conversation-alternative.condition",
+      owner: "dialogue",
+      path: "characters.antonio.dialogue.alternatives[4].when",
+    }),
+    expect.objectContaining({
+      code: "definition.conversation-alternative.collection",
+      owner: "dialogue",
+      path: "characters.bystander.dialogue.alternatives",
+    }),
+  ]);
+});
+
+test("Knowledge-Driven Dialogue rejects an alternative that starts a Sequence", () => {
+  const project = {
+    narrativeFacts: {},
+    variables: {},
+    characters: {
+      antonio: {
+        dialogue: {
+          knowledge: [],
+          alternatives: [{
+            text: "Tell me the whole account.",
+            response: "Very well.",
+            operations: [{ type: "start-sequence", sequence: "exactAccount" }],
+          }],
+        },
+      },
+    },
+  } as unknown as KnowledgeDrivenDialogueProjectView;
+
+  expect(validateKnowledgeDrivenDialogueProject(project)).toEqual([
+    expect.objectContaining({
+      code: "definition.conversation-alternative.sequence",
+      owner: "dialogue",
+      path: "characters.antonio.dialogue.alternatives[0].operations[0]",
+    }),
+  ]);
+});
+
+test("Knowledge-Driven Dialogue rejects more than six simultaneously eligible alternatives", () => {
+  const alternative = (index: number) => ({
+    text: `Question ${index}?`,
+    response: `Answer ${index}.`,
+  });
+  const project = {
+    narrativeFacts: {},
+    variables: { winchFound: false },
+    characters: {
+      antonio: {
+        dialogue: {
+          knowledge: [],
+          alternatives: [
+            ...[1, 2, 3, 4, 5, 6].map(alternative),
+            { ...alternative(7), when: { variable: "winchFound", equals: true } },
+          ],
+        },
+      },
+      bystander: {
+        dialogue: {
+          knowledge: [],
+          alternatives: [
+            ...[1, 2, 3, 4, 5].map(alternative),
+            { ...alternative(6), when: { variable: "winchFound", equals: true } },
+            { ...alternative(7), when: { variable: "winchFound", equals: false } },
+          ],
+        },
+      },
+    },
+  } as unknown as KnowledgeDrivenDialogueProjectView;
+
+  expect(validateKnowledgeDrivenDialogueProject(project)).toEqual([
+    expect.objectContaining({
+      code: "definition.conversation-alternative.limit",
+      owner: "dialogue",
+      path: "characters.antonio.dialogue.alternatives",
+      message: "A Conversation can present at most six eligible alternatives.",
+    }),
+  ]);
+});
+
 test("Knowledge-Driven Dialogue reports malformed profile collections without throwing", () => {
   const project = {
     narrativeFacts: {},

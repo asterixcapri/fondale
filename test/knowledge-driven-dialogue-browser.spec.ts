@@ -53,6 +53,44 @@ test("the browser fixture completes an open-fact Conversation without external d
   expect(learned).toEqual(["harbour-chain-cut"]);
 });
 
+test("authored alternatives and the free-form field stay usable together by keyboard alone", async ({
+  page,
+}) => {
+  await openCharacterConversation(page, 315);
+  const conversation = page.locator("[data-fondale-conversation]");
+  const input = conversation.locator("[data-fondale-dialogue-input]");
+  const alternatives = conversation.locator("[data-fondale-conversation-alternative]");
+
+  await expect(input).toBeVisible();
+  await expect(alternatives).toHaveCount(2);
+  await expect(alternatives.first()).toBeVisible();
+  await expect(alternatives.first()).toContainText("Who cut the harbour chain?");
+
+  await expect(input).toBeFocused();
+  await page.keyboard.press("Shift+Tab");
+  await page.keyboard.press("Shift+Tab");
+  await expect(alternatives.first()).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page.locator('[data-fondale-line][data-fondale-speaker="player"]'))
+    .toContainText("Who cut the harbour chain?");
+  await page.locator("[data-fondale-frame]").focus();
+  await page.keyboard.press(".");
+  await expect(page.locator('[data-fondale-line][data-fondale-speaker="antonio"]'))
+    .toContainText("I never saw who cut it.");
+  await page.keyboard.press(".");
+
+  await expect(input).toBeVisible();
+  await expect(alternatives).toHaveCount(2);
+  await expect(input).toBeFocused();
+  await page.keyboard.type("Who cut the chain?");
+  await page.keyboard.press("Enter");
+  await expect(page.locator('[data-fondale-line][data-fondale-speaker="player"]'))
+    .toContainText("Who cut the chain?");
+
+  expect(await page.evaluate(() => window.__dialogueProvider?.threadKeys()))
+    .toEqual(["conversation:antonio"]);
+});
+
 test("Rifletti keeps Reflection separate and Load resets every provider thread", async ({ page }) => {
   await openCharacterConversation(page, 315);
   const conversation = page.locator("[data-fondale-conversation]");

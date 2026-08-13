@@ -35,6 +35,7 @@ export {
   type FakeDialogueFailureOutcome,
   type FakeDialoguePendingOutcome,
   type DialogueClaimCandidate,
+  type ConversationAlternativeDefinition,
   type ConversationHandoffDefinition,
   type DialogueFactCandidate,
   type DialogueInterpretation,

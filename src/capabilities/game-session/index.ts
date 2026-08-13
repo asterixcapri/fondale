@@ -129,7 +129,8 @@ export type CoreInput = InteractionInput
   | { readonly type: "advance-conversation-line" }
   | { readonly type: "advance-reflection-line" }
   | { readonly type: "skip-sequence" }
-  | { readonly type: "choose"; readonly alternative: number };
+  | { readonly type: "choose"; readonly alternative: number }
+  | { readonly type: "select-alternative"; readonly alternative: number };
 
 export type CoreEffect =
   | { readonly type: "movement-started"; readonly destination: Point; readonly fast?: true }
@@ -140,10 +141,17 @@ export type CoreEffect =
   | { readonly type: "conversation-changed" }
   | { readonly type: "reflection-changed" };
 
+/** One authored alternative a Conversation offers beside its free-form input field. */
+export interface ConversationAlternativePresentation {
+  readonly index: number;
+  readonly text: string;
+}
+
 export interface ConversationPresentation {
   readonly character: string;
   readonly status: "ready" | "pending" | "line" | "error";
   readonly maxInputLength: number;
+  readonly alternatives: readonly ConversationAlternativePresentation[];
   readonly error?: string;
 }
 
@@ -311,6 +319,8 @@ export function createCoreSession(
         character: state.activity.character,
         status: conversationStatus,
         maxInputLength: dialogueInputMaxLength,
+        alternatives: dialogue.alternatives(state.activity.character, conditionMatches)
+          .map(({ index, definition }) => ({ index, text: definition.text })),
         ...(conversationError ? { error: conversationError } : {}),
       });
     },
@@ -638,6 +648,8 @@ export function createCoreSession(
         invalidateProviderTurn("conversation");
         dialogueTurn = null;
         closeOrHandoffConversation(state.activity.character);
+      } else if (input.type === "select-alternative") {
+        selectConversationAlternative(state.activity.character, input.alternative);
       } else if (input.type === "advance-conversation-line" && dialogueTurn) {
         if (dialogueTurn.phase === "player") {
           dialogueTurn.phase = "character";
@@ -850,6 +862,33 @@ export function createCoreSession(
     conversationError = undefined;
     emitted.push({ type: "conversation-changed" });
     return true;
+  }
+
+  /**
+   * Answers one authored alternative directly, without reaching a Dialogue
+   * Provider. A pending Dialogue Turn is left to settle: the selection is
+   * refused rather than allowed to race the turn it would otherwise cancel.
+   */
+  function selectConversationAlternative(character: string, index: number): void {
+    const playerCharacter = projectViews.world.playerCharacter;
+    if (!playerCharacter) return;
+    if (conversationStatus !== "ready" && conversationStatus !== "error") return;
+    const selected = dialogue.alternatives(character, conditionMatches)
+      .find((alternative) => alternative.index === index);
+    if (!selected) return;
+    const { text, response, spoken, operations } = selected.definition;
+    if (operations && !applyOperations(operations, { kind: "background" })) return;
+    if (state.activity?.type !== "conversation" || state.activity.character !== character) return;
+    dialogueTurn = {
+      character,
+      playerInput: text,
+      response,
+      playerCharacter,
+      phase: spoken === false ? "character" : "player",
+    };
+    conversationStatus = "line";
+    conversationError = undefined;
+    emitted.push({ type: "conversation-changed" });
   }
 
   function closeOrHandoffConversation(character: string): void {
@@ -1211,5 +1250,6 @@ function isInteractionInput(input: CoreInput): input is InteractionInput {
     input.type !== "advance-conversation-line" &&
     input.type !== "advance-reflection-line" &&
     input.type !== "skip-sequence" &&
-    input.type !== "choose";
+    input.type !== "choose" &&
+    input.type !== "select-alternative";
 }

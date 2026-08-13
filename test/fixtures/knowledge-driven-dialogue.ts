@@ -99,6 +99,13 @@ const project = ({
           concealsFactId: "antonio-on-santa-lucia",
           claimId: "antonio-denies-santa-lucia",
         }],
+        alternatives: [{
+          text: "Who cut the harbour chain?",
+          response: "I never saw who cut it.",
+        }, {
+          text: "Where were you that night?",
+          response: "At home, with the shutters closed.",
+        }],
       },
     }),
     lucia: character(80, {

@@ -715,6 +715,15 @@ function validateProjectDefinitions(
         "Character",
       ));
     }
+    const alternatives = character.dialogue?.alternatives;
+    if (Array.isArray(alternatives)) alternatives.forEach((alternative, index) => {
+      if (!alternative || typeof alternative !== "object") return;
+      const path = `characters.${characterId}.dialogue.alternatives[${index}]`;
+      condition(alternative.when, `${path}.when`);
+      if (Array.isArray(alternative.operations)) {
+        diagnostics.push(...operations(alternative.operations, `${path}.operations`));
+      }
+    });
     const handoffs = character.dialogue?.handoffs;
     if (Array.isArray(handoffs)) handoffs.forEach((handoff, index) => {
       const path = `characters.${characterId}.dialogue.handoffs[${index}]`;

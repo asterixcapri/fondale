@@ -139,6 +139,15 @@ const antonioDialogue = {
     sequence: "antonio-confession",
     after: "resume",
   }],
+  alternatives: [{
+    text: "Who cut the harbour chain?",
+    response: "I never saw who cut it.",
+  }, {
+    text: "Where is the winch handle?",
+    when: { variable: "winch-handle-missing", equals: true },
+    response: "Behind the customs house, where it has always been.",
+    operations: [{ type: "set-variable", variable: "winch-handle-found", value: true }],
+  }],
 } satisfies CharacterDialogueDefinition;
 
 const antonio = {
@@ -160,7 +169,11 @@ const antonio = {
 
 const dialogueProject = {
   ...project,
-  variables: { "antonio-ready-to-confess": false },
+  variables: {
+    "antonio-ready-to-confess": false,
+    "winch-handle-missing": true,
+    "winch-handle-found": false,
+  },
   narrativeFacts: {
     "harbour-chain-cut": harbourFact,
     "antonio-cut-chain": { proposition: "Antonio cut the harbour chain." },
@@ -172,7 +185,17 @@ const dialogueProject = {
 
 Startup rejects empty propositions, missing fact, Claim or Relationship
 references, incoherent Cover Stories or Disclosure, and unsupported qualitative
-values. A Conversation handoff evaluates its authored condition against
+values. A Conversation presents the Character's authored `alternatives` and the
+free-form input field together, from the moment it opens until it closes, and
+the Player moves between them freely: nothing gates either path. Selecting an
+alternative pronounces its phrase as the Player Character — unless it declares
+`spoken: false` — answers with the exact authored `response`, and commits its
+`operations` atomically, without reaching a Dialogue Provider, writing provider
+memory or costing a model call. Eligibility reads committed Game State only;
+ineligible alternatives are hidden rather than shown unavailable, and startup
+rejects an authored set that could ever offer more than six at once. A
+selection made while a Dialogue Turn is still pending is refused until that
+turn settles, and an alternative cannot start a Sequence. A Conversation handoff evaluates its authored condition against
 committed Game State, gives control to its named Sequence, and explicitly
 `close`s or `resume`s the Conversation when that Sequence ends. Generated
 wording cannot trigger the handoff. When Dialogue policy selects a Cover Story, the provider receives its

@@ -8,6 +8,7 @@ import {
 } from "pixi.js";
 
 import type {
+  ConversationPresentation,
   CoreEffect,
   CoreSession,
 } from "../capabilities/game-session";
@@ -422,6 +423,7 @@ class EngineOverlay {
   private readonly inventoryScrim = document.createElement("button");
   private readonly narrative = document.createElement("div");
   private readonly dialogueForm = document.createElement("form");
+  private readonly dialogueAlternatives = document.createElement("div");
   private readonly dialogueHeading = document.createElement("label");
   private readonly dialogueInput = document.createElement("input");
   private readonly dialogueSubmit = document.createElement("button");
@@ -442,6 +444,7 @@ class EngineOverlay {
   private activeAudio: HTMLAudioElement | undefined;
   private dismissedActionSignature: string | null = null;
   private dialogueWasVisible = false;
+  private alternativesSignature = "";
 
   constructor(
     private readonly frame: HTMLElement,
@@ -648,6 +651,8 @@ class EngineOverlay {
       "border-radius:4px",
       "box-shadow:0 3px 10px rgba(0,0,0,.8)",
     ].join(";");
+    this.dialogueAlternatives.dataset.fondaleConversationAlternatives = "";
+    this.dialogueAlternatives.style.cssText = "grid-column:1/-1;display:none;gap:1px";
     this.dialogueHeading.style.cssText = "grid-column:1/-1";
     this.dialogueHeading.htmlFor = "fondale-dialogue-input";
     this.dialogueInput.id = "fondale-dialogue-input";
@@ -667,6 +672,7 @@ class EngineOverlay {
     this.dialogueStatus.setAttribute("role", "status");
     this.dialogueStatus.style.cssText = "grid-column:1/-1;min-height:9px";
     this.dialogueForm.append(
+      this.dialogueAlternatives,
       this.dialogueHeading,
       this.dialogueInput,
       this.dialogueSubmit,
@@ -1107,6 +1113,7 @@ class EngineOverlay {
     this.dialogueSubmit.textContent = reflection ? "Reflect" : "Ask";
     this.dialogueInput.maxLength = presentation.maxInputLength;
     const pending = presentation.status === "pending";
+    this.renderConversationAlternatives(conversation, pending);
     this.dialogueInput.disabled = pending;
     this.dialogueSubmit.disabled = pending;
     this.dialogueStatus.textContent = pending
@@ -1116,6 +1123,46 @@ class EngineOverlay {
       this.dialogueInput.focus({ preventScroll: true });
     }
     this.dialogueWasVisible = visible;
+  }
+
+  /** Draws the authored alternatives above the free-form field they share a Conversation with. */
+  private renderConversationAlternatives(
+    conversation: ConversationPresentation | null,
+    pending: boolean,
+  ): void {
+    const alternatives = conversation?.alternatives ?? [];
+    const signature = JSON.stringify(alternatives);
+    if (signature !== this.alternativesSignature) {
+      this.alternativesSignature = signature;
+      this.dialogueAlternatives.replaceChildren();
+      for (const alternative of alternatives) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.dataset.fondaleConversationAlternative = String(alternative.index);
+        button.textContent = alternative.text;
+        button.style.cssText = [
+          "display:block",
+          "width:100%",
+          "padding:1px 0",
+          "box-sizing:border-box",
+          "background:transparent",
+          "border:0",
+          "text-align:left",
+          "font:inherit",
+          "cursor:pointer",
+          `color:${this.data.hudTheme?.colors.preferred ?? "#f4dfb4"}`,
+        ].join(";");
+        button.addEventListener("click", () => this.core.input({
+          type: "select-alternative",
+          alternative: alternative.index,
+        }));
+        this.dialogueAlternatives.append(button);
+      }
+    }
+    this.dialogueAlternatives.style.display = alternatives.length > 0 ? "grid" : "none";
+    for (const button of this.dialogueAlternatives.querySelectorAll("button")) {
+      button.disabled = pending;
+    }
   }
 
   private presentLine(presentation: Extract<HUDNarrativePresentation, { kind: "line" }>): void {
@@ -1228,7 +1275,7 @@ class EngineOverlay {
   }
 
   private readonly onKeyDown = (event: KeyboardEvent): void => {
-    if (event.target === this.dialogueInput) {
+    if (event.target instanceof Node && this.dialogueForm.contains(event.target)) {
       if (event.key === "Escape") {
         event.preventDefault();
         this.core.input({ type: "escape" });
