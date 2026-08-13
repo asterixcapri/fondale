@@ -4,15 +4,15 @@ import { test } from "node:test";
 import type { MastraModelConfig } from "@mastra/core/llm";
 
 import {
-  createOpenRouterDialogueModel,
-  createOpenRouterDialogueModelFromEnvironment,
-  defaultOpenRouterModelId,
+  createLiveDialogueModel,
+  createLiveDialogueModelFromEnvironment,
+  defaultDialogueModelId,
   type LiveDialogueDiagnostic,
-} from "./openrouter-dialogue-model";
+} from "./live-dialogue-model";
 
 test("interpretation asks for a closed schema restricted to the declared Narrative Facts", async () => {
   const calls: ModelCall[] = [];
-  const model = createOpenRouterDialogueModel({
+  const model = createLiveDialogueModel({
     modelId: "deepseek/deepseek-v4-flash-0731",
     model: recordingModel(calls, '{"factId":"lantern-location"}'),
   });
@@ -38,7 +38,7 @@ test("interpretation asks for a closed schema restricted to the declared Narrati
 
 test("interpretation reads the declared propositions and the earlier visible Lines", async () => {
   const calls: ModelCall[] = [];
-  const model = createOpenRouterDialogueModel({
+  const model = createLiveDialogueModel({
     modelId: "deepseek/deepseek-v4-flash-0731",
     model: recordingModel(calls, '{"factId":"chain-cut"}'),
   });
@@ -63,7 +63,7 @@ test("interpretation reads the declared propositions and the earlier visible Lin
 
 test("vague speech is reported as ambiguous so the Engine can ask for clarification", async () => {
   const calls: ModelCall[] = [];
-  const model = createOpenRouterDialogueModel({
+  const model = createLiveDialogueModel({
     modelId: "deepseek/deepseek-v4-flash-0731",
     model: recordingModel(calls, '{"factId":null,"reason":"ambiguous"}'),
   });
@@ -85,11 +85,11 @@ test("vague speech is reported as ambiguous so the Engine can ask for clarificat
 
 test("an undeclared or unusable interpretation becomes a harmless missing Narrative Fact", async () => {
   const calls: ModelCall[] = [];
-  const invented = createOpenRouterDialogueModel({
+  const invented = createLiveDialogueModel({
     modelId: "deepseek/deepseek-v4-flash-0731",
     model: recordingModel(calls, '{"factId":"invented-fact"}'),
   });
-  const unusable = createOpenRouterDialogueModel({
+  const unusable = createLiveDialogueModel({
     modelId: "deepseek/deepseek-v4-flash-0731",
     model: recordingModel(calls, "not json at all"),
   });
@@ -112,7 +112,7 @@ test("an undeclared or unusable interpretation becomes a harmless missing Narrat
 
 test("verbalisation expresses only the authorised payload as one Character Line", async () => {
   const calls: ModelCall[] = [];
-  const model = createOpenRouterDialogueModel({
+  const model = createLiveDialogueModel({
     modelId: "deepseek/deepseek-v4-flash-0731",
     model: recordingModel(calls, "  Non sono mai salito sulla Santa Lucia.\n  "),
   });
@@ -150,7 +150,7 @@ test("verbalisation expresses only the authorised payload as one Character Line"
 
 test("every phase spends its output budget on the answer rather than on reasoning", async () => {
   const calls: ModelCall[] = [];
-  const model = createOpenRouterDialogueModel({
+  const model = createLiveDialogueModel({
     modelId: "deepseek/deepseek-v4-flash-0731",
     model: recordingModel(calls, '{"factId":"chain-cut"}'),
   });
@@ -178,14 +178,14 @@ test("a short Voice keeps a shorter spoken budget than a long one", async () => 
     fact: { id: "chain-cut", proposition: "La catena del porto è stata tagliata." },
   } as const;
 
-  await createOpenRouterDialogueModel({
+  await createLiveDialogueModel({
     modelId: "deepseek/deepseek-v4-flash-0731",
     model: recordingModel(shortCalls, "Tagliata stanotte."),
   }).verbalize({
     ...request,
     profile: { voice: { verbosity: "short", tone: "dry", vocabulary: "simple" } },
   }, [], new AbortController().signal);
-  await createOpenRouterDialogueModel({
+  await createLiveDialogueModel({
     modelId: "deepseek/deepseek-v4-flash-0731",
     model: recordingModel(longCalls, "Tagliata stanotte, e ti racconto tutto."),
   }).verbalize({
@@ -198,7 +198,7 @@ test("a short Voice keeps a shorter spoken budget than a long one", async () => 
 
 test("a Response Strategy without its authorised payload never reaches the model", async () => {
   const calls: ModelCall[] = [];
-  const model = createOpenRouterDialogueModel({
+  const model = createLiveDialogueModel({
     modelId: "deepseek/deepseek-v4-flash-0731",
     model: recordingModel(calls, "Una risposta inventata."),
   });
@@ -222,7 +222,7 @@ test("a Response Strategy without its authorised payload never reaches the model
 
 test("each phase tells the model what to do with the untrusted speech", async () => {
   const calls: ModelCall[] = [];
-  const model = createOpenRouterDialogueModel({
+  const model = createLiveDialogueModel({
     modelId: "deepseek/deepseek-v4-flash-0731",
     model: recordingModel(calls, JSON.stringify({ summary: "So poco." })),
   });
@@ -243,7 +243,7 @@ test("each phase tells the model what to do with the untrusted speech", async ()
 test("an empty first attempt is retried once with a larger spoken budget", async () => {
   const calls: ModelCall[] = [];
   const answers = ["", "La catena è stata tagliata stanotte."];
-  const model = createOpenRouterDialogueModel({
+  const model = createLiveDialogueModel({
     modelId: "deepseek/deepseek-v4-flash-0731",
     model: scriptedModel(calls, (call) => ({
       content: [{ type: "text" as const, text: answers[call - 1] ?? "" }],
@@ -273,7 +273,7 @@ test("an empty first attempt is retried once with a larger spoken budget", async
 
 test("verbalisation refuses an empty Character Line", async () => {
   const calls: ModelCall[] = [];
-  const model = createOpenRouterDialogueModel({
+  const model = createLiveDialogueModel({
     modelId: "deepseek/deepseek-v4-flash-0731",
     model: recordingModel(calls, "   \n  "),
   });
@@ -290,7 +290,7 @@ test("verbalisation refuses an empty Character Line", async () => {
 
 test("Reflection composes only from committed knowledge and keeps Hypothesis uncertain", async () => {
   const calls: ModelCall[] = [];
-  const model = createOpenRouterDialogueModel({
+  const model = createLiveDialogueModel({
     modelId: "deepseek/deepseek-v4-flash-0731",
     model: recordingModel(calls, JSON.stringify({
       summary: "So che la catena è stata tagliata.",
@@ -326,7 +326,7 @@ test("Reflection composes only from committed knowledge and keeps Hypothesis unc
 
 test("Reflection without committed knowledge asks for an honest limited answer", async () => {
   const calls: ModelCall[] = [];
-  const model = createOpenRouterDialogueModel({
+  const model = createLiveDialogueModel({
     modelId: "deepseek/deepseek-v4-flash-0731",
     model: recordingModel(calls, JSON.stringify({ summary: "Non so ancora nulla di utile." })),
   });
@@ -346,7 +346,7 @@ test("Reflection without committed knowledge asks for an honest limited answer",
 test("live diagnostics report model, latency and token cost outside Game State", async () => {
   const calls: ModelCall[] = [];
   const diagnostics: LiveDialogueDiagnostic[] = [];
-  const model = createOpenRouterDialogueModel({
+  const model = createLiveDialogueModel({
     modelId: "deepseek/deepseek-v4-flash-0731",
     model: recordingModel(calls, "La catena è stata tagliata stanotte.", {
       openrouter: { usage: { cost: 0.000_028_9 } },
@@ -374,23 +374,23 @@ test("live diagnostics report model, latency and token cost outside Game State",
   assert.doesNotMatch(JSON.stringify(diagnostic), /sk-or-/);
 });
 
-test("the environment configures one model without exposing the OpenRouter key", () => {
-  const configured = createOpenRouterDialogueModelFromEnvironment({
-    OPENROUTER_API_KEY: "sk-or-v1-example-secret",
-    OPENROUTER_MODEL_ID: "deepseek/deepseek-v4-pro",
+test("the environment configures one model without exposing the API key", () => {
+  const configured = createLiveDialogueModelFromEnvironment({
+    DIALOGUE_MODEL_API_KEY: "sk-or-v1-example-secret",
+    DIALOGUE_MODEL_ID: "deepseek/deepseek-v4-pro",
   });
   assert.equal(configured.modelId, "deepseek/deepseek-v4-pro");
   assert.equal(
-    createOpenRouterDialogueModelFromEnvironment({ OPENROUTER_API_KEY: "sk-or-v1-example-secret" })
+    createLiveDialogueModelFromEnvironment({ DIALOGUE_MODEL_API_KEY: "sk-or-v1-example-secret" })
       .modelId,
-    defaultOpenRouterModelId,
+    defaultDialogueModelId,
   );
 
   assert.throws(
-    () => createOpenRouterDialogueModelFromEnvironment({ OPENROUTER_API_KEY: "  " }),
+    () => createLiveDialogueModelFromEnvironment({ DIALOGUE_MODEL_API_KEY: "  " }),
     (cause: unknown) => {
       assert(cause instanceof Error);
-      assert.match(cause.message, /OPENROUTER_API_KEY/);
+      assert.match(cause.message, /DIALOGUE_MODEL_API_KEY/);
       assert.doesNotMatch(cause.message, /sk-or-/);
       return true;
     },
@@ -399,7 +399,7 @@ test("the environment configures one model without exposing the OpenRouter key",
 
 test("interpretation reaches no model when the Character knows nothing relevant", async () => {
   const calls: ModelCall[] = [];
-  const model = createOpenRouterDialogueModel({
+  const model = createLiveDialogueModel({
     modelId: "deepseek/deepseek-v4-flash-0731",
     model: recordingModel(calls, '{"factId":null}'),
   });

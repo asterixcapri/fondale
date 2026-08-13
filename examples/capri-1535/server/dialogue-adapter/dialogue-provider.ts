@@ -12,7 +12,7 @@ import type {
 import { throwIfAborted } from "./cancellation";
 import type { DialogueModel, VisibleDialogueLine } from "./dialogue-model";
 
-export interface PostgresDialogueProvider extends DialogueProvider {
+export interface AdapterDialogueProvider extends DialogueProvider {
   close(): Promise<void>;
 }
 
@@ -21,11 +21,11 @@ export function dialogueResourceId(sessionId: string): string {
   return `fondale-dialogue-session:${sessionId}`;
 }
 
-export async function createPostgresDialogueProvider(options: {
+export async function createDialogueProvider(options: {
   readonly databaseUrl: string;
   readonly sessionId: string;
   readonly model: DialogueModel;
-}): Promise<PostgresDialogueProvider> {
+}): Promise<AdapterDialogueProvider> {
   if (!options.databaseUrl.trim()) throw new Error("DATABASE_URL must not be empty.");
   if (!options.sessionId.trim()) throw new Error("Game Session identity must not be empty.");
 

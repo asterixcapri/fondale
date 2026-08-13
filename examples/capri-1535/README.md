@@ -118,14 +118,16 @@ docker compose -f compose.dialogue-adapter.yml stop
 To discard only this adapter's local database volume as well, run
 `docker compose -f compose.dialogue-adapter.yml down --volumes`.
 
-## Live OpenRouter spike
+## Live model spike
 
 The same adapter can answer through a real model. Set `DIALOGUE_ADAPTER_MODEL`
-to `openrouter` and put an `OPENROUTER_API_KEY` in `.env.local`, which Git
-ignores. The initial model is `deepseek/deepseek-v4-flash-0731`; a different
-compatible model needs only `OPENROUTER_MODEL_ID` on the server. The key is
-read by Node alone: it never reaches the browser, a diagnostic, an error
-message or the repository.
+to `live` and put a `DIALOGUE_MODEL_API_KEY` in `.env.local`, which Git
+ignores. The initial model is `deepseek/deepseek-v4-flash-0731` reached through
+OpenRouter; a different compatible model needs only `DIALOGUE_MODEL_ID`, and a
+different vendor only `DIALOGUE_MODEL_PROVIDER_ID` and `DIALOGUE_MODEL_BASE_URL`
+on the server. Which vendor hosts the model is configuration, so changing it
+changes no code and no file name. The key is read by Node alone: it never
+reaches the browser, a diagnostic, an error message or the repository.
 
 Interpretation asks for a closed structured output restricted to the Narrative
 Facts the speaking Character actually knows, and Fondale independently rejects
@@ -134,12 +136,12 @@ fact, Claim or Response Strategy, so the model chooses wording, never content.
 
 The technical Michele/Antonio fixture lives at
 `test/fixtures/live-dialogue.html` and shares nothing with the Example's
-canonical story. With the adapter running in `openrouter` mode you can open it
+canonical story. With the adapter running in `live` mode you can open it
 in the browser and talk to Antonio yourself.
 
 The live verification is opt-in and stays outside `npm run build`,
 `npm run verify` and `npm run verify:dialogue-adapter`. It needs local
-PostgreSQL, an OpenRouter key with credit, and the network:
+PostgreSQL, a model API key with credit, and the network:
 
 ```sh
 docker compose -f compose.dialogue-adapter.yml up -d

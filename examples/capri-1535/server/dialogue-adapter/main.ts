@@ -1,7 +1,7 @@
 import { readAdapterConfiguration } from "./configuration";
 import { createDialogueAdapterServer } from "./http-server";
 import { selectDialogueModel } from "./model-selection";
-import { createPostgresDialogueProvider } from "./postgres-dialogue-provider";
+import { createDialogueProvider } from "./dialogue-provider";
 
 const { databaseUrl, host, port } = readAdapterConfiguration(process.env);
 
@@ -18,7 +18,7 @@ const server = await createDialogueAdapterServer({
   host,
   port,
   createProvider(sessionId) {
-    return createPostgresDialogueProvider({ databaseUrl, sessionId, model });
+    return createDialogueProvider({ databaseUrl, sessionId, model });
   },
 });
 

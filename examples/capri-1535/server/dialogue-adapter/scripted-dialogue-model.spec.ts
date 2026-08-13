@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { PrologueDialogueModel } from "./prologue-dialogue-model";
+import { ScriptedDialogueModel } from "./scripted-dialogue-model";
 
 const signal = new AbortController().signal;
-const model = new PrologueDialogueModel();
+const model = new ScriptedDialogueModel();
 const candidates = [
   { id: "winch-lacks-its-handle", proposition: "L'argano del porto è fermo." },
   { id: "cloister-pulley-is-jammed", proposition: "La carrucola del pozzo è bloccata." },

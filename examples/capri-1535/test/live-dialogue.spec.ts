@@ -2,11 +2,11 @@ import { Memory } from "@mastra/memory";
 import { PostgresStore } from "@mastra/pg";
 import { test, type Page } from "@playwright/test";
 
-import { dialogueResourceId } from "../server/dialogue-adapter/postgres-dialogue-provider";
+import { dialogueResourceId } from "../server/dialogue-adapter/dialogue-provider";
 import { clickWorld, expect, openGame } from "./harness";
 
 /**
- * Opt-in live spike against OpenRouter, Mastra and PostgreSQL.
+ * Opt-in live spike against the configured model vendor, Mastra and PostgreSQL.
  *
  * It asserts only canonical Game State, provider memory and turn outcomes:
  * generated wording is reported for a human to read, never compared with an
@@ -106,7 +106,7 @@ test("the live Michele/Antonio spike behaves as the approved experience", async 
   expect(await visibleMessageCount(sessionId)).toBe(2);
 
   expect(errors).toEqual([]);
-  console.log(`Live Lines observed with the configured OpenRouter model:\n- ${observed.join("\n- ")}`);
+  console.log(`Live Lines observed with the configured live model:\n- ${observed.join("\n- ")}`);
 });
 
 async function talkToAntonio(page: Page): Promise<void> {

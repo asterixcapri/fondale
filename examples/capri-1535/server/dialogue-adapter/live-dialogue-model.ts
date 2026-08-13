@@ -14,11 +14,14 @@ import type {
 
 import type { DialogueModel, VisibleDialogueLine } from "./dialogue-model";
 
-/** The model this live spike starts from; one server-side setting selects another. */
-export const defaultOpenRouterModelId = "deepseek/deepseek-v4-flash-0731";
-
-/** OpenRouter speaks the OpenAI-compatible protocol Mastra routes to natively. */
-const openRouterBaseUrl = "https://openrouter.ai/api/v1";
+/**
+ * Where this live spike starts from. Every value here is a default a
+ * server-side setting replaces: which vendor hosts the model is configuration,
+ * never part of what this adapter is.
+ */
+export const defaultDialogueModelId = "deepseek/deepseek-v4-flash-0731";
+export const defaultDialogueModelProviderId = "openrouter";
+export const defaultDialogueModelBaseUrl = "https://openrouter.ai/api/v1";
 
 /** Technical observation of one live provider call, never part of Game State. */
 export interface LiveDialogueDiagnostic {
@@ -35,12 +38,15 @@ export interface LiveDialogueModel extends DialogueModel {
   readonly modelId: string;
 }
 
-/** Builds a Dialogue Model that reaches one OpenRouter-hosted language model. */
-export function createOpenRouterDialogueModel(options: {
+/** Builds a Dialogue Model that reaches one hosted language model. */
+export function createLiveDialogueModel(options: {
   readonly model: MastraModelConfig;
   readonly modelId: string;
+  /** Names the vendor whose call options and usage reporting apply. */
+  readonly providerId?: string;
   readonly onDiagnostic?: (diagnostic: LiveDialogueDiagnostic) => void;
 }): LiveDialogueModel {
+  const providerId = options.providerId ?? defaultDialogueModelProviderId;
   // One Agent serves every phase; each call supplies its own instructions and
   // carries no `memory`, so nothing this Agent sees or says is ever persisted.
   // The Dialogue Provider remains the only writer of conversational memory.
@@ -63,7 +69,7 @@ export function createOpenRouterDialogueModel(options: {
         modelId: options.modelId,
         latencyMs: Date.now() - startedAt,
         ...tokenCounts(result.usage),
-        ...reportedCost(result.providerMetadata),
+        ...reportedCost(result.providerMetadata, providerId),
       });
       return result;
     } catch (cause) {
@@ -88,6 +94,7 @@ export function createOpenRouterDialogueModel(options: {
       if (candidateIds.length === 0) return { factId: null, reason: "no-relevant-fact" };
       const { object: interpreted } = await measure("interpret", () => {
         const { messages, ...call } = callOptions({
+          providerId,
           system: interpretationInstructions(request),
           history,
           playerInput: request.playerInput,
@@ -125,6 +132,7 @@ export function createOpenRouterDialogueModel(options: {
       const speak = (maxOutputTokens: number) =>
         measure("verbalize", () => {
           const { messages, modelSettings, ...call } = callOptions({
+            providerId,
             system: verbalizationInstructions(request),
             history,
             playerInput: request.playerInput,
@@ -141,7 +149,7 @@ export function createOpenRouterDialogueModel(options: {
       // A model that spends its budget before reaching any visible text leaves
       // the Player with nothing, so the turn is worth one more, roomier try.
       const line = await speak(budget) || await speak(budget * 3);
-      if (!line) throw new Error("OpenRouter returned an empty Character Line.");
+      if (!line) throw new Error("The live Dialogue Model returned an empty Character Line.");
       return line;
     },
 
@@ -152,6 +160,7 @@ export function createOpenRouterDialogueModel(options: {
     ): Promise<ReflectionResponse> {
       const { object } = await measure("reflect", () => {
         const { messages, ...call } = callOptions({
+          providerId,
           system: reflectionInstructions(request),
           history,
           playerInput: request.playerInput,
@@ -163,7 +172,7 @@ export function createOpenRouterDialogueModel(options: {
         return agent.generate(messages, { ...call, structuredOutput: { schema: reflectionSchema } });
       });
       const summary = singleLine(object.summary);
-      if (!summary) throw new Error("OpenRouter returned an empty Reflection.");
+      if (!summary) throw new Error("The live Dialogue Model returned an empty Reflection.");
       const hypotheses = nonEmptyLines(object.hypotheses);
       const suggestions = nonEmptyLines(object.suggestions);
       return {
@@ -176,21 +185,25 @@ export function createOpenRouterDialogueModel(options: {
 }
 
 /**
- * Reads the server-side OpenRouter configuration.
+ * Reads the server-side live-model configuration.
  *
  * The API key stays inside this Node process: it is never echoed into a
  * diagnostic, an error message or a browser response.
  */
-export function createOpenRouterDialogueModelFromEnvironment(
+export function createLiveDialogueModelFromEnvironment(
   environment: Readonly<Record<string, string | undefined>>,
   onDiagnostic?: (diagnostic: LiveDialogueDiagnostic) => void,
 ): LiveDialogueModel {
-  const apiKey = environment.OPENROUTER_API_KEY?.trim();
-  if (!apiKey) throw new Error("OPENROUTER_API_KEY is required for the live Dialogue Provider.");
-  const modelId = environment.OPENROUTER_MODEL_ID?.trim() || defaultOpenRouterModelId;
-  return createOpenRouterDialogueModel({
+  const apiKey = environment.DIALOGUE_MODEL_API_KEY?.trim();
+  if (!apiKey) throw new Error("DIALOGUE_MODEL_API_KEY is required for the live Dialogue Model.");
+  const modelId = environment.DIALOGUE_MODEL_ID?.trim() || defaultDialogueModelId;
+  const providerId = environment.DIALOGUE_MODEL_PROVIDER_ID?.trim() ||
+    defaultDialogueModelProviderId;
+  const url = environment.DIALOGUE_MODEL_BASE_URL?.trim() || defaultDialogueModelBaseUrl;
+  return createLiveDialogueModel({
     modelId,
-    model: { providerId: "openrouter", modelId, url: openRouterBaseUrl, apiKey },
+    providerId,
+    model: { providerId, modelId, url, apiKey },
     ...(onDiagnostic ? { onDiagnostic } : {}),
   });
 }
@@ -203,6 +216,7 @@ export function createOpenRouterDialogueModelFromEnvironment(
  * the model reaches the text Fondale actually presents.
  */
 function callOptions(request: {
+  readonly providerId: string;
   readonly system: string;
   readonly history: readonly VisibleDialogueLine[];
   readonly playerInput: string;
@@ -215,7 +229,7 @@ function callOptions(request: {
     // and never loops back for a second opinion.
     maxSteps: 1,
     modelSettings: { maxOutputTokens: 400 },
-    providerOptions: { openrouter: { reasoning: { enabled: false } } },
+    providerOptions: { [request.providerId]: { reasoning: { enabled: false } } },
     instructions: request.system,
     messages: [
       ...conversationMessages(request.history),
@@ -355,11 +369,14 @@ function tokenCounts(usage: unknown): {
   };
 }
 
-function reportedCost(providerMetadata: unknown): { readonly cost?: number } {
+function reportedCost(
+  providerMetadata: unknown,
+  providerId: string,
+): { readonly cost?: number } {
   if (typeof providerMetadata !== "object" || providerMetadata === null) return {};
-  const openrouter = (providerMetadata as Record<string, unknown>).openrouter;
-  if (typeof openrouter !== "object" || openrouter === null) return {};
-  const usage = (openrouter as Record<string, unknown>).usage;
+  const vendor = (providerMetadata as Record<string, unknown>)[providerId];
+  if (typeof vendor !== "object" || vendor === null) return {};
+  const usage = (vendor as Record<string, unknown>).usage;
   if (typeof usage !== "object" || usage === null) return {};
   const cost = (usage as Record<string, unknown>).cost;
   return typeof cost === "number" ? { cost } : {};

@@ -14,7 +14,7 @@ import { LocalDialogueProvider } from "../../src/local-dialogue-provider";
 import { logicalBackground } from "./logical-background";
 
 /**
- * Technical Michele/Antonio fixture for the live OpenRouter spike.
+ * Technical Michele/Antonio fixture for the live model spike.
  *
  * It shares nothing with the Example's canonical story: its Narrative Facts,
  * Claims, Characters and Scene exist only to observe the Knowledge-Driven

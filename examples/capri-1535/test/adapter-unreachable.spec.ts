@@ -24,7 +24,7 @@ test("the ordinary build explains an unreachable adapter without leaking configu
   // Nothing is playable, and nothing of the server comes with the explanation.
   await expect(page.locator("[data-fondale-frame]")).toHaveCount(0);
   const explanation = await error.textContent() ?? "";
-  for (const secret of ["DATABASE_URL", "OPENROUTER", "postgres", "fondale_dialogue"]) {
+  for (const secret of ["DATABASE_URL", "DIALOGUE_MODEL_API_KEY", "postgres", "fondale_dialogue"]) {
     expect(explanation).not.toContain(secret);
   }
 });

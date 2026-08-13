@@ -6,8 +6,8 @@ import {
   type DialogueModel,
 } from "./dialogue-model";
 import {
-  createPostgresDialogueProvider,
-} from "./postgres-dialogue-provider";
+  createDialogueProvider,
+} from "./dialogue-provider";
 
 const databaseUrl = process.env.DIALOGUE_ADAPTER_TEST_DATABASE_URL;
 if (!databaseUrl) {
@@ -22,7 +22,7 @@ test("the PostgreSQL adapter persists only visible Dialogue Lines across restart
       "Remind me where it is.": "lantern-location",
     },
   });
-  const firstProvider = await createPostgresDialogueProvider({
+  const firstProvider = await createDialogueProvider({
     databaseUrl,
     sessionId,
     model,
@@ -56,7 +56,7 @@ test("the PostgreSQL adapter persists only visible Dialogue Lines across restart
     await firstProvider.close();
   }
 
-  const restartedProvider = await createPostgresDialogueProvider({
+  const restartedProvider = await createDialogueProvider({
     databaseUrl,
     sessionId,
     model,
@@ -89,10 +89,10 @@ test("Conversation, Reflection and Game Sessions use isolated PostgreSQL threads
   const firstSessionId = crypto.randomUUID();
   const secondSessionId = crypto.randomUUID();
   const model = new DeterministicDialogueModel({ interpretations: {} });
-  const firstSession = await createPostgresDialogueProvider({
+  const firstSession = await createDialogueProvider({
     databaseUrl, sessionId: firstSessionId, model,
   });
-  const secondSession = await createPostgresDialogueProvider({
+  const secondSession = await createDialogueProvider({
     databaseUrl, sessionId: secondSessionId, model,
   });
 
@@ -145,7 +145,7 @@ test("failed and cancelled turns leave no visible half-turn in memory", async ()
       return deterministic.verbalize(request, history, signal);
     },
   };
-  const provider = await createPostgresDialogueProvider({
+  const provider = await createDialogueProvider({
     databaseUrl, sessionId, model,
   });
 
@@ -195,7 +195,7 @@ test("reset invalidates an in-flight turn before acknowledging completion", asyn
       return "Late Character Line.";
     },
   };
-  const provider = await createPostgresDialogueProvider({ databaseUrl, sessionId, model });
+  const provider = await createDialogueProvider({ databaseUrl, sessionId, model });
 
   try {
     const pending = answer(provider, "antonio", "Pending before reset", "turn-1");
@@ -227,7 +227,7 @@ test("Mastra bounds the visible context supplied to the model", async () => {
     verbalize: (_request, history) => Promise.resolve(`history:${history.length}`),
     reflect: () => Promise.resolve({ summary: "unused" }),
   };
-  const provider = await createPostgresDialogueProvider({ databaseUrl, sessionId, model });
+  const provider = await createDialogueProvider({ databaseUrl, sessionId, model });
 
   try {
     for (let index = 0; index < 51; index += 1) {
@@ -256,7 +256,7 @@ test("Reflection memory stores the exact Character Line shown by Fondale", async
       });
     },
   };
-  const provider = await createPostgresDialogueProvider({ databaseUrl, sessionId, model });
+  const provider = await createDialogueProvider({ databaseUrl, sessionId, model });
   const request = {
     playerInput: "First reflection",
     character: "michele",
@@ -285,7 +285,7 @@ test("Reflection memory stores the exact Character Line shown by Fondale", async
 });
 
 function answer(
-  provider: Awaited<ReturnType<typeof createPostgresDialogueProvider>>,
+  provider: Awaited<ReturnType<typeof createDialogueProvider>>,
   speaker: string,
   playerInput: string,
   turnId: string,

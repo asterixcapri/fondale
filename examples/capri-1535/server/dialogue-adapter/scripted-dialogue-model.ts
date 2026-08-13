@@ -18,11 +18,12 @@ import type { DialogueModel, VisibleDialogueLine } from "./dialogue-model";
  * The Dialogue Model this adapter speaks through when no live model is
  * configured, and therefore the one an ordinary `npm run dev` meets.
  *
- * It answers the Example's own prologue questions without a key, a network or
- * a token cost. `DeterministicDialogueModel` stays what it has always been: a
- * test device that reports the visible history it was given.
+ * It follows a script: fixed keywords read the question, fixed wording answers
+ * it, so the Example's own prologue works without a key, a network or a token
+ * cost. `DeterministicDialogueModel` stays what it has always been: a test
+ * device that reports the visible history it was given.
  */
-export class PrologueDialogueModel implements DialogueModel {
+export class ScriptedDialogueModel implements DialogueModel {
   interpret(
     request: DialogueInterpretationRequest,
     _history: readonly VisibleDialogueLine[],
