@@ -1,4 +1,7 @@
-import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import { serve, type ServerType } from "@hono/node-server";
+import { Hono, type Context } from "hono";
+import type { ContentfulStatusCode } from "hono/utils/http-status";
+import { cors } from "hono/cors";
 
 import type { DialogueProvider, DialogueTurnContext } from "@asterixcapri/fondale";
 
@@ -24,78 +27,91 @@ export async function createDialogueAdapterServer(options: {
 }): Promise<DialogueAdapterServer> {
   const providers = new Map<string, Promise<ClosableDialogueProvider>>();
   const activeTurns = new Map<string, AbortController>();
-  const allowedOrigins = new Set(options.allowedOrigins ?? [
+  const allowedOrigins = options.allowedOrigins ?? [
     "http://127.0.0.1:5173",
     "http://localhost:5173",
-  ]);
-  const server = createServer(async (request, response) => {
+  ];
+
+  const app = new Hono();
+
+  app.use(
+    "/dialogue",
+    cors({
+      origin: (origin) => allowedOrigins.includes(origin) ? origin : null,
+      allowMethods: ["POST", "OPTIONS"],
+      allowHeaders: ["content-type"],
+    }),
+  );
+
+  // A request that carries an Origin the Author did not allow is refused
+  // before it can reach a Dialogue Provider, and learns nothing else.
+  app.use("/dialogue", async (context, next) => {
+    const origin = context.req.header("origin");
+    if (origin !== undefined && !allowedOrigins.includes(origin)) {
+      return json(context, 403, { ok: false, error: "Origin is not allowed." });
+    }
+    await next();
+  });
+
+  app.post("/dialogue", async (context) => {
+    const body = await readJson(context.req.raw);
+    if (!isLocalDialogueRequest(body)) {
+      return json(context, 400, { ok: false, error: "Invalid Dialogue Provider request." });
+    }
+    const turnKey = "turnId" in body ? `${body.sessionId}\0${body.turnId}` : undefined;
+    if (body.operation === "cancel") {
+      activeTurns.get(turnKey!)?.abort(new DOMException("Aborted", "AbortError"));
+      return json(context, 200, { ok: true });
+    }
+    // The Web-standard request already aborts when the Player closes the
+    // Conversation or the browser goes away, so the turn follows it directly.
+    const controller = new AbortController();
+    const abort = () => controller.abort(new DOMException("Aborted", "AbortError"));
+    if (context.req.raw.signal.aborted) abort();
+    else context.req.raw.signal.addEventListener("abort", abort, { once: true });
+    if (turnKey) activeTurns.set(turnKey, controller);
     try {
-      if (!allowOrigin(request, response, allowedOrigins)) return;
-      if (request.method === "OPTIONS") {
-        response.writeHead(204).end();
-        return;
+      let providerPromise = providers.get(body.sessionId);
+      if (!providerPromise) {
+        providerPromise = options.createProvider(body.sessionId);
+        providers.set(body.sessionId, providerPromise);
       }
-      if (request.method !== "POST" || request.url !== "/dialogue") {
-        writeJson(response, 404, { ok: false, error: "Not found." });
-        return;
-      }
-      const body = await readJson(request);
-      if (!isLocalDialogueRequest(body)) {
-        writeJson(response, 400, { ok: false, error: "Invalid Dialogue Provider request." });
-        return;
-      }
-      const turnKey = "turnId" in body ? `${body.sessionId}\0${body.turnId}` : undefined;
-      if (body.operation === "cancel") {
-        activeTurns.get(turnKey!)?.abort(new DOMException("Aborted", "AbortError"));
-        writeJson(response, 200, { ok: true });
-        return;
-      }
-      const controller = new AbortController();
-      const abort = () => controller.abort(new DOMException("Aborted", "AbortError"));
-      request.once("aborted", abort);
-      response.once("close", () => {
-        if (!response.writableEnded) abort();
-      });
-      if (turnKey) activeTurns.set(turnKey, controller);
-      try {
-        let providerPromise = providers.get(body.sessionId);
-        if (!providerPromise) {
-          providerPromise = options.createProvider(body.sessionId);
-          providers.set(body.sessionId, providerPromise);
-        }
-        const provider = await providerPromise;
-        if (controller.signal.aborted) return;
-        const value = await execute(provider, body, controller.signal);
-        if (!controller.signal.aborted) writeJson(response, 200, { ok: true, value });
-      } finally {
-        if (turnKey && activeTurns.get(turnKey) === controller) activeTurns.delete(turnKey);
-      }
-    } catch (cause) {
-      // The browser learns only that the turn failed; the cause stays on the
-      // server console, where a local developer can actually read it.
-      console.error("Dialogue Provider request failed.", cause);
-      if (!response.headersSent) {
-        writeJson(response, 500, {
-          ok: false,
-          error: "Dialogue Provider request failed.",
-        });
-      }
+      const provider = await providerPromise;
+      if (controller.signal.aborted) return abandoned(context);
+      const value = await execute(provider, body, controller.signal);
+      if (controller.signal.aborted) return abandoned(context);
+      return json(context, 200, { ok: true, value });
+    } finally {
+      if (turnKey && activeTurns.get(turnKey) === controller) activeTurns.delete(turnKey);
     }
   });
 
-  await new Promise<void>((resolve, reject) => {
-    server.once("error", reject);
-    server.listen(options.port, options.host, resolve);
+  app.all("/*", (context) => json(context, 404, { ok: false, error: "Not found." }));
+
+  // The browser learns only that the turn failed; the cause stays on the
+  // server console, where a local developer can actually read it.
+  app.onError((cause, context) => {
+    console.error("Dialogue Provider request failed.", cause);
+    return json(context, 500, { ok: false, error: "Dialogue Provider request failed." });
+  });
+
+  const server = await new Promise<ServerType>((resolve, reject) => {
+    const started = serve({ fetch: app.fetch, hostname: options.host, port: options.port }, () =>
+      resolve(started)
+    );
+    started.once("error", reject);
   });
   const address = server.address();
-  if (!address || typeof address === "string") throw new Error("Dialogue adapter has no TCP address.");
+  if (!address || typeof address === "string") {
+    throw new Error("Dialogue adapter has no TCP address.");
+  }
 
   return {
     url: `http://${options.host}:${address.port}/dialogue`,
     async close() {
       await new Promise<void>((resolve, reject) => {
         server.close((error) => error ? reject(error) : resolve());
-        server.closeIdleConnections();
+        (server as { closeIdleConnections?: () => void }).closeIdleConnections?.();
       });
       const settledProviders = await Promise.allSettled(providers.values());
       await Promise.all(settledProviders.flatMap((result) =>
@@ -123,34 +139,26 @@ async function execute(
   }
 }
 
-function allowOrigin(
-  request: IncomingMessage,
-  response: ServerResponse,
-  allowedOrigins: ReadonlySet<string>,
-): boolean {
-  const origin = request.headers.origin;
-  if (!origin) return true;
-  if (!allowedOrigins.has(origin)) {
-    writeJson(response, 403, { ok: false, error: "Origin is not allowed." });
-    return false;
-  }
-  response.setHeader("access-control-allow-origin", origin);
-  response.setHeader("vary", "origin");
-  response.setHeader("access-control-allow-methods", "POST, OPTIONS");
-  response.setHeader("access-control-allow-headers", "content-type");
-  return true;
+/**
+ * A turn the Player abandoned owes its answer to nobody: the browser has
+ * already stopped listening, so this only closes the exchange tidily.
+ */
+function abandoned(context: Context): Response {
+  return json(context, 408, { ok: false, error: "Dialogue Turn was cancelled." });
 }
 
-async function readJson(request: IncomingMessage): Promise<unknown> {
-  const chunks: Buffer[] = [];
-  let size = 0;
-  for await (const chunk of request) {
-    const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
-    size += buffer.byteLength;
-    if (size > 1_000_000) throw new Error("Dialogue Provider request is too large.");
-    chunks.push(buffer);
-  }
-  return JSON.parse(Buffer.concat(chunks).toString("utf8")) as unknown;
+function json(
+  context: Context,
+  status: ContentfulStatusCode,
+  body: LocalDialogueResponse,
+): Response {
+  return context.json(body, status);
+}
+
+async function readJson(request: Request): Promise<unknown> {
+  const raw = await request.text();
+  if (raw.length > 1_000_000) throw new Error("Dialogue Provider request is too large.");
+  return JSON.parse(raw) as unknown;
 }
 
 function isLocalDialogueRequest(value: unknown): value is LocalDialogueRequest {
@@ -166,9 +174,4 @@ function isLocalDialogueRequest(value: unknown): value is LocalDialogueRequest {
       candidate.operation === "reflect") &&
     typeof candidate.turnId === "string" && candidate.turnId.length > 0 &&
     typeof candidate.request === "object" && candidate.request !== null;
-}
-
-function writeJson(response: ServerResponse, status: number, body: LocalDialogueResponse): void {
-  response.writeHead(status, { "content-type": "application/json; charset=utf-8" });
-  response.end(JSON.stringify(body));
 }
