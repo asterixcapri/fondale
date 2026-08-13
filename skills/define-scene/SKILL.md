@@ -17,8 +17,9 @@ Read the Game Project, `CONTEXT.md`, and the current Fondale Scene types before
 authoring. Also inspect `docs/public/game-authoring.md`,
 `docs/public/recipes/first-scene.ts`, adjacent Scene modules, existing Art
 Masters, and any saved generation prompts that bear on the location. Read
-[scene-package.md](references/scene-package.md) in full and establish its Project
-scale contract before evaluating the Scene.
+`docs/agents/visual-direction.md` and
+[scene-package.md](references/scene-package.md) in full before evaluating the
+Scene.
 
 For a new Scene, identify the conventions it must join. For a modification,
 inspect the current Scene in the Engine and inventory its definitions, artwork,
@@ -73,12 +74,11 @@ ground-contact footprint, position, Baseline, Visual Anchor, maximum extent
 across Appearances, depth role, and Approach Point. Measure coordinates on this
 1:1 plan, never on a resized preview or an image-generation approximation.
 
-Place a reference Character silhouette on the spatial plan before designing
-architecture, Scenery, or routes. Use the Game Project's existing Player
-Character proportions when available. Otherwise start near one third of the
-Logical Resolution height at `Perspective Scale` 1 and confirm that artistic
-choice with the user. Derive the near, middle, and far silhouette sizes from the
-planned Perspective Scale; do not resize Characters independently per Scene.
+Place the reference Character established by
+`docs/agents/visual-direction.md` on the spatial plan before designing
+architecture, Scenery, or routes. Derive the near, middle, and far silhouette
+sizes from the planned Perspective Scale; do not resize Characters independently
+per Scene.
 
 Make navigation-first composition the default. Design one broad connected
 walking surface expressible as a simple polygon with the fewest purposeful
@@ -97,12 +97,12 @@ and visually obvious.
 
 ### 4. Create the composition Art Master
 
-Read [art-direction.md](references/art-direction.md) in full. Generate a complete
-composition at the final Scene aspect ratio and inspect the actual image. Iterate
-on staging, value structure, palette, depth, and character readability before
-separating assets. Compose every planned Scenery element in place so its scale,
-perspective, overlap, lighting, contact, and negative space are solved together
-with the Background. Keep geometry stable after accepting the composition.
+Apply `docs/agents/visual-direction.md`. Generate a complete composition at the
+final Scene aspect ratio and inspect the actual image. Iterate on staging, value
+structure, palette, depth, and character readability before separating assets.
+Compose every planned Scenery element in place so its scale, perspective,
+overlap, lighting, contact, and negative space are solved together with the
+Background. Keep geometry stable after accepting the composition.
 
 Finish when the composition satisfies every art-direction check and supports the
 blocked gameplay at actual play size. Then align the spatial plan to the final

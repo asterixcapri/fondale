@@ -25,10 +25,25 @@
       "skillPath": "skills/engineering/codebase-design/SKILL.md",
       "computedHash": "e6394592ecf4b5aa5bc93f95a20d0a56314788bde2e1221f87296d3becb734a2"
     },
+    "define-character": {
+      "source": "./skills",
+      "sourceType": "local",
+      "computedHash": "9827543b636662e3a2ca328bb82f403129ab876651019a7c87478c4443935a75"
+    },
+    "define-dialogue": {
+      "source": "./skills",
+      "sourceType": "local",
+      "computedHash": "0fcd8343736f6b9d80923e0a64e3b9a5882c92571ca678e6dc83c1d0dc296760"
+    },
+    "define-object": {
+      "source": "./skills",
+      "sourceType": "local",
+      "computedHash": "4a6923584b4d5ac4985b947f55542804d091b08884152c55b9aaf1b0214452dd"
+    },
     "define-scene": {
       "source": "./skills",
       "sourceType": "local",
-      "computedHash": "0be297c0b76cb16811527cbcba09a5aa515742bb53ce29aae234fafc6291f4f5"
+      "computedHash": "2f562e0b23a8c793f6d001cc37f9576544126427e8049038839b44ffa5d871be"
     },
     "diagnosing-bugs": {
       "source": "mattpocock/skills",

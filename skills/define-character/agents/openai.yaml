@@ -1,0 +1,4 @@
+interface:
+  display_name: "Define Character"
+  short_description: "Create or modify complete Fondale Characters"
+  default_prompt: "Use $define-character to create or modify a production-ready Character for this Fondale Game Project."

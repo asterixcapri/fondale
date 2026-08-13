@@ -75,9 +75,19 @@ To list the skills currently available in the project:
 npx skills list
 ```
 
-Use `skills/define-scene/SKILL.md` when creating or modifying a complete
-Fondale Scene, including its artwork, geometry, authoring data, and in-Engine
-verification.
+Use the project content skills for their owning definitions:
+
+- `skills/define-scene/SKILL.md` for Scenes, Background, Scenery, geometry, and
+  spatial integration;
+- `skills/define-character/SKILL.md` for Characters, visual identity, stable
+  portrayal, Appearances, and Animations;
+- `skills/define-object/SKILL.md` for collectible Objects, Scene and Inventory
+  presentation, interactions, and lifecycle;
+- `skills/define-dialogue/SKILL.md` for narrative authority, Character Knowledge,
+  Disclosure, authored Conversation, and Knowledge-Driven Dialogue.
+
+The visual skills share `docs/agents/visual-direction.md` for project scale,
+illustrated neo-retro art direction, colour, and cross-asset consistency.
 
 ### Issue tracker
 
