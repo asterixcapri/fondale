@@ -15,13 +15,20 @@ import type {
 import type { DialogueModel, VisibleDialogueLine } from "./dialogue-model";
 
 /**
- * Where this live spike starts from. Every value here is a default a
- * server-side setting replaces: which vendor hosts the model is configuration,
- * never part of what this adapter is.
+ * Where this live spike starts from, as one Mastra model identifier: the
+ * vendor leads, the model follows. Mastra resolves the endpoint from it, so
+ * reaching a different vendor is a different value and never a code change.
  */
-export const defaultDialogueModelId = "deepseek/deepseek-v4-flash-0731";
-export const defaultDialogueModelProviderId = "openrouter";
-export const defaultDialogueModelBaseUrl = "https://openrouter.ai/api/v1";
+export const defaultDialogueModelId = "openrouter/deepseek/deepseek-v4-flash-0731";
+
+/** The vendor an identifier names, whose call options and usage reporting apply. */
+function vendorOf(modelId: string): string {
+  const [vendor] = modelId.split("/");
+  if (!vendor || vendor === modelId) {
+    throw new Error("DIALOGUE_MODEL_ID must name a vendor and a model, as `vendor/model`.");
+  }
+  return vendor;
+}
 
 /** Technical observation of one live provider call, never part of Game State. */
 export interface LiveDialogueDiagnostic {
@@ -46,7 +53,7 @@ export function createLiveDialogueModel(options: {
   readonly providerId?: string;
   readonly onDiagnostic?: (diagnostic: LiveDialogueDiagnostic) => void;
 }): LiveDialogueModel {
-  const providerId = options.providerId ?? defaultDialogueModelProviderId;
+  const providerId = options.providerId ?? vendorOf(options.modelId);
   // One Agent serves every phase; each call supplies its own instructions and
   // carries no `memory`, so nothing this Agent sees or says is ever persisted.
   // The Dialogue Provider remains the only writer of conversational memory.
@@ -197,13 +204,10 @@ export function createLiveDialogueModelFromEnvironment(
   const apiKey = environment.DIALOGUE_MODEL_API_KEY?.trim();
   if (!apiKey) throw new Error("DIALOGUE_MODEL_API_KEY is required for the live Dialogue Model.");
   const modelId = environment.DIALOGUE_MODEL_ID?.trim() || defaultDialogueModelId;
-  const providerId = environment.DIALOGUE_MODEL_PROVIDER_ID?.trim() ||
-    defaultDialogueModelProviderId;
-  const url = environment.DIALOGUE_MODEL_BASE_URL?.trim() || defaultDialogueModelBaseUrl;
   return createLiveDialogueModel({
     modelId,
-    providerId,
-    model: { providerId, modelId, url, apiKey },
+    providerId: vendorOf(modelId),
+    model: { id: modelId as `${string}/${string}`, apiKey },
     ...(onDiagnostic ? { onDiagnostic } : {}),
   });
 }
