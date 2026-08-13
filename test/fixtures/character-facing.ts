@@ -53,6 +53,7 @@ const player = {
         gesture: {
           frames: gestureFrames,
           framesPerSecond: 1,
+          loop: true,
           cues: { turn: 1 },
         },
       },
@@ -101,9 +102,15 @@ const turn = {
       {
         type: "motion",
         subject: { kind: "character", character: "player" },
-        path: [{ x: 213, y: 180 }],
+        path: [{ x: 223, y: 180 }],
         facing: "right",
         startAfter: { direction: 0, cue: "turn" },
+      },
+      {
+        type: "camera",
+        mode: "hold",
+        point: { x: 213, y: 120 },
+        duration: 5,
       },
     ],
   }],

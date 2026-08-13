@@ -28,5 +28,5 @@ drives movement and a Cue-directed turn through supported Engine behavior,
 then inspects the rendered pixels and saved Game State to prove exact Facing
 selection, positive orientation, stable Ground Point and Visual Anchor, and
 continuous Animation phase. Existing startup browser coverage supplies the
-required invalid-asset and Visual Anchor diagnostics. The complete Chrome
-verification suite passes without external services.
+required missing-Facing, invalid-asset, and Visual Anchor diagnostics. The
+complete Chrome verification suite passes without external services.

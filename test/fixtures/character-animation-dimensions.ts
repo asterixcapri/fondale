@@ -33,6 +33,11 @@ const validationCase = new URLSearchParams(window.location.search).get("case");
 const missingUrl = new URL("./missing-character.png", import.meta.url);
 const speakingFrameUrl =
   validationCase === "dimensions" ? speakingUrl : idleUrl;
+const incompleteFrames = {
+  left: { image: idleUrl, count: 1 },
+  right: { image: idleUrl, count: 1 },
+  front: { image: idleUrl, count: 1 },
+} as unknown as CharacterDefinition["appearances"][string]["animations"][string]["frames"];
 
 const player = {
   initialScene: "opening",
@@ -43,7 +48,7 @@ const player = {
     normal: {
       animations: {
         idle: {
-          frames: {
+          frames: validationCase === "missing-facing" ? incompleteFrames : {
             left: { image: idleUrl, count: 1 },
             right: { image: idleUrl, count: 1 },
             front: { image: idleUrl, count: 1 },

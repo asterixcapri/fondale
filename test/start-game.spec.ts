@@ -151,6 +151,22 @@ test("Character Facing asset failures report their authored path at startup", as
   });
 });
 
+test("a missing Character Facing reports its authored path at startup", async ({ page }) => {
+  await page.goto(
+    "/test/fixtures/character-animation-dimensions.html?case=missing-facing",
+  );
+  await page.waitForFunction(
+    () => window.__characterAnimationDimensions !== undefined,
+  );
+  expect(
+    await page.evaluate(() => window.__characterAnimationDimensions),
+  ).toEqual({
+    code: "definition.animation.facing-presentation",
+    path: "characters.player.appearances.normal.animations.idle.frames.back",
+    children: 0,
+  });
+});
+
 test("Character Visual Anchors reject coordinates outside Runtime cells at startup", async ({
   page,
 }) => {
