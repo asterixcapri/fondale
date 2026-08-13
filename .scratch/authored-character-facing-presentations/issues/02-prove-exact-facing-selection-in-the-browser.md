@@ -19,4 +19,3 @@ fallback, or spatial jump.
 - [ ] Missing or invalid Facing artwork fails during startup with an Authoring Diagnostic rather than during presentation.
 - [ ] The browser tests require no network, model, database, or other external service.
 - [ ] The full browser verification suite passes in Chrome.
-
