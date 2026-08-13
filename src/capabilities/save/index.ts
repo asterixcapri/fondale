@@ -185,7 +185,7 @@ function validStateShape(
     if (!validConversationActivity(continuation, context) ||
         !isRecord(value.activity) || value.activity.type !== "sequence" ||
         typeof value.activity.sequence !== "string" ||
-        !context.dialogue.hasResumableHandoff(
+        !context.dialogue.hasResumableSequence(
           continuation.character,
           value.activity.sequence,
         )) return false;

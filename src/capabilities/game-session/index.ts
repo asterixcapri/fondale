@@ -141,6 +141,12 @@ export type CoreEffect =
   | { readonly type: "conversation-changed" }
   | { readonly type: "reflection-changed" };
 
+/** One Sequence a Conversation hands direction of play to, and what follows it. */
+interface ConversationSequenceDirection {
+  readonly sequence: string;
+  readonly after: "close" | "resume";
+}
+
 /** One authored alternative a Conversation offers beside its free-form input field. */
 export interface ConversationAlternativePresentation {
   readonly index: number;
@@ -232,6 +238,8 @@ export function createCoreSession(
   } | null = null;
   let conversationStatus: ConversationPresentation["status"] = "ready";
   let conversationError: string | undefined;
+  /** Sequence a selected alternative directs once its own authored Line completes. */
+  let directedByAlternative: ConversationSequenceDirection | null = null;
   let dialogueCompletion: DialogueTurnContent & {
     readonly operation?: LearnNarrativeFactOperation | RecordTestimonyOperation;
   } | null = null;
@@ -655,7 +663,8 @@ export function createCoreSession(
           dialogueTurn.phase = "character";
         } else {
           dialogueTurn = null;
-          if (!startConversationHandoff(state.activity.character)) {
+          if (!startAlternativeSequence(state.activity.character) &&
+              !startConversationHandoff(state.activity.character)) {
             conversationStatus = "ready";
           }
         }
@@ -858,6 +867,7 @@ export function createCoreSession(
     state.activity = { type: "conversation", character: target.target.character };
     dialogueTurn = null;
     dialogueCompletion = null;
+    directedByAlternative = null;
     conversationStatus = "ready";
     conversationError = undefined;
     emitted.push({ type: "conversation-changed" });
@@ -868,6 +878,8 @@ export function createCoreSession(
    * Answers one authored alternative directly, without reaching a Dialogue
    * Provider. A pending Dialogue Turn is left to settle: the selection is
    * refused rather than allowed to race the turn it would otherwise cancel.
+   * An alternative that names a Sequence directs it at once, or after its own
+   * authored Line when it carries both.
    */
   function selectConversationAlternative(character: string, index: number): void {
     const playerCharacter = projectViews.world.playerCharacter;
@@ -876,9 +888,14 @@ export function createCoreSession(
     const selected = dialogue.alternatives(character, conditionMatches)
       .find((alternative) => alternative.index === index);
     if (!selected) return;
-    const { text, response, spoken, operations } = selected.definition;
+    const { text, response, sequence, after, spoken, operations } = selected.definition;
     if (operations && !applyOperations(operations, { kind: "background" })) return;
     if (state.activity?.type !== "conversation" || state.activity.character !== character) return;
+    const direction = sequence && after ? { sequence, after } : undefined;
+    if (response === undefined) {
+      if (direction) startDirectedSequence(character, direction);
+      return;
+    }
     dialogueTurn = {
       character,
       playerInput: text,
@@ -886,32 +903,50 @@ export function createCoreSession(
       playerCharacter,
       phase: spoken === false ? "character" : "player",
     };
+    directedByAlternative = direction ?? null;
     conversationStatus = "line";
     conversationError = undefined;
     emitted.push({ type: "conversation-changed" });
   }
 
   function closeOrHandoffConversation(character: string): void {
+    directedByAlternative = null;
     if (!startConversationHandoff(character)) {
       state.activity = null;
       emitted.push({ type: "conversation-changed" });
     }
   }
 
+  /** Directs the Sequence an authored alternative named after its own Line completed. */
+  function startAlternativeSequence(character: string): boolean {
+    const direction = directedByAlternative;
+    if (!direction) return false;
+    startDirectedSequence(character, direction);
+    return true;
+  }
+
   function startConversationHandoff(character: string): boolean {
     const handoff = dialogue.handoff(character, conditionMatches);
     if (!handoff) return false;
+    startDirectedSequence(character, handoff);
+    return true;
+  }
+
+  function startDirectedSequence(
+    character: string,
+    direction: ConversationSequenceDirection,
+  ): void {
     invalidateProviderTurn("conversation");
     dialogueTurn = null;
-    if (handoff.after === "resume") {
+    directedByAlternative = null;
+    if (direction.after === "resume") {
       state.conversationContinuation = { type: "conversation", character };
     } else {
       delete state.conversationContinuation;
     }
-    state.activity = sequenceCapability.start(handoff.sequence, state.currentScene);
+    state.activity = sequenceCapability.start(direction.sequence, state.currentScene);
     emitted.push({ type: "sequence-changed" });
     advanceSequence();
-    return true;
   }
 
   function resolvePassage(intent: Extract<PlayerIntent, { kind: "passage" }>): void {
@@ -1054,6 +1089,7 @@ export function createCoreSession(
   function prepareResumedConversation(): void {
     dialogueTurn = null;
     dialogueCompletion = null;
+    directedByAlternative = null;
     conversationStatus = "ready";
     conversationError = undefined;
     emitted.push({ type: "conversation-changed" });

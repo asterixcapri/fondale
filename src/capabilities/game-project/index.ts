@@ -715,6 +715,21 @@ function validateProjectDefinitions(
         "Character",
       ));
     }
+    /** Validates one Sequence a Conversation may direct, alternative or handoff alike. */
+    const directedSequence = (value: unknown, path: string): void => {
+      if (typeof value !== "string") return;
+      diagnostics.push(...validateSequenceStartReference(value, path, sequences));
+      const sequence = sequences[value];
+      if (sequence?.scene !== undefined && sequence.scene !== character.initialScene) {
+        diagnostics.push({
+          code: "reference.sequence.scene",
+          family: "reference",
+          owner: "sequence",
+          path,
+          message: `Sequence '${value}' belongs to Scene '${sequence.scene}'.`,
+        });
+      }
+    };
     const alternatives = character.dialogue?.alternatives;
     if (Array.isArray(alternatives)) alternatives.forEach((alternative, index) => {
       if (!alternative || typeof alternative !== "object") return;
@@ -723,26 +738,14 @@ function validateProjectDefinitions(
       if (Array.isArray(alternative.operations)) {
         diagnostics.push(...operations(alternative.operations, `${path}.operations`));
       }
+      directedSequence(alternative.sequence, `${path}.sequence`);
     });
     const handoffs = character.dialogue?.handoffs;
     if (Array.isArray(handoffs)) handoffs.forEach((handoff, index) => {
       const path = `characters.${characterId}.dialogue.handoffs[${index}]`;
-      if (handoff && typeof handoff === "object" && "when" in handoff) {
-        condition(handoff.when, `${path}.when`);
-      }
-      if (!handoff || typeof handoff !== "object" ||
-          !("sequence" in handoff) || typeof handoff.sequence !== "string") return;
-      diagnostics.push(...validateSequenceStartReference(handoff.sequence, `${path}.sequence`, sequences));
-      const sequence = sequences[handoff.sequence];
-      if (sequence?.scene !== undefined && sequence.scene !== character.initialScene) {
-        diagnostics.push({
-          code: "reference.sequence.scene",
-          family: "reference",
-          owner: "sequence",
-          path: `${path}.sequence`,
-          message: `Sequence '${handoff.sequence}' belongs to Scene '${sequence.scene}'.`,
-        });
-      }
+      if (!handoff || typeof handoff !== "object") return;
+      if ("when" in handoff) condition(handoff.when, `${path}.when`);
+      if ("sequence" in handoff) directedSequence(handoff.sequence, `${path}.sequence`);
     });
   }
   for (const [objectId, object] of Object.entries(objects)) {

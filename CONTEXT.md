@@ -146,8 +146,11 @@ resolving Talk To against a Character configured for it. It may present
 authored alternatives and free-form input together, leaving the Player free to
 choose either at any point: an authored alternative yields exact authored
 language and never reaches a Dialogue Provider, while free-form input opens a
-Dialogue Turn. Its provider-owned transcript and context memory are not Game
-State and reset when a Save Snapshot is loaded.
+Dialogue Turn. An authored alternative may instead, or additionally, hand
+direction of play to a named Sequence, which then becomes the dominant Game
+Activity and closes or resumes the Conversation when it completes; free-form
+input is not presented while it plays. Its provider-owned transcript and
+context memory are not Game State and reset when a Save Snapshot is loaded.
 _Avoid_: Sequence, dialogue tree, arbitrary input prompt, Save Snapshot transcript
 
 **Reflection**:

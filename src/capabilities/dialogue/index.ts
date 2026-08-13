@@ -102,13 +102,17 @@ export interface ConversationHandoffDefinition {
 /**
  * One authored question a Conversation presents beside its free-form input
  * field, with the exact answer it yields. Selecting it reaches no Dialogue
- * Provider.
+ * Provider. An alternative may answer with authored language, with a named
+ * Sequence, or with both; a Sequence declares whether the Conversation closes
+ * or resumes once it completes.
  */
 export interface ConversationAlternativeDefinition {
   readonly text: string;
   readonly when?: InteractionCondition;
   readonly spoken?: boolean;
-  readonly response: string;
+  readonly response?: string;
+  readonly sequence?: string;
+  readonly after?: "close" | "resume";
   readonly operations?: readonly GameOperation[];
 }
 
@@ -459,7 +463,8 @@ export interface KnowledgeDrivenDialogue {
     character: string,
     conditionMatches: (condition: InteractionCondition) => boolean,
   ): ConversationHandoffDefinition | undefined;
-  hasResumableHandoff(character: string, sequence: string): boolean;
+  /** Whether an authored handoff or alternative directs this Sequence and resumes afterwards. */
+  hasResumableSequence(character: string, sequence: string): boolean;
   alternatives(
     character: string,
     conditionMatches: (condition?: InteractionCondition) => boolean,
@@ -549,10 +554,13 @@ export function createKnowledgeDrivenDialogue(
       );
       return handoff ? structuredClone(handoff) : undefined;
     },
-    hasResumableHandoff(character: string, sequence: string) {
-      return project.characters[character]?.dialogue?.handoffs?.some((handoff) =>
+    hasResumableSequence(character: string, sequence: string) {
+      const dialogue = project.characters[character]?.dialogue;
+      return (dialogue?.handoffs?.some((handoff) =>
         handoff.sequence === sequence && handoff.after === "resume"
-      ) ?? false;
+      ) ?? false) || (dialogue?.alternatives?.some((alternative) =>
+        alternative.sequence === sequence && alternative.after === "resume"
+      ) ?? false);
     },
     alternatives(
       character: string,
@@ -1341,15 +1349,26 @@ function validateConversationAlternatives(
   for (const [index, alternative] of alternatives.entries()) {
     const itemPath = `${basePath}.alternatives[${index}]`;
     if (!isRecord(alternative) ||
-        !hasExactKeys(alternative, ["text", "response"], ["when", "spoken", "operations"]) ||
+        !hasExactKeys(
+          alternative,
+          ["text"],
+          ["when", "spoken", "response", "sequence", "after", "operations"],
+        ) ||
         typeof alternative.text !== "string" || !alternative.text.trim() ||
-        typeof alternative.response !== "string" || !alternative.response.trim() ||
+        (alternative.response === undefined && alternative.sequence === undefined) ||
+        (alternative.response !== undefined &&
+          (typeof alternative.response !== "string" || !alternative.response.trim())) ||
+        (alternative.sequence !== undefined &&
+          (typeof alternative.sequence !== "string" || !alternative.sequence.trim())) ||
+        (alternative.sequence === undefined) !== (alternative.after === undefined) ||
+        (alternative.after !== undefined &&
+          alternative.after !== "close" && alternative.after !== "resume") ||
         (alternative.spoken !== undefined && typeof alternative.spoken !== "boolean") ||
         (alternative.operations !== undefined && !Array.isArray(alternative.operations))) {
       diagnostics.push({
         code: "definition.conversation-alternative.item",
         family: "definition", owner: "dialogue", path: itemPath,
-        message: "A Conversation alternative requires its displayed phrase and the exact authored answer, with an optional condition, spoken flag and Game Operations.",
+        message: "A Conversation alternative requires its displayed phrase and an exact authored answer, a named Sequence with an explicit close or resume outcome, or both, with an optional condition, spoken flag and Game Operations.",
       });
       continue;
     }

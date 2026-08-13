@@ -147,6 +147,10 @@ const antonioDialogue = {
     when: { variable: "winch-handle-missing", equals: true },
     response: "Behind the customs house, where it has always been.",
     operations: [{ type: "set-variable", variable: "winch-handle-found", value: true }],
+  }, {
+    text: "Show me what happened that night.",
+    sequence: "antonio-confession",
+    after: "resume",
   }],
 } satisfies CharacterDialogueDefinition;
 
@@ -195,7 +199,18 @@ memory or costing a model call. Eligibility reads committed Game State only;
 ineligible alternatives are hidden rather than shown unavailable, and startup
 rejects an authored set that could ever offer more than six at once. A
 selection made while a Dialogue Turn is still pending is refused until that
-turn settles, and an alternative cannot start a Sequence. A Conversation handoff evaluates its authored condition against
+turn settles, and an alternative cannot start a Sequence through a
+`start-sequence` operation. It may name one instead: an alternative declaring a
+`sequence` and an explicit `close` or `resume` outcome hands direction of play
+to that Sequence, which keeps its own Lines, Choices, timing, skip behaviour and
+direction. The Conversation is not presented while the Sequence plays, so the
+free-form input field steps aside and returns when the Conversation resumes,
+with alternative eligibility re-evaluated against the Game State the Sequence
+left behind. An alternative carrying both a `response` and a `sequence` speaks
+its authored answer first and directs the Sequence when that Line ends. Startup
+rejects an alternative naming an unknown Sequence, one belonging to another
+Scene, or a `sequence` and outcome declared without each other. A Conversation
+handoff evaluates its authored condition against
 committed Game State, gives control to its named Sequence, and explicitly
 `close`s or `resume`s the Conversation when that Sequence ends. Generated
 wording cannot trigger the handoff. When Dialogue policy selects a Cover Story, the provider receives its

@@ -71,10 +71,15 @@ an explicit `close` or `resume` result. A Conversation presents its authored
 Each `ConversationAlternativeDefinition` declares its displayed `text`, an
 optional eligibility condition, an optional `spoken` flag (default true), the
 exact `response` the Character gives, and optional `operations` committed
-atomically with the selection. Eligibility is evaluated against the latest
-committed Game State; ineligible alternatives are hidden rather than presented
-as unavailable, and at most six may be eligible at once. Selecting one produces
-the authored wording without reaching a Dialogue Provider. Every
+atomically with the selection. An alternative may instead — or additionally —
+name a `sequence` with an explicit `close` or `resume` outcome: that Sequence
+becomes the dominant Game Activity, with its own Lines, Choices, timing, skip
+behaviour and direction, and the free-form input field is not presented while
+it plays. A resumed Conversation re-evaluates alternative eligibility against
+the Game State the Sequence left behind. Eligibility is evaluated against the
+latest committed Game State; ineligible alternatives are hidden rather than
+presented as unavailable, and at most six may be eligible at once. Selecting
+one produces the authored wording without reaching a Dialogue Provider. Every
 `CharacterKnowledgeDefinition` refers to one fact through `factId` and declares
 `open`, `guarded`, or `secret` Disclosure. Guarded facts require minimum Trust
 or a boolean Game Variable; secret facts always require an explicit Game
@@ -282,7 +287,7 @@ identifies the capability or browser adapter responsible for the rule.
 | `CharacterKnowledgeDefinition` | initial known fact reference | factId and Disclosure | one reference per Character and fact | knowledge reference/duplicate diagnostics | [Dialogue authoring](game-authoring.md) |
 | `CoverStoryDefinition` | controlled false account | concealed fact and Claim identities | fact must be guarded/secret and known by the Character | Cover Story definition/reference diagnostics | [Dialogue authoring](game-authoring.md) |
 | `ConversationHandoffDefinition` | authored transition from Conversation to Sequence | condition, Sequence identity, close or resume outcome | evaluates committed Game State; generated wording has no authority | condition/Sequence/profile diagnostics | [Dialogue authoring](game-authoring.md) |
-| `ConversationAlternativeDefinition` | authored question offered inside a Conversation | displayed phrase, optional condition and `spoken` flag, exact `response`, optional Game Operations | reaches no Dialogue Provider; at most six eligible at once; ineligible ones are hidden | alternative definition/condition/limit diagnostics | [Dialogue authoring](game-authoring.md) |
+| `ConversationAlternativeDefinition` | authored question offered inside a Conversation | displayed phrase, optional condition and `spoken` flag, exact `response` and/or a named `sequence` with a close or resume outcome, optional Game Operations | reaches no Dialogue Provider; at most six eligible at once; ineligible ones are hidden | alternative definition/condition/Sequence/limit diagnostics | [Dialogue authoring](game-authoring.md) |
 | `CharacterDialogueDefinition` | optional Character dialogue profile | knowledge, Cover Stories, Relationships, handoffs, authored alternatives, qualitative portrayal and state | omission preserves authored behaviour | dialogue capability diagnostics | [Dialogue authoring](game-authoring.md) |
 | `LearnNarrativeFactOperation` | monotonic Character Knowledge change | Character and Narrative Fact identities | repeated learning is idempotent | Character/fact reference diagnostics | [Dialogue authoring](game-authoring.md) |
 | `RecordTestimonyOperation` | remember a communicated Claim | speaker, listener, concealed fact and Claim identities | must match the speaker's authored Cover Story; repeated testimony is idempotent | Character/Claim/Cover Story reference diagnostics | [Dialogue authoring](game-authoring.md) |

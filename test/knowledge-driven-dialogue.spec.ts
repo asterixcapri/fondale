@@ -334,6 +334,85 @@ function authoredAlternativesProject(): GameProject {
   } satisfies GameProject;
 }
 
+function alternativeSequenceProject(after: "close" | "resume" = "resume"): GameProject {
+  const base = authoredAlternativesProject();
+  const antonio = base.characters!.antonio!;
+  return {
+    ...base,
+    sequences: {
+      winchAccount: {
+        steps: [
+          { type: "line", character: "antonio", text: "This exact account is authored." },
+          {
+            type: "operations",
+            operations: [{ type: "set-variable", variable: "winchFound", value: true }],
+          },
+        ],
+      } satisfies SequenceDefinition,
+    },
+    characters: {
+      ...base.characters,
+      antonio: {
+        ...antonio,
+        dialogue: {
+          ...antonio.dialogue!,
+          alternatives: [
+            {
+              text: "Tell me about that night.",
+              sequence: "winchAccount",
+              after,
+            },
+            {
+              text: "Where is the winch handle?",
+              when: { variable: "winchFound", equals: true },
+              response: "Behind the customs house.",
+            },
+            {
+              text: "Show me, then.",
+              response: "Very well. Watch.",
+              sequence: "winchAccount",
+              after,
+            },
+          ],
+        },
+      },
+    },
+  } satisfies GameProject;
+}
+
+function alternativeAndHandoffProject(): GameProject {
+  const base = alternativeSequenceProject("resume");
+  const antonio = base.characters!.antonio!;
+  return {
+    ...base,
+    variables: { ...base.variables, handoffReady: true },
+    sequences: {
+      ...base.sequences,
+      handoffAccount: {
+        steps: [{
+          type: "line",
+          character: "antonio",
+          text: "This handoff account is authored.",
+        }],
+      } satisfies SequenceDefinition,
+    },
+    characters: {
+      ...base.characters,
+      antonio: {
+        ...antonio,
+        dialogue: {
+          ...antonio.dialogue!,
+          handoffs: [{
+            when: { variable: "handoffReady", equals: true },
+            sequence: "handoffAccount",
+            after: "close",
+          }],
+        },
+      },
+    },
+  } satisfies GameProject;
+}
+
 function chainProvider(
   interpretation: string | FakeDialoguePendingOutcome<string>,
 ): FakeDialogueProvider {
@@ -1501,6 +1580,245 @@ test("an authored alternative is refused until a pending Dialogue Turn settles",
   expect(session.hud().narrative).toMatchObject({
     speaker: "player",
     text: "Who cut the harbour chain?",
+  });
+});
+
+test("an authored alternative directs a Sequence and resumes the Conversation with fresh eligibility", () => {
+  const session = createTestSession(alternativeSequenceProject("resume"));
+
+  openAntonioConversation(session);
+  session.input({ type: "select-alternative", alternative: 0 });
+  session.steps();
+
+  expect(session.snapshot().activity).toMatchObject({
+    type: "sequence",
+    sequence: "winchAccount",
+  });
+  expect(session.conversation()).toBeNull();
+  expect(session.hud().narrative).toMatchObject({
+    speaker: "antonio",
+    text: "This exact account is authored.",
+  });
+
+  session.input({ type: "advance-sequence" });
+  session.steps();
+
+  expect(session.snapshot().variables.winchFound).toBe(true);
+  expect(session.conversation()).toMatchObject({
+    character: "antonio",
+    status: "ready",
+    alternatives: [
+      { index: 0, text: "Tell me about that night." },
+      { index: 1, text: "Where is the winch handle?" },
+      { index: 2, text: "Show me, then." },
+    ],
+  });
+});
+
+test("an authored alternative answers with its Line before directing its Sequence", () => {
+  const session = createTestSession(alternativeSequenceProject("resume"));
+
+  openAntonioConversation(session);
+  session.input({ type: "select-alternative", alternative: 2 });
+  session.steps();
+
+  expect(session.hud().narrative).toMatchObject({ speaker: "player", text: "Show me, then." });
+  expect(session.conversation()).toMatchObject({ status: "line" });
+
+  advanceConversationLine(session);
+  expect(session.hud().narrative).toMatchObject({ speaker: "antonio", text: "Very well. Watch." });
+  expect(session.snapshot().activity).toMatchObject({ type: "conversation" });
+
+  advanceConversationLine(session);
+  expect(session.snapshot().activity).toMatchObject({
+    type: "sequence",
+    sequence: "winchAccount",
+  });
+  expect(session.conversation()).toBeNull();
+});
+
+test("an authored alternative can close the Conversation after its Sequence", () => {
+  const session = createTestSession(alternativeSequenceProject("close"));
+
+  openAntonioConversation(session);
+  session.input({ type: "select-alternative", alternative: 0 });
+  session.steps();
+  session.input({ type: "advance-sequence" });
+  session.steps();
+
+  expect(session.snapshot().activity).toBeNull();
+  expect(session.conversation()).toBeNull();
+});
+
+test("leaving a Conversation before its authored Sequence discards the pending direction", () => {
+  const session = createTestSession(alternativeSequenceProject("resume"));
+
+  openAntonioConversation(session);
+  session.input({ type: "select-alternative", alternative: 2 });
+  session.steps();
+  session.input({ type: "escape" });
+  session.steps();
+
+  expect(session.snapshot().activity).toBeNull();
+
+  openAntonioConversation(session);
+  session.input({ type: "select-alternative", alternative: 0 });
+  session.steps();
+  session.input({ type: "advance-sequence" });
+  session.steps();
+
+  expect(session.conversation()).toMatchObject({ character: "antonio", status: "ready" });
+});
+
+test("a Sequence directed by an authored alternative ignores a cancelled turn's late result", async () => {
+  const project = alternativeSequenceProject("resume");
+  const provider = chainProvider({
+    outcome: "pending",
+    value: "harbour-chain-cut",
+    ignoreCancellation: true,
+  });
+  const session = createTestSession(project, undefined, provider);
+
+  openAntonioConversation(session);
+  const submission = session.submitDialogue("What happened to the chain?");
+  await Promise.resolve();
+  const [turnId] = provider.pendingTurnIds();
+  session.createSaveSnapshot();
+
+  session.input({ type: "select-alternative", alternative: 0 });
+  session.steps();
+  expect(session.snapshot().activity).toMatchObject({
+    type: "sequence",
+    sequence: "winchAccount",
+  });
+
+  expect(turnId && provider.release(turnId)).toBe(true);
+  await expect(submission).resolves.toMatchObject({ ok: false });
+  session.steps();
+
+  expect(session.snapshot().activity).toMatchObject({ type: "sequence" });
+  expect(session.snapshot().characterKnowledge.player).toEqual([]);
+});
+
+test("Save validates and restores a continuation left by an authored alternative", () => {
+  const project = alternativeSequenceProject("resume");
+  const session = createTestSession(project);
+
+  openAntonioConversation(session);
+  session.input({ type: "select-alternative", alternative: 0 });
+  session.steps();
+
+  const raw = JSON.parse(JSON.stringify(session.createSaveSnapshot())) as unknown;
+  const validation = validateTestSaveSnapshot(project, raw);
+  expect(validation.ok).toBe(true);
+  if (!validation.ok) return;
+  const restored = createTestSession(project, validation.snapshot);
+  restored.input({ type: "advance-sequence" });
+  restored.steps();
+
+  expect(restored.conversation()).toMatchObject({ character: "antonio", status: "ready" });
+});
+
+test("an authored alternative directs its own Sequence while its Character keeps a handoff", () => {
+  const session = createTestSession(alternativeAndHandoffProject());
+
+  openAntonioConversation(session);
+  session.input({ type: "select-alternative", alternative: 2 });
+  session.steps();
+  advanceConversationLine(session);
+  advanceConversationLine(session);
+
+  expect(session.snapshot().activity).toMatchObject({
+    type: "sequence",
+    sequence: "winchAccount",
+  });
+  session.input({ type: "advance-sequence" });
+  session.steps();
+  expect(session.conversation()).toMatchObject({ character: "antonio", status: "ready" });
+
+  session.input({ type: "escape" });
+  session.steps();
+  expect(session.snapshot().activity).toMatchObject({
+    type: "sequence",
+    sequence: "handoffAccount",
+  });
+});
+
+test("Save during an alternative's Line discards its queued Sequence and keeps it selectable", () => {
+  const project = alternativeSequenceProject("resume");
+  const session = createTestSession(project);
+
+  openAntonioConversation(session);
+  session.input({ type: "select-alternative", alternative: 2 });
+  session.steps();
+
+  const raw = JSON.parse(JSON.stringify(session.createSaveSnapshot())) as unknown;
+  const validation = validateTestSaveSnapshot(project, raw);
+  expect(validation.ok).toBe(true);
+  if (!validation.ok) return;
+  const restored = createTestSession(project, validation.snapshot);
+
+  expect(restored.conversation()).toMatchObject({
+    character: "antonio",
+    status: "ready",
+    alternatives: [
+      { index: 0, text: "Tell me about that night." },
+      { index: 2, text: "Show me, then." },
+    ],
+  });
+
+  restored.input({ type: "select-alternative", alternative: 2 });
+  restored.steps();
+  advanceConversationLine(restored);
+  advanceConversationLine(restored);
+  expect(restored.snapshot().activity).toMatchObject({
+    type: "sequence",
+    sequence: "winchAccount",
+  });
+});
+
+test("an authored alternative naming an unknown or malformed Sequence is rejected at startup", () => {
+  const project = alternativeSequenceProject("resume");
+  const result = compileGameProject({
+    ...project,
+    characters: {
+      ...project.characters,
+      antonio: {
+        ...project.characters!.antonio!,
+        dialogue: {
+          ...project.characters!.antonio!.dialogue!,
+          alternatives: [{
+            text: "Tell me about that night.",
+            sequence: "missing",
+            after: "resume",
+          }, {
+            text: "Say nothing at all.",
+          }, {
+            text: "Show me, then.",
+            sequence: "winchAccount",
+            after: "later",
+          }],
+        },
+      },
+    },
+  } as unknown as GameProject);
+
+  expect(result).toMatchObject({
+    ok: false,
+    diagnostics: expect.arrayContaining([
+      expect.objectContaining({
+        code: "reference.sequence",
+        path: "characters.antonio.dialogue.alternatives[0].sequence",
+      }),
+      expect.objectContaining({
+        code: "definition.conversation-alternative.item",
+        path: "characters.antonio.dialogue.alternatives[1]",
+      }),
+      expect.objectContaining({
+        code: "definition.conversation-alternative.item",
+        path: "characters.antonio.dialogue.alternatives[2]",
+      }),
+    ]),
   });
 });
 

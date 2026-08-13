@@ -91,6 +91,34 @@ test("authored alternatives and the free-form field stay usable together by keyb
     .toEqual(["conversation:antonio"]);
 });
 
+test("an authored alternative directing a Sequence hides the input field until it completes", async ({
+  page,
+}) => {
+  await openCharacterConversation(page, 80);
+  const conversation = page.locator("[data-fondale-conversation]");
+  const input = conversation.locator("[data-fondale-dialogue-input]");
+  const alternatives = conversation.locator("[data-fondale-conversation-alternative]");
+
+  await expect(input).toBeVisible();
+  await expect(alternatives).toHaveCount(1);
+  await alternatives.first().click();
+
+  await expect(page.locator('[data-fondale-line][data-fondale-speaker="lucia"]'))
+    .toContainText("Watch: the chain fell just here.");
+  await expect(input).toBeHidden();
+  await expect(alternatives).toHaveCount(0);
+
+  await page.locator("[data-fondale-frame]").focus();
+  await page.keyboard.press(".");
+  await expect(page.locator('[data-fondale-line][data-fondale-speaker="lucia"]'))
+    .toContainText("That is all I saw.");
+  await expect(input).toBeHidden();
+
+  await page.keyboard.press(".");
+  await expect(input).toBeVisible();
+  await expect(alternatives).toHaveCount(1);
+});
+
 test("Rifletti keeps Reflection separate and Load resets every provider thread", async ({ page }) => {
   await openCharacterConversation(page, 315);
   const conversation = page.locator("[data-fondale-conversation]");

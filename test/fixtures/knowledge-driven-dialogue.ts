@@ -120,6 +120,11 @@ const project = ({
           sequence: "luciaExactAccount",
           after: "resume",
         }],
+        alternatives: [{
+          text: "Show me what happened that night.",
+          sequence: "luciaDirectedAccount",
+          after: "resume",
+        }],
       },
     }),
     marco: character(390, {
@@ -146,6 +151,17 @@ const project = ({
         type: "line",
         character: "lucia",
         text: "Meet me beneath the harbour clock at midnight.",
+      }],
+    },
+    luciaDirectedAccount: {
+      steps: [{
+        type: "line",
+        character: "lucia",
+        text: "Watch: the chain fell just here.",
+      }, {
+        type: "line",
+        character: "lucia",
+        text: "That is all I saw.",
       }],
     },
     marcoExactAccount: {
