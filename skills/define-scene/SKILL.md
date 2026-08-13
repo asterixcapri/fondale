@@ -26,6 +26,8 @@ change. Identify:
 - the Scene's narrative purpose and dominant mood;
 - required characters, Objects, Scenery, interactions, entrances, and passages;
 - the project's Logical Resolution and the intended Scene Size;
+- the reference Character's unscaled asset height, Visual Anchor, and intended
+  share of the viewport at `Perspective Scale` 1;
 - the navigation budget: broad routes, unavoidable obstacles, and the simplest
   Walkable Region that can support the required play;
 - existing character proportions, runtime asset conventions, and visual
@@ -65,6 +67,13 @@ ground-contact footprint, position, Baseline, Visual Anchor, maximum extent
 across Appearances, depth role, and Approach Point. Measure coordinates on this
 1:1 plan, never on a resized preview or an image-generation approximation.
 
+Place a reference Character silhouette on the spatial plan before designing
+architecture, Scenery, or routes. Use the Game Project's existing Player
+Character proportions when available. Otherwise start near one third of the
+Logical Resolution height at `Perspective Scale` 1 and confirm that artistic
+choice with the user. Derive the near, middle, and far silhouette sizes from the
+planned Perspective Scale; do not resize Characters independently per Scene.
+
 Make navigation-first composition the default. Design one broad connected
 walking surface expressible as a simple polygon with the fewest purposeful
 vertices. Place furniture, columns, rocks, vegetation, and other blocking forms
@@ -74,9 +83,11 @@ complicated route. Add complexity only when it carries confirmed gameplay.
 
 Create a labelled 1:1 geometry SVG over the blocking image. Show the Walkable
 Region, Scenery bounds and footprints, Baselines, Visual Anchors, Perspective
-Scale stops, Hotspots, Approach Points, Scene Entrances, and Scene Passages.
-Finish when every required point and polygon has an exact coordinate and
-representative routes remain direct, wide, and visually obvious.
+Scale stops, reference Character silhouettes at every depth band, Hotspots,
+Approach Points, Scene Entrances, and Scene Passages. Finish when every required
+point and polygon has an exact coordinate, architecture and props remain
+proportional to the silhouettes, and representative routes remain direct, wide,
+and visually obvious.
 
 ### 4. Create the composition Art Master
 
@@ -130,6 +141,11 @@ Run the narrowest available validation, build, and browser verification. Inspect
 the Scene in the Engine with representative Characters at the near, middle, and
 far depth bands. Exercise every passage, entrance, approach, hotspot, Appearance,
 occlusion boundary, and camera edge.
+
+Compare the rendered Character heights and Ground Points with the reference
+silhouettes. Correct Perspective Scale or scene composition when they disagree;
+keep the shared Character artwork stable unless the Game Project is explicitly
+changing its global character scale.
 
 Iterate on art and authoring together when a failure crosses the seam. Finish
 when the project builds, relevant verification passes, all package checks in

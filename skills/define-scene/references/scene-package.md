@@ -6,6 +6,7 @@
 - [Separation rules](#separation-rules)
 - [Background integration](#background-integration)
 - [Scenery placement](#scenery-placement)
+- [Character scale](#character-scale)
 - [Asset checks](#asset-checks)
 - [Geometry checks](#geometry-checks)
 - [Engine checks](#engine-checks)
@@ -95,6 +96,25 @@ Runtime Assets and `index.ts` under `src/scenes/<scene-id>/`.
 - Verify intentional occlusion with Characters immediately in front of and
   behind the Scenery Baseline.
 
+## Character scale
+
+- Choose one existing Player Character as the project-wide reference and record
+  its unscaled visible height, Ground Point, and Visual Anchor.
+- Preserve the Game Project's established ratio when one exists. For a new
+  visual system, begin with a reference height near one third of the Logical
+  Resolution height at `Perspective Scale` 1, then confirm it from an actual
+  Scene composition.
+- For a `1280×720` Game Project using this starting ratio, test a reference
+  Character around `240 px` tall at scale `1`; treat the value as an art-direction
+  baseline rather than an Engine constant.
+- Create near, middle, and far silhouettes by multiplying the reference asset
+  height by the Scene's Perspective Scale at each Ground Point.
+- Design doors, stairs, furniture, Scenery, clearances, and interaction distances
+  around those silhouettes before generating final artwork.
+- Keep Character Runtime Assets at their project-wide size. Use Perspective
+  Scale for depth and change the shared assets only when deliberately changing
+  the entire Game Project's character scale.
+
 ## Asset checks
 
 - Background Runtime Asset dimensions equal the resolved Scene Size.
@@ -130,6 +150,8 @@ Runtime Assets and `index.ts` under `src/scenes/<scene-id>/`.
   applicable Perspective Scale.
 - Every required route has enough visual width for that Character, not merely
   enough mathematical width for its Ground Point.
+- Reference Character silhouettes fit the Scene at every reachable depth without
+  clipping architecture, Scenery, or the frame unintentionally.
 - Every Scene Entrance and Approach Point lies in or on the Walkable Region.
 - Every Hotspot and Scene Passage has a valid in-bounds area.
 - Scenery positions and Baselines remain inside the Scene Size.
@@ -146,6 +168,8 @@ Runtime Assets and `index.ts` under `src/scenes/<scene-id>/`.
 - Validate the Scene with the current authoring diagnostics.
 - Build the Game Project and run its relevant browser verification.
 - Inspect at least one near, middle, and far Character placement.
+- Compare each rendered placement against the corresponding reference silhouette
+  in the diagnostic overlay.
 - Exercise every entrance, passage, hotspot, and authored Scenery Appearance.
 - Check foreground occlusion, camera limits, HUD-safe areas, and letterboxing at
   the supported display shapes.
