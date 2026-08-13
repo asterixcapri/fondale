@@ -46,8 +46,12 @@ const expectedIntegrity = `sha512-${createHash("sha512")
 if (!lock.includes(expectedIntegrity)) {
   throw new Error("The Example lockfile integrity does not match its vendored Fondale tarball.");
 }
+// The Example must stand on its own everywhere it has code, not only in the
+// browser bundle: the adapter and the suite may reach Fondale as an installed
+// package, never by climbing out of the project to its source.
 const projectPrefix = `${project}${sep}`;
-for (const sourceFile of findTypeScriptFiles(join(project, "src"))) {
+const sourceDirectories = ["src", "server", "test"].map((directory) => join(project, directory));
+for (const sourceFile of sourceDirectories.flatMap(findTypeScriptFiles)) {
   const source = readFileSync(sourceFile, "utf8");
   const imports = source.matchAll(/(?:from\s+|import\s*\(\s*)["']([^"']+)["']/g);
 
@@ -60,7 +64,9 @@ for (const sourceFile of findTypeScriptFiles(join(project, "src"))) {
     }
   }
 
-  if (source.includes("/art/")) {
+  // Only the shipped game may not name art by path: a browser-test fixture
+  // legitimately asks the dev server for the Example's own art by URL.
+  if (sourceFile.startsWith(join(project, "src") + sep) && source.includes("/art/")) {
     throw new Error(`The Example source reaches into repository art from ${sourceFile}.`);
   }
 }
