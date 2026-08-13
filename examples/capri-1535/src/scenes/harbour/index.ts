@@ -2,7 +2,7 @@ import { type NounDefinition, type SceneDefinition } from "@asterixcapri/fondale
 
 import { rectangle } from "../../geometry";
 import backgroundUrl from "./background.png";
-import harbourBoatUrl from "./harbour-boat.png";
+import harbourBoatRockingUrl from "./harbour-boat-rocking.png";
 import winchWithHandleUrl from "./winch-with-handle.png";
 import winchWithoutHandleUrl from "./winch-without-handle.png";
 
@@ -33,10 +33,14 @@ export const harbour = ({
       appearances: {
         moored: {
           animations: {
-            idle: { frames: [harbourBoatUrl], framesPerSecond: 1, loop: true },
+            idle: {
+              frames: { image: harbourBoatRockingUrl, count: 8 },
+              framesPerSecond: 1.5,
+              loop: true,
+            },
           },
           roles: { default: "idle" },
-          visualAnchor: { x: 260, y: 235 },
+          visualAnchor: { x: 260, y: 238 },
         },
       },
       noun: ({
