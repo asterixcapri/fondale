@@ -37,10 +37,13 @@ from a classic adventure, not technically constrained by one.
 
 ## Colour compression
 
-- Choose a small set of dominant hue families for each Scene, then allow enough
-  shades within them for atmosphere and material separation.
-- Prefer colour relationships over a literal indexed palette. Full RGB output
-  and anti-aliasing are valid.
+- Author each Scene in full RGB or RGBA without a technical colour-count limit.
+  Preserve gradients, transparency, and anti-aliasing in the final assets.
+- Build a guide palette from 8–12 dominant hue families with roughly 5–8 tonal
+  roles each: about 64–96 intentional guide colours before blends and edge
+  colours. Treat this range as art direction, not image quantization.
+- Prefer colour relationships over a literal indexed palette. Let the actual
+  file contain as many colours as smooth painting and compositing require.
 - Use coloured shadows and restrained highlights. Shift hue across depth instead
   of shading every material toward neutral black and white.
 - Repeat accent colours intentionally to guide the eye.
@@ -48,6 +51,9 @@ from a classic adventure, not technically constrained by one.
   atmospheric transitions.
 - Keep saturation hierarchical: one or two accents may be vivid while most of
   the Scene remains harmonised.
+- Preserve the authored full-colour image through export. Apply quantization or
+  indexed conversion only when the user explicitly requests it and approves a
+  visual comparison.
 
 ## Resolution and edges
 
@@ -80,5 +86,6 @@ Approve the composition only when all answers are yes:
 - Do interactive focal areas attract attention without looking like UI?
 - Does the image feel hand-authored rather than filtered or procedurally noisy?
 - Is the colour world controlled but richer than a literal VGA palette?
+- Does the guide palette organise the image without visibly quantizing it?
 - Would a Character remain legible at the nearest and farthest valid scales?
 - Is the work recognisably original rather than a close imitation?
