@@ -49,22 +49,18 @@ test("every public recipe exposes ordinary author-owned data from the built pack
   ]);
 });
 
-test("the Character recipe authors distinct Default and Walking Animations for every Facing", () => {
+test("the Character recipe authors distinct role Animations for every Facing", () => {
   const appearance = player.appearances.workwear;
+  const facings = ["left", "right", "front", "back"];
 
-  expect(appearance.roles).toEqual({ default: "idle", walking: "walking" });
-  expect(Object.keys(appearance.animations.idle.frames)).toEqual([
-    "left",
-    "right",
-    "front",
-    "back",
-  ]);
-  expect(Object.keys(appearance.animations.walking.frames)).toEqual([
-    "left",
-    "right",
-    "front",
-    "back",
-  ]);
+  expect(appearance.roles).toEqual({
+    default: "idle",
+    speaking: "speaking",
+    walking: "walking",
+  });
+  for (const animation of ["idle", "speaking", "walking"] as const) {
+    expect(Object.keys(appearance.animations[animation].frames)).toEqual(facings);
+  }
   expect(appearance.animations.idle.frames.left.image).not.toEqual(
     appearance.animations.idle.frames.right.image,
   );

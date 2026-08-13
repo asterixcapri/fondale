@@ -19,6 +19,16 @@ export const player = ({
           framesPerSecond: 1,
           loop: true,
         },
+        speaking: {
+          frames: {
+            left: { image: new URL("./player-speaking-left.png", import.meta.url), count: 4 },
+            right: { image: new URL("./player-speaking-right.png", import.meta.url), count: 4 },
+            front: { image: new URL("./player-speaking-front.png", import.meta.url), count: 4 },
+            back: { image: new URL("./player-speaking-back.png", import.meta.url), count: 4 },
+          },
+          framesPerSecond: 6,
+          loop: true,
+        },
         walking: {
           frames: {
             left: { image: new URL("./player-walking-left.png", import.meta.url), count: 4 },
@@ -30,7 +40,7 @@ export const player = ({
           loop: true,
         },
       },
-      roles: { default: "idle", walking: "walking" },
+      roles: { default: "idle", speaking: "speaking", walking: "walking" },
       visualAnchor: { x: 8, y: 24 },
     },
   },

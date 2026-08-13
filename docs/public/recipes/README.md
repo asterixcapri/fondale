@@ -3,7 +3,7 @@
 These focused TypeScript sources compile against the distributable package:
 
 - [First Scene, Background, and navigation](first-scene.ts)
-- [Four-Facing Character Appearance, Default Animation, and Walking Role](character-walking.ts)
+- [Four-Facing Character Appearance and Animation Roles](character-walking.ts)
 - [Interaction, conditions, and Game Operations](interaction.ts)
 - [Line, Choice, Animation, Motion, Cue, Camera, and Skip Outcome](sequence.ts)
 - [Object and Inventory](inventory.ts)

@@ -114,9 +114,11 @@ stability in all four presentations. Review the Character in its Scene so
 illumination remains coherent with the Scene's light source when Facing
 changes. Repeat the play-size check at every reachable Perspective Scale.
 
-The [four-Facing Character recipe](recipes/character-walking.ts) shows a
-dedicated looping Default Animation and a separate Walking Animation using the
-public `CharacterDefinition` interface.
+The [four-Facing Character recipe](recipes/character-walking.ts) shows
+dedicated looping Default, Speaking, and Walking Animations using the public
+`CharacterDefinition` interface. If a Character design intentionally has no
+distinct speaking performance, omit the Speaking Role and document the
+Engine's fallback to the Default Animation in the Character package.
 
 Registry keys are identities. Cross-definition references use those keys and
 are resolved by the owning capability. A Scene `size` omitted at authoring

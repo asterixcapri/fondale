@@ -26,7 +26,7 @@ The public Game Project guide now documents the complete four-Facing Character
 artwork workflow and acceptance criteria, and the Character content skill
 requires separate authored Art Masters and Runtime strips with synchronized
 presentation and stable anchoring. The verified Character recipe demonstrates
-distinct looping Default and Walking Animations across all four Facing values,
+distinct looping Default, Speaking, and Walking Animations across all four Facing values,
 while the documentation gate protects the central workflow requirements.
 `CONTEXT.md`, ADR-0018, and the public reference already describe the same
 Engine contract. The focused recipe test, documentation verification,
