@@ -28,7 +28,7 @@
     "define-scene": {
       "source": "./skills",
       "sourceType": "local",
-      "computedHash": "69ca28b85c7c7a83b4499c7607366841f5ffd6e25706a90ccc5b5aafe6975775"
+      "computedHash": "0be297c0b76cb16811527cbcba09a5aa515742bb53ce29aae234fafc6291f4f5"
     },
     "diagnosing-bugs": {
       "source": "mattpocock/skills",

@@ -16,7 +16,9 @@ problem.
 Read the Game Project, `CONTEXT.md`, and the current Fondale Scene types before
 authoring. Also inspect `docs/public/game-authoring.md`,
 `docs/public/recipes/first-scene.ts`, adjacent Scene modules, existing Art
-Masters, and any saved generation prompts that bear on the location.
+Masters, and any saved generation prompts that bear on the location. Read
+[scene-package.md](references/scene-package.md) in full and establish its Project
+scale contract before evaluating the Scene.
 
 For a new Scene, identify the conventions it must join. For a modification,
 inspect the current Scene in the Engine and inventory its definitions, artwork,
@@ -26,6 +28,8 @@ change. Identify:
 - the Scene's narrative purpose and dominant mood;
 - required characters, Objects, Scenery, interactions, entrances, and passages;
 - the project's Logical Resolution and the intended Scene Size;
+- the project-wide scale relationships among the reference Character, world
+  Objects, Scenery, architecture, and HUD;
 - the reference Character's unscaled asset height, Visual Anchor, and intended
   share of the viewport at `Perspective Scale` 1;
 - the navigation budget: broad routes, unavoidable obstacles, and the simplest
@@ -34,8 +38,10 @@ change. Identify:
   continuity with adjacent Scenes;
 - persistent Scenery Appearances and short ambient Animations required by play.
 
-Find repository facts directly; reserve questions for decisions. Finish when
-the current state, project conventions, and decision gaps are explicit.
+Find repository facts directly; reserve questions for decisions. Report any
+asset or definition that belongs to a different scale system. Finish when the
+current state, Project scale contract, project conventions, and decision gaps
+are explicit.
 
 ### 2. Grill the Scene brief
 
@@ -105,9 +111,9 @@ the geometry before asset separation.
 
 ### 5. Separate production artwork
 
-Read [scene-package.md](references/scene-package.md) in full. Classify every
-visible element as Background or Scenery according to the Fondale domain model.
-Using the accepted composition as the visual reference:
+Follow [scene-package.md](references/scene-package.md). Classify every visible
+element as Background or Scenery according to the Fondale domain model. Using
+the accepted composition as the visual reference:
 
 1. Produce a clean Background Art Master with removable elements painted out.
 2. Produce aligned transparent Art Masters for each Scenery Appearance.
@@ -146,6 +152,10 @@ Compare the rendered Character heights and Ground Points with the reference
 silhouettes. Correct Perspective Scale or scene composition when they disagree;
 keep the shared Character artwork stable unless the Game Project is explicitly
 changing its global character scale.
+
+Inspect world and UI presentation separately. Confirm that Background,
+Characters, Scenery, in-Scene Object Appearances, coordinates, and geometry obey
+the Project scale contract, while Inventory and HUD assets obey the UI scale.
 
 Iterate on art and authoring together when a failure crosses the seam. Finish
 when the project builds, relevant verification passes, all package checks in

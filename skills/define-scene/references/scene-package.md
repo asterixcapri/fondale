@@ -3,6 +3,7 @@
 ## Contents
 
 - [Deliverables](#deliverables)
+- [Project scale contract](#project-scale-contract)
 - [Separation rules](#separation-rules)
 - [Background integration](#background-integration)
 - [Scenery placement](#scenery-placement)
@@ -23,6 +24,33 @@ For a Scene modification, begin with an impact inventory covering the existing
 Art Masters, Runtime Assets, definition module, tests, inbound passages, shared
 entities, and project registration. Preserve every item outside the confirmed
 change contract.
+
+## Project scale contract
+
+Establish one scale contract for the Game Project before defining a Scene:
+
+- Treat the Logical Resolution as the visible world viewport and the reference
+  for composition, Character size, and UI legibility.
+- Give a fixed Scene a Scene Size at least as large as the Logical Resolution.
+  Make a scrolling Scene wider or taller; give its Runtime Background exactly
+  the Scene Size. Let the Engine Camera reveal the larger Scene Space.
+- Use a 1:1 mapping between Runtime Asset pixels and Scene Space units unless
+  the Game Project explicitly defines a different asset pipeline.
+- Calibrate Background architecture, Characters, Scenery, and in-Scene Object
+  Appearances as one world scale. Use the reference Character as the ruler.
+- Express positions, Baselines, Visual Anchors, Hotspots, Walkable Region,
+  Approach Points, entrances, and passages in the same Scene Space.
+- Use Perspective Scale only for depth within that world scale. Do not use it to
+  repair an asset authored at the wrong project-wide size.
+- Calibrate HUD, text, cursors, and Inventory Appearances against the Logical
+  Resolution as a separate UI scale; do not apply Scene perspective to them.
+- When Logical Resolution changes, inventory every world and UI asset and every
+  authored coordinate before treating existing Scenes as compatible. Prefer
+  deliberate redrawing and reauthoring over blind mechanical scaling.
+
+The contract is complete when a reference Character, representative Scenery,
+an in-Scene Object, and the HUD can be shown together at actual play size with
+intentional and consistent proportions.
 
 ## Deliverables
 
