@@ -6,7 +6,8 @@ Use current repository interfaces as the schema source of truth.
 
 - lossless scale sheet, silhouette, turnaround, and colour reference;
 - Art Masters and Runtime Assets for every Appearance and Animation;
-- explicit looping `idle` and `speaking` Animations for every Appearance;
+- an explicit looping `idle` Animation for every Appearance, plus a distinct
+  looping `speaking` Animation where the Character design requires one;
 - distinct left, right, front, and back Runtime strips for every Character
   Animation;
 - stable Ground Point and Visual Anchor documentation;
@@ -57,10 +58,10 @@ Use current repository interfaces as the schema source of truth.
 - Give every Appearance an explicit looping `idle` Animation and assign it to
   the Default Animation Role. A walking cycle or static fallback is not an idle
   performance.
-- Give every Appearance an explicit looping `speaking` Animation and assign it
-  to the Speaking Animation Role. The Engine's fallback from Speaking to
-  Default is compatibility behaviour, not an acceptable completed Character
-  package.
+- When the Character design calls for a distinct speaking performance, give the
+  Appearance an explicit looping `speaking` Animation and assign it to the
+  Speaking Animation Role. Otherwise document the intentional Engine fallback
+  from Speaking to Default.
 - Keep idle motion restrained and seamless at its first-to-last transition;
   preserve the Character's stable Ground Point and avoid mechanical whole-body
   bobbing.
@@ -71,8 +72,8 @@ Use current repository interfaces as the schema source of truth.
 - Give every moving Character a Walking Animation Role with required facings.
 - Play every `left`, `right`, `front`, and `back` cycle and inspect each
   first-to-last transition at actual size.
-- Verify idle and speaking in every facing in which the Character may converse,
-  including both left-facing and right-facing side presentation.
+- Verify idle and speaking in every Facing in which the Character may converse,
+  including distinct `left` and `right` presentations.
 - Keep strip frame dimensions and ordering deterministic.
 - Place Animation Cues within duration at the visible moment of contact or
   transfer they coordinate.

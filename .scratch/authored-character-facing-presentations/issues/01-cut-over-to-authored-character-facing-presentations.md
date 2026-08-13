@@ -7,7 +7,7 @@ repository green.
 
 **Blocked by:** None — can start immediately.
 
-**Status:** resolved
+**Status:** ready-for-human
 
 - [x] Every Character Animation requires synchronized `left`, `right`, `front`, and `back` strips through the public TypeScript interface.
 - [x] Character Appearance and Animation authoring is distinct from the non-directional contracts available to Objects and Scenery.

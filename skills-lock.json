@@ -28,7 +28,7 @@
     "define-character": {
       "source": "./skills",
       "sourceType": "local",
-      "computedHash": "7ba9532b1805ef3636b09dde081a34157b2cfeed09ac7f468644f00edc31ab84"
+      "computedHash": "185cadc4c6ad0983f5ec1c54f8d73140581904f04e8700901b0630e861f95d65"
     },
     "define-dialogue": {
       "source": "./skills",
@@ -55,7 +55,7 @@
       "source": "mattpocock/skills",
       "sourceType": "github",
       "skillPath": "skills/engineering/domain-modeling/SKILL.md",
-      "computedHash": "683744795bdc9fbfb6c0c2122c4b8119c950e2fe5bcbbf44237dd28aaea34b67"
+      "computedHash": "363cb0f53b0b431e7c00086ad1f823500b7e1b70b5616ee969c979f0934e9e6e"
     },
     "git-guardrails-claude-code": {
       "source": "mattpocock/skills",

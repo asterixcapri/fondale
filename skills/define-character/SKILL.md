@@ -42,8 +42,8 @@ Runtime Assets, calculate the displayed pixel height at every reachable
 Perspective Scale and pass the native-resolution gate in
 [character-package.md](references/character-package.md). Finish when anatomy,
 costume landmarks, palette, and scale remain recognisable in every required
-facing and depth band, including both left-facing and right-facing side
-presentation, with no Runtime Asset enlarged by the Engine.
+Facing and depth band, including distinct `left` and `right` presentations,
+with no Runtime Asset enlarged by the Engine.
 
 ### 4. Create Art Masters and Animations
 
@@ -55,8 +55,11 @@ Assets without overwriting Art Masters. Inspect strips and individual frames at
 default; palette reduction is a confirmed art-direction decision, not a routine
 export step. Author and verify distinct `left` and `right` presentations as
 documented in [character-package.md](references/character-package.md).
-For every Appearance, create explicit looping `idle` and `speaking` Animations
-and assign them to the Default and Speaking Animation Roles respectively.
+For every Appearance, create an explicit looping `idle` Animation and assign it
+to the Default Animation Role. When the Character design calls for a distinct
+speaking performance, author a looping `speaking` Animation and assign it to
+the Speaking Animation Role; otherwise document the intentional fallback to
+Default.
 
 Finish when every Animation loops or completes cleanly, every cue lands on the
 intended action, and no Appearance jumps at its Visual Anchor.
