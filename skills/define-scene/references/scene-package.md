@@ -50,6 +50,24 @@ Runtime Assets and `index.ts` under `src/scenes/<scene-id>/`.
 - Preserve transparent padding or record a Visual Anchor so every Scenery
   Appearance aligns without visual jumps.
 
+## Background integration
+
+- Design Background and Scenery first as one assembled composition. Separate
+  them only after scale, perspective, overlap, lighting, and placement agree.
+- Paint a complete clean plate behind every separated element. Removing a
+  Scenery asset must reveal a plausible wall, floor, sky, or surrounding surface.
+- Match local value, hue, saturation, edge softness, texture scale, and light
+  direction across the separation boundary.
+- Assign contact shadows according to lifecycle. Include a shadow in Scenery
+  when it moves or disappears with the element; paint it into the Background
+  only when it remains valid for every Appearance and state.
+- Give every Appearance the same visual footprint, position, Baseline, and
+  Visual Anchor unless a confirmed state change requires different geometry.
+- Preserve intentional foreground overlaps and depth ordering without baking a
+  Scenery element into unrelated Background pixels.
+- Recompose every Appearance over the clean Background and compare it with the
+  accepted Composition Art Master at actual play size.
+
 ## Asset checks
 
 - Background Runtime Asset dimensions equal the resolved Scene Size.
@@ -59,6 +77,10 @@ Runtime Assets and `index.ts` under `src/scenes/<scene-id>/`.
 - Every Scenery Appearance shares a stable position, Baseline, and Visual Anchor.
 - Recomposing Background and Scenery reproduces the accepted composition at the
   intended default state.
+- Viewing the clean Background without Scenery reveals no holes, duplicate
+  details, residual shadows, or painted fragments of the removed element.
+- Every non-default Appearance preserves the Scene's perspective, illumination,
+  material treatment, and surrounding occlusion.
 - Animated assets keep framing, lighting, proportions, and anchor placement
   stable across frames.
 

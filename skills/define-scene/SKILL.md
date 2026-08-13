@@ -76,7 +76,9 @@ direct, wide, and visually obvious.
 Read [art-direction.md](references/art-direction.md) in full. Generate a complete
 composition at the final Scene aspect ratio and inspect the actual image. Iterate
 on staging, value structure, palette, depth, and character readability before
-separating assets. Keep geometry stable after accepting the composition.
+separating assets. Compose every planned Scenery element in place so its scale,
+perspective, overlap, lighting, contact, and negative space are solved together
+with the Background. Keep geometry stable after accepting the composition.
 
 Finish when the composition satisfies every art-direction check and supports the
 blocked gameplay at actual play size.
@@ -92,9 +94,12 @@ Using the accepted composition as the visual reference:
 3. Produce consistent frames or sheets for required ambient Animations.
 4. Derive fitted Runtime Assets without modifying the Art Masters.
 
-Inspect seams, transparency, dimensions, lighting, and alignment by recomposing
-the assets. Finish only when the recomposition matches the accepted composition
-and every stateful or depth-sensitive element is independently usable.
+Inspect seams, transparency, dimensions, lighting, contact shadows, and
+alignment by recomposing every Scenery Appearance over the clean Background.
+Also inspect the clean Background alone so removed Scenery leaves a complete,
+plausible surface. Finish only when each recomposition matches the accepted
+composition and every stateful or depth-sensitive element is independently
+usable.
 
 ### 6. Author the playable Scene
 
