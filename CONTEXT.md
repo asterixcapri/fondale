@@ -30,7 +30,9 @@ _Avoid_: Example experiment, dialogue tree, LLM feature, Sequence, Choice
 An Author-declared true proposition with stable identity about the people,
 places, events, or clues of a Game Project that may affect story or puzzle
 reasoning. It is defined once in the Game Project's Narrative Fact registry;
-its identity remains independent from its wording.
+its identity remains independent from its wording. An Author may declare the
+Game Variable that a Character learning it sets, which the Engine commits in
+the same atomic step as the learning, after Disclosure has authorised the Fact.
 _Avoid_: Generated detail, conversational colour, World fact
 
 **Claim**:

@@ -233,6 +233,36 @@ Game State; `learn-narrative-fact`, `record-testimony`, `set-trust` and
 validate and restore it exactly. Trust is directional, and Trust alone can
 never unlock a `secret` fact.
 
+Give a Narrative Fact a `setsVariable` to let what the Player discovers by
+typing advance the game:
+
+```ts
+narrativeFacts: {
+  "harbour-chain-cut": {
+    proposition: "The harbour chain was cut.",
+    setsVariable: "chainKnown",
+  },
+},
+variables: { chainKnown: false },
+```
+
+A Character learning that Fact sets the named Game Variable to `true` in the
+same commit as the learning, so no Save Snapshot can hold a Character who knows
+something the world has not registered. The Engine performs it, never generated
+wording, and only after Disclosure has authorised the Fact: a Fact answered
+with a Cover Story, withheld, or belonging to a failed or cancelled Dialogue
+Turn leaves the variable untouched, and a secret nobody revealed can never open
+a puzzle. Learning the same Fact again adds nothing to Character Knowledge and
+re-asserts the same `true` value, so a Character who knows the Fact always
+leaves the commit with its variable set — including when an ordinary
+`set-variable` operation cleared it in between. A Fact learned
+through an authored path — a `learn-narrative-fact` operation on an alternative
+or inside a Sequence — sets the same variable, so both routes stay consistent.
+What results is an ordinary Game Variable: Interaction Conditions, Hotspots,
+Passages, Sequences and alternative eligibility read it with no special casing.
+Startup rejects a `setsVariable` that is empty or names an undeclared Game
+Variable.
+
 ## Player Character Reflection
 
 Give the Player Character a Dialogue Profile to make Reflection available,

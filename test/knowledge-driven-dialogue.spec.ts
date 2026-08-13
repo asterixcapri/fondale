@@ -413,6 +413,111 @@ function alternativeAndHandoffProject(): GameProject {
   } satisfies GameProject;
 }
 
+/**
+ * A Game Project whose Narrative Facts declare the Game Variables their
+ * learning sets: one disclosed openly, one concealed behind a Cover Story and
+ * one withheld outright. A conditional Hotspot and a conditional authored
+ * alternative react to the first of them.
+ */
+function learnedFactVariableProject(): GameProject {
+  const base = coverStoryProject();
+  const antonio = base.characters!.antonio!;
+  return {
+    ...base,
+    narrativeFacts: {
+      "harbour-chain-cut": {
+        proposition: "The harbour chain was cut.",
+        setsVariable: "chainKnown",
+      },
+      lighthouse: {
+        proposition: "The lighthouse is unlit.",
+        setsVariable: "lighthouseKnown",
+      },
+      "santa-lucia": {
+        proposition: "Antonio was aboard the Santa Lucia.",
+        setsVariable: "boardingKnown",
+      },
+    },
+    variables: {
+      ...base.variables,
+      chainKnown: false,
+      lighthouseKnown: false,
+      boardingKnown: false,
+    },
+    scenes: {
+      opening: {
+        ...base.scenes.opening!,
+        hotspots: [
+          ...base.scenes.opening!.hotspots!,
+          {
+            target: { kind: "background" },
+            area: square,
+            approach: { groundPoint: { x: 10, y: 10 }, facing: "front" },
+            when: { variable: "chainKnown", equals: true },
+            noun: {
+              labels: [{ text: "Cut chain" }],
+              preferredVerbs: [{ verb: "look-at" }],
+              cases: [{ verb: "look-at", response: { text: "The links are severed." } }],
+            },
+          },
+        ],
+      },
+    },
+    characters: {
+      ...base.characters,
+      antonio: {
+        ...antonio,
+        dialogue: {
+          ...antonio.dialogue!,
+          knowledge: [
+            ...antonio.dialogue!.knowledge,
+            { factId: "harbour-chain-cut", disclosure: { level: "open" } },
+            {
+              factId: "lighthouse",
+              disclosure: {
+                level: "secret",
+                when: { variable: "confessionUnlocked", equals: true },
+              },
+            },
+          ],
+          alternatives: [
+            {
+              text: "What else can you tell me about the chain?",
+              when: { variable: "chainKnown", equals: true },
+              response: "More than I could before.",
+            },
+            {
+              text: "[work the chain out for yourself]",
+              spoken: false,
+              response: "You do not need me for that.",
+              operations: [{
+                type: "learn-narrative-fact",
+                character: "player",
+                factId: "harbour-chain-cut",
+              }],
+            },
+          ],
+        },
+      },
+    },
+  } satisfies GameProject;
+}
+
+function chainVariableProvider(): FakeDialogueProvider {
+  return new FakeDialogueProvider({
+    interpretations: {
+      "What happened to the chain?": "harbour-chain-cut",
+      "Were you aboard?": "santa-lucia",
+      "Is the lighthouse lit?": "lighthouse",
+    },
+    verbalizations: {
+      "harbour-chain-cut": "I saw the harbour chain being cut.",
+      denial: "I was never aboard that ship.",
+      withhold: "I have nothing to say about that.",
+    },
+  });
+}
+
 function consumableAlternativesProject(): GameProject {
   const base = authoredAlternativesProject();
   const antonio = base.characters!.antonio!;
@@ -2073,4 +2178,132 @@ test("Talk To preserves authored dialogue for a Character without a Dialogue Pro
     speaker: "bystander",
     text: "An authored answer.",
   });
+});
+
+test("a disclosed Narrative Fact learned by typing sets its Game Variable in the same commit", async () => {
+  const project = learnedFactVariableProject();
+  const session = createTestSession(project, undefined, chainVariableProvider());
+  openAntonioConversation(session);
+
+  expect(session.conversation()!.alternatives).toEqual([
+    { index: 1, text: "[work the chain out for yourself]" },
+  ]);
+  expect(session.hud().nouns.some(({ target }) =>
+    target.kind === "hotspot" && target.index === 1
+  )).toBe(false);
+
+  await expect(session.submitDialogue("What happened to the chain?")).resolves.toEqual({ ok: true });
+  expect(session.snapshot().variables.chainKnown).toBe(false);
+  expect(session.snapshot().characterKnowledge.player).toEqual([]);
+
+  session.steps();
+  expect(session.snapshot().characterKnowledge.player).toEqual(["harbour-chain-cut"]);
+  expect(session.snapshot().variables.chainKnown).toBe(true);
+  expect(session.conversation()!.alternatives).toEqual([
+    { index: 0, text: "What else can you tell me about the chain?" },
+    { index: 1, text: "[work the chain out for yourself]" },
+  ]);
+  expect(session.hud().nouns.some(({ target }) =>
+    target.kind === "hotspot" && target.index === 1
+  )).toBe(true);
+
+  advanceConversationLine(session);
+  advanceConversationLine(session);
+  await expect(session.submitDialogue("What happened to the chain?")).resolves.toEqual({ ok: true });
+  session.steps();
+  expect(session.snapshot().characterKnowledge.player).toEqual(["harbour-chain-cut"]);
+  expect(session.snapshot().variables.chainKnown).toBe(true);
+
+  const validation = validateTestSaveSnapshot(
+    project,
+    JSON.parse(JSON.stringify(session.createSaveSnapshot())) as unknown,
+  );
+  expect(validation.ok).toBe(true);
+  if (!validation.ok) return;
+  const restored = createTestSession(project, validation.snapshot, chainVariableProvider());
+  expect(restored.snapshot()).toEqual(session.snapshot());
+  expect(restored.snapshot().variables.chainKnown).toBe(true);
+});
+
+test("a Cover Story or a withheld Fact leaves the declared Game Variable untouched", async () => {
+  const session = createTestSession(
+    learnedFactVariableProject(),
+    undefined,
+    chainVariableProvider(),
+  );
+  openAntonioConversation(session);
+
+  await expect(session.submitDialogue("Were you aboard?")).resolves.toEqual({ ok: true });
+  session.steps();
+  expect(session.snapshot().testimonies).toEqual([
+    { speaker: "antonio", listener: "player", claimId: "denial" },
+  ]);
+  expect(session.snapshot().variables.boardingKnown).toBe(false);
+  expect(session.snapshot().characterKnowledge.player).toEqual([]);
+
+  advanceConversationLine(session);
+  advanceConversationLine(session);
+  await expect(session.submitDialogue("Is the lighthouse lit?")).resolves.toEqual({ ok: true });
+  session.steps();
+  expect(session.snapshot().variables.lighthouseKnown).toBe(false);
+  expect(session.snapshot().characterKnowledge.player).toEqual([]);
+});
+
+test("a failed or cancelled Dialogue Turn commits neither the learning nor its Game Variable", async () => {
+  const project = learnedFactVariableProject();
+  const failedProvider: DialogueProvider = {
+    interpret: () => Promise.resolve({ factId: "harbour-chain-cut" }),
+    verbalize: () => Promise.reject(new Error("Provider unavailable.")),
+    reflect: unusedReflection,
+    reset: () => Promise.resolve(),
+  };
+  const failedSession = createTestSession(project, undefined, failedProvider);
+  openAntonioConversation(failedSession);
+
+  await expect(failedSession.submitDialogue("What happened to the chain?")).resolves.toEqual({
+    ok: false,
+    message: "Provider unavailable.",
+  });
+  failedSession.steps();
+  expect(failedSession.snapshot().variables.chainKnown).toBe(false);
+  expect(failedSession.snapshot().characterKnowledge.player).toEqual([]);
+
+  const cancelledSession = createTestSession(
+    project,
+    undefined,
+    chainProvider({ outcome: "pending", value: "harbour-chain-cut", ignoreCancellation: true }),
+  );
+  openAntonioConversation(cancelledSession);
+  const pending = cancelledSession.submitDialogue("What happened to the chain?");
+  await Promise.resolve();
+  cancelledSession.input({ type: "escape" });
+  cancelledSession.steps();
+
+  await expect(pending).resolves.toEqual({
+    ok: false,
+    message: "Dialogue Turn was cancelled.",
+  });
+  cancelledSession.steps();
+  expect(cancelledSession.snapshot().variables.chainKnown).toBe(false);
+  expect(cancelledSession.snapshot().characterKnowledge.player).toEqual([]);
+  expect(cancelledSession.snapshot().activity).toBeNull();
+});
+
+test("an authored path learning a Narrative Fact sets the same Game Variable", () => {
+  const session = createTestSession(
+    learnedFactVariableProject(),
+    undefined,
+    chainVariableProvider(),
+  );
+  openAntonioConversation(session);
+
+  session.input({ type: "select-alternative", alternative: 1 });
+  session.steps();
+
+  expect(session.snapshot().characterKnowledge.player).toEqual(["harbour-chain-cut"]);
+  expect(session.snapshot().variables.chainKnown).toBe(true);
+  expect(session.conversation()!.alternatives).toEqual([
+    { index: 0, text: "What else can you tell me about the chain?" },
+    { index: 1, text: "[work the chain out for yourself]" },
+  ]);
 });

@@ -5,9 +5,16 @@ import {
   type InteractionCondition,
 } from "../interaction";
 
-/** One true canonical proposition identified by its Narrative Fact registry key. */
+/**
+ * One true canonical proposition identified by its Narrative Fact registry key.
+ * An Author may declare the Game Variable that a Character learning this Fact
+ * sets: the Engine sets it to `true` in the same commit as the learning, so
+ * knowledge discovered in free-form dialogue reaches the Interaction
+ * Conditions, Hotspots, Passages and Sequences that read Game Variables.
+ */
 export interface NarrativeFactDefinition {
   readonly proposition: string;
+  readonly setsVariable?: string;
 }
 
 /** One non-canonical proposition identified by its Claim registry key. */
@@ -519,6 +526,8 @@ export interface KnowledgeDrivenDialogue {
     state: KnowledgeDrivenDialogueState,
     operation: LearnNarrativeFactOperation,
   ): KnowledgeDrivenDialogueState;
+  /** The Game Variable an Author declared for the learning of one Narrative Fact. */
+  variableSetByLearning(factId: string): string | undefined;
   applyOperation(
     state: KnowledgeDrivenDialogueState,
     operation: DialogueGameOperation,
@@ -793,6 +802,11 @@ export function createKnowledgeDrivenDialogue(
           [operation.character]: [...knownFacts, operation.factId],
         },
       };
+    },
+    variableSetByLearning(factId: string) {
+      return hasOwn(project.narrativeFacts, factId)
+        ? project.narrativeFacts[factId]!.setsVariable
+        : undefined;
     },
     applyOperation(state: KnowledgeDrivenDialogueState, operation: DialogueGameOperation) {
       if (operation.type === "learn-narrative-fact") return this.learn(state, operation);
@@ -1162,6 +1176,26 @@ export function validateKnowledgeDrivenDialogueProject(
         path: `narrativeFacts.${factId}.proposition`,
         message: "A Narrative Fact proposition cannot be empty.",
       });
+    }
+    if (fact.setsVariable !== undefined) {
+      const path = `narrativeFacts.${factId}.setsVariable`;
+      if (typeof fact.setsVariable !== "string" || !fact.setsVariable.trim()) {
+        diagnostics.push({
+          code: "definition.narrative-fact.sets-variable",
+          family: "definition",
+          owner: "dialogue",
+          path,
+          message: "The Game Variable set by a Narrative Fact must be non-empty text.",
+        });
+      } else if (!hasOwn(project.variables, fact.setsVariable)) {
+        diagnostics.push({
+          code: "reference.narrative-fact.variable",
+          family: "reference",
+          owner: "dialogue",
+          path,
+          message: `Game Variable '${fact.setsVariable}' does not exist.`,
+        });
+      }
     }
   }
 

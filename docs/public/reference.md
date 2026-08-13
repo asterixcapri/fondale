@@ -60,7 +60,15 @@ Animation Role. The Player Character also requires a walking Role; directional
 walking uses side/front/back strips and mirrors the side strip when facing left.
 
 `NarrativeFactDefinition` is a non-empty canonical `proposition` identified by
-its `narrativeFacts` registry key. `ClaimDefinition` is a non-canonical,
+its `narrativeFacts` registry key, with an optional `setsVariable` naming a
+declared Game Variable. When a Character learns that Narrative Fact the Engine
+sets the variable to `true` in the same commit as the learning: either both
+commit together or neither does. The variable is set only after Disclosure has
+authorised the Fact and before any verbalisation is spoken, so a Fact answered
+with a Cover Story, withheld, or belonging to a failed or cancelled Dialogue
+Turn leaves it untouched. The result is an ordinary Game Variable that
+Interaction Conditions, Hotspots, Passages, Sequences and alternative
+eligibility read with no special casing. `ClaimDefinition` is a non-canonical,
 non-empty `proposition` identified independently by its `claims` registry key.
 A `CharacterDialogueDefinition` contains the
 Character's initial Character Knowledge, directional Relationships and optional
@@ -430,6 +438,7 @@ Definition codes: `definition.approach.bounds`,
 `definition.project.identity`, `definition.project.version`,
 `definition.narrative-fact.identity`,
 `definition.narrative-fact.proposition`,
+`definition.narrative-fact.sets-variable`,
 `definition.character-knowledge.duplicate`,
 `definition.character-knowledge.disclosure`,
 `definition.scene-space.bounds`, `definition.scenery.baseline`,
@@ -471,10 +480,12 @@ Knowledge-Driven Dialogue references use
 `reference.testimony.speaker`, `reference.testimony.listener`,
 `reference.testimony.claim`, and `reference.testimony.cover-story`, plus
 `reference.relationship.character` and `reference.relationship.missing` for
-directional Relationship edges.
+directional Relationship edges, and `reference.narrative-fact.variable` for the
+Game Variable a Narrative Fact sets when it is learned.
 
 Knowledge-Driven Dialogue definition and operation codes include
 `definition.narrative-fact.identity`, `definition.narrative-fact.proposition`,
+`definition.narrative-fact.sets-variable`,
 `definition.claim.identity`, `definition.claim.proposition`,
 `definition.character-knowledge.collection`,
 `definition.character-knowledge.item`,

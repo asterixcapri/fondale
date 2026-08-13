@@ -75,9 +75,11 @@ import {
   createKnowledgeDrivenDialogue,
   dialogueInputMaxLength,
   isDialogueGameOperation,
+  isLearnNarrativeFactOperation,
   type CharacterKnowledgeState,
   type CharacterDialogueState,
   type ConsumedAlternativeState,
+  type DialogueGameOperation,
   type DialogueProvider,
   type DialogueTurnContext,
   type KnowledgeDrivenDialogueState,
@@ -616,9 +618,7 @@ export function createCoreSession(
     if (state.activity?.type !== "conversation" ||
         state.activity.character !== completion.character) return;
     const draft = structuredClone(state);
-    if (completion.operation) {
-      Object.assign(draft, dialogue.applyOperation(draft, completion.operation));
-    }
+    if (completion.operation) applyDialogueOperation(draft, completion.operation);
     state = draft;
     const { operation: _committedOperation, ...content } = completion;
     dialogueTurn = {
@@ -1020,10 +1020,9 @@ export function createCoreSession(
     firstNounObject?: string,
   ): void {
     if (isDialogueGameOperation(operation)) {
-      Object.assign(draft, dialogue.applyOperation(draft, operation));
+      applyDialogueOperation(draft, operation);
     } else if (operation.type === "set-variable") {
-      if (!(operation.variable in projectViews.gameProject.variables)) throw new Error(`Unknown Game Variable '${operation.variable}'.`);
-      draft.variables[operation.variable] = operation.value;
+      setVariable(draft, operation.variable, operation.value);
     } else if (operation.type === "set-appearance") {
       const [diagnostic] = validateAppearanceOperationReference(
         operation,
@@ -1068,6 +1067,27 @@ export function createCoreSession(
       draft.inventory = { objects: [...result.state.inventory.objects] };
       draft.command = structuredClone(result.state.command);
     }
+  }
+
+  /**
+   * Commits one Dialogue-owned Game Operation into a draft Game State. A
+   * Character learning a Narrative Fact also sets the Game Variable its Author
+   * declared for it, in the same draft, so the learning and the world's ability
+   * to react to it can only land together.
+   */
+  function applyDialogueOperation(draft: GameState, operation: DialogueGameOperation): void {
+    Object.assign(draft, dialogue.applyOperation(draft, operation));
+    if (!isLearnNarrativeFactOperation(operation)) return;
+    const variable = dialogue.variableSetByLearning(operation.factId);
+    if (variable !== undefined) setVariable(draft, variable, true);
+  }
+
+  /** Commits one Game Variable change, rejecting a variable the Game Project never declared. */
+  function setVariable(draft: GameState, variable: string, value: boolean): void {
+    if (!(variable in projectViews.gameProject.variables)) {
+      throw new Error(`Unknown Game Variable '${variable}'.`);
+    }
+    draft.variables[variable] = value;
   }
 
   function advanceSequence(): void {

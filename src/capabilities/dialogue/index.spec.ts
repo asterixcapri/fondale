@@ -1142,3 +1142,28 @@ test("Reflection gives an honest limited response when the Character knows nothi
   });
   expect(providerWasAsked).toBe(false);
 });
+
+test("Knowledge-Driven Dialogue reports an invalid Game Variable set by learning a Fact", () => {
+  const project = {
+    narrativeFacts: {
+      known: { proposition: "The harbour chain was cut.", setsVariable: "chainKnown" },
+      missing: { proposition: "The lighthouse is unlit.", setsVariable: "absent" },
+      blank: { proposition: "Antonio was aboard the Santa Lucia.", setsVariable: "  " },
+    },
+    variables: { chainKnown: false },
+    characters: {},
+  } satisfies KnowledgeDrivenDialogueProjectView;
+
+  expect(validateKnowledgeDrivenDialogueProject(project)).toEqual([
+    expect.objectContaining({
+      code: "reference.narrative-fact.variable",
+      owner: "dialogue",
+      path: "narrativeFacts.missing.setsVariable",
+    }),
+    expect.objectContaining({
+      code: "definition.narrative-fact.sets-variable",
+      owner: "dialogue",
+      path: "narrativeFacts.blank.setsVariable",
+    }),
+  ]);
+});
