@@ -6,7 +6,7 @@ import type {
 } from "@asterixcapri/fondale";
 
 /**
- * The Example's own deterministic reading and wording of prologue dialogue.
+ * The Example's own scripted reading and wording of prologue dialogue.
  *
  * It is shared by the two places that need to answer a typed question without a
  * model: the local adapter's default Dialogue Model, and the provider injected

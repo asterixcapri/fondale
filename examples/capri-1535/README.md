@@ -29,7 +29,7 @@ reaches the browser.
 
 The Dialogue Provider is chosen when the Example is built, never by the Player:
 the ordinary build talks to the adapter, and `npm run dev:acceptance` builds
-the same entry point against a deterministic in-browser provider. That is the
+the same entry point against a fake in-browser provider. That is the
 build the acceptance suite drives, which is why `npm run verify` needs no
 database, model or network.
 

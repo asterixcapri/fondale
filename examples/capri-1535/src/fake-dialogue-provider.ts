@@ -20,7 +20,7 @@ import {
  * same prologue tables the local adapter uses, so the suite drives the real
  * entry point and hears what a Player hears.
  */
-export class DeterministicDialogueProvider implements DialogueProvider {
+export class FakeDialogueProvider implements DialogueProvider {
   interpret(request: DialogueInterpretationRequest): Promise<DialogueInterpretation> {
     return Promise.resolve(readPrologueQuestion(request.playerInput, request.candidates));
   }

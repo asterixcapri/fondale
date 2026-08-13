@@ -6,9 +6,9 @@ import { cors } from "hono/cors";
 import type { DialogueProvider, DialogueTurnContext } from "@asterixcapri/fondale";
 
 import type {
-  LocalDialogueRequest,
-  LocalDialogueResponse,
-} from "../../src/local-dialogue-protocol";
+  DialogueRequest,
+  DialogueResponse,
+} from "../../src/dialogue-protocol";
 
 interface ClosableDialogueProvider extends DialogueProvider {
   close?: () => Promise<void>;
@@ -55,7 +55,7 @@ export async function createDialogueAdapterServer(options: {
 
   app.post("/dialogue", async (context) => {
     const body = await readJson(context.req.raw);
-    if (!isLocalDialogueRequest(body)) {
+    if (!isDialogueRequest(body)) {
       return json(context, 400, { ok: false, error: "Invalid Dialogue Provider request." });
     }
     const turnKey = "turnId" in body ? `${body.sessionId}\0${body.turnId}` : undefined;
@@ -123,7 +123,7 @@ export async function createDialogueAdapterServer(options: {
 
 async function execute(
   provider: DialogueProvider,
-  body: LocalDialogueRequest,
+  body: DialogueRequest,
   signal: AbortSignal,
 ): Promise<unknown> {
   if (body.operation === "reset") return provider.reset();
@@ -150,7 +150,7 @@ function abandoned(context: Context): Response {
 function json(
   context: Context,
   status: ContentfulStatusCode,
-  body: LocalDialogueResponse,
+  body: DialogueResponse,
 ): Response {
   return context.json(body, status);
 }
@@ -161,7 +161,7 @@ async function readJson(request: Request): Promise<unknown> {
   return JSON.parse(raw) as unknown;
 }
 
-function isLocalDialogueRequest(value: unknown): value is LocalDialogueRequest {
+function isDialogueRequest(value: unknown): value is DialogueRequest {
   if (typeof value !== "object" || value === null) return false;
   const candidate = value as Record<string, unknown>;
   if (typeof candidate.sessionId !== "string" || !candidate.sessionId.trim() ||

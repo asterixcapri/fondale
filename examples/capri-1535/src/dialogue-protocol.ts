@@ -4,7 +4,7 @@ import type {
   ReflectionRequest,
 } from "@asterixcapri/fondale";
 
-export type LocalDialogueRequest = {
+export type DialogueRequest = {
   readonly sessionId: string;
 } & (
   | {
@@ -26,6 +26,6 @@ export type LocalDialogueRequest = {
   | { readonly operation: "reset" }
 );
 
-export type LocalDialogueResponse =
+export type DialogueResponse =
   | { readonly ok: true; readonly value?: unknown }
   | { readonly ok: false; readonly error: string };

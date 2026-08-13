@@ -10,7 +10,7 @@ import antonioUrl from "../../src/characters/raffaele/idle.png";
 import micheleUrl from "../../src/characters/brother-elia/idle.png";
 import backgroundUrl from "../../src/scenes/harbour/background.png";
 import { capriHudTheme, italianCommandFallbacks, italianCommandLexicon } from "../../src/hud";
-import { LocalDialogueProvider } from "../../src/local-dialogue-provider";
+import { HttpDialogueProvider } from "../../src/http-dialogue-provider";
 import { logicalBackground } from "./logical-background";
 
 /**
@@ -31,7 +31,7 @@ declare global {
 
 const background = await logicalBackground(backgroundUrl);
 const sessionId = crypto.randomUUID();
-const dialogueProvider = new LocalDialogueProvider({
+const dialogueProvider = new HttpDialogueProvider({
   endpoint: "http://127.0.0.1:4315/dialogue",
   sessionId,
 });

@@ -1,10 +1,16 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import {
-  DeterministicDialogueModel,
-  type DialogueModel,
-} from "./dialogue-model";
+import type {
+  DialogueInterpretation,
+  DialogueInterpretationRequest,
+  DialogueVerbalizationRequest,
+  ReflectionRequest,
+  ReflectionResponse,
+} from "@asterixcapri/fondale";
+
+import { throwIfAborted } from "./cancellation";
+import type { DialogueModel, VisibleDialogueLine } from "./dialogue-model";
 import {
   createDialogueProvider,
 } from "./dialogue-provider";
@@ -16,7 +22,7 @@ if (!databaseUrl) {
 
 test("the PostgreSQL adapter persists only visible Dialogue Lines across restarts", async () => {
   const sessionId = crypto.randomUUID();
-  const model = new DeterministicDialogueModel({
+  const model = new EchoingDialogueModel({
     interpretations: {
       "Where is the lantern?": "lantern-location",
       "Remind me where it is.": "lantern-location",
@@ -88,7 +94,7 @@ test("the PostgreSQL adapter persists only visible Dialogue Lines across restart
 test("Conversation, Reflection and Game Sessions use isolated PostgreSQL threads", async () => {
   const firstSessionId = crypto.randomUUID();
   const secondSessionId = crypto.randomUUID();
-  const model = new DeterministicDialogueModel({ interpretations: {} });
+  const model = new EchoingDialogueModel({ interpretations: {} });
   const firstSession = await createDialogueProvider({
     databaseUrl, sessionId: firstSessionId, model,
   });
@@ -131,10 +137,10 @@ test("Conversation, Reflection and Game Sessions use isolated PostgreSQL threads
 
 test("failed and cancelled turns leave no visible half-turn in memory", async () => {
   const sessionId = crypto.randomUUID();
-  const deterministic = new DeterministicDialogueModel({ interpretations: {} });
+  const echoing = new EchoingDialogueModel({ interpretations: {} });
   const model: DialogueModel = {
-    interpret: (...arguments_) => deterministic.interpret(...arguments_),
-    reflect: (...arguments_) => deterministic.reflect(...arguments_),
+    interpret: (...arguments_) => echoing.interpret(...arguments_),
+    reflect: (...arguments_) => echoing.reflect(...arguments_),
     verbalize(request, history, signal) {
       if (request.playerInput === "Fail now") return Promise.reject(new Error("model failed"));
       if (request.playerInput === "Wait forever") {
@@ -142,7 +148,7 @@ test("failed and cancelled turns leave no visible half-turn in memory", async ()
           signal.addEventListener("abort", () => reject(signal.reason), { once: true });
         });
       }
-      return deterministic.verbalize(request, history, signal);
+      return echoing.verbalize(request, history, signal);
     },
   };
   const provider = await createDialogueProvider({
@@ -180,13 +186,13 @@ test("reset invalidates an in-flight turn before acknowledging completion", asyn
   const started = new Promise<void>((resolve) => {
     markStarted = resolve;
   });
-  const deterministic = new DeterministicDialogueModel({ interpretations: {} });
+  const echoing = new EchoingDialogueModel({ interpretations: {} });
   const model: DialogueModel = {
-    interpret: (...arguments_) => deterministic.interpret(...arguments_),
-    reflect: (...arguments_) => deterministic.reflect(...arguments_),
+    interpret: (...arguments_) => echoing.interpret(...arguments_),
+    reflect: (...arguments_) => echoing.reflect(...arguments_),
     async verbalize(request, history, signal) {
       if (request.playerInput !== "Pending before reset") {
-        return deterministic.verbalize(request, history, signal);
+        return echoing.verbalize(request, history, signal);
       }
       markStarted();
       await new Promise<void>((resolve) => {
@@ -303,4 +309,83 @@ function answer(
 
 function turnContext(turnId: string) {
   return { turnId, signal: new AbortController().signal };
+}
+
+/**
+ * A Dialogue Model that answers with the visible history it was handed.
+ *
+ * Nothing else can see what the Dialogue Provider passed to a model, so these
+ * tests read it back out of the answer itself.
+ */
+class EchoingDialogueModel implements DialogueModel {
+  constructor(private readonly configuration: {
+    readonly interpretations: Readonly<Record<
+      string,
+      string | null | { readonly reason: "ambiguous" | "no-relevant-fact" }
+    >>;
+  }) {}
+
+  interpret(
+    request: DialogueInterpretationRequest,
+    _history: readonly VisibleDialogueLine[],
+    signal: AbortSignal,
+  ): Promise<DialogueInterpretation> {
+    throwIfAborted(signal);
+    const configured = this.configuration.interpretations[request.playerInput];
+    if (typeof configured === "string") return Promise.resolve({ factId: configured });
+    return Promise.resolve({
+      factId: null,
+      reason: configured?.reason ?? "no-relevant-fact",
+    });
+  }
+
+  verbalize(
+    request: DialogueVerbalizationRequest,
+    history: readonly VisibleDialogueLine[],
+    signal: AbortSignal,
+  ): Promise<string> {
+    throwIfAborted(signal);
+    const authorisedText = request.fact?.proposition ?? request.claim?.proposition ??
+      strategyLine(request.strategy);
+    return Promise.resolve(`${authorisedText} ${historyDescription(history)}`);
+  }
+
+  reflect(
+    request: ReflectionRequest,
+    history: readonly VisibleDialogueLine[],
+    signal: AbortSignal,
+  ): Promise<ReflectionResponse> {
+    throwIfAborted(signal);
+    const remembered = [
+      ...request.facts.map(({ proposition }) => proposition),
+      ...request.testimonies.map(({ speaker, claim }) => `${speaker} said: ${claim.proposition}`),
+    ];
+    return Promise.resolve({
+      summary: `${remembered.join(" ")} ${historyDescription(history)}`.trim(),
+    });
+  }
+}
+
+function historyDescription(history: readonly VisibleDialogueLine[]): string {
+  if (history.length === 0) return "[no earlier visible Lines]";
+  return `[earlier visible Lines: ${history.map(({ role, text }) =>
+    `${role === "player" ? "Player" : "Character"}: ${text}`
+  ).join(" | ")}]`;
+}
+
+function strategyLine(strategy: DialogueVerbalizationRequest["strategy"]): string {
+  switch (strategy) {
+    case "clarify":
+      return "Could you clarify your question?";
+    case "cover-story":
+      return "I cannot answer that.";
+    case "evade":
+      return "That is not important right now.";
+    case "refuse":
+      return "I will not discuss that.";
+    case "withhold":
+      return "I cannot tell you that.";
+    case "answer":
+      return "I do not have an authorised fact to answer with.";
+  }
 }

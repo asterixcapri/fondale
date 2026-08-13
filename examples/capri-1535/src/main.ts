@@ -1,7 +1,7 @@
 import { startGame, type DialogueProvider, type GameSession } from "@asterixcapri/fondale";
 
 import { project } from "./game";
-import { LocalDialogueProvider } from "./local-dialogue-provider";
+import { HttpDialogueProvider } from "./http-dialogue-provider";
 
 const target = document.querySelector<HTMLElement>("#game")!;
 const restore = document.querySelector<HTMLButtonElement>("#restore")!;
@@ -22,15 +22,15 @@ window.addEventListener("unhandledrejection", (event) => {
 /**
  * The Dialogue Provider is chosen when the Example is built, never by the
  * Player: the ordinary build talks to the local adapter, while the acceptance
- * build injects a deterministic provider so the suite opens this same entry
+ * build injects a fake provider so the suite opens this same entry
  * point without a database, a model or the network.
  */
 async function createDialogueProvider(): Promise<DialogueProvider> {
   if (import.meta.env.MODE === "acceptance") {
-    const { DeterministicDialogueProvider } = await import("./deterministic-dialogue-provider");
-    return new DeterministicDialogueProvider();
+    const { FakeDialogueProvider } = await import("./fake-dialogue-provider");
+    return new FakeDialogueProvider();
   }
-  const provider = new LocalDialogueProvider({
+  const provider = new HttpDialogueProvider({
     endpoint: dialogueAdapterEndpoint,
     sessionId: crypto.randomUUID(),
   });

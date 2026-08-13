@@ -3,7 +3,7 @@ import { test } from "node:test";
 
 import type { DialogueProvider } from "@asterixcapri/fondale";
 
-import { LocalDialogueProvider } from "../../src/local-dialogue-provider";
+import { HttpDialogueProvider } from "../../src/http-dialogue-provider";
 import { createDialogueAdapterServer } from "./http-server";
 
 test("the local transport forwards the Dialogue Provider contract to one Game Session", async () => {
@@ -35,7 +35,7 @@ test("the local transport forwards the Dialogue Provider contract to one Game Se
       return Promise.resolve(provider);
     },
   });
-  const client = new LocalDialogueProvider({
+  const client = new HttpDialogueProvider({
     endpoint: server.url,
     sessionId: "game-session-1",
   });
@@ -90,7 +90,7 @@ test("the local transport never exposes server-side failure details", async () =
     port: 0,
     createProvider: () => Promise.resolve(provider),
   });
-  const client = new LocalDialogueProvider({
+  const client = new HttpDialogueProvider({
     endpoint: server.url,
     sessionId: "game-session-1",
   });
@@ -130,7 +130,7 @@ test("cancelling while a Game Session provider initializes never starts the turn
     port: 0,
     createProvider: () => providerReady,
   });
-  const client = new LocalDialogueProvider({
+  const client = new HttpDialogueProvider({
     endpoint: server.url,
     sessionId: "game-session-1",
   });

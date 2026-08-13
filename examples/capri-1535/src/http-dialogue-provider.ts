@@ -8,9 +8,9 @@ import type {
   ReflectionResponse,
 } from "@asterixcapri/fondale";
 
-import type { LocalDialogueRequest, LocalDialogueResponse } from "./local-dialogue-protocol";
+import type { DialogueRequest, DialogueResponse } from "./dialogue-protocol";
 
-export class LocalDialogueProvider implements DialogueProvider {
+export class HttpDialogueProvider implements DialogueProvider {
   private readonly endpoint: string;
   private readonly sessionId: string;
 
@@ -59,7 +59,7 @@ export class LocalDialogueProvider implements DialogueProvider {
     return this.send({ operation: "reset", sessionId: this.sessionId });
   }
 
-  private async send<T>(body: LocalDialogueRequest, signal?: AbortSignal): Promise<T> {
+  private async send<T>(body: DialogueRequest, signal?: AbortSignal): Promise<T> {
     let response: Response;
     try {
       response = await fetch(this.endpoint, {
@@ -76,11 +76,11 @@ export class LocalDialogueProvider implements DialogueProvider {
       throw cause;
     }
     const payload: unknown = await response.json();
-    if (!isLocalDialogueResponse(payload)) {
-      throw new Error("Local Dialogue Provider returned an invalid response.");
+    if (!isDialogueResponse(payload)) {
+      throw new Error("The Dialogue Provider returned an invalid response.");
     }
     if (!response.ok || !payload.ok) {
-      throw new Error(payload.ok ? "Local Dialogue Provider request failed." : payload.error);
+      throw new Error(payload.ok ? "The Dialogue Provider request failed." : payload.error);
     }
     return payload.value as T;
   }
@@ -93,12 +93,12 @@ export class LocalDialogueProvider implements DialogueProvider {
         operation: "cancel",
         sessionId: this.sessionId,
         turnId,
-      } satisfies LocalDialogueRequest),
+      } satisfies DialogueRequest),
     }).catch(() => undefined);
   }
 }
 
-function isLocalDialogueResponse(value: unknown): value is LocalDialogueResponse {
+function isDialogueResponse(value: unknown): value is DialogueResponse {
   if (typeof value !== "object" || value === null || !("ok" in value)) return false;
   if ((value as { readonly ok?: unknown }).ok === true) return true;
   return (value as { readonly ok?: unknown }).ok === false &&
