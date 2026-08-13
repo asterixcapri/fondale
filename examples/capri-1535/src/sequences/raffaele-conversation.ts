@@ -1,5 +1,7 @@
 import { type SequenceDefinition } from "@asterixcapri/fondale";
 
+import { micheleLearns } from "../characters/learning";
+
 export const raffaeleConversation = ({
   steps: [
     {
@@ -35,6 +37,17 @@ export const raffaeleConversation = ({
       type: "line",
       character: "raffaele",
       text: "Prendi l'ampolla accanto alle reti, libera il pozzo e riportami la manovella. Poi salirai alla torre.",
+    },
+    {
+      // Michele leaves the engagement knowing what Raffaele just told him, so
+      // the authored path feeds Reflection exactly as free-form asking does.
+      type: "operations",
+      operations: micheleLearns(
+        "winch-lacks-its-handle",
+        "friars-took-the-handle",
+        "cloister-pulley-is-jammed",
+        "oil-flask-lies-by-the-nets",
+      ),
     },
   ],
 } satisfies SequenceDefinition);

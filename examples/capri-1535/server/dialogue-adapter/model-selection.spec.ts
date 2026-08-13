@@ -1,16 +1,16 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { DeterministicDialogueModel } from "./dialogue-model";
 import { selectDialogueModel } from "./model-selection";
 import { defaultOpenRouterModelId } from "./openrouter-dialogue-model";
+import { PrologueDialogueModel } from "./prologue-dialogue-model";
 
-test("the adapter keeps the deterministic model unless the environment asks for OpenRouter", () => {
-  assert(selectDialogueModel({}) instanceof DeterministicDialogueModel);
+test("the adapter answers the prologue deterministically unless asked for OpenRouter", () => {
+  assert(selectDialogueModel({}) instanceof PrologueDialogueModel);
   assert(selectDialogueModel({
     DIALOGUE_ADAPTER_MODEL: "deterministic",
     OPENROUTER_API_KEY: "sk-or-v1-example-secret",
-  }) instanceof DeterministicDialogueModel);
+  }) instanceof PrologueDialogueModel);
 });
 
 test("one server-side setting selects the live OpenRouter model", () => {

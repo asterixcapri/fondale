@@ -21,7 +21,7 @@ function findTypeScriptFiles(directory) {
 if (packageJson.dependencies?.["@asterixcapri/fondale"] !== `file:${tarball}`) {
   throw new Error("The Example must install Fondale from its vendored distributable tarball.");
 }
-for (const script of ["dev", "typecheck", "build", "preview", "verify"]) {
+for (const script of ["dev", "dev:acceptance", "typecheck", "build", "preview", "verify"]) {
   if (!packageJson.scripts?.[script]) throw new Error(`The Example is missing its '${script}' script.`);
 }
 if (!existsSync(join(project, tarball))) {
@@ -63,6 +63,15 @@ for (const sourceFile of findTypeScriptFiles(join(project, "src"))) {
   if (source.includes("/art/")) {
     throw new Error(`The Example source reaches into repository art from ${sourceFile}.`);
   }
+}
+// A Player has one experience: the Dialogue Provider belongs to the build, not
+// to a query parameter anybody can type into the address bar.
+const entryPoint = readFileSync(join(project, "src/main.ts"), "utf8");
+if (/\.get\(\s*["']dialogue["']\s*\)/.test(entryPoint)) {
+  throw new Error("The Example must not let a Player select a Dialogue Provider.");
+}
+if (!entryPoint.includes('import.meta.env.MODE === "acceptance"')) {
+  throw new Error("The Example must select its Dialogue Provider when it is built.");
 }
 if (viteConfig.includes("../") || !viteConfig.includes('outDir: "dist"')) {
   throw new Error("The Example build output must remain inside the Example project.");

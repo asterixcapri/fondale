@@ -1,8 +1,6 @@
 import { defineConfig } from "@playwright/test";
 
-const port = Number((globalThis as {
-  process?: { env: Record<string, string | undefined> };
-}).process?.env.CAPRI_TEST_PORT ?? "5173");
+import { acceptancePort, ordinaryPort } from "./test/ports";
 
 export default defineConfig({
   testDir: "./test",
@@ -13,14 +11,22 @@ export default defineConfig({
   fullyParallel: false,
   reporter: [["list"]],
   use: {
-    baseURL: `http://localhost:${port}`,
+    baseURL: `http://localhost:${acceptancePort}`,
     channel: "chrome",
     viewport: { width: 1280, height: 720 },
   },
-  webServer: {
-    command: `npm run dev -- --port ${port}`,
-    url: `http://localhost:${port}`,
+  webServer: [{
+    command: `npm run dev:acceptance -- --port ${acceptancePort}`,
+    url: `http://localhost:${acceptancePort}`,
     reuseExistingServer: true,
     timeout: 60_000,
-  },
+  }, {
+    // The ordinary build, serving the same entry point a Player opens. Only the
+    // startup-failure test uses it, and that test refuses the adapter address
+    // itself, so this server still reaches no database, model or network.
+    command: `npm run dev -- --port ${ordinaryPort}`,
+    url: `http://localhost:${ordinaryPort}`,
+    reuseExistingServer: true,
+    timeout: 60_000,
+  }],
 });

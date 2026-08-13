@@ -41,6 +41,25 @@ async function waitForWalk(page: Page, milliseconds = 3_000): Promise<void> {
   await page.waitForTimeout(milliseconds);
 }
 
+/** Asks one free-form question inside the open Conversation and reads the answer out. */
+async function ask(page: Page, question: string): Promise<void> {
+  const conversation = page.locator("[data-fondale-conversation]");
+  await conversation.locator("[data-fondale-dialogue-input]").fill(question);
+  await conversation.getByRole("button", { name: "Ask" }).click();
+  await expect(page.locator('[data-fondale-line][data-fondale-speaker="michele"]'))
+    .toContainText(question, { timeout: 8_000 });
+  await advance(page);
+}
+
+/** Opens Michele's Reflection and waits for the composed answer. */
+async function reflect(page: Page, question: string): Promise<void> {
+  await page.getByRole("button", { name: "Rifletti" }).click();
+  const reflection = page.locator("[data-fondale-reflection]");
+  await expect(reflection).toBeVisible();
+  await reflection.locator("[data-fondale-dialogue-input]").fill(question);
+  await reflection.getByRole("button", { name: "Reflect" }).click();
+}
+
 function polygonBounds(points: string): {
   minimumX: number;
   maximumX: number;
@@ -155,14 +174,82 @@ test("the packaged Example opens in the new panoramic town square and reaches th
 test("the Example exposes Rifletti as Player Character Reflection", async ({ page }) => {
   const { errors } = await openGame(page);
 
-  await page.getByRole("button", { name: "Rifletti" }).click();
-  const reflection = page.locator("[data-fondale-reflection]");
-  await expect(reflection).toBeVisible();
-  await reflection.locator("[data-fondale-dialogue-input]").fill("Che cosa so?");
-  await reflection.getByRole("button", { name: "Reflect" }).click();
+  await reflect(page, "Che cosa so?");
 
   await expect(page.locator('[data-fondale-line][data-fondale-speaker="michele"]'))
-    .toContainText("Sono arrivato a Capri");
+    .toContainText("Michele è arrivato a Capri in cerca di un lavoro onesto");
+  expect(errors).toEqual([]);
+});
+
+test("authored questions and the free-form field share one Conversation with Frate Elia", async ({
+  page,
+}) => {
+  const { errors } = await openGame(page);
+  const frame = page.locator("[data-fondale-frame]");
+  // The cloister opens from the middle of the panoramic square, which needs the
+  // Camera panned as far as the campanile before the Passage is in frame.
+  await command(page, "look-at", 390, 110);
+  await expect(page.locator("[aria-live=polite]")).toContainText("campanile");
+  await clickWorld(page, 180, 142);
+  await expect(frame).toHaveAttribute("data-fondale-scene", "cloister", { timeout: 8_000 });
+
+  let elia = await visibleHotspotPoint(page, "Frate Elia");
+  if (!elia) {
+    await clickWorld(page, 400, 228);
+    await waitForWalk(page);
+    elia = await visibleHotspotPoint(page, "Frate Elia");
+  }
+  if (!elia) throw new Error("Frate Elia did not enter the Camera viewport");
+  await command(page, "talk-to", elia.x, elia.y);
+
+  const conversation = page.locator("[data-fondale-conversation]");
+  const input = conversation.locator("[data-fondale-dialogue-input]");
+  const alternatives = conversation.locator("[data-fondale-conversation-alternative]");
+  const line = page.locator("[data-fondale-line]");
+  const eliaLine = page.locator('[data-fondale-line][data-fondale-speaker="brotherElia"]');
+
+  // Both ways of talking are offered from the first click, with no unlock.
+  await expect(input).toBeVisible({ timeout: 8_000 });
+  await expect(alternatives).toHaveCount(1);
+  await expect(alternatives.first()).toContainText("Sono qui per la manovella dell'argano.");
+
+  // A typed question is answered only from what Frate Elia actually knows.
+  await ask(page, "Perché la carrucola è bloccata?");
+  await expect(eliaLine).toContainText("La carrucola del pozzo è bloccata");
+  await advance(page);
+
+  // Learning that Fact set its declared Game Variable, which opens one more
+  // authored question: the two paths feed each other inside one Conversation.
+  await expect(input).toBeVisible();
+  await expect(alternatives).toHaveCount(2);
+  await alternatives.nth(1).click();
+  await expect(eliaLine).toContainText("Per il ferro preferisco l'olio");
+  await advance(page);
+  await expect(input).toBeVisible();
+  await expect(alternatives).toHaveCount(2);
+
+  // An authored question may direct a Sequence: the field steps aside while it
+  // plays and comes back when it ends, and the question is consumed by asking.
+  await alternatives.first().click();
+  await expect(input).toBeHidden();
+  await expect(eliaLine).toContainText("Raffaele rivuole la sua manovella");
+  await advance(page);
+  await expect(page.locator("[data-fondale-choice] button")).toHaveCount(2);
+  await page.getByRole("button", { name: "Posso riprendermela?" }).click();
+  await expect(line).toContainText("Posso riprendermela?");
+  await advance(page);
+  await expect(eliaLine).toContainText("Appena la carrucola gira");
+  await advance(page);
+  await expect(input).toBeVisible();
+  await expect(alternatives).toHaveCount(1);
+  await expect(alternatives.first()).toContainText("Che cosa serve alla carrucola?");
+
+  // Reflection reports what Michele learned, by either path.
+  await conversation.getByRole("button", { name: "Leave" }).click();
+  await reflect(page, "Che cosa so?");
+  const reflected = page.locator('[data-fondale-line][data-fondale-speaker="michele"]');
+  await expect(reflected).toContainText("La carrucola del pozzo del chiostro è bloccata");
+  await expect(reflected).toContainText("I frati hanno preso la manovella dell'argano");
   expect(errors).toEqual([]);
 });
 
@@ -175,7 +262,10 @@ test("Michele completes one ordinary job before the drifting boat begins the adv
   await enterRightEdgePassage(page);
   await expect(frame).toHaveAttribute("data-fondale-scene", "harbour", { timeout: 8_000 });
   await command(page, "talk-to", 216, 180);
+  const conversation = page.locator("[data-fondale-conversation]");
   const line = page.locator("[data-fondale-line]");
+  await expect(conversation.locator("[data-fondale-dialogue-input]")).toBeVisible();
+  await conversation.getByRole("button", { name: "Cerchi qualcuno per un lavoro?" }).click();
   await expect(line).toContainText("monete", { timeout: 8_000 });
   await advance(page);
   await expect(page.locator("[data-fondale-choice] button")).toHaveCount(2);
@@ -186,9 +276,14 @@ test("Michele completes one ordinary job before the drifting boat begins the adv
   await advance(page);
   await expect(line).toContainText("ampolla");
   await advance(page);
+  await expect(conversation.locator("[data-fondale-dialogue-input]")).toBeVisible();
+  await conversation.getByRole("button", { name: "Leave" }).click();
   await expect(line).toHaveCount(0);
 
-  await command(page, "pick-up", 286, 202);
+  await waitForWalk(page, 1_000);
+  const flask = await visibleHotspotPoint(page, "Ampolla d'olio");
+  if (!flask) throw new Error("The oil flask did not enter the Camera viewport");
+  await command(page, "pick-up", flask.x, flask.y);
   await expect(page.locator('[data-fondale-inventory-object="oilFlask"]')).toHaveCount(1);
 
   await clickWorld(page, 400, 120);
