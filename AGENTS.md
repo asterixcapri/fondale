@@ -75,6 +75,10 @@ To list the skills currently available in the project:
 npx skills list
 ```
 
+Use `skills/define-scene/SKILL.md` when creating or modifying a complete
+Fondale Scene, including its artwork, geometry, authoring data, and in-Engine
+verification.
+
 ### Issue tracker
 
 Issues live as Markdown files under `.scratch/`, which is tracked by Git. See

@@ -25,6 +25,11 @@
       "skillPath": "skills/engineering/codebase-design/SKILL.md",
       "computedHash": "e6394592ecf4b5aa5bc93f95a20d0a56314788bde2e1221f87296d3becb734a2"
     },
+    "define-scene": {
+      "source": "./skills",
+      "sourceType": "local",
+      "computedHash": "d902c6fc95a6ff6cedfeba6cec4f106e043382741c66c8f7dc5ab8eb6d86c3cf"
+    },
     "diagnosing-bugs": {
       "source": "mattpocock/skills",
       "sourceType": "github",

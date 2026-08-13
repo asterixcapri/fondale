@@ -1,0 +1,4 @@
+interface:
+  display_name: "Define Scene"
+  short_description: "Create or modify complete Fondale Scenes"
+  default_prompt: "Use $define-scene to create or modify a complete illustrated neo-retro Scene for this Fondale Game Project."
