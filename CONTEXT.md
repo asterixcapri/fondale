@@ -149,8 +149,11 @@ language and never reaches a Dialogue Provider, while free-form input opens a
 Dialogue Turn. An authored alternative may instead, or additionally, hand
 direction of play to a named Sequence, which then becomes the dominant Game
 Activity and closes or resumes the Conversation when it completes; free-form
-input is not presented while it plays. Its provider-owned transcript and
-context memory are not Game State and reset when a Save Snapshot is loaded.
+input is not presented while it plays. An authored alternative may be consumed
+by the selection that asks it, and is then never offered again; which
+alternatives were consumed is canonical Game State. Its provider-owned
+transcript and context memory are not Game State and reset when a Save Snapshot
+is loaded.
 _Avoid_: Sequence, dialogue tree, arbitrary input prompt, Save Snapshot transcript
 
 **Reflection**:

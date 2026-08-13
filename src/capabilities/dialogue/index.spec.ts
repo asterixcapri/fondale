@@ -3,6 +3,7 @@ import { expect, test } from "@playwright/test";
 import {
   createKnowledgeDrivenDialogue,
   FakeDialogueProvider,
+  validateDialogueGameOperation,
   validateKnowledgeDrivenDialogueProject,
   validateLearnNarrativeFactOperation,
   type DialogueInterpretationRequest,
@@ -313,6 +314,67 @@ test("Knowledge-Driven Dialogue rejects invalid Conversation alternatives", () =
   ]);
 });
 
+function consumableAlternativesProject(): KnowledgeDrivenDialogueProjectView {
+  return {
+    narrativeFacts: {},
+    variables: {},
+    characters: {
+      antonio: {
+        dialogue: {
+          knowledge: [],
+          alternatives: [
+            { text: "Asked once?", response: "Once answered.", once: true },
+            { text: "Asked how often?", response: "As often as you like.", once: "yes" },
+          ],
+        },
+      },
+    },
+  } as unknown as KnowledgeDrivenDialogueProjectView;
+}
+
+test("Knowledge-Driven Dialogue rejects a consumption flag that is not a boolean", () => {
+  expect(validateKnowledgeDrivenDialogueProject(consumableAlternativesProject())).toEqual([
+    expect.objectContaining({
+      code: "definition.conversation-alternative.item",
+      owner: "dialogue",
+      path: "characters.antonio.dialogue.alternatives[1]",
+    }),
+  ]);
+});
+
+test("Knowledge-Driven Dialogue rejects consuming an alternative a Character does not offer", () => {
+  const project = consumableAlternativesProject();
+  const path = "sequences.exactAccount.steps[0].operations[0]";
+
+  expect(validateDialogueGameOperation(
+    { type: "consume-conversation-alternative", character: "antonio", alternative: 0 },
+    path,
+    project,
+  )).toEqual([]);
+  expect(validateDialogueGameOperation(
+    { type: "consume-conversation-alternative", character: "antonio", alternative: 2 },
+    path,
+    project,
+  )).toEqual([
+    expect.objectContaining({
+      code: "reference.conversation-alternative.index",
+      owner: "dialogue",
+      path: `${path}.alternative`,
+    }),
+  ]);
+  expect(validateDialogueGameOperation(
+    { type: "consume-conversation-alternative", character: "nobody", alternative: 0 },
+    path,
+    project,
+  )).toEqual([
+    expect.objectContaining({
+      code: "reference.dialogue-operation.character",
+      owner: "dialogue",
+      path: `${path}.character`,
+    }),
+  ]);
+});
+
 test("Knowledge-Driven Dialogue rejects an alternative that starts a Sequence", () => {
   const project = {
     narrativeFacts: {},
@@ -434,6 +496,7 @@ test("Knowledge-Driven Dialogue creates independent state and learns monotonical
     characterKnowledge: { antonio: ["harbour"], michele: [] },
     relationships: { antonio: {}, michele: {} },
     dialogueStates: { antonio: null, michele: null },
+    consumedAlternatives: { antonio: [], michele: [] },
     testimonies: [],
   });
   expect(independent).toEqual(initial);

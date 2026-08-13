@@ -158,7 +158,7 @@ function validStateShape(
   context: SaveValidationContext,
 ): value is GameState {
   const { animation, project, world } = context;
-  if (!isRecord(value) || !hasExactKeys(value, ["currentScene", "characters", "scenery", "objects", "inventory", "command", "variables", "characterKnowledge", "relationships", "dialogueStates", "testimonies", "activity", "tick"], ["conversationContinuation"])) return false;
+  if (!isRecord(value) || !hasExactKeys(value, ["currentScene", "characters", "scenery", "objects", "inventory", "command", "variables", "characterKnowledge", "relationships", "dialogueStates", "consumedAlternatives", "testimonies", "activity", "tick"], ["conversationContinuation"])) return false;
   if (!Number.isInteger(value.tick) || (value.tick as number) < 0) return false;
   if (!world.isValidState(value) || !isValidAnimationState(animation, value)) return false;
   const inventoryLocations: string[] = [];
@@ -178,6 +178,7 @@ function validStateShape(
     characterKnowledge: value.characterKnowledge,
     relationships: value.relationships,
     dialogueStates: value.dialogueStates,
+    consumedAlternatives: value.consumedAlternatives,
     testimonies: value.testimonies,
   })) return false;
   if (value.conversationContinuation !== undefined) {

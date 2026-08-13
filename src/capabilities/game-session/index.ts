@@ -77,6 +77,7 @@ import {
   isDialogueGameOperation,
   type CharacterKnowledgeState,
   type CharacterDialogueState,
+  type ConsumedAlternativeState,
   type DialogueProvider,
   type DialogueTurnContext,
   type KnowledgeDrivenDialogueState,
@@ -116,6 +117,7 @@ export interface GameState extends WorldState {
   characterKnowledge: CharacterKnowledgeState;
   relationships: RelationshipState;
   dialogueStates: CharacterDialogueState;
+  consumedAlternatives: ConsumedAlternativeState;
   testimonies: Testimony[];
   conversationContinuation?: ConversationActivityState;
   activity: GameActivityState | null;
@@ -327,7 +329,7 @@ export function createCoreSession(
         character: state.activity.character,
         status: conversationStatus,
         maxInputLength: dialogueInputMaxLength,
-        alternatives: dialogue.alternatives(state.activity.character, conditionMatches)
+        alternatives: askableAlternatives(state.activity.character)
           .map(({ index, definition }) => ({ index, text: definition.text })),
         ...(conversationError ? { error: conversationError } : {}),
       });
@@ -874,22 +876,38 @@ export function createCoreSession(
     return true;
   }
 
+  /** The alternatives this Character may still be asked, eligible and unconsumed. */
+  function askableAlternatives(character: string) {
+    return dialogue.alternatives(
+      character,
+      conditionMatches,
+      state.consumedAlternatives[character] ?? [],
+    );
+  }
+
   /**
    * Answers one authored alternative directly, without reaching a Dialogue
    * Provider. A pending Dialogue Turn is left to settle: the selection is
    * refused rather than allowed to race the turn it would otherwise cancel.
    * An alternative that names a Sequence directs it at once, or after its own
-   * authored Line when it carries both.
+   * authored Line when it carries both. An alternative declaring `once` is
+   * consumed by the same commit that carries its authored Game Operations.
    */
   function selectConversationAlternative(character: string, index: number): void {
     const playerCharacter = projectViews.world.playerCharacter;
     if (!playerCharacter) return;
     if (conversationStatus !== "ready" && conversationStatus !== "error") return;
-    const selected = dialogue.alternatives(character, conditionMatches)
+    const selected = askableAlternatives(character)
       .find((alternative) => alternative.index === index);
     if (!selected) return;
-    const { text, response, sequence, after, spoken, operations } = selected.definition;
-    if (operations && !applyOperations(operations, { kind: "background" })) return;
+    const { text, response, sequence, after, spoken, once, operations } = selected.definition;
+    const toCommit: readonly GameOperation[] = [
+      ...(operations ?? []),
+      ...(once
+        ? [{ type: "consume-conversation-alternative", character, alternative: index } as const]
+        : []),
+    ];
+    if (toCommit.length > 0 && !applyOperations(toCommit, { kind: "background" })) return;
     if (state.activity?.type !== "conversation" || state.activity.character !== character) return;
     const direction = sequence && after ? { sequence, after } : undefined;
     if (response === undefined) {

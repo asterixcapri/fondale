@@ -91,6 +91,56 @@ test("authored alternatives and the free-form field stay usable together by keyb
     .toEqual(["conversation:antonio"]);
 });
 
+test("Load restores a consumed alternative while provider memory starts again", async ({
+  page,
+}) => {
+  await openCharacterConversation(page, 315);
+  const conversation = page.locator("[data-fondale-conversation]");
+  const input = conversation.locator("[data-fondale-dialogue-input]");
+  const alternatives = conversation.locator("[data-fondale-conversation-alternative]");
+
+  await expect(alternatives).toHaveCount(2);
+  await alternatives.nth(1).click();
+  await expect(page.locator('[data-fondale-line][data-fondale-speaker="player"]'))
+    .toContainText("Where were you that night?");
+  await page.locator("[data-fondale-frame]").focus();
+  await page.keyboard.press(".");
+  await expect(page.locator('[data-fondale-line][data-fondale-speaker="antonio"]'))
+    .toContainText("At home, with the shutters closed.");
+  await page.keyboard.press(".");
+
+  await expect(alternatives).toHaveCount(1);
+  await expect(alternatives.first()).toContainText("Who cut the harbour chain?");
+  await input.fill("Who cut the chain?");
+  await conversation.getByRole("button", { name: "Ask" }).click();
+  await expect(page.locator('[data-fondale-line][data-fondale-speaker="antonio"]'))
+    .toContainText("I saw the harbour chain being cut.");
+  await page.keyboard.press(".");
+  const consumed = await page.evaluate(() => {
+    const snapshot = window.__dialogueSession!.createSaveSnapshot();
+    localStorage.setItem("fondale.save-slots", JSON.stringify([{
+      name: "Consumed alternative",
+      savedAt: "2026-08-13T12:00:00.000Z",
+      snapshot,
+    }]));
+    return snapshot.state.consumedAlternatives.antonio;
+  });
+  expect(consumed).toEqual([1]);
+
+  await page.locator("[data-fondale-frame]").focus();
+  await page.keyboard.press("Control+l");
+  await page.locator('[data-fondale-load-slot="0"]').click();
+
+  await expect(input).toBeVisible();
+  await expect(alternatives).toHaveCount(1);
+  await expect(alternatives.first()).toContainText("Who cut the harbour chain?");
+  expect(await page.evaluate(() => window.__dialogueProvider?.resetCount())).toBe(1);
+  expect(await page.evaluate(() => window.__dialogueProvider?.threadKeys())).toEqual([]);
+  expect(await page.evaluate(() =>
+    window.__dialogueSession?.createSaveSnapshot().state.consumedAlternatives.antonio
+  )).toEqual([1]);
+});
+
 test("an authored alternative directing a Sequence hides the input field until it completes", async ({
   page,
 }) => {

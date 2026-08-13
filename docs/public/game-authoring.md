@@ -151,6 +151,7 @@ const antonioDialogue = {
     text: "Show me what happened that night.",
     sequence: "antonio-confession",
     after: "resume",
+    once: true,
   }],
 } satisfies CharacterDialogueDefinition;
 
@@ -209,8 +210,17 @@ with alternative eligibility re-evaluated against the Game State the Sequence
 left behind. An alternative carrying both a `response` and a `sequence` speaks
 its authored answer first and directs the Sequence when that Line ends. Startup
 rejects an alternative naming an unknown Sequence, one belonging to another
-Scene, or a `sequence` and outcome declared without each other. A Conversation
-handoff evaluates its authored condition against
+Scene, or a `sequence` and outcome declared without each other. An alternative
+declaring `once: true` is consumed by the selection that asks it and is never
+offered again, so a pivotal question is asked once; an alternative that says
+nothing stays repeatable for as long as it remains eligible, exactly as a
+Choice alternative does. Consumption is committed with the selection's own
+Game Operations in one atomic commit — including when the alternative only
+directs a Sequence — and is canonical Game State that a Save Snapshot restores
+exactly. It is independent of eligibility, so an alternative may be withdrawn
+by its condition, by consumption, or by both; a Save Snapshot naming an unknown
+Character or an alternative index that Character does not offer is rejected.
+A Conversation handoff evaluates its authored condition against
 committed Game State, gives control to its named Sequence, and explicitly
 `close`s or `resume`s the Conversation when that Sequence ends. Generated
 wording cannot trigger the handoff. When Dialogue policy selects a Cover Story, the provider receives its

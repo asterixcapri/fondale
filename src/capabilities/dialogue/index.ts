@@ -104,12 +104,15 @@ export interface ConversationHandoffDefinition {
  * field, with the exact answer it yields. Selecting it reaches no Dialogue
  * Provider. An alternative may answer with authored language, with a named
  * Sequence, or with both; a Sequence declares whether the Conversation closes
- * or resumes once it completes.
+ * or resumes once it completes. An alternative declaring `once` is consumed by
+ * the selection that asks it; every other alternative stays repeatable, as a
+ * Choice alternative does.
  */
 export interface ConversationAlternativeDefinition {
   readonly text: string;
   readonly when?: InteractionCondition;
   readonly spoken?: boolean;
+  readonly once?: boolean;
   readonly response?: string;
   readonly sequence?: string;
   readonly after?: "close" | "resume";
@@ -408,11 +411,19 @@ export interface RecordTestimonyOperation {
   readonly claimId: string;
 }
 
+/** Monotonic Game Operation that withdraws one authored alternative from a Conversation. */
+export interface ConsumeConversationAlternativeOperation {
+  readonly type: "consume-conversation-alternative";
+  readonly character: string;
+  readonly alternative: number;
+}
+
 /** Game Operations whose policy belongs to Knowledge-Driven Dialogue. */
 export type DialogueGameOperation = LearnNarrativeFactOperation
   | SetTrustOperation
   | SetDialogueStateOperation
-  | RecordTestimonyOperation;
+  | RecordTestimonyOperation
+  | ConsumeConversationAlternativeOperation;
 
 /** @internal Canonical Character Knowledge indexed by Character identity. */
 export type CharacterKnowledgeState = Record<string, string[]>;
@@ -422,6 +433,12 @@ export type RelationshipState = Record<string, Record<string, { trust: Trust }>>
 
 /** @internal Optional qualitative Dialogue State indexed by Character identity. */
 export type CharacterDialogueState = Record<string, DialogueState | null>;
+
+/**
+ * @internal Authored alternatives already asked, as their authored indexes
+ * indexed by the Character offering them.
+ */
+export type ConsumedAlternativeState = Record<string, number[]>;
 
 /** One canonical remembered Claim, without generated wording or truth authority. */
 export interface Testimony {
@@ -435,6 +452,7 @@ export interface KnowledgeDrivenDialogueState {
   readonly characterKnowledge: CharacterKnowledgeState;
   readonly relationships: RelationshipState;
   readonly dialogueStates: CharacterDialogueState;
+  readonly consumedAlternatives: ConsumedAlternativeState;
   readonly testimonies: Testimony[];
 }
 
@@ -465,9 +483,11 @@ export interface KnowledgeDrivenDialogue {
   ): ConversationHandoffDefinition | undefined;
   /** Whether an authored handoff or alternative directs this Sequence and resumes afterwards. */
   hasResumableSequence(character: string, sequence: string): boolean;
+  /** The alternatives this Character may still be asked: eligible and not yet consumed. */
   alternatives(
     character: string,
     conditionMatches: (condition?: InteractionCondition) => boolean,
+    consumed: readonly number[],
   ): readonly EligibleConversationAlternative[];
   respond(
     state: KnowledgeDrivenDialogueState & { readonly variables: Record<string, boolean> },
@@ -533,6 +553,9 @@ export function createKnowledgeDrivenDialogue(
             character.dialogue?.state ?? null,
           ]),
         ),
+        consumedAlternatives: Object.fromEntries(
+          Object.keys(project.characters).map((characterId) => [characterId, []]),
+        ),
         testimonies: [],
       };
     },
@@ -565,12 +588,15 @@ export function createKnowledgeDrivenDialogue(
     alternatives(
       character: string,
       conditionMatches: (condition?: InteractionCondition) => boolean,
+      consumed: readonly number[],
     ) {
       const authored = project.characters[character]?.dialogue?.alternatives ?? [];
-      return eligibleAlternativeIndexes(authored, conditionMatches).map((index) => ({
-        index,
-        definition: structuredClone(authored[index]!),
-      }));
+      return eligibleAlternativeIndexes(authored, conditionMatches)
+        .filter((index) => !consumed.includes(index))
+        .map((index) => ({
+          index,
+          definition: structuredClone(authored[index]!),
+        }));
     },
     async respond(
       state: KnowledgeDrivenDialogueState & { readonly variables: Record<string, boolean> },
@@ -802,6 +828,22 @@ export function createKnowledgeDrivenDialogue(
           }].sort(compareTestimony),
         };
       }
+      if (operation.type === "consume-conversation-alternative") {
+        if (!offersAlternative(project, operation.character, operation.alternative)) {
+          throw new Error(
+            `Character '${operation.character}' has no authored alternative ${operation.alternative}.`,
+          );
+        }
+        const consumed = state.consumedAlternatives[operation.character] ?? [];
+        if (consumed.includes(operation.alternative)) return state;
+        return {
+          ...state,
+          consumedAlternatives: {
+            ...state.consumedAlternatives,
+            [operation.character]: [...consumed, operation.alternative].sort((a, b) => a - b),
+          },
+        };
+      }
       if (operation.type === "set-trust") {
         const relationship = state.relationships[operation.character]?.[operation.towards];
         if (!relationship) {
@@ -833,11 +875,19 @@ export function createKnowledgeDrivenDialogue(
     },
     isValidState(value: unknown): value is KnowledgeDrivenDialogueState {
       if (!isRecord(value) ||
-          !hasExactKeys(value, ["characterKnowledge", "relationships", "dialogueStates", "testimonies"]) ||
+          !hasExactKeys(value, ["characterKnowledge", "relationships", "dialogueStates", "consumedAlternatives", "testimonies"]) ||
           !isRecord(value.characterKnowledge) || !sameKeys(value.characterKnowledge, project.characters) ||
           !isRecord(value.relationships) || !sameKeys(value.relationships, project.characters) ||
           !isRecord(value.dialogueStates) || !sameKeys(value.dialogueStates, project.characters) ||
+          !isRecord(value.consumedAlternatives) ||
+          !sameKeys(value.consumedAlternatives, project.characters) ||
           !Array.isArray(value.testimonies)) return false;
+      const validConsumption = Object.entries(value.consumedAlternatives).every(
+        ([characterId, consumed]) => Array.isArray(consumed) &&
+          consumed.every((index) => offersAlternative(project, characterId, index)) &&
+          new Set(consumed).size === consumed.length,
+      );
+      if (!validConsumption) return false;
       const validKnowledge = Object.entries(value.characterKnowledge).every(([characterId, knowledge]) => {
         if (!Array.isArray(knowledge) ||
             !knowledge.every((factId): factId is string =>
@@ -961,7 +1011,8 @@ export function isDialogueGameOperation(
 ): operation is DialogueGameOperation {
   return operation.type === "learn-narrative-fact" ||
     operation.type === "set-trust" || operation.type === "set-dialogue-state" ||
-    operation.type === "record-testimony";
+    operation.type === "record-testimony" ||
+    operation.type === "consume-conversation-alternative";
 }
 
 /** Validates static references and values of one Dialogue-owned Game Operation. */
@@ -1015,6 +1066,18 @@ export function validateDialogueGameOperation(
       family: "reference", owner: "dialogue", path: `${path}.character`,
       message: `Character '${operation.character}' does not exist.`,
     });
+  }
+  if (operation.type === "consume-conversation-alternative") {
+    if (hasOwn(project.characters, operation.character) &&
+        !offersAlternative(project, operation.character, operation.alternative)) {
+      diagnostics.push({
+        code: "reference.conversation-alternative.index",
+        family: "reference", owner: "dialogue", path: `${path}.alternative`,
+        message:
+          `Character '${operation.character}' does not offer alternative ${operation.alternative}.`,
+      });
+    }
+    return diagnostics;
   }
   if (operation.type === "set-trust") {
     if (!hasOwn(project.characters, operation.towards)) {
@@ -1352,7 +1415,7 @@ function validateConversationAlternatives(
         !hasExactKeys(
           alternative,
           ["text"],
-          ["when", "spoken", "response", "sequence", "after", "operations"],
+          ["when", "spoken", "once", "response", "sequence", "after", "operations"],
         ) ||
         typeof alternative.text !== "string" || !alternative.text.trim() ||
         (alternative.response === undefined && alternative.sequence === undefined) ||
@@ -1364,11 +1427,12 @@ function validateConversationAlternatives(
         (alternative.after !== undefined &&
           alternative.after !== "close" && alternative.after !== "resume") ||
         (alternative.spoken !== undefined && typeof alternative.spoken !== "boolean") ||
+        (alternative.once !== undefined && typeof alternative.once !== "boolean") ||
         (alternative.operations !== undefined && !Array.isArray(alternative.operations))) {
       diagnostics.push({
         code: "definition.conversation-alternative.item",
         family: "definition", owner: "dialogue", path: itemPath,
-        message: "A Conversation alternative requires its displayed phrase and an exact authored answer, a named Sequence with an explicit close or resume outcome, or both, with an optional condition, spoken flag and Game Operations.",
+        message: "A Conversation alternative requires its displayed phrase and an exact authored answer, a named Sequence with an explicit close or resume outcome, or both, with an optional condition, spoken and once flags, and Game Operations.",
       });
       continue;
     }
@@ -1458,6 +1522,16 @@ function isQualitativeLevel(value: unknown): value is QualitativeLevel {
 
 function isDialogueState(value: unknown): value is DialogueState {
   return value === "calm" || value === "afraid" || value === "angry" || value === "drunk";
+}
+
+/** Whether one Character authors the alternative an index names. */
+function offersAlternative(
+  project: KnowledgeDrivenDialogueProjectView,
+  character: string,
+  index: unknown,
+): boolean {
+  const authored = project.characters[character]?.dialogue?.alternatives ?? [];
+  return Number.isInteger(index) && (index as number) >= 0 && (index as number) < authored.length;
 }
 
 function hasCoverStory(

@@ -39,6 +39,7 @@ export type {
   CharacterDialogueDefinition,
   CharacterKnowledgeDefinition,
   ClaimDefinition,
+  ConsumeConversationAlternativeOperation,
   CoverStoryDefinition,
   NarrativeFactDefinition,
   LearnNarrativeFactOperation,

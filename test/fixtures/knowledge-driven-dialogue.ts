@@ -105,6 +105,7 @@ const project = ({
         }, {
           text: "Where were you that night?",
           response: "At home, with the shutters closed.",
+          once: true,
         }],
       },
     }),

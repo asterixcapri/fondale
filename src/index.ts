@@ -68,6 +68,7 @@ export {
   type CharacterDialogueDefinition,
   type CharacterKnowledgeDefinition,
   type ClaimDefinition,
+  type ConsumeConversationAlternativeOperation,
   type CoverStoryDefinition,
   type GameProject,
   type LogicalResolution,

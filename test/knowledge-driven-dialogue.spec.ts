@@ -413,6 +413,35 @@ function alternativeAndHandoffProject(): GameProject {
   } satisfies GameProject;
 }
 
+function consumableAlternativesProject(): GameProject {
+  const base = authoredAlternativesProject();
+  const antonio = base.characters!.antonio!;
+  const [asked, winch, wait] = antonio.dialogue!.alternatives!;
+  return {
+    ...base,
+    characters: {
+      ...base.characters,
+      antonio: {
+        ...antonio,
+        dialogue: {
+          ...antonio.dialogue!,
+          alternatives: [
+            { ...asked!, once: true },
+            { ...winch!, once: true },
+            wait!,
+            {
+              text: "[forget the winch]",
+              spoken: false,
+              response: "As you like.",
+              operations: [{ type: "set-variable", variable: "winchFound", value: false }],
+            },
+          ],
+        },
+      },
+    },
+  } satisfies GameProject;
+}
+
 function chainProvider(
   interpretation: string | FakeDialoguePendingOutcome<string>,
 ): FakeDialogueProvider {
@@ -1774,6 +1803,187 @@ test("Save during an alternative's Line discards its queued Sequence and keeps i
   expect(restored.snapshot().activity).toMatchObject({
     type: "sequence",
     sequence: "winchAccount",
+  });
+});
+
+test("a consumed authored alternative is withdrawn while a repeatable one stays", () => {
+  const session = createTestSession(consumableAlternativesProject());
+
+  openAntonioConversation(session);
+  expect(session.conversation()).toMatchObject({
+    alternatives: [
+      { index: 0, text: "Who cut the harbour chain?" },
+      { index: 2, text: "[wait without speaking]" },
+      { index: 3, text: "[forget the winch]" },
+    ],
+  });
+
+  session.input({ type: "select-alternative", alternative: 0 });
+  session.steps();
+  advanceConversationLine(session);
+  advanceConversationLine(session);
+
+  expect(session.snapshot().consumedAlternatives).toMatchObject({ antonio: [0] });
+  expect(session.conversation()).toMatchObject({
+    status: "ready",
+    alternatives: [
+      { index: 2, text: "[wait without speaking]" },
+      { index: 3, text: "[forget the winch]" },
+    ],
+  });
+
+  session.input({ type: "select-alternative", alternative: 0 });
+  session.steps();
+  expect(session.conversation()).toMatchObject({ status: "ready" });
+  expect(session.hud().narrative).toBeNull();
+
+  for (let repetition = 0; repetition < 2; repetition += 1) {
+    session.input({ type: "select-alternative", alternative: 2 });
+    session.steps();
+    expect(session.hud().narrative).toMatchObject({
+      speaker: "antonio",
+      text: "You are patient, I will give you that.",
+    });
+    expect(session.snapshot().variables.winchFound).toBe(true);
+    advanceConversationLine(session);
+  }
+  expect(session.snapshot().consumedAlternatives).toMatchObject({ antonio: [0] });
+});
+
+test("consumption and eligibility withdraw an alternative without masking each other", () => {
+  const session = createTestSession(consumableAlternativesProject());
+
+  openAntonioConversation(session);
+  session.input({ type: "select-alternative", alternative: 2 });
+  session.steps();
+  advanceConversationLine(session);
+  expect(session.conversation()).toMatchObject({
+    alternatives: [
+      { index: 0, text: "Who cut the harbour chain?" },
+      { index: 1, text: "Where is the winch handle?" },
+      { index: 2, text: "[wait without speaking]" },
+      { index: 3, text: "[forget the winch]" },
+    ],
+  });
+
+  session.input({ type: "select-alternative", alternative: 1 });
+  session.steps();
+  advanceConversationLine(session);
+  advanceConversationLine(session);
+  expect(session.snapshot().consumedAlternatives).toMatchObject({ antonio: [1] });
+
+  session.input({ type: "select-alternative", alternative: 3 });
+  session.steps();
+  advanceConversationLine(session);
+  expect(session.snapshot().variables.winchFound).toBe(false);
+
+  session.input({ type: "select-alternative", alternative: 2 });
+  session.steps();
+  advanceConversationLine(session);
+  expect(session.snapshot().variables.winchFound).toBe(true);
+  expect(session.conversation()).toMatchObject({
+    alternatives: [
+      { index: 0, text: "Who cut the harbour chain?" },
+      { index: 2, text: "[wait without speaking]" },
+      { index: 3, text: "[forget the winch]" },
+    ],
+  });
+});
+
+test("Save validates and exactly restores which alternatives were consumed", () => {
+  const project = consumableAlternativesProject();
+  const provider = chainProvider("harbour-chain-cut");
+  const session = createTestSession(project, undefined, provider);
+
+  openAntonioConversation(session);
+  session.input({ type: "select-alternative", alternative: 0 });
+  session.steps();
+  advanceConversationLine(session);
+  advanceConversationLine(session);
+
+  const raw = JSON.parse(JSON.stringify(session.createSaveSnapshot())) as unknown;
+  const validation = validateTestSaveSnapshot(project, raw);
+  expect(validation.ok).toBe(true);
+  if (!validation.ok) return;
+  expect(validation.snapshot.state.consumedAlternatives).toEqual({
+    player: [],
+    antonio: [0],
+    bystander: [],
+  });
+
+  const restored = createTestSession(project, validation.snapshot, provider);
+  expect(restored.snapshot().consumedAlternatives).toEqual({
+    player: [],
+    antonio: [0],
+    bystander: [],
+  });
+  expect(restored.conversation()).toMatchObject({
+    character: "antonio",
+    status: "ready",
+    alternatives: [
+      { index: 2, text: "[wait without speaking]" },
+      { index: 3, text: "[forget the winch]" },
+    ],
+  });
+});
+
+test("Save Snapshot rejects consumption naming an unknown Character or alternative", () => {
+  const project = consumableAlternativesProject();
+  const session = createTestSession(project);
+  openAntonioConversation(session);
+  const snapshot = session.createSaveSnapshot();
+
+  const forgeries = [
+    { ...snapshot.state.consumedAlternatives, ghost: [] },
+    { ...snapshot.state.consumedAlternatives, antonio: [4] },
+    { ...snapshot.state.consumedAlternatives, antonio: [-1] },
+    { ...snapshot.state.consumedAlternatives, antonio: [0, 0] },
+    { ...snapshot.state.consumedAlternatives, antonio: ["0"] },
+    { ...snapshot.state.consumedAlternatives, player: [0] },
+  ];
+
+  for (const consumedAlternatives of forgeries) {
+    expect(validateTestSaveSnapshot(project, {
+      ...snapshot,
+      state: { ...snapshot.state, consumedAlternatives },
+    }).ok).toBe(false);
+  }
+});
+
+test("an alternative directing a Sequence is consumed when the Player selects it", () => {
+  const base = alternativeSequenceProject("resume");
+  const antonio = base.characters!.antonio!;
+  const [directed, ...rest] = antonio.dialogue!.alternatives!;
+  const project = {
+    ...base,
+    characters: {
+      ...base.characters,
+      antonio: {
+        ...antonio,
+        dialogue: {
+          ...antonio.dialogue!,
+          alternatives: [{ ...directed!, once: true }, ...rest],
+        },
+      },
+    },
+  } satisfies GameProject;
+  const session = createTestSession(project);
+
+  openAntonioConversation(session);
+  session.input({ type: "select-alternative", alternative: 0 });
+  session.steps();
+
+  expect(session.snapshot().consumedAlternatives).toMatchObject({ antonio: [0] });
+  session.input({ type: "advance-sequence" });
+  session.steps();
+
+  expect(session.conversation()).toMatchObject({
+    character: "antonio",
+    status: "ready",
+    alternatives: [
+      { index: 1, text: "Where is the winch handle?" },
+      { index: 2, text: "Show me, then." },
+    ],
   });
 });
 

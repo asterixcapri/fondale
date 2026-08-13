@@ -79,7 +79,14 @@ it plays. A resumed Conversation re-evaluates alternative eligibility against
 the Game State the Sequence left behind. Eligibility is evaluated against the
 latest committed Game State; ineligible alternatives are hidden rather than
 presented as unavailable, and at most six may be eligible at once. Selecting
-one produces the authored wording without reaching a Dialogue Provider. Every
+one produces the authored wording without reaching a Dialogue Provider. An
+alternative declaring `once` is consumed by the selection that asks it and is
+never presented again; every other alternative stays repeatable for as long as
+it remains eligible, as a Choice alternative does. Consumption is committed by
+a `ConsumeConversationAlternativeOperation` in the same atomic commit as the
+selection's own Game Operations, is canonical Game State, and validates and
+restores exactly in a Save Snapshot. It is independent of eligibility: an
+alternative may be hidden by its condition, consumed, or both. Every
 `CharacterKnowledgeDefinition` refers to one fact through `factId` and declares
 `open`, `guarded`, or `secret` Disclosure. Guarded facts require minimum Trust
 or a boolean Game Variable; secret facts always require an explicit Game
@@ -210,8 +217,12 @@ can set a Variable or Appearance, start a Sequence, collect the target Object,
 place the selected first Object, place a named Object, or consume the selected
 Object. It also includes `LearnNarrativeFactOperation`, whose
 `learn-narrative-fact` discriminator, Character identity and `factId` add
-declared Character Knowledge monotonically, and `RecordTestimonyOperation`,
-which validates one authored Cover Story before remembering its Claim.
+declared Character Knowledge monotonically, `RecordTestimonyOperation`,
+which validates one authored Cover Story before remembering its Claim, and
+`ConsumeConversationAlternativeOperation`, whose
+`consume-conversation-alternative` discriminator, Character identity and
+authored `alternative` index withdraw one authored alternative from that
+Character's Conversation.
 Operations in one group see
 earlier writes and either commit together or fail without a partial commit.
 Conditions always read the latest committed Game State.
@@ -287,9 +298,10 @@ identifies the capability or browser adapter responsible for the rule.
 | `CharacterKnowledgeDefinition` | initial known fact reference | factId and Disclosure | one reference per Character and fact | knowledge reference/duplicate diagnostics | [Dialogue authoring](game-authoring.md) |
 | `CoverStoryDefinition` | controlled false account | concealed fact and Claim identities | fact must be guarded/secret and known by the Character | Cover Story definition/reference diagnostics | [Dialogue authoring](game-authoring.md) |
 | `ConversationHandoffDefinition` | authored transition from Conversation to Sequence | condition, Sequence identity, close or resume outcome | evaluates committed Game State; generated wording has no authority | condition/Sequence/profile diagnostics | [Dialogue authoring](game-authoring.md) |
-| `ConversationAlternativeDefinition` | authored question offered inside a Conversation | displayed phrase, optional condition and `spoken` flag, exact `response` and/or a named `sequence` with a close or resume outcome, optional Game Operations | reaches no Dialogue Provider; at most six eligible at once; ineligible ones are hidden | alternative definition/condition/Sequence/limit diagnostics | [Dialogue authoring](game-authoring.md) |
+| `ConversationAlternativeDefinition` | authored question offered inside a Conversation | displayed phrase, optional condition, `spoken` and `once` flags, exact `response` and/or a named `sequence` with a close or resume outcome, optional Game Operations | reaches no Dialogue Provider; at most six eligible at once; ineligible ones are hidden; repeatable unless `once` | alternative definition/condition/Sequence/limit diagnostics | [Dialogue authoring](game-authoring.md) |
 | `CharacterDialogueDefinition` | optional Character dialogue profile | knowledge, Cover Stories, Relationships, handoffs, authored alternatives, qualitative portrayal and state | omission preserves authored behaviour | dialogue capability diagnostics | [Dialogue authoring](game-authoring.md) |
 | `LearnNarrativeFactOperation` | monotonic Character Knowledge change | Character and Narrative Fact identities | repeated learning is idempotent | Character/fact reference diagnostics | [Dialogue authoring](game-authoring.md) |
+| `ConsumeConversationAlternativeOperation` | withdraw one authored alternative | Character identity and authored alternative index | the index must exist for that Character; repeated consumption is idempotent | Character/alternative reference diagnostics | [Dialogue authoring](game-authoring.md) |
 | `RecordTestimonyOperation` | remember a communicated Claim | speaker, listener, concealed fact and Claim identities | must match the speaker's authored Cover Story; repeated testimony is idempotent | Character/Claim/Cover Story reference diagnostics | [Dialogue authoring](game-authoring.md) |
 | `SetTrustOperation` | directional Relationship change | source, target and qualitative Trust | only a declared Relationship edge may change | Character/Relationship diagnostics | [Dialogue authoring](game-authoring.md) |
 | `SetDialogueStateOperation` | qualitative Dialogue State change | Character and state or null | only authored operations change canonical state | Character/state diagnostics | [Dialogue authoring](game-authoring.md) |
@@ -478,7 +490,8 @@ Knowledge-Driven Dialogue definition and operation codes include
 `definition.conversation-alternative.item`,
 `definition.conversation-alternative.condition`,
 `definition.conversation-alternative.limit`,
-`definition.conversation-alternative.sequence`, and
+`definition.conversation-alternative.sequence`,
+`reference.conversation-alternative.index`, and
 `reference.dialogue-operation.character`.
 
 Runtime, save, asset and environment codes: `state.operation.invalid`,
