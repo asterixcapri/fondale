@@ -293,7 +293,50 @@ function validateAppearanceContract(
       }
     }
   }
+  validateAppearanceCellDimensions(appearance, path, character, diagnostics);
   return diagnostics;
+}
+
+function validateAppearanceCellDimensions(
+  appearance: AnyAppearance,
+  path: string,
+  character: boolean,
+  diagnostics: AuthoringDiagnostic[],
+): void {
+  let expected: { readonly width: number; readonly height: number } | undefined;
+  for (const [animationName, animation] of Object.entries(appearance.animations)) {
+    const animationPath = `${path}.animations.${animationName}`;
+    const sheets: readonly [AnimationSheet | undefined, string][] = character
+      ? (["left", "right", "front", "back"] as const).map((direction) => [
+          isCharacterAnimationDefinition(animation) ? animation.sheets?.[direction] : undefined,
+          `${animationPath}.sheets.${direction}`,
+        ])
+      : [[
+          isCharacterAnimationDefinition(animation) ? undefined : animation.sheet,
+          `${animationPath}.sheet`,
+        ]];
+    for (const [sheet, sheetPath] of sheets) {
+      if (!Array.isArray(sheet?.frames)) continue;
+      sheet.frames.forEach((frame, index) => {
+        if (!isFrameRecord(frame) ||
+            !isPositiveInteger(frame.width) ||
+            !isPositiveInteger(frame.height)) return;
+        if (!expected) {
+          expected = { width: frame.width, height: frame.height };
+          return;
+        }
+        if (frame.width !== expected.width || frame.height !== expected.height) {
+          diagnostics.push({
+            code: "definition.animation.cell-dimensions",
+            family: "definition",
+            owner: "animation",
+            path: `${sheetPath}.frames[${index}]`,
+            message: "Every Animation Sheet in an Appearance must use matching Runtime cell dimensions.",
+          });
+        }
+      });
+    }
+  }
 }
 
 /** Reports every local Character Appearance and synchronized Facing diagnostic. */
@@ -413,7 +456,43 @@ function validateAnimationSheet(
       message: "An Animation Sheet must contain at least one frame.",
     });
   }
-  return sheet?.frames?.length ?? 0;
+  if (!Array.isArray(sheet?.frames)) return 0;
+  sheet.frames.forEach((frame, index) => {
+    const framePath = `${path}.frames[${index}]`;
+    if (!isFrameRecord(frame)) {
+      diagnostics.push({
+        code: "definition.animation.frame",
+        family: "definition",
+        owner: "animation",
+        path: framePath,
+        message: "An Animation frame must define image-pixel coordinates and dimensions.",
+      });
+      return;
+    }
+    for (const coordinate of ["x", "y"] as const) {
+      if (!isNonNegativeInteger(frame[coordinate])) {
+        diagnostics.push({
+          code: "definition.animation.frame-coordinate",
+          family: "definition",
+          owner: "animation",
+          path: `${framePath}.${coordinate}`,
+          message: "Animation frame coordinates must be non-negative integers.",
+        });
+      }
+    }
+    for (const dimension of ["width", "height"] as const) {
+      if (!isPositiveInteger(frame[dimension])) {
+        diagnostics.push({
+          code: "definition.animation.frame-dimension",
+          family: "definition",
+          owner: "animation",
+          path: `${framePath}.${dimension}`,
+          message: "Animation frame dimensions must be positive integers.",
+        });
+      }
+    }
+  });
+  return sheet.frames.length;
 }
 
 function validateCharacterSheets(
@@ -421,7 +500,7 @@ function validateCharacterSheets(
   animationPath: string,
   diagnostics: AuthoringDiagnostic[],
 ): number {
-  const counts = new Set<number>();
+  const counts = new Map<keyof CharacterAnimationSheets, number>();
   for (const direction of ["left", "right", "front", "back"] as const) {
     const sheet = sheets?.[direction];
     if (!sheet || typeof sheet !== "object") {
@@ -435,18 +514,40 @@ function validateCharacterSheets(
       continue;
     }
     validateAnimationSheet(sheet, `${animationPath}.sheets.${direction}`, diagnostics);
-    counts.add(sheet.frames?.length ?? 0);
+    counts.set(direction, Array.isArray(sheet.frames) ? sheet.frames.length : 0);
   }
-  if (counts.size > 1) {
-    diagnostics.push({
-      code: "definition.animation.directional-frame-count",
-      family: "definition",
-      owner: "animation",
-      path: `${animationPath}.sheets`,
-      message: "Directional Animation Sheets must contain the same number of frames.",
-    });
+  const frontCount = counts.get("front");
+  const referenceFacing = frontCount !== undefined
+    ? "front"
+    : counts.keys().next().value;
+  if (referenceFacing !== undefined) {
+    const referenceCount = counts.get(referenceFacing)!;
+    for (const direction of ["left", "right", "front", "back"] as const) {
+      if (direction === referenceFacing) continue;
+      const count = counts.get(direction);
+      if (count === undefined || count === referenceCount) continue;
+      diagnostics.push({
+        code: "definition.animation.directional-frame-count",
+        family: "definition",
+        owner: "animation",
+        path: `${animationPath}.sheets.${direction}.frames[${Math.min(count, referenceCount)}]`,
+        message: `The ${direction} Animation Sheet must contain ${referenceCount} frames to match the ${referenceFacing} Facing.`,
+      });
+    }
   }
-  return sheets?.front?.frames?.length ?? 0;
+  return frontCount ?? 0;
+}
+
+function isFrameRecord(value: unknown): value is Record<keyof AnimationFrame, unknown> {
+  return value !== null && typeof value === "object";
+}
+
+function isNonNegativeInteger(value: unknown): value is number {
+  return Number.isInteger(value) && (value as number) >= 0;
+}
+
+function isPositiveInteger(value: unknown): value is number {
+  return Number.isInteger(value) && (value as number) > 0;
 }
 
 /** Animation-owned finite duration used by Sequence and browser presentation. */

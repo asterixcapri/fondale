@@ -311,14 +311,12 @@ function validateAnimatedAppearance(
   frames: Map<string, readonly Texture[]>,
   diagnostics: AuthoringDiagnostic[],
 ): void {
-  let appearanceFrameSize:
-    { readonly width: number; readonly height: number } | undefined;
   for (const [animationId, animation] of Object.entries(
     appearance.animations,
   )) {
     const animationPath = `${path}.animations.${animationId}`;
     if (!isCharacterAnimationDefinition(animation)) {
-      const size = sliceAnimationSheet(
+      sliceAnimationSheet(
         animation.sheet,
         animationPath,
         `${animationPath}.sheet`,
@@ -328,13 +326,10 @@ function validateAnimatedAppearance(
         frames,
         diagnostics,
       );
-      appearanceFrameSize = validateAppearanceFrameSize(
-        appearanceFrameSize, size, `${animationPath}.sheet`, diagnostics,
-      );
       continue;
     }
     for (const direction of ["left", "right", "front", "back"] as const) {
-      const size = sliceAnimationSheet(
+      sliceAnimationSheet(
         animation.sheets[direction],
         `${animationPath}.${direction}`,
         `${animationPath}.sheets.${direction}`,
@@ -343,9 +338,6 @@ function validateAnimatedAppearance(
         textures,
         frames,
         diagnostics,
-      );
-      appearanceFrameSize = validateAppearanceFrameSize(
-        appearanceFrameSize, size, `${animationPath}.sheets.${direction}`, diagnostics,
       );
     }
   }
@@ -360,11 +352,11 @@ function sliceAnimationSheet(
   textures: ReadonlyMap<string, Texture>,
   frames: Map<string, readonly Texture[]>,
   diagnostics: AuthoringDiagnostic[],
-): { readonly width: number; readonly height: number } | undefined {
+): void {
   const texture = textures.get(assetUrl(sheet.image));
-  if (!texture) return undefined;
+  if (!texture) return;
   const [first] = sheet.frames;
-  if (!first) return undefined;
+  if (!first) return;
   frames.set(
     frameKey,
     sheet.frames.flatMap((frame, index) => {
@@ -389,24 +381,6 @@ function sliceAnimationSheet(
     anchorPath,
     diagnostics,
   );
-  return { width: first.width, height: first.height };
-}
-
-function validateAppearanceFrameSize(
-  expected: { readonly width: number; readonly height: number } | undefined,
-  actual: { readonly width: number; readonly height: number } | undefined,
-  path: string,
-  diagnostics: AuthoringDiagnostic[],
-): { readonly width: number; readonly height: number } | undefined {
-  if (!actual) return expected;
-  if (!expected) return actual;
-  if (actual.width !== expected.width || actual.height !== expected.height) {
-    diagnostics.push({
-      code: "asset.animation-sheet.dimensions", family: "asset", owner: "browser", path,
-      message: "Every Animation Sheet in an Appearance must use matching Runtime cell dimensions.",
-    });
-  }
-  return expected;
 }
 
 function validateAnchor(

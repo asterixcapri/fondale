@@ -115,7 +115,7 @@ test("asset dimension failure is diagnostic and leaves no partial mount", async 
   });
 });
 
-test("Character Animations reject different Runtime cell dimensions at startup", async ({
+test("Character Appearances reject different Runtime cell dimensions at startup", async ({
   page,
 }) => {
   await page.goto(
@@ -127,8 +127,8 @@ test("Character Animations reject different Runtime cell dimensions at startup",
   expect(
     await page.evaluate(() => window.__characterAnimationDimensions),
   ).toEqual({
-    code: "asset.animation-sheet.dimensions",
-    path: "characters.player.appearances.normal.animations.speaking.sheets.back",
+    code: "definition.animation.cell-dimensions",
+    path: "characters.player.appearances.normal.animations.speaking.sheets.back.frames[0]",
     children: 0,
   });
 });
@@ -150,6 +150,89 @@ test("Character Facing asset failures report their authored path at startup", as
     children: 0,
   });
 });
+
+test("Animation frames outside a decoded Runtime Asset report their authored index", async ({
+  page,
+}) => {
+  await page.goto(
+    "/test/fixtures/character-animation-dimensions.html?case=bounds",
+  );
+  await page.waitForFunction(
+    () => window.__characterAnimationDimensions !== undefined,
+  );
+  expect(
+    await page.evaluate(() => window.__characterAnimationDimensions),
+  ).toEqual({
+    code: "asset.animation-sheet.frame-bounds",
+    path: "characters.player.appearances.normal.animations.speaking.sheets.left.frames[0]",
+    children: 0,
+  });
+});
+
+test("an empty Animation Sheet is rejected through startGame", async ({ page }) => {
+  await page.goto(
+    "/test/fixtures/character-animation-dimensions.html?case=empty",
+  );
+  await page.waitForFunction(
+    () => window.__characterAnimationDimensions !== undefined,
+  );
+  expect(
+    await page.evaluate(() => window.__characterAnimationDimensions),
+  ).toEqual({
+    code: "definition.animation.frames",
+    path: "characters.player.appearances.normal.animations.idle.sheets.back.frames",
+    children: 0,
+  });
+});
+
+for (const invalidCase of [
+  {
+    name: "a negative frame coordinate",
+    query: "coordinate",
+    code: "definition.animation.frame-coordinate",
+    path: "characters.player.appearances.normal.animations.speaking.sheets.left.frames[0].x",
+  },
+  {
+    name: "a non-positive frame dimension",
+    query: "frame-dimension",
+    code: "definition.animation.frame-dimension",
+    path: "characters.player.appearances.normal.animations.speaking.sheets.left.frames[0].width",
+  },
+  {
+    name: "invalid Animation Timing",
+    query: "timing",
+    code: "definition.animation.frames-per-second",
+    path: "characters.player.appearances.normal.animations.speaking.timing.framesPerSecond",
+  },
+  {
+    name: "an Animation Cue outside the duration",
+    query: "cue",
+    code: "definition.animation.cue",
+    path: "characters.player.appearances.normal.animations.speaking.timing.cues.late",
+  },
+  {
+    name: "unequal directional frame counts",
+    query: "unequal-frame-count",
+    code: "definition.animation.directional-frame-count",
+    path: "characters.player.appearances.normal.animations.speaking.sheets.left.frames[1]",
+  },
+] as const) {
+  test(`${invalidCase.name} is rejected through startGame`, async ({ page }) => {
+    await page.goto(
+      `/test/fixtures/character-animation-dimensions.html?case=${invalidCase.query}`,
+    );
+    await page.waitForFunction(
+      () => window.__characterAnimationDimensions !== undefined,
+    );
+    expect(
+      await page.evaluate(() => window.__characterAnimationDimensions),
+    ).toEqual({
+      code: invalidCase.code,
+      path: invalidCase.path,
+      children: 0,
+    });
+  });
+}
 
 test("a missing Character Facing reports its authored path at startup", async ({ page }) => {
   await page.goto(

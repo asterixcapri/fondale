@@ -33,6 +33,29 @@ const validationCase = new URLSearchParams(window.location.search).get("case");
 const missingUrl = new URL("./missing-character.png", import.meta.url);
 const speakingFrameUrl =
   validationCase === "dimensions" ? speakingUrl : idleUrl;
+const idleFrames = validationCase === "empty"
+  ? []
+  : [{ x: 0, y: 0, width: 10, height: 10 }];
+const speakingFrame = {
+  x: 0,
+  y: 0,
+  width: validationCase === "dimensions" ? 20 : 10,
+  height: 10,
+};
+const leftSpeakingFrame = {
+  ...speakingFrame,
+  x: validationCase === "bounds" ? 1 : validationCase === "coordinate" ? -1 : 0,
+  width: validationCase === "dimensions" ? 20 : validationCase === "frame-dimension" ? 0 : 10,
+};
+const speakingFrames = [speakingFrame];
+const leftSpeakingFrames = validationCase === "unequal-frame-count"
+  ? [speakingFrame, speakingFrame]
+  : [leftSpeakingFrame];
+const speakingTiming = {
+  framesPerSecond: validationCase === "timing" ? 0 : 1,
+  loop: validationCase === "timing" ? "yes" : true,
+  ...(validationCase === "cue" ? { cues: { late: 2 } } : {}),
+} as unknown as CharacterDefinition["appearances"][string]["animations"][string]["timing"];
 const incompleteFrames = {
   left: { image: idleUrl, frames: [{ x: 0, y: 0, width: 10, height: 10 }] },
   right: { image: idleUrl, frames: [{ x: 0, y: 0, width: 10, height: 10 }] },
@@ -48,14 +71,14 @@ const player = {
     normal: {
       animations: {
         idle: { sheets: validationCase === "missing-facing" ? incompleteFrames : {
-            left: { image: idleUrl, frames: [{ x: 0, y: 0, width: 10, height: 10 }] },
-            right: { image: idleUrl, frames: [{ x: 0, y: 0, width: 10, height: 10 }] },
-            front: { image: idleUrl, frames: [{ x: 0, y: 0, width: 10, height: 10 }] },
-            back: { image: idleUrl, frames: [{ x: 0, y: 0, width: 10, height: 10 }] },
+            left: { image: idleUrl, frames: idleFrames },
+            right: { image: idleUrl, frames: idleFrames },
+            front: { image: idleUrl, frames: idleFrames },
+            back: { image: idleUrl, frames: idleFrames },
           }, timing: { framesPerSecond: 1, loop: true } },
         speaking: { sheets: { left: { image: validationCase === "invalid-asset"
                   ? missingUrl
-                  : speakingFrameUrl, frames: [{ x: 0, y: 0, width: validationCase === "dimensions" ? 20 : 10, height: 10 }] }, right: { image: speakingFrameUrl, frames: [{ x: 0, y: 0, width: validationCase === "dimensions" ? 20 : 10, height: 10 }] }, front: { image: speakingFrameUrl, frames: [{ x: 0, y: 0, width: validationCase === "dimensions" ? 20 : 10, height: 10 }] }, back: { image: speakingFrameUrl, frames: [{ x: 0, y: 0, width: validationCase === "dimensions" ? 20 : 10, height: 10 }] } }, timing: { framesPerSecond: 1, loop: true } },
+                  : speakingFrameUrl, frames: leftSpeakingFrames }, right: { image: speakingFrameUrl, frames: speakingFrames }, front: { image: speakingFrameUrl, frames: speakingFrames }, back: { image: speakingFrameUrl, frames: speakingFrames } }, timing: speakingTiming },
       },
       roles: { default: "idle", walking: "idle", speaking: "speaking" },
       visualAnchor: { x: validationCase === "anchor" ? 11 : 5, y: 5 },
