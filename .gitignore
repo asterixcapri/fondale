@@ -6,3 +6,5 @@ dist
 test/.artifacts
 .playwright-cli
 .release
+autosprite-api-key.txt
+luma-api-key.txt
