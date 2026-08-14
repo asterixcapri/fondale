@@ -1,0 +1,25 @@
+{
+  "assessment": "Rejected: every returned frame faces screen-right instead of screen-left; rope and pouch continuity also fail.",
+  "autosprite": {
+    "characterId": "cmst9rb94004kxq8251qmdzfn",
+    "jobId": "wf_b60746d7-6abc-45fe-8649-af5c2558b22e",
+    "sourceVideoId": "cmst9rjp9006fv1lp600d45kz",
+    "spritesheetId": "cmst9t1he006zv1lpkw7bkrzw"
+  },
+  "request": {
+    "durationSec": 4,
+    "kind": "custom",
+    "loop": true,
+    "prompt": "Side-view 2D game sprite walk cycle. Character walks in place facing screen-left on a clean white background. Pelvis locked at frame center, ZERO root motion — no forward drift, no torso bounce or sway. Legs hit clear key poses (contact, passing, up), arms swing naturally close to the body. Six even steps, flat side profile, static camera, seamless loop, no backward steps.",
+    "rawPrompt": true,
+    "videoTier": "pro",
+    "withSound": false
+  },
+  "result": {
+    "durationSeconds": 4.042,
+    "frameCount": 25,
+    "frameHeight": 256,
+    "frameWidth": 256
+  },
+  "source": "../left-autosprite-source.png"
+}

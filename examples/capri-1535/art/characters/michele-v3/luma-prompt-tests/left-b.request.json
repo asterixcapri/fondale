@@ -1,0 +1,23 @@
+{
+  "luma": {
+    "fileId": "931e426f-03a6-409b-950a-309184230bc6",
+    "generationId": "2080a63f-fe7a-47ed-8d52-3b42779f1eb9"
+  },
+  "request": {
+    "aspectRatio": "1:1",
+    "duration": "5s",
+    "loop": true,
+    "model": "ray-3.2",
+    "prompt": "Looped side-view 2D game sprite walking in place toward screen-left. Motion is already underway on the first frame. The supplied image is the front-foot contact phase of an ongoing gait. Continue at one uniform cadence for six alternating steps and arrive back at the same contact phase with continuous velocity. Every frame shows active walking. Keep the pelvis centered while the feet alternate through contact, down, passing, and up phases with a natural close arm swing. Flat side profile, clean white background, static eye-level camera. Maintain the character appearance, clothing, rope, pouch, proportions, scale, and lighting.",
+    "resolution": "720p",
+    "startFrame": "left-contact-start.png",
+    "type": "video"
+  },
+  "result": {
+    "durationSeconds": 8.75,
+    "frameCount": 210,
+    "framesPerSecond": 24,
+    "height": 960,
+    "width": 960
+  }
+}

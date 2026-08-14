@@ -1,0 +1,25 @@
+{
+  "autosprite": {
+    "characterId": "cmstav3gl00cxxq8207heyw6g",
+    "firstFramePoseId": "cmstav3hi00czxq827ol40zuk",
+    "jobId": "wf_10c81f85-7804-4551-a3fe-235aa069f05f",
+    "lastFramePoseId": "cmstav3hi00czxq827ol40zuk",
+    "sourceVideoId": "cmstavwdz00615fz48qoblz6q",
+    "spritesheetId": "cmstaxyr4007258kdir432smg"
+  },
+  "request": {
+    "durationSeconds": 4,
+    "loop": true,
+    "prompt": "One complete two-step side-view walk-in-place cycle facing screen-left. The supplied first and last frames are the same active front-foot contact phase. Motion begins immediately and continues at a perfectly uniform metronomic cadence: opposite-foot contact exactly halfway, matching contact on the final frame. Exactly one cycle, no repeated steps, no idle, no pause, no acceleration or deceleration. Pelvis fixed at frame center, clear contact, passing, and up phases, natural close arm swing, static eye-level camera, clean white background.",
+    "rawPrompt": true,
+    "videoTier": "pro",
+    "withSound": false
+  },
+  "result": {
+    "durationSeconds": 4.042,
+    "frameCount": 25,
+    "frameHeight": 256,
+    "frameWidth": 256
+  },
+  "source": "../luma-prompt-tests/left-contact-start.png"
+}
