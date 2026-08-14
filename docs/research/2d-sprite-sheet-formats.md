@@ -5,6 +5,12 @@ Domanda: esiste un formato standard per gli sprite sheet e quale formato convien
 usare per importare in Fondale il `walking/right` di Michele generato da
 AutoSprite?
 
+> **Decisione successiva alla ricerca:** il contratto concordato in
+> [ADR-0019](../adr/0019-use-animation-sheets-as-the-only-frame-source.md)
+> sostituisce la raccomandazione esplorativa di mantenere le strip e aggiungere
+> un importer. Fondale userà `AnimationSheet` come unica sorgente dei frame;
+> questo documento conserva le evidenze che hanno informato la decisione.
+
 ## Risultato in breve
 
 Non emerge uno **standard formale unico** per uno sprite sheet 2D. PNG e JSON
