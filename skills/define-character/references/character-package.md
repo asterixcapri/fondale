@@ -2,17 +2,29 @@
 
 Use current repository interfaces as the schema source of truth.
 
+Store each Character's authored visual source package under
+`art/character/<character-name>/`, using the canonical Character identifier.
+Keep the four approved static Facing Art Masters there. Download AutoSprite
+sprite sheets and required generation metadata directly beside the owning
+Character definition under the Game Project's `src/` tree. Keep any lossless
+Runtime adaptation there too; never route generated sprite sheets through the
+Art Master directory.
+
 ## Deliverables
 
-- lossless scale sheet, silhouette, turnaround, and colour reference;
-- a separate lossless Art Master and derived Runtime strip for every `left`,
-  `right`, `front`, and `back` presentation of every Animation;
+- lossless scale sheet, silhouette, colour reference, and four user-approved
+  static Facing Art Masters for every Appearance;
+- the AutoSprite sprite sheet and any derived Runtime sheet under `src/` for
+  every `left`, `right`, `front`, and `back` presentation of every Animation,
+  with provenance and generation settings;
 - an explicit looping `idle` Animation for every Appearance, plus a distinct
   looping `speaking` Animation where the Character design requires one;
-- distinct left, right, front, and back Runtime strips for every Character
+- distinct left, right, front, and back Runtime sheets for every Character
   Animation;
 - stable Ground Point and Visual Anchor documentation;
 - `CharacterDefinition` and any required Scene integration;
+- Game Project imports that register every approved AutoSprite-derived sheet,
+  Facing, timing rule, cue, Visual Anchor, and Animation Role;
 - actual-size diagnostic compositions at near, middle, and far depth.
 
 ## Visual checks
@@ -36,9 +48,12 @@ Use current repository interfaces as the schema source of truth.
 - Preserve height, body proportions, costume landmarks, and palette across
   `left`, `right`, `front`, and `back` frames.
 - Author `left`, `right`, `front`, and `back` presentations and derive a
-  separate Runtime strip for each. The Engine selects the strip matching the
+  separate Runtime sheet for each. The Engine selects the sheet matching the
   Character Facing and never mirrors Character artwork. Judge the authored
   result rather than policing how an artist produced it.
+- Approve the four static Facing Art Masters before AutoSprite generation. Give
+  AutoSprite one explicit directional reference per Facing so Animation
+  generation never depends on mirroring or an inferred unseen view.
 - Keep Runtime cell dimensions and the Visual Anchor identical across every
   Facing and Animation in one Appearance.
 - Inspect every presentation. Hands, feet, carried items, costume closures,
@@ -72,7 +87,13 @@ Use current repository interfaces as the schema source of truth.
   more specific Animation.
 - Give every moving Character a Walking Animation Role with required facings.
 - Follow [walk-cycle.md](walk-cycle.md) for every new or revised Walking
-  Animation. Approve its registered keys and motion proof before integration.
+  Animation. Pass its AutoSprite motion proof through the documented technical
+  acceptance gates before integration; only the four static Facing Art Masters
+  require explicit user approval.
+- Treat AutoSprite as the sole author of Animation frames. When a generated
+  cycle fails inspection, regenerate it through AutoSprite from the approved
+  Facing; preserve failed exports as drafts rather than repairing their motion
+  outside AutoSprite.
 - Keep the frame count synchronized across all four presentations. Timing,
   loop behavior, duration, and Animation Cues belong to the Animation and must
   remain shared across Facing.
@@ -80,13 +101,15 @@ Use current repository interfaces as the schema source of truth.
   first-to-last transition at actual size.
 - Verify idle and speaking in every Facing in which the Character may converse,
   including distinct `left` and `right` presentations.
-- Keep strip frame dimensions and ordering deterministic.
+- Keep sheet frame dimensions and ordering deterministic.
 - Place Animation Cues within duration at the visible moment of contact or
   transfer they coordinate.
 - Inspect the first-to-last transition of every looping Animation.
 
 ## Definition checks
 
+- Approved AutoSprite output lives inside the Game Project as Runtime Assets;
+  external exports and previews do not satisfy integration.
 - Initial Scene and Ground Point exist and are walkable.
 - Initial Appearance exists; every Animation Role names an available Animation.
 - Movement speed is positive and visually compatible with the walk cycle.

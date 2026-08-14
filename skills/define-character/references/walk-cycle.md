@@ -1,126 +1,87 @@
-# Fondale walk-cycle workflow
+# AutoSprite walking Animation workflow
 
 Use this workflow whenever a Character needs a new or revised Walking
-Animation. It is an animation task, not a sprite-sheet generation task.
+Animation. Fondale specifies and verifies the locomotion contract; AutoSprite
+authors every pose, transition, and sprite frame.
 
 ## 1. Lock the locomotion contract
 
-Record before drawing:
+Record intended gait, emotional energy, required Facings, movement speed,
+cycle duration, Runtime cell, Ground Point, Visual Anchor, target visible
+height, and direction-specific costume or equipment rules. Check that
+`world distance per cycle = movement speed × cycle duration` can plausibly match
+the visible stride.
 
-- intended gait, speed, stride length, cadence, and emotional energy;
-- required Facings and direction-specific equipment visibility;
-- Runtime cell, Ground Point, Visual Anchor, and target visible height;
-- body landmarks to register: crown, sternum, pelvis, planted heel, and toe;
-- costume parts allowed to overlap or trail, and their maximum excursion.
+Finish when the same contract can be supplied for all four Facings without an
+unstated directional rule.
 
-Choose cadence and movement speed together. Check the relationship
-`world distance per cycle = movement speed × cycle duration`; the apparent foot
-travel must plausibly support that distance. Reject obvious skating even when
-the individual poses look attractive.
+## 2. Approve four static Facing references
 
-## 2. Build registered keys before artwork
+Create lossless `left`, `right`, `front`, and `back` still images at one scale
+and with one stable construction. Store them in
+`art/character/<character-name>/`, using the canonical Character identifier.
+Show all four to the user at useful detail
+and actual play size. Start AutoSprite generation only after the user explicitly
+approves them.
 
-Create a transparent registration template for every frame with identical cell
-dimensions and guides for the Ground Point, pelvis line, crown range, and torso
-centre. Draft the gait as silhouettes or a stick figure first.
+Finish when identity, proportions, costume landmarks, anatomical equipment
+sides, light direction, Ground Point, and Visual Anchor agree across the four
+approved images.
 
-For each step, author these four mechanically distinct phases:
+## 3. Delegate the complete cycle to AutoSprite
 
-1. `contact`: forward heel makes contact; legs are separated;
-2. `down`: weight settles onto the forward foot; body reaches its low point;
-3. `passing`: free foot passes the planted leg; pelvis is centred above support;
-4. `up`: heel rises and the body reaches its restrained high point.
+Upload or register each approved Facing as its own directional AutoSprite
+reference. Request the same walking contract, loop intent, duration, frame
+size, frame count, background-removal quality, and output quality for all four.
+Use the smallest generation scope that can prove the result before spending
+credits on the remaining Facings. Ask the user before enabling optional sound
+or another credit-bearing extra that was not part of the contract.
 
-Author the opposite step with the legs and arm counter-swing reversed. An
-eight-frame cycle therefore needs eight genuine locomotion poses. Do not obtain
-eight frames by repeating four poses, cross-fading images, or relabelling the
-same contact pose as its opposite.
+AutoSprite owns motion synthesis, gait phases, in-betweening, background
+removal, and sprite-sheet generation. Preserve the returned image and metadata
+directly beside the owning Character definition under the Game Project's `src/`
+tree. Do not author or repair an Animation frame with another
+image generator or local drawing, and do not manufacture motion by duplication,
+interpolation, pose substitution, or aesthetic frame reordering. Regenerate
+through AutoSprite when the motion or portrayal is wrong.
 
-Approve a monochrome silhouette flipbook before rendering costume detail. The
-cycle must read correctly without facial features, texture, or colour.
+Finish when AutoSprite has produced one traceable export for every required
+Facing from its approved reference.
 
-## 3. Use image generation only as controlled assistance
+## 4. Adapt without reinterpretation
 
-Use the approved turnaround and the registered pose guide together as
-references. Generate or edit one key pose at a time. State the exact gait phase,
-supporting foot, forward leg, arm counter-swing, Facing, Ground Point, and
-directional equipment rule in every prompt.
+Convert AutoSprite output to the current `AnimationSheet` contract only when
+Fondale cannot consume the source layout directly. Use a lossless deterministic
+adapter that preserves RGBA pixels, frame order, cell dimensions, and timing.
+Record the AutoSprite Character or asset identifier, spritesheet identifier,
+generation settings, and adapter command beside the owning definition under
+`src/`.
 
-Never request a complete production walk sheet in one generation. Models often
-repeat phases, change anatomy, drift scale, swap equipment sides, or produce
-illustrations that cannot loop. Reject and regenerate a key when the requested
-support leg or phase is wrong; do not repair semantic pose errors by cropping.
+Layout conversion, metadata translation, and transparent padding are allowed
+only when they leave the generated motion unchanged. Cropping, per-frame
+rescaling, pixel retouching, frame replacement, and semantic reordering require
+regeneration instead.
 
-After generation, register each accepted key to the pelvis and Ground Point,
-not to its trimmed bounding-box centre. Alpha extraction, cropping, and fitting
-may remove background and place artwork in the cell; they must not rescale each
-frame independently or manufacture missing motion.
-
-## 4. In-between and clean up deliberately
-
-Create in-betweens only after all keys pass. Preserve volumes and costume
-landmarks frame to frame. Keep head bob and hip rise intentional and small for
-an ordinary walk; never erase all vertical mechanics by normalising every
-figure to the same bounding-box height.
-
-Track at least these measurements per frame:
-
-| Measurement | Requirement |
-| --- | --- |
-| Ground Point | identical cell coordinate |
-| Pelvis x | stable around the registration line |
-| Pelvis y | smooth gait arc, no one-frame jump |
-| Crown y | follows the pelvis arc without scale drift |
-| Torso width | stable except for genuine rotation |
-| Planted foot | stationary during its support interval |
-| Visible height | changes only from pose mechanics, never source rescaling |
-| Equipment | follows the authored anatomical side in every frame |
-
-Use onion-skin overlays and a frame-difference or landmark contact sheet. A
-strip whose figures merely share a canvas size has not passed registration.
-Run `scripts/audit-walk-strip.py` on every Runtime strip to record cell, alpha,
-visible-height, and centroid diagnostics. Treat its warnings as inspection
-prompts, not automatic proof that the gait is correct.
+Finish when the Runtime Asset is a reproducible representation of the
+AutoSprite export rather than a second authored Animation.
 
 ## 5. Acceptance gates
 
-All gates are mandatory for every required Facing.
+Apply every gate independently to `left`, `right`, `front`, and `back`:
 
-### Mechanical gate
+- motion: feet alternate believably, knees articulate, arm swing suits the
+  portrayal, and the first-to-last transition loops continuously;
+- registration: Ground Point stays fixed, pelvis and crown move smoothly,
+  volumes remain stable, and directional equipment stays anatomical;
+- playback: inspect the loop at 1× and 0.25×, then watch at least three
+  uninterrupted Engine cycles at near, middle, and far Perspective Scales;
+- travel: compare Engine displacement with foot planting and reject visible
+  skating;
+- artifact: alpha is clean, cells and order are deterministic, and the Engine
+  never enlarges the Runtime Asset;
+- portrayal: identity, costume, light, and silhouette remain faithful to the
+  approved static Facing.
 
-- All eight phases are distinct and ordered correctly.
-- Each foot alternates contact, support, lift, pass, and contact.
-- Knees bend in the down and passing phases.
-- Arm swing opposes the stepping leg and stays appropriate to portrayal.
-- The loop transition has the same velocity and pose continuity as internal
-  transitions.
-
-### Registration gate
-
-- Ground Point remains fixed in the Runtime cell.
-- Pelvis follows one smooth arc with no scale pop or horizontal jitter.
-- Head and torso preserve volume; limbs do not grow, shrink, or swap identity.
-- Direction-specific costume and equipment remain correct.
-
-### Playback gate
-
-- Inspect a looping flipbook at 1× and 0.25× speed on a plain background.
-- Inspect uninterrupted Engine travel for at least three complete cycles.
-- Test left, right, front, and back independently; do not infer one from another.
-- Compare character displacement with foot planting and reject visible sliding.
-- Inspect at near, middle, and far Perspective Scales.
-
-### Artifact gate
-
-- Alpha is clean with no coloured rectangle, fringe, or disconnected residue.
-- Every Runtime cell and strip has deterministic dimensions and ordering.
-- The renderer never enlarges the Runtime Asset.
-- Keep the guide, silhouette test, accepted keys, final Art Master, Runtime
-  strip, and motion proof in the Character package.
-
-## 6. Failure policy
-
-Stop and label the cycle `draft` when any acceptance gate fails. Preserve useful
-design exploration, but do not integrate it as the Walking Animation Role.
-Build success, type safety, attractive individual frames, and a clean still
-screenshot do not override a failed motion gate.
+If any gate fails, label that Facing `draft` and regenerate it through
+AutoSprite. Build success, attractive individual frames, or a still screenshot
+cannot approve a walking Animation.

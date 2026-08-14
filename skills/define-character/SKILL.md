@@ -1,6 +1,6 @@
 ---
 name: define-character
-description: Define complete production-ready Fondale Characters, including project-scale visual design, Art Masters, Appearances, directional Animations, Visual Anchors, stable portrayal, CharacterDefinition authoring, and in-engine verification. Use for creating a Character, redesigning one, adding an Appearance or Animation, or bringing character artwork into a Game Project.
+description: Define complete production-ready Fondale Characters, including project-scale visual design, Art Masters, Appearances, AutoSprite-delegated directional Animations, Visual Anchors, stable portrayal, CharacterDefinition authoring, and in-engine verification. Use for creating a Character, redesigning one, adding an Appearance or Animation, or bringing character artwork into a Game Project.
 ---
 
 # Define Character
@@ -45,27 +45,40 @@ costume landmarks, palette, and scale remain recognisable in every required
 Facing and depth band, including distinct `left` and `right` presentations,
 with no Runtime Asset enlarged by the Engine.
 
-### 4. Create Art Masters and Animations
+Store the four static Facing Art Masters in
+`art/character/<character-name>/`, where `<character-name>` is the canonical
+Character identifier used by the Game Project.
 
-Follow [character-package.md](references/character-package.md). Create lossless
-Art Masters for every confirmed Appearance and Animation. Keep frame dimensions,
-proportions, lighting logic, and Visual Anchor stable. Derive fitted Runtime
-Assets without overwriting Art Masters. Inspect strips and individual frames at
-1:1 pixels and in motion. Preserve full RGB/RGBA colour and antialiased alpha by
-default; palette reduction is a confirmed art-direction decision, not a routine
-export step. Author and verify separate `left`, `right`, `front`, and `back` Art
-Masters and Runtime strips as documented in
-[character-package.md](references/character-package.md). The Engine selects
-these presentations directly; it never mirrors or falls back between them.
+### 4. Approve Facings and delegate Animations to AutoSprite
 
-For a Walking Animation, follow the locomotion workflow and acceptance gates in
-[walk-cycle.md](references/walk-cycle.md). Treat generated images as pose
-proposals, not as a finished cycle. Establish contact, down, passing, and up
-keys on a registered guide before creating in-betweens. Do not ask an image
-generator for an entire production sprite sheet in one pass. Reject the cycle
-if identity, pelvis registration, Ground Point, apparent scale, gait phase, or
-directional equipment changes between frames. Do not conceal those failures
-with bounding-box normalization, duplicated poses, or frame interpolation.
+Follow [character-package.md](references/character-package.md). Create one
+lossless static Art Master for each `left`, `right`, `front`, and `back` Facing
+of every confirmed Appearance in `art/character/<character-name>/`. Keep frame
+dimensions, proportions, lighting,
+costume construction, Ground Point, and Visual Anchor stable. Present the four
+Facing images to the user and wait for explicit approval before starting any
+Animation generation or spending AutoSprite credits.
+
+After approval, give each authored Facing to AutoSprite as its own directional
+reference. Delegate the complete motion synthesis, in-betweening, background
+removal, and sprite-sheet generation to AutoSprite. Use AutoSprite's native
+animation workflow and place its sprite-sheet output directly beside the owning
+Character definition under the Game Project's `src/` tree. Do not
+draw, generate, interpolate, duplicate, reorder for aesthetic purposes, or
+retouch Animation frames outside AutoSprite. If identity, pose mechanics,
+registration, equipment, timing, or loop continuity fails, revise the static
+Facing or AutoSprite request and regenerate through AutoSprite.
+
+Derive Runtime Assets only through lossless, deterministic layout adaptation
+required by the current Fondale interfaces. This adaptation may unpack or
+repack cells and record timing or provenance; it must preserve the pixels,
+frame order, and motion returned by AutoSprite. Preserve full RGBA colour and
+antialiased alpha by default. The Engine selects the four authored
+presentations directly; it never mirrors or falls back between them.
+
+For a Walking Animation, follow the AutoSprite delegation and acceptance gates
+in [walk-cycle.md](references/walk-cycle.md). AutoSprite owns every locomotion
+pose and transition; Fondale owns the contract, integration, and verification.
 
 For every Appearance, create an explicit looping `idle` Animation and assign it
 to the Default Animation Role. When the Character design calls for a distinct
@@ -78,14 +91,18 @@ intended action, and no Appearance jumps at its Visual Anchor.
 
 ### 5. Author and integrate
 
-Create or update the `CharacterDefinition` using current public interfaces.
-Author initial placement, facing, Appearance, movement speed, Animation Roles,
-Noun, and stable portrayal. Preserve fields owned by `$define-dialogue`.
-Coordinate initial Scene placement and Hotspot geometry through `$define-scene`
-when they change.
+Keep the approved AutoSprite sprite sheets beside their owning Game Project
+definition under `src/` and create or update the `CharacterDefinition` using
+current public interfaces. Register all four directional sheets, shared timing,
+loop behavior, Animation Cues, Visual Anchor, and Animation Roles. Author initial
+placement, facing, Appearance, movement speed, Noun, and stable portrayal.
+Preserve fields owned by `$define-dialogue`. Coordinate initial Scene placement
+and Hotspot geometry through `$define-scene` when they change.
 
 Finish when every asset and semantic name resolves and every referenced
-Appearance, Animation, cue, Scene, and Sequence remains valid.
+Appearance, Animation, cue, Scene, and Sequence remains valid. An AutoSprite
+export left outside the Game Project is a draft, not a completed Character
+Animation.
 
 ### 6. Verify in the Engine
 
@@ -99,8 +116,11 @@ apply every gate in [walk-cycle.md](references/walk-cycle.md). A still screensho
 cannot approve a walk cycle. If a gate fails, report the Animation as a draft and
 iterate; never describe it as production-ready merely because it builds.
 
+The Character task is complete only when the approved AutoSprite output plays
+through the Game Project's `CharacterDefinition` in the Engine.
+
 ## Handoff
 
-Report Art Masters, Runtime Assets, Character definition, scale sheet,
-Animations and cues, Scene integration, verification, and explicitly deferred
-dialogue work.
+Report approved Facing Art Masters, AutoSprite identifiers and source exports,
+Runtime Assets, Character definition, scale sheet, Animations and cues, Scene
+integration, Engine verification, and explicitly deferred dialogue work.
