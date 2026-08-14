@@ -1,87 +1,61 @@
-# AutoSprite walking Animation workflow
+# AutoSprite walking Animation integration
 
 Use this workflow whenever a Character needs a new or revised Walking
-Animation. Fondale specifies and verifies the locomotion contract; AutoSprite
-authors every pose, transition, and sprite frame.
+Animation. AutoSprite owns the complete walking cycle; Fondale stores and plays
+the result.
 
-## 1. Lock the locomotion contract
-
-Record intended gait, emotional energy, required Facings, movement speed,
-cycle duration, Runtime cell, Ground Point, Visual Anchor, target visible
-height, and direction-specific costume or equipment rules. Check that
-`world distance per cycle = movement speed × cycle duration` can plausibly match
-the visible stride.
-
-Finish when the same contract can be supplied for all four Facings without an
-unstated directional rule.
-
-## 2. Approve four static Facing references
+## 1. Approve four static Facing references
 
 Create lossless `left`, `right`, `front`, and `back` still images at one scale
 and with one stable construction. Store them in
 `art/character/<character-name>/`, using the canonical Character identifier.
-Show all four to the user at useful detail
-and actual play size. Start AutoSprite generation only after the user explicitly
-approves them.
+Show all four to the user at useful detail and actual play size. Start
+AutoSprite only after the user explicitly approves them.
 
-Finish when identity, proportions, costume landmarks, anatomical equipment
-sides, light direction, Ground Point, and Visual Anchor agree across the four
-approved images.
+Finish when the four source images are approved. Their approval is the final
+local art-direction decision before animation generation.
 
-## 3. Delegate the complete cycle to AutoSprite
+## 2. Delegate walking to AutoSprite
 
-Upload or register each approved Facing as its own directional AutoSprite
-reference. Request the same walking contract, loop intent, duration, frame
-size, frame count, background-removal quality, and output quality for all four.
-Use the smallest generation scope that can prove the result before spending
-credits on the remaining Facings. Ask the user before enabling optional sound
-or another credit-bearing extra that was not part of the contract.
+Give each approved Facing to AutoSprite as its directional reference and request
+the semantic walking Animation. Let AutoSprite choose frame count, frame size,
+poses, motion, cadence, duration, FPS, and loop construction. Omit optional
+generation parameters unless the user explicitly requests an override. Ask the
+user before enabling sound or another credit-bearing extra outside the request.
 
-AutoSprite owns motion synthesis, gait phases, in-betweening, background
-removal, and sprite-sheet generation. Preserve the returned image and metadata
-directly beside the owning Character definition under the Game Project's `src/`
-tree. Do not author or repair an Animation frame with another
-image generator or local drawing, and do not manufacture motion by duplication,
-interpolation, pose substitution, or aesthetic frame reordering. Regenerate
-through AutoSprite when the motion or portrayal is wrong.
+Download every returned sprite sheet and its metadata directly beside the
+owning Character definition under the Game Project's `src/` tree. Treat those
+outputs as authoritative.
 
-Finish when AutoSprite has produced one traceable export for every required
-Facing from its approved reference.
-
-## 4. Adapt without reinterpretation
-
-Convert AutoSprite output to the current `AnimationSheet` contract only when
-Fondale cannot consume the source layout directly. Use a lossless deterministic
-adapter that preserves RGBA pixels, frame order, cell dimensions, and timing.
-Record the AutoSprite Character or asset identifier, spritesheet identifier,
-generation settings, and adapter command beside the owning definition under
+Finish when all four AutoSprite outputs and their metadata are present under
 `src/`.
 
-Layout conversion, metadata translation, and transparent padding are allowed
-only when they leave the generated motion unchanged. Cropping, per-frame
-rescaling, pixel retouching, frame replacement, and semantic reordering require
-regeneration instead.
+## 3. Integrate without animation authoring
 
-Finish when the Runtime Asset is a reproducible representation of the
-AutoSprite export rather than a second authored Animation.
+Use the returned cells, frames, order, duration, and loop behavior exactly as
+AutoSprite declares them. If Fondale requires `framesPerSecond`, calculate it as
+`returned frame count / returned duration`; do not select a preferred FPS.
 
-## 5. Acceptance gates
+Perform only lossless layout and metadata translation required by the current
+`AnimationSheet` interface. Preserve every generated pixel and frame. Keep the
+AutoSprite Character or asset identifier, spritesheet identifier, returned
+metadata, and adapter command beside the owning definition under `src/`.
 
-Apply every gate independently to `left`, `right`, `front`, and `back`:
+If Fondale cannot represent the returned output faithfully, preserve it and
+report the interface gap. Do not normalize Facings or change frames, poses,
+timing, cadence, or loop construction to make the output fit.
 
-- motion: feet alternate believably, knees articulate, arm swing suits the
-  portrayal, and the first-to-last transition loops continuously;
-- registration: Ground Point stays fixed, pelvis and crown move smoothly,
-  volumes remain stable, and directional equipment stays anatomical;
-- playback: inspect the loop at 1× and 0.25×, then watch at least three
-  uninterrupted Engine cycles at near, middle, and far Perspective Scales;
-- travel: compare Engine displacement with foot planting and reject visible
-  skating;
-- artifact: alpha is clean, cells and order are deterministic, and the Engine
-  never enlarges the Runtime Asset;
-- portrayal: identity, costume, light, and silhouette remain faithful to the
-  approved static Facing.
+Finish when the `CharacterDefinition` references all four outputs and the
+Engine plays the metadata-derived Animation.
 
-If any gate fails, label that Facing `draft` and regenerate it through
-AutoSprite. Build success, attractive individual frames, or a still screenshot
-cannot approve a walking Animation.
+## 4. Verify integration
+
+Build the Game Project and confirm that each Facing loads, stays aligned to the
+configured Visual Anchor, follows AutoSprite's frame order and duration, and
+plays according to AutoSprite's loop metadata. Verify that Scene movement still
+functions and record the displayed scale without grading AutoSprite's frame
+size.
+
+Treat AutoSprite's artistic and locomotion choices as accepted source data.
+Technical verification detects integration errors; it does not grade or repair
+the generated walk.

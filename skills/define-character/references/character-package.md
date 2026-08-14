@@ -17,94 +17,78 @@ Art Master directory.
 - the AutoSprite sprite sheet and any derived Runtime sheet under `src/` for
   every `left`, `right`, `front`, and `back` presentation of every Animation,
   with provenance and generation settings;
-- an explicit looping `idle` Animation for every Appearance, plus a distinct
-  looping `speaking` Animation where the Character design requires one;
+- an AutoSprite `idle` Animation for every Appearance, plus an AutoSprite
+  `speaking` Animation where the Character design requires one;
 - distinct left, right, front, and back Runtime sheets for every Character
   Animation;
 - stable Ground Point and Visual Anchor documentation;
 - `CharacterDefinition` and any required Scene integration;
 - Game Project imports that register every approved AutoSprite-derived sheet,
-  Facing, timing rule, cue, Visual Anchor, and Animation Role;
+  Facing, returned timing rule, cue, Visual Anchor, and Animation Role;
 - actual-size diagnostic compositions at near, middle, and far depth.
 
-## Visual checks
+## Static Facing and transport checks
+
+Apply portrayal, lighting, silhouette, scale, and construction checks to the
+four static Facing Art Masters before user approval. For AutoSprite output,
+check only that storage, layout adaptation, metadata translation, and Engine
+playback preserve what AutoSprite returned.
 
 - Build a native-resolution table before export. For every representative or
   reachable depth band, record Runtime Asset frame height, Perspective Scale,
   displayed height, and enlargement factor, where
   `displayed height = frame height × Perspective Scale` and
   `enlargement factor = max(1, Perspective Scale)`.
-- Size Runtime Asset frames so the Engine displays them at 1:1 or reduces them
-  throughout the required Scene space. If any required Perspective Scale is
-  greater than 1, increase the project-wide native Character size and
-  recalibrate Scene Perspective Scale stops together; do not accept renderer
-  enlargement as the Character-scale mechanism.
-- Judge effective source resolution, not only displayed size: a large canvas
-  containing a previously enlarged small sprite still fails the gate.
-- Preserve RGB/RGBA colour, controlled anti-aliasing, and alpha edges through
-  Runtime export. Apply palette quantization or nearest-neighbour resampling only
-  when the project's confirmed art direction requires it and an actual-size
-  comparison shows no objectionable banding, jaggedness, or matte fringe.
-- Preserve height, body proportions, costume landmarks, and palette across
-  `left`, `right`, `front`, and `back` frames.
-- Author `left`, `right`, `front`, and `back` presentations and derive a
-  separate Runtime sheet for each. The Engine selects the sheet matching the
-  Character Facing and never mirrors Character artwork. Judge the authored
-  result rather than policing how an artist produced it.
+- Use AutoSprite's returned frame size as source data. Record any Engine
+  enlargement without using it to request, rescale, or reject generated frames.
+- Preserve the exact colour, alpha, and edge data returned by AutoSprite through
+  Runtime export.
+- Preserve height, body proportions, costume landmarks, and palette across the
+  four static `left`, `right`, `front`, and `back` Facing Art Masters.
+- Author `left`, `right`, `front`, and `back` static references and register the
+  separate AutoSprite Runtime sheet returned for each. The Engine selects the
+  sheet matching the Character Facing and never mirrors Character artwork.
 - Approve the four static Facing Art Masters before AutoSprite generation. Give
   AutoSprite one explicit directional reference per Facing so Animation
   generation never depends on mirroring or an inferred unseen view.
-- Keep Runtime cell dimensions and the Visual Anchor identical across every
-  Facing and Animation in one Appearance.
-- Inspect every presentation. Hands, feet, carried items, costume closures,
-  lighting, and Visual Anchor must remain coherent while preserving genuine
-  direction-specific construction and action.
+- Use the Appearance Visual Anchor required by the current Engine interface. If
+  AutoSprite's returned sheet geometries cannot satisfy an Engine invariant
+  without changing generated pixels or frames, report an integration gap.
+- Inspect hands, feet, carried items, costume closures, lighting, and Visual
+  Anchor across the four static Facing Art Masters before user approval.
 - Keep facing changes spatially centred on the same Ground Point.
-- Use one stable Visual Anchor across frames and compatible Appearances.
-- Check lighting in every required Scene so a Facing change never reverses the
-  Scene's light source; preserve the shared material and edge language.
-- Verify silhouettes against Background and Scenery at actual play size.
+- Use one stable Visual Anchor across the four static Facings and compatible
+  Appearances; use it to place AutoSprite frames without grading their motion.
+- Check the approved static Facings in every required Scene so a Facing change
+  preserves the Scene's light source, material language, and silhouette at
+  actual play size.
 - Inspect an actual-size Engine screenshot at 1:1 display pixels. The package
-  fails when Character edges or interior features reveal visible upscaling,
-  block pixels, palette banding, or chroma-key fringe that is absent from the
-  Art Master.
+  fails when the Runtime adaptation introduces block pixels, palette banding,
+  alpha fringe, missing frames, or other artifacts absent from AutoSprite's
+  returned source.
 
-## Animation checks
+## AutoSprite Animation integration checks
 
-- Give every Appearance an explicit looping `idle` Animation and assign it to
-  the Default Animation Role. A walking cycle or static fallback is not an idle
-  performance.
+- Give every Appearance an AutoSprite `idle` Animation and assign it to the
+  Default Animation Role with AutoSprite's returned playback metadata.
 - When the Character design calls for a distinct speaking performance, give the
-  Appearance an explicit looping `speaking` Animation and assign it to the
-  Speaking Animation Role. Otherwise document the intentional Engine fallback
-  from Speaking to Default.
-- Keep idle motion restrained and seamless at its first-to-last transition;
-  preserve the Character's stable Ground Point and avoid mechanical whole-body
-  bobbing.
-- Make speaking visibly distinct from idle through readable mouth, head, hand,
-  or posture changes appropriate to the Character's Voice; keep it neutral
-  enough to support every authored Line unless a directed performance owns a
-  more specific Animation.
+  Appearance an AutoSprite `speaking` Animation and assign it to the Speaking
+  Animation Role with AutoSprite's returned playback metadata. Otherwise
+  document the intentional Engine fallback from Speaking to Default.
 - Give every moving Character a Walking Animation Role with required facings.
 - Follow [walk-cycle.md](walk-cycle.md) for every new or revised Walking
-  Animation. Pass its AutoSprite motion proof through the documented technical
-  acceptance gates before integration; only the four static Facing Art Masters
-  require explicit user approval.
-- Treat AutoSprite as the sole author of Animation frames. When a generated
-  cycle fails inspection, regenerate it through AutoSprite from the approved
-  Facing; preserve failed exports as drafts rather than repairing their motion
-  outside AutoSprite.
-- Keep the frame count synchronized across all four presentations. Timing,
-  loop behavior, duration, and Animation Cues belong to the Animation and must
-  remain shared across Facing.
-- Play every `left`, `right`, `front`, and `back` cycle and inspect each
-  first-to-last transition at actual size.
-- Verify idle and speaking in every Facing in which the Character may converse,
-  including distinct `left` and `right` presentations.
-- Keep sheet frame dimensions and ordering deterministic.
+  Animation. Use AutoSprite's returned output without locally selected poses,
+  frames, FPS, duration, cadence, or loop construction.
+- Keep every returned frame and its order. Preserve each sheet's returned cell
+  geometry and metadata without normalizing the four presentations.
+- Derive `framesPerSecond` only when the Fondale interface requires it, using
+  AutoSprite's returned frame count divided by its declared duration.
+- Play every `left`, `right`, `front`, and `back` output and confirm that the
+  Engine follows the returned order, duration, and loop behavior.
 - Place Animation Cues within duration at the visible moment of contact or
-  transfer they coordinate.
-- Inspect the first-to-last transition of every looping Animation.
+  transfer they coordinate without modifying AutoSprite frames.
+- Treat an output that Fondale cannot represent faithfully as an integration
+  gap; keep the AutoSprite source unchanged.
 
 ## Definition checks
 
@@ -112,7 +96,8 @@ Art Master directory.
   external exports and previews do not satisfy integration.
 - Initial Scene and Ground Point exist and are walkable.
 - Initial Appearance exists; every Animation Role names an available Animation.
-- Movement speed is positive and visually compatible with the walk cycle.
+- Movement speed is positive; do not use it to grade or modify AutoSprite's
+  walking Animation.
 - Noun interactions and Sequence references resolve.
 - Stable portrayal fields do not author Narrative Facts or change Game State.
 - Dialogue-owned fields remain unchanged unless `$define-dialogue` is in scope.
