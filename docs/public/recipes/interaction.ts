@@ -15,16 +15,7 @@ export const interactionHost = ({
   appearances: {
     idle: {
       animations: {
-        idle: {
-          frames: {
-            left: { image: new URL("./key.png", import.meta.url), count: 1 },
-            right: { image: new URL("./key.png", import.meta.url), count: 1 },
-            front: { image: new URL("./key.png", import.meta.url), count: 1 },
-            back: { image: new URL("./key.png", import.meta.url), count: 1 },
-          },
-          framesPerSecond: 1,
-          loop: true,
-        },
+        idle: { sheets: { left: { image: new URL("./key.png", import.meta.url), frames: [{ x: 0, y: 0, width: 20, height: 20 }] }, right: { image: new URL("./key.png", import.meta.url), frames: [{ x: 0, y: 0, width: 20, height: 20 }] }, front: { image: new URL("./key.png", import.meta.url), frames: [{ x: 0, y: 0, width: 20, height: 20 }] }, back: { image: new URL("./key.png", import.meta.url), frames: [{ x: 0, y: 0, width: 20, height: 20 }] } }, timing: { framesPerSecond: 1, loop: true } },
       },
       roles: { default: "idle" },
     },
@@ -42,7 +33,7 @@ export const interactionKey = ({
   initialGroundPoint: { x: 85, y: 35 },
   initialAppearance: "present",
   appearances: {
-    present: { animations: { idle: { frames: [new URL("./key.png", import.meta.url)], framesPerSecond: 1, loop: true } }, roles: { default: "idle" } },
+    present: { animations: { idle: { sheet: { image: new URL("./key.png", import.meta.url), frames: [{ x: 0, y: 0, width: 20, height: 20 }] }, timing: { framesPerSecond: 1, loop: true } } }, roles: { default: "idle" } },
   },
   inventoryAppearance: new URL("./key-inventory-32.png", import.meta.url),
   noun: ({

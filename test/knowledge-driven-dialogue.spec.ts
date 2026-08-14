@@ -27,23 +27,14 @@ const square = [
 
 const appearance = {
   animations: {
-    idle: {
-      frames: {
-        left: { image: "idle.png", count: 1 },
-        right: { image: "idle.png", count: 1 },
-        front: { image: "idle.png", count: 1 },
-        back: { image: "idle.png", count: 1 },
-      },
-      framesPerSecond: 1,
-      loop: true,
-    },
+    idle: { sheets: { left: { image: "idle.png", frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, right: { image: "idle.png", frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, front: { image: "idle.png", frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, back: { image: "idle.png", frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) } }, timing: { framesPerSecond: 1, loop: true } },
   },
   roles: { default: "idle", walking: "idle" },
 };
 
 const objectAppearance = {
   animations: {
-    idle: { frames: ["idle.png"], framesPerSecond: 1, loop: true },
+    idle: { sheet: { image: "idle.png", frames: [{ x: 0, y: 0, width: 1, height: 1 }] }, timing: { framesPerSecond: 1, loop: true } },
   },
   roles: { default: "idle" },
 };

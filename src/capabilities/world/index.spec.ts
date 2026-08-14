@@ -32,21 +32,13 @@ const square = [
 ];
 
 const appearance = {
-  animations: { idle: { frames: ["idle.png"], framesPerSecond: 1 } },
+  animations: { idle: { sheet: { image: "idle.png", frames: [{ x: 0, y: 0, width: 1, height: 1 }] }, timing: { framesPerSecond: 1 } } },
   roles: { default: "idle" },
 } as const;
 
 const characterAppearance = {
   animations: {
-    idle: {
-      frames: {
-        left: { image: "idle.png", count: 1 },
-        right: { image: "idle.png", count: 1 },
-        front: { image: "idle.png", count: 1 },
-        back: { image: "idle.png", count: 1 },
-      },
-      framesPerSecond: 1,
-    },
+    idle: { sheets: { left: { image: "idle.png", frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, right: { image: "idle.png", frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, front: { image: "idle.png", frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, back: { image: "idle.png", frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) } }, timing: { framesPerSecond: 1 } },
   },
   roles: { default: "idle" },
 } as const;
@@ -328,7 +320,7 @@ test("World derives defensive presentation facts for the current Scene", () => {
         appearances: {
           closed: {
             animations: {
-              idle: { frames: [curtainFrame], framesPerSecond: 1 },
+              idle: { sheet: { image: curtainFrame, frames: [{ x: 0, y: 0, width: 1, height: 1 }] }, timing: { framesPerSecond: 1 } },
             },
             roles: { default: "idle" },
           },
@@ -382,12 +374,12 @@ test("World derives defensive presentation facts for the current Scene", () => {
   const exposedAppearance = presentation.scenery[0]!.appearance;
   expect("animations" in exposedAppearance).toBe(true);
   if (!("animations" in exposedAppearance)) throw new Error("Expected an animated Appearance.");
-  const exposedFrame = exposedAppearance.animations.idle!.frames as URL[];
-  (exposedFrame[0] as URL).href = "https://example.test/changed.png";
+  const exposedFrame = exposedAppearance.animations.idle!.sheet.image as URL;
+  exposedFrame.href = "https://example.test/changed.png";
   expect(world.presentation(state).characters[0]!.groundPoint.x).toBe(10);
   const nextAppearance = world.presentation(state).scenery[0]!.appearance;
   if (!("animations" in nextAppearance)) throw new Error("Expected an animated Appearance.");
-  expect((nextAppearance.animations.idle!.frames as readonly URL[])[0]!.href).toBe(
+  expect((nextAppearance.animations.idle!.sheet.image as URL).href).toBe(
     "https://example.test/curtain.png",
   );
 });

@@ -4,8 +4,14 @@ import * as Fondale from "../src/index";
 import {
   AuthoringError,
   startGame,
+  uniformGrid,
+  type AnimationDefinition,
+  type AnimationFrame,
+  type AnimationSheet,
+  type AnimationTiming,
   type CharacterDefinition,
   type CharacterAnimationDefinition,
+  type CharacterAnimationSheets,
   type CharacterAppearance,
   type CharacterDialogueDefinition,
   type CharacterKnowledgeDefinition,
@@ -67,8 +73,12 @@ const project = {
 } satisfies GameProject;
 
 const focusedTypes = {
+  animationFrame: null as unknown as AnimationFrame,
+  animationSheet: null as unknown as AnimationSheet,
+  animationTiming: null as unknown as AnimationTiming,
   character: null as unknown as CharacterDefinition,
   characterAnimation: null as unknown as CharacterAnimationDefinition,
+  characterAnimationSheets: null as unknown as CharacterAnimationSheets,
   characterAppearance: null as unknown as CharacterAppearance,
   characterDialogue: null as unknown as CharacterDialogueDefinition,
   characterKnowledge: null as unknown as CharacterKnowledgeDefinition,
@@ -111,29 +121,24 @@ const focusedTypes = {
 
 void focusedTypes;
 
-const incompleteCharacterAnimation: CharacterAnimationDefinition = {
-  // @ts-expect-error Character Animations require an authored back presentation.
-  frames: {
-    left: { image: "left.png", count: 1 },
-    right: { image: "right.png", count: 1 },
-    front: { image: "front.png", count: 1 },
-  },
-  framesPerSecond: 1,
-};
-const legacyCharacterAnimation: CharacterAnimationDefinition = {
-  frames: {
-    // @ts-expect-error The removed side presentation has no compatibility path.
-    side: { image: "side.png", count: 1 },
-    front: { image: "front.png", count: 1 },
-    back: { image: "back.png", count: 1 },
-  },
-  framesPerSecond: 1,
-};
+// @ts-expect-error Character Animations require an authored back presentation.
+
+const incompleteCharacterAnimation: CharacterAnimationDefinition = { sheets: { left: { image: "left.png", frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, right: { image: "right.png", frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, front: { image: "front.png", frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) } }, timing: { framesPerSecond: 1 } };
+// @ts-expect-error Character Animations require left and right sheets.
+const legacyCharacterAnimation: CharacterAnimationDefinition = { sheets: { front: { image: "front.png", frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, back: { image: "back.png", frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) } }, timing: { framesPerSecond: 1 } };
 void incompleteCharacterAnimation;
 void legacyCharacterAnimation;
+const legacyAnimation: AnimationDefinition = {
+  // @ts-expect-error Separate-image frame lists and flat timing have no compatibility path.
+  frames: ["one.png", "two.png"],
+  framesPerSecond: 1,
+};
+void legacyAnimation;
 
 test("the root API exposes declarative authoring types without legacy builders", () => {
   expect(project.scenes.opening).toBe(scene);
+  expect(uniformGrid({ frameWidth: 2, frameHeight: 3, columns: 1, count: 1 }))
+    .toEqual([{ x: 0, y: 0, width: 2, height: 3 }]);
   for (const removed of [
     "defineGame",
     "defineCharacter",
@@ -221,16 +226,7 @@ test("startGame requires a Dialogue Provider before reading the target", async (
         appearances: {
           idle: {
             animations: {
-              idle: {
-                frames: {
-                  left: { image: "antonio.png", count: 1 },
-                  right: { image: "antonio.png", count: 1 },
-                  front: { image: "antonio.png", count: 1 },
-                  back: { image: "antonio.png", count: 1 },
-                },
-                framesPerSecond: 1,
-                loop: true,
-              },
+              idle: { sheets: { left: { image: "antonio.png", frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, right: { image: "antonio.png", frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, front: { image: "antonio.png", frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, back: { image: "antonio.png", frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) } }, timing: { framesPerSecond: 1, loop: true } },
             },
             roles: { default: "idle" },
           },

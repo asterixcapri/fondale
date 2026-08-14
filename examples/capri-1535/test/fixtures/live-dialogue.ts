@@ -36,13 +36,8 @@ const dialogueProvider = new HttpDialogueProvider({
   sessionId,
 });
 
-const idle = (image: string) => ({
-  animations: { idle: { frames: {
-    left: { image, count: 1 },
-    right: { image, count: 1 },
-    front: { image, count: 1 },
-    back: { image, count: 1 },
-  }, framesPerSecond: 1, loop: true } },
+const idle = (image: string, width: number, height: number) => ({
+  animations: { idle: { sheets: { left: { image, frames: [{ x: 0, y: 0, width, height }] }, right: { image, frames: [{ x: 0, y: 0, width, height }] }, front: { image, frames: [{ x: 0, y: 0, width, height }] }, back: { image, frames: [{ x: 0, y: 0, width, height }] } }, timing: { framesPerSecond: 1, loop: true } } },
   roles: { default: "idle", walking: "idle" },
 });
 
@@ -78,7 +73,7 @@ const project = ({
       initialGroundPoint: { x: 150, y: 200 },
       initialFacing: "right",
       initialAppearance: "idle",
-      appearances: { idle: idle(micheleUrl) },
+      appearances: { idle: idle(micheleUrl, 36, 82) },
       movementSpeed: 900,
       dialogue: { knowledge: [] },
     } satisfies CharacterDefinition),
@@ -87,7 +82,7 @@ const project = ({
       initialGroundPoint: { x: 300, y: 200 },
       initialFacing: "left",
       initialAppearance: "idle",
-      appearances: { idle: idle(antonioUrl) },
+      appearances: { idle: idle(antonioUrl, 96, 288) },
       movementSpeed: 900,
       noun: {
         labels: [{ text: "Antonio" }],

@@ -120,31 +120,13 @@ function projectFixture(
     appearances: {
       normal: {
         animations: {
-          idle: {
-            frames: {
-              left: { image: "normal.png", count: 1 },
-              right: { image: "normal.png", count: 1 },
-              front: { image: "normal.png", count: 1 },
-              back: { image: "normal.png", count: 1 },
-            },
-            framesPerSecond: 1,
-            loop: true,
-          },
+          idle: { sheets: { left: { image: "normal.png", frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, right: { image: "normal.png", frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, front: { image: "normal.png", frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, back: { image: "normal.png", frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) } }, timing: { framesPerSecond: 1, loop: true } },
         },
         roles: { default: "idle", walking: "idle" },
       },
       happy: {
         animations: {
-          idle: {
-            frames: {
-              left: { image: "happy.png", count: 1 },
-              right: { image: "happy.png", count: 1 },
-              front: { image: "happy.png", count: 1 },
-              back: { image: "happy.png", count: 1 },
-            },
-            framesPerSecond: 1,
-            loop: true,
-          },
+          idle: { sheets: { left: { image: "happy.png", frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, right: { image: "happy.png", frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, front: { image: "happy.png", frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, back: { image: "happy.png", frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) } }, timing: { framesPerSecond: 1, loop: true } },
         },
         roles: { default: "idle", walking: "idle" },
       },
@@ -176,13 +158,13 @@ function projectFixture(
     appearances: {
       new: {
         animations: {
-          idle: { frames: ["key.png"], framesPerSecond: 1, loop: true },
+          idle: { sheet: { image: "key.png", frames: [{ x: 0, y: 0, width: 1, height: 1 }] }, timing: { framesPerSecond: 1, loop: true } },
         },
         roles: { default: "idle" },
       },
       used: {
         animations: {
-          idle: { frames: ["used-key.png"], framesPerSecond: 1, loop: true },
+          idle: { sheet: { image: "used-key.png", frames: [{ x: 0, y: 0, width: 1, height: 1 }] }, timing: { framesPerSecond: 1, loop: true } },
         },
         roles: { default: "idle" },
       },
@@ -226,17 +208,13 @@ function projectFixture(
     appearances: {
       new: {
         animations: {
-          idle: { frames: ["coin.png"], framesPerSecond: 1, loop: true },
+          idle: { sheet: { image: "coin.png", frames: [{ x: 0, y: 0, width: 1, height: 1 }] }, timing: { framesPerSecond: 1, loop: true } },
         },
         roles: { default: "idle" },
       },
       polished: {
         animations: {
-          idle: {
-            frames: ["polished-coin.png"],
-            framesPerSecond: 1,
-            loop: true,
-          },
+          idle: { sheet: { image: "polished-coin.png", frames: [{ x: 0, y: 0, width: 1, height: 1 }] }, timing: { framesPerSecond: 1, loop: true } },
         },
         roles: { default: "idle" },
       },

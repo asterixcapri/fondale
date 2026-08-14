@@ -6,6 +6,7 @@ import {
   animationFrameIndex,
   animationNameForRole,
   animationPresentationForSubject,
+  uniformGrid,
   validateCharacterAppearance,
   validateAppearance,
   validateAppearanceSet,
@@ -17,15 +18,20 @@ import {
 import type { GameState } from "../game-session";
 import { interpretDirectionStep, type DirectionStep } from "../sequence";
 
+test("uniformGrid returns authored row-major rectangles without validating at import time", () => {
+  expect(uniformGrid({ frameWidth: 16, frameHeight: 24, columns: 2, count: 3,
+    x: 5, y: 7, columnGap: 2, rowGap: 3 })).toEqual([
+    { x: 5, y: 7, width: 16, height: 24 },
+    { x: 23, y: 7, width: 16, height: 24 },
+    { x: 5, y: 34, width: 16, height: 24 },
+  ]);
+  expect(() => uniformGrid({ frameWidth: 0, frameHeight: 0, columns: 0, count: -1 })).not.toThrow();
+});
+
 test("Animation owns complete local Appearance validation", () => {
   const appearance = {
     animations: {
-      broken: {
-        frames: [""],
-        framesPerSecond: Number.NaN,
-        loop: "yes",
-        cues: { "": -1 },
-      },
+      broken: { sheet: { image: "", frames: [{ x: 0, y: 0, width: 1, height: 1 }] }, timing: { framesPerSecond: Number.NaN, loop: "yes", cues: { "": -1 } } },
     },
     roles: { default: "missing" },
     visualAnchor: { x: Number.POSITIVE_INFINITY, y: 4 },
@@ -35,7 +41,7 @@ test("Animation owns complete local Appearance validation", () => {
     expect.objectContaining({
       code: "definition.animation.frame-source",
       owner: "animation",
-      path: "appearances.broken.animations.broken.frames[0]",
+      path: "appearances.broken.animations.broken.sheet.image",
     }),
     expect.objectContaining({ code: "definition.animation.frames-per-second", owner: "animation" }),
     expect.objectContaining({ code: "definition.animation.loop", owner: "animation" }),
@@ -52,14 +58,7 @@ test("Animation owns complete local Appearance validation", () => {
 test("Character Appearance validation requires four synchronized authored Facing presentations", () => {
   const appearance = {
     animations: {
-      idle: {
-        frames: {
-          left: { image: "left.png", count: 2 },
-          right: { image: "right.png", count: 3 },
-          front: { image: "front.png", count: 2 },
-        },
-        framesPerSecond: 6,
-      },
+      idle: { sheets: { left: { image: "left.png", frames: Array.from({ length: 2 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, right: { image: "right.png", frames: Array.from({ length: 3 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, front: { image: "front.png", frames: Array.from({ length: 2 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) } }, timing: { framesPerSecond: 6 } },
     },
     roles: { default: "idle" },
   } as unknown as CharacterAppearance;
@@ -68,22 +67,18 @@ test("Character Appearance validation requires four synchronized authored Facing
     expect.arrayContaining([
       expect.objectContaining({
         code: "definition.animation.facing-presentation",
-        path: "characters.actor.appearances.normal.animations.idle.frames.back",
+        path: "characters.actor.appearances.normal.animations.idle.sheets.back",
       }),
       expect.objectContaining({
         code: "definition.animation.directional-frame-count",
-        path: "characters.actor.appearances.normal.animations.idle.frames",
+        path: "characters.actor.appearances.normal.animations.idle.sheets",
       }),
     ]),
   );
 });
 
 test("Animation owns finite duration, Cue timing, and frame progression", () => {
-  const animation = {
-    frames: ["one.png", "two.png", "three.png"],
-    framesPerSecond: 6,
-    cues: { start: 0, middle: 0.25 },
-  };
+  const animation = { sheet: { image: "one.png", frames: [{ x: 0, y: 0, width: 1, height: 1 }, { x: 1, y: 0, width: 1, height: 1 }, { x: 2, y: 0, width: 1, height: 1 }] }, timing: { framesPerSecond: 6, cues: { start: 0, middle: 0.25 } } };
 
   expect(animationDurationTicks(animation)).toBe(30);
   expect(animationCueTick(animation, "middle")).toBe(15);
@@ -91,25 +86,16 @@ test("Animation owns finite duration, Cue timing, and frame progression", () => 
   expect(animationFrameIndex(animation, 0)).toBe(0);
   expect(animationFrameIndex(animation, 10)).toBe(1);
   expect(animationFrameIndex(animation, 30)).toBe(2);
-  expect(animationFrameIndex({ ...animation, loop: true }, 30)).toBe(0);
+  expect(animationFrameIndex({ ...animation, timing: { ...animation.timing, loop: true } }, 30)).toBe(0);
 
-  const directional = {
-    frames: {
-      left: { image: "left.png", count: 4 },
-      right: { image: "right.png", count: 4 },
-      front: { image: "front.png", count: 4 },
-      back: { image: "back.png", count: 4 },
-    },
-    framesPerSecond: 6,
-    loop: true,
-  };
+  const directional = { sheets: { left: { image: "left.png", frames: Array.from({ length: 4 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, right: { image: "right.png", frames: Array.from({ length: 4 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, front: { image: "front.png", frames: Array.from({ length: 4 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, back: { image: "back.png", frames: Array.from({ length: 4 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) } }, timing: { framesPerSecond: 6, loop: true } };
   expect(animationDurationTicks(directional)).toBe(40);
   expect(animationFrameIndex(directional, 40)).toBe(0);
 });
 
 test("an unavailable speaking Role falls back to the Default Animation", () => {
   const appearance: Appearance = {
-    animations: { idle: { frames: ["idle.png"], framesPerSecond: 1, loop: true } },
+    animations: { idle: { sheet: { image: "idle.png", frames: [{ x: 0, y: 0, width: 1, height: 1 }] }, timing: { framesPerSecond: 1, loop: true } } },
     roles: { default: "idle" },
   };
 
@@ -119,9 +105,9 @@ test("an unavailable speaking Role falls back to the Default Animation", () => {
 test("Animation derives directed presentation facts from immutable session input", () => {
   const appearance: Appearance = {
     animations: {
-      idle: { frames: ["idle.png"], framesPerSecond: 1, loop: true },
-      gesture: { frames: ["one.png", "two.png", "three.png"], framesPerSecond: 6 },
-      walk: { frames: ["walk-one.png", "walk-two.png"], framesPerSecond: 6, loop: true },
+      idle: { sheet: { image: "idle.png", frames: [{ x: 0, y: 0, width: 1, height: 1 }] }, timing: { framesPerSecond: 1, loop: true } },
+      gesture: { sheet: { image: "one.png", frames: [{ x: 0, y: 0, width: 1, height: 1 }, { x: 1, y: 0, width: 1, height: 1 }, { x: 2, y: 0, width: 1, height: 1 }] }, timing: { framesPerSecond: 6 } },
+      walk: { sheet: { image: "walk-one.png", frames: [{ x: 0, y: 0, width: 1, height: 1 }, { x: 1, y: 0, width: 1, height: 1 }] }, timing: { framesPerSecond: 6, loop: true } },
     },
     roles: { default: "idle", walking: "walk" },
     visualAnchor: { x: 4, y: 12 },
@@ -178,7 +164,7 @@ test("Animation derives directed presentation facts from immutable session input
 test("Animation derives default frame progression from the logical session tick", () => {
   const appearance: Appearance = {
     animations: {
-      idle: { frames: ["one.png", "two.png"], framesPerSecond: 2, loop: true },
+      idle: { sheet: { image: "one.png", frames: [{ x: 0, y: 0, width: 1, height: 1 }, { x: 1, y: 0, width: 1, height: 1 }] }, timing: { framesPerSecond: 2, loop: true } },
     },
     roles: { default: "idle" },
   };
@@ -211,8 +197,8 @@ test("Animation derives default frame progression from the logical session tick"
 test("Animation starts Line frame progression from the activity-local tick", () => {
   const appearance: Appearance = {
     animations: {
-      idle: { frames: ["idle.png"], framesPerSecond: 1, loop: true },
-      speaking: { frames: ["one.png", "two.png"], framesPerSecond: 2 },
+      idle: { sheet: { image: "idle.png", frames: [{ x: 0, y: 0, width: 1, height: 1 }] }, timing: { framesPerSecond: 1, loop: true } },
+      speaking: { sheet: { image: "one.png", frames: [{ x: 0, y: 0, width: 1, height: 1 }, { x: 1, y: 0, width: 1, height: 1 }] }, timing: { framesPerSecond: 2 } },
     },
     roles: { default: "idle", speaking: "speaking" },
   };
@@ -245,7 +231,7 @@ test("Animation starts Line frame progression from the activity-local tick", () 
 
 test("Animation validates Appearance selection and required Roles for a subject", () => {
   const appearance: Appearance = {
-    animations: { idle: { frames: ["idle.png"], framesPerSecond: 1, loop: true } },
+    animations: { idle: { sheet: { image: "idle.png", frames: [{ x: 0, y: 0, width: 1, height: 1 }] }, timing: { framesPerSecond: 1, loop: true } } },
     roles: { default: "idle" },
   };
 

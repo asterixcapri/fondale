@@ -9,7 +9,7 @@ import leftUrl from "./character-facing-left.svg";
 import rightUrl from "./character-facing-right.svg";
 import {
   commandVerbs,
-  type CharacterAnimationFrames,
+  type CharacterAnimationSheets,
   type CharacterDefinition,
   type CommandLexicon,
   type GameProject,
@@ -27,18 +27,24 @@ declare global {
   }
 }
 
-const frames = {
-  left: { image: leftUrl, count: 1 },
-  right: { image: rightUrl, count: 1 },
-  front: { image: frontUrl, count: 1 },
-  back: { image: backUrl, count: 1 },
-} satisfies CharacterAnimationFrames;
+const staticCells = [{ x: 0, y: 0, width: 10, height: 10 }];
+const gestureCells = [
+  { x: 0, y: 0, width: 10, height: 10 },
+  { x: 10, y: 0, width: 10, height: 10 },
+  { x: 20, y: 0, width: 10, height: 10 },
+];
+const sheets = {
+  left: { image: leftUrl, frames: staticCells },
+  right: { image: rightUrl, frames: staticCells },
+  front: { image: frontUrl, frames: staticCells },
+  back: { image: backUrl, frames: staticCells },
+} satisfies CharacterAnimationSheets;
 const gestureFrames = {
-  left: { image: gestureLeftUrl, count: 3 },
-  right: { image: gestureRightUrl, count: 3 },
-  front: { image: gestureFrontUrl, count: 3 },
-  back: { image: gestureBackUrl, count: 3 },
-} satisfies CharacterAnimationFrames;
+  left: { image: gestureLeftUrl, frames: gestureCells },
+  right: { image: gestureRightUrl, frames: gestureCells },
+  front: { image: gestureFrontUrl, frames: gestureCells },
+  back: { image: gestureBackUrl, frames: gestureCells },
+} satisfies CharacterAnimationSheets;
 
 const player = {
   initialScene: "opening",
@@ -48,14 +54,9 @@ const player = {
   appearances: {
     normal: {
       animations: {
-        idle: { frames, framesPerSecond: 1, loop: true },
-        walking: { frames, framesPerSecond: 1, loop: true },
-        gesture: {
-          frames: gestureFrames,
-          framesPerSecond: 0.5,
-          loop: true,
-          cues: { turn: 3 },
-        },
+        idle: { sheets, timing: { framesPerSecond: 1, loop: true } },
+        walking: { sheets, timing: { framesPerSecond: 1, loop: true } },
+        gesture: { sheets: gestureFrames, timing: { framesPerSecond: 0.5, loop: true, cues: { turn: 3 } } },
       },
       roles: { default: "idle", walking: "walking" },
       visualAnchor: { x: 5, y: 10 },

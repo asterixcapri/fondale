@@ -206,27 +206,8 @@ test("Game Project compilation severs every supported authored alias", () => {
         appearances: {
           normal: {
             animations: {
-              idle: {
-                frames: {
-                  left: { image: frame, count: 1 },
-                  right: { image: frame, count: 1 },
-                  front: { image: frame, count: 1 },
-                  back: { image: frame, count: 1 },
-                },
-                framesPerSecond: 1,
-                loop: true,
-                cues: { ready: 0 },
-              },
-              walk: {
-                frames: {
-                  left: { image: frame, count: 1 },
-                  right: { image: frame, count: 1 },
-                  front: { image: frame, count: 1 },
-                  back: { image: frame, count: 1 },
-                },
-                framesPerSecond: 1,
-                loop: true,
-              },
+              idle: { sheets: { left: { image: frame, frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, right: { image: frame, frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, front: { image: frame, frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, back: { image: frame, frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) } }, timing: { framesPerSecond: 1, loop: true, cues: { ready: 0 } } },
+              walk: { sheets: { left: { image: frame, frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, right: { image: frame, frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, front: { image: frame, frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, back: { image: frame, frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) } }, timing: { framesPerSecond: 1, loop: true } },
             },
             roles: { default: "idle", walking: "walk" },
             visualAnchor: { x: 1, y: 2 },
@@ -243,7 +224,7 @@ test("Game Project compilation severs every supported authored alias", () => {
         appearances: {
           normal: {
             animations: {
-              idle: { frames: [inventory], framesPerSecond: 1, loop: true },
+              idle: { sheet: { image: inventory, frames: [{ x: 0, y: 0, width: 1, height: 1 }] }, timing: { framesPerSecond: 1, loop: true } },
             },
             roles: { default: "idle" },
           },
@@ -338,11 +319,11 @@ test("Game Project compilation severs every supported authored alias", () => {
   expect(compiledAppearance).not.toBe(
     input.characters.player.appearances.normal,
   );
-  expect(compiledAppearance.animations.idle!.frames).not.toBe(
-    input.characters.player.appearances.normal.animations.idle.frames,
+  expect(compiledAppearance.animations.idle!.sheets).not.toBe(
+    input.characters.player.appearances.normal.animations.idle.sheets,
   );
   expect(
-    compiledAppearance.animations.idle!.frames.left.image,
+    compiledAppearance.animations.idle!.sheets.left.image,
   ).not.toBe(frame);
   expect(compiledSequence.steps).not.toBe(input.sequences.memory.steps);
   expect(compiledNoun.labels).not.toBe(input.objects.key.noun.labels);
@@ -354,8 +335,8 @@ test("Game Project compilation severs every supported authored alias", () => {
       compiledAppearance,
       compiledAppearance.animations,
       compiledAppearance.animations.idle,
-      compiledAppearance.animations.idle!.frames,
-      compiledAppearance.animations.idle!.frames.left.image,
+      compiledAppearance.animations.idle!.sheets,
+      compiledAppearance.animations.idle!.sheets.left.image,
       compiledSequence.steps,
       compiledNoun.labels,
       compiledTheme,
@@ -367,7 +348,7 @@ test("Game Project compilation severs every supported authored alias", () => {
     [
       input.characters.player.appearances.normal,
       input.characters.player.appearances.normal.animations,
-      input.characters.player.appearances.normal.animations.idle.frames,
+      input.characters.player.appearances.normal.animations.idle.sheets,
       input.sequences.memory.steps,
       input.objects.key.noun.labels,
       input.hudTheme,
@@ -425,26 +406,8 @@ test("Game Project supplies immutable consumer-specific composition views", () =
     appearances: {
       normal: {
         animations: {
-          idle: {
-            frames: {
-              left: { image: "idle.png", count: 1 },
-              right: { image: "idle.png", count: 1 },
-              front: { image: "idle.png", count: 1 },
-              back: { image: "idle.png", count: 1 },
-            },
-            framesPerSecond: 1,
-            loop: true,
-          },
-          walk: {
-            frames: {
-              left: { image: "walk.png", count: 1 },
-              right: { image: "walk.png", count: 1 },
-              front: { image: "walk.png", count: 1 },
-              back: { image: "walk.png", count: 1 },
-            },
-            framesPerSecond: 1,
-            loop: true,
-          },
+          idle: { sheets: { left: { image: "idle.png", frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, right: { image: "idle.png", frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, front: { image: "idle.png", frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, back: { image: "idle.png", frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) } }, timing: { framesPerSecond: 1, loop: true } },
+          walk: { sheets: { left: { image: "walk.png", frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, right: { image: "walk.png", frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, front: { image: "walk.png", frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, back: { image: "walk.png", frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) } }, timing: { framesPerSecond: 1, loop: true } },
         },
         roles: { default: "idle", walking: "walk" },
       },
@@ -572,15 +535,7 @@ test("Game Project aggregates Knowledge-Driven Dialogue diagnostics at startup",
         appearances: {
           normal: {
             animations: {
-              idle: {
-                frames: {
-                  left: { image: "antonio.png", count: 1 },
-                  right: { image: "antonio.png", count: 1 },
-                  front: { image: "antonio.png", count: 1 },
-                  back: { image: "antonio.png", count: 1 },
-                },
-                framesPerSecond: 1,
-              },
+              idle: { sheets: { left: { image: "antonio.png", frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, right: { image: "antonio.png", frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, front: { image: "antonio.png", frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, back: { image: "antonio.png", frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) } }, timing: { framesPerSecond: 1 } },
             },
             roles: { default: "idle" },
           },

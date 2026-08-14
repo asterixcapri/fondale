@@ -5,8 +5,8 @@ export const key = ({
   initialGroundPoint: { x: 40, y: 30 },
   initialAppearance: "unused",
   appearances: {
-    unused: { animations: { idle: { frames: [new URL("./key.png", import.meta.url)], framesPerSecond: 1, loop: true } }, roles: { default: "idle" } },
-    used: { animations: { idle: { frames: [new URL("./used-key.png", import.meta.url)], framesPerSecond: 1, loop: true } }, roles: { default: "idle" } },
+    unused: { animations: { idle: { sheet: { image: new URL("./key.png", import.meta.url), frames: [{ x: 0, y: 0, width: 20, height: 20 }] }, timing: { framesPerSecond: 1, loop: true } } }, roles: { default: "idle" } },
+    used: { animations: { idle: { sheet: { image: new URL("./used-key.png", import.meta.url), frames: [{ x: 0, y: 0, width: 20, height: 20 }] }, timing: { framesPerSecond: 1, loop: true } } }, roles: { default: "idle" } },
   },
   inventoryAppearance: new URL("./key-inventory-32.png", import.meta.url),
   noun: ({

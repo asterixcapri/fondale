@@ -8,7 +8,7 @@ export const oilFlask = ({
   initialGroundPoint: { x: 500, y: 211 },
   initialAppearance: "full",
   appearances: {
-    full: { animations: { idle: { frames: [sceneUrl], framesPerSecond: 1, loop: true } }, roles: { default: "idle" } },
+    full: { animations: { idle: { sheet: { image: sceneUrl, frames: [{ x: 0, y: 0, width: 17, height: 22 }] }, timing: { framesPerSecond: 1, loop: true } } }, roles: { default: "idle" } },
   },
   inventoryAppearance: inventoryUrl,
   noun: ({

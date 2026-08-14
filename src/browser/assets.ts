@@ -5,8 +5,8 @@ import {
   type AuthoringDiagnostic,
 } from "../capabilities/game-project";
 import {
-  isImageAnimationFrames,
-  isCharacterAnimationFrames,
+  isCharacterAnimationDefinition,
+  type AnimationSheet,
   type Appearance,
   type CharacterAppearance,
 } from "../capabilities/animation";
@@ -295,16 +295,12 @@ function addAnimatedAppearance(
   for (const [animationId, animation] of Object.entries(
     appearance.animations,
   )) {
-    const animationPath = `${path}.animations.${animationId}.frames`;
-    if (isImageAnimationFrames(animation.frames)) {
-      animation.frames.forEach((image: URL | string, index: number) =>
-        add(image, `${animationPath}[${index}]`),
-      );
-    } else if (isCharacterAnimationFrames(animation.frames)) {
+    const animationPath = `${path}.animations.${animationId}`;
+    if (isCharacterAnimationDefinition(animation)) {
       for (const direction of ["left", "right", "front", "back"] as const) {
-        add(animation.frames[direction].image, `${animationPath}.${direction}`);
+        add(animation.sheets[direction].image, `${animationPath}.sheets.${direction}.image`);
       }
-    } else add(animation.frames.image, `${animationPath}.image`);
+    } else add(animation.sheet.image, `${animationPath}.sheet.image`);
   }
 }
 
@@ -315,70 +311,48 @@ function validateAnimatedAppearance(
   frames: Map<string, readonly Texture[]>,
   diagnostics: AuthoringDiagnostic[],
 ): void {
-  let characterFrameSize:
+  let appearanceFrameSize:
     { readonly width: number; readonly height: number } | undefined;
   for (const [animationId, animation] of Object.entries(
     appearance.animations,
   )) {
     const animationPath = `${path}.animations.${animationId}`;
-    if (isImageAnimationFrames(animation.frames)) {
-      const animationTextures = animation.frames.flatMap(
-        (image: URL | string) => {
-          const texture = textures.get(assetUrl(image));
-          return texture ? [texture] : [];
-        },
-      );
-      frames.set(animationPath, animationTextures);
-      for (const texture of animationTextures) {
-        validateAnchor(appearance.visualAnchor, texture, path, diagnostics);
-      }
-      continue;
-    }
-    if (!isCharacterAnimationFrames(animation.frames)) {
-      sliceAnimationStrip(
-        animation.frames,
+    if (!isCharacterAnimationDefinition(animation)) {
+      const size = sliceAnimationSheet(
+        animation.sheet,
         animationPath,
-        animationPath,
+        `${animationPath}.sheet`,
         path,
         appearance,
         textures,
         frames,
         diagnostics,
+      );
+      appearanceFrameSize = validateAppearanceFrameSize(
+        appearanceFrameSize, size, `${animationPath}.sheet`, diagnostics,
       );
       continue;
     }
     for (const direction of ["left", "right", "front", "back"] as const) {
-      const size = sliceAnimationStrip(
-        animation.frames[direction],
+      const size = sliceAnimationSheet(
+        animation.sheets[direction],
         `${animationPath}.${direction}`,
-        `${animationPath}.frames.${direction}`,
+        `${animationPath}.sheets.${direction}`,
         path,
         appearance,
         textures,
         frames,
         diagnostics,
       );
-      if (!size) continue;
-      if (!characterFrameSize) characterFrameSize = size;
-      else if (
-        size.width !== characterFrameSize.width ||
-        size.height !== characterFrameSize.height
-      ) {
-        diagnostics.push({
-          code: "asset.animation-strip.dimensions",
-          family: "asset",
-          owner: "browser",
-          path: `${animationPath}.frames.${direction}`,
-          message:
-            "Every Character Animation and Facing in an Appearance must use matching Runtime cell dimensions.",
-        });
-      }
+      appearanceFrameSize = validateAppearanceFrameSize(
+        appearanceFrameSize, size, `${animationPath}.sheets.${direction}`, diagnostics,
+      );
     }
   }
 }
 
-function sliceAnimationStrip(
-  strip: { readonly image: URL | string; readonly count: number },
+function sliceAnimationSheet(
+  sheet: AnimationSheet,
   frameKey: string,
   diagnosticPath: string,
   anchorPath: string,
@@ -387,37 +361,52 @@ function sliceAnimationStrip(
   frames: Map<string, readonly Texture[]>,
   diagnostics: AuthoringDiagnostic[],
 ): { readonly width: number; readonly height: number } | undefined {
-  const texture = textures.get(assetUrl(strip.image));
+  const texture = textures.get(assetUrl(sheet.image));
   if (!texture) return undefined;
-  if (texture.width % strip.count !== 0) {
-    diagnostics.push({
-      code: "asset.animation-strip.frames",
-      family: "asset",
-      owner: "browser",
-      path: diagnosticPath,
-      message: "An Animation strip width must divide into its frame count.",
-    });
-    return undefined;
-  }
-  const width = texture.width / strip.count;
+  const [first] = sheet.frames;
+  if (!first) return undefined;
   frames.set(
     frameKey,
-    Array.from(
-      { length: strip.count },
-      (_, frame) =>
-        new Texture({
-          source: texture.source,
-          frame: new Rectangle(frame * width, 0, width, texture.height),
-        }),
-    ),
+    sheet.frames.flatMap((frame, index) => {
+      if (frame.x < 0 || frame.y < 0 || frame.width <= 0 || frame.height <= 0 ||
+        frame.x + frame.width > texture.width || frame.y + frame.height > texture.height) {
+        diagnostics.push({
+          code: "asset.animation-sheet.frame-bounds",
+          family: "asset",
+          owner: "browser",
+          path: `${diagnosticPath}.frames[${index}]`,
+          message: "An Animation frame must lie within its Runtime Asset image.",
+        });
+        return [];
+      }
+      return [new Texture({ source: texture.source,
+        frame: new Rectangle(frame.x, frame.y, frame.width, frame.height) })];
+    }),
   );
   validateAnchor(
     appearance.visualAnchor,
-    { width, height: texture.height },
+    first,
     anchorPath,
     diagnostics,
   );
-  return { width, height: texture.height };
+  return { width: first.width, height: first.height };
+}
+
+function validateAppearanceFrameSize(
+  expected: { readonly width: number; readonly height: number } | undefined,
+  actual: { readonly width: number; readonly height: number } | undefined,
+  path: string,
+  diagnostics: AuthoringDiagnostic[],
+): { readonly width: number; readonly height: number } | undefined {
+  if (!actual) return expected;
+  if (!expected) return actual;
+  if (actual.width !== expected.width || actual.height !== expected.height) {
+    diagnostics.push({
+      code: "asset.animation-sheet.dimensions", family: "asset", owner: "browser", path,
+      message: "Every Animation Sheet in an Appearance must use matching Runtime cell dimensions.",
+    });
+  }
+  return expected;
 }
 
 function validateAnchor(

@@ -1,4 +1,4 @@
-import { type NounDefinition, type SceneDefinition } from "@asterixcapri/fondale";
+import { type NounDefinition, type SceneDefinition, uniformGrid } from "@asterixcapri/fondale";
 
 import { rectangle } from "../../geometry";
 import backgroundUrl from "./background.png";
@@ -36,14 +36,14 @@ export const coastalFortification = ({
       appearances: {
         approaching: {
           animations: {
-            idle: { frames: { image: boatRockingUrl, count: 4 }, framesPerSecond: 1 },
-            rocking: { frames: { image: boatRockingUrl, count: 4 }, framesPerSecond: 5, loop: true },
+            idle: { sheet: { image: boatRockingUrl, frames: uniformGrid({ frameWidth: 64, frameHeight: 128, columns: 4, count: 4 }) }, timing: { framesPerSecond: 1 } },
+            rocking: { sheet: { image: boatRockingUrl, frames: uniformGrid({ frameWidth: 64, frameHeight: 128, columns: 4, count: 4 }) }, timing: { framesPerSecond: 5, loop: true } },
           },
           roles: { default: "idle" },
           visualAnchor: { x: 32, y: 86 },
         },
         landed: {
-          animations: { rocking: { frames: { image: boatRockingUrl, count: 4 }, framesPerSecond: 3, loop: true } },
+          animations: { rocking: { sheet: { image: boatRockingUrl, frames: uniformGrid({ frameWidth: 64, frameHeight: 128, columns: 4, count: 4 }) }, timing: { framesPerSecond: 3, loop: true } } },
           roles: { default: "rocking" },
           visualAnchor: { x: 32, y: 86 },
         },

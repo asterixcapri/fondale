@@ -1,4 +1,17 @@
-import { type CharacterDefinition } from "@asterixcapri/fondale";
+import { type CharacterDefinition, uniformGrid } from "@asterixcapri/fondale";
+
+const idleFrames = uniformGrid({
+  frameWidth: 16,
+  frameHeight: 24,
+  columns: 1,
+  count: 1,
+});
+const performanceFrames = uniformGrid({
+  frameWidth: 16,
+  frameHeight: 24,
+  columns: 4,
+  count: 4,
+});
 
 export const player = ({
   initialScene: "opening",
@@ -10,34 +23,31 @@ export const player = ({
     workwear: {
       animations: {
         idle: {
-          frames: {
-            left: { image: new URL("./player-idle-left.png", import.meta.url), count: 1 },
-            right: { image: new URL("./player-idle-right.png", import.meta.url), count: 1 },
-            front: { image: new URL("./player-idle-front.png", import.meta.url), count: 1 },
-            back: { image: new URL("./player-idle-back.png", import.meta.url), count: 1 },
+          sheets: {
+            left: { image: new URL("./player-idle-left.png", import.meta.url), frames: idleFrames },
+            right: { image: new URL("./player-idle-right.png", import.meta.url), frames: idleFrames },
+            front: { image: new URL("./player-idle-front.png", import.meta.url), frames: idleFrames },
+            back: { image: new URL("./player-idle-back.png", import.meta.url), frames: idleFrames },
           },
-          framesPerSecond: 1,
-          loop: true,
+          timing: { framesPerSecond: 1, loop: true },
         },
         speaking: {
-          frames: {
-            left: { image: new URL("./player-speaking-left.png", import.meta.url), count: 4 },
-            right: { image: new URL("./player-speaking-right.png", import.meta.url), count: 4 },
-            front: { image: new URL("./player-speaking-front.png", import.meta.url), count: 4 },
-            back: { image: new URL("./player-speaking-back.png", import.meta.url), count: 4 },
+          sheets: {
+            left: { image: new URL("./player-speaking-left.png", import.meta.url), frames: performanceFrames },
+            right: { image: new URL("./player-speaking-right.png", import.meta.url), frames: performanceFrames },
+            front: { image: new URL("./player-speaking-front.png", import.meta.url), frames: performanceFrames },
+            back: { image: new URL("./player-speaking-back.png", import.meta.url), frames: performanceFrames },
           },
-          framesPerSecond: 6,
-          loop: true,
+          timing: { framesPerSecond: 6, loop: true },
         },
         walking: {
-          frames: {
-            left: { image: new URL("./player-walking-left.png", import.meta.url), count: 4 },
-            right: { image: new URL("./player-walking-right.png", import.meta.url), count: 4 },
-            front: { image: new URL("./player-walking-front.png", import.meta.url), count: 4 },
-            back: { image: new URL("./player-walking-back.png", import.meta.url), count: 4 },
+          sheets: {
+            left: { image: new URL("./player-walking-left.png", import.meta.url), frames: performanceFrames },
+            right: { image: new URL("./player-walking-right.png", import.meta.url), frames: performanceFrames },
+            front: { image: new URL("./player-walking-front.png", import.meta.url), frames: performanceFrames },
+            back: { image: new URL("./player-walking-back.png", import.meta.url), frames: performanceFrames },
           },
-          framesPerSecond: 8,
-          loop: true,
+          timing: { framesPerSecond: 8, loop: true },
         },
       },
       roles: { default: "idle", speaking: "speaking", walking: "walking" },

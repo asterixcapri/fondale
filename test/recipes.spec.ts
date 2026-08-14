@@ -25,12 +25,7 @@ const sequencePlayer = ({
   initialFacing: "front",
   initialAppearance: "idle",
   movementSpeed: 60,
-  appearances: { idle: { animations: { idle: { frames: {
-    left: { image: "player.png", count: 1 },
-    right: { image: "player.png", count: 1 },
-    front: { image: "player.png", count: 1 },
-    back: { image: "player.png", count: 1 },
-  }, framesPerSecond: 1, loop: true } }, roles: { default: "idle", walking: "idle" } } },
+  appearances: { idle: { animations: { idle: { sheets: { left: { image: "player.png", frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, right: { image: "player.png", frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, front: { image: "player.png", frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, back: { image: "player.png", frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) } }, timing: { framesPerSecond: 1, loop: true } } }, roles: { default: "idle", walking: "idle" } } },
 } satisfies CharacterDefinition);
 
 test("every public recipe exposes ordinary author-owned data from the built package root", () => {
@@ -59,10 +54,10 @@ test("the Character recipe authors distinct role Animations for every Facing", (
     walking: "walking",
   });
   for (const animation of ["idle", "speaking", "walking"] as const) {
-    expect(Object.keys(appearance.animations[animation].frames)).toEqual(facings);
+    expect(Object.keys(appearance.animations[animation].sheets)).toEqual(facings);
   }
-  expect(appearance.animations.idle.frames.left.image).not.toEqual(
-    appearance.animations.idle.frames.right.image,
+  expect(appearance.animations.idle.sheets.left.image).not.toEqual(
+    appearance.animations.idle.sheets.right.image,
   );
 });
 

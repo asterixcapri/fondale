@@ -127,8 +127,8 @@ test("Character Animations reject different Runtime cell dimensions at startup",
   expect(
     await page.evaluate(() => window.__characterAnimationDimensions),
   ).toEqual({
-    code: "asset.animation-strip.dimensions",
-    path: "characters.player.appearances.normal.animations.speaking.frames.back",
+    code: "asset.animation-sheet.dimensions",
+    path: "characters.player.appearances.normal.animations.speaking.sheets.back",
     children: 0,
   });
 });
@@ -146,7 +146,7 @@ test("Character Facing asset failures report their authored path at startup", as
     await page.evaluate(() => window.__characterAnimationDimensions),
   ).toEqual({
     code: "asset.load.failed",
-    path: "characters.player.appearances.normal.animations.speaking.frames.left",
+    path: "characters.player.appearances.normal.animations.speaking.sheets.left.image",
     children: 0,
   });
 });
@@ -162,7 +162,7 @@ test("a missing Character Facing reports its authored path at startup", async ({
     await page.evaluate(() => window.__characterAnimationDimensions),
   ).toEqual({
     code: "definition.animation.facing-presentation",
-    path: "characters.player.appearances.normal.animations.idle.frames.back",
+    path: "characters.player.appearances.normal.animations.idle.sheets.back",
     children: 0,
   });
 });

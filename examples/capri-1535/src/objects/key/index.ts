@@ -8,8 +8,8 @@ export const key = ({
   initialGroundPoint: { x: 118, y: 170 },
   initialAppearance: "unused",
   appearances: {
-    unused: { animations: { idle: { frames: [keyUrl], framesPerSecond: 1, loop: true } }, roles: { default: "idle" } },
-    used: { animations: { idle: { frames: [keyUrl], framesPerSecond: 1, loop: true } }, roles: { default: "idle" } },
+    unused: { animations: { idle: { sheet: { image: keyUrl, frames: [{ x: 0, y: 0, width: 20, height: 20 }] }, timing: { framesPerSecond: 1, loop: true } } }, roles: { default: "idle" } },
+    used: { animations: { idle: { sheet: { image: keyUrl, frames: [{ x: 0, y: 0, width: 20, height: 20 }] }, timing: { framesPerSecond: 1, loop: true } } }, roles: { default: "idle" } },
   },
   inventoryAppearance: keyInventoryUrl,
   noun: ({

@@ -34,10 +34,10 @@ const missingUrl = new URL("./missing-character.png", import.meta.url);
 const speakingFrameUrl =
   validationCase === "dimensions" ? speakingUrl : idleUrl;
 const incompleteFrames = {
-  left: { image: idleUrl, count: 1 },
-  right: { image: idleUrl, count: 1 },
-  front: { image: idleUrl, count: 1 },
-} as unknown as CharacterDefinition["appearances"][string]["animations"][string]["frames"];
+  left: { image: idleUrl, frames: [{ x: 0, y: 0, width: 10, height: 10 }] },
+  right: { image: idleUrl, frames: [{ x: 0, y: 0, width: 10, height: 10 }] },
+  front: { image: idleUrl, frames: [{ x: 0, y: 0, width: 10, height: 10 }] },
+} as unknown as CharacterDefinition["appearances"][string]["animations"][string]["sheets"];
 
 const player = {
   initialScene: "opening",
@@ -47,32 +47,15 @@ const player = {
   appearances: {
     normal: {
       animations: {
-        idle: {
-          frames: validationCase === "missing-facing" ? incompleteFrames : {
-            left: { image: idleUrl, count: 1 },
-            right: { image: idleUrl, count: 1 },
-            front: { image: idleUrl, count: 1 },
-            back: { image: idleUrl, count: 1 },
-          },
-          framesPerSecond: 1,
-          loop: true,
-        },
-        speaking: {
-          frames: {
-            left: {
-              image:
-                validationCase === "invalid-asset"
+        idle: { sheets: validationCase === "missing-facing" ? incompleteFrames : {
+            left: { image: idleUrl, frames: [{ x: 0, y: 0, width: 10, height: 10 }] },
+            right: { image: idleUrl, frames: [{ x: 0, y: 0, width: 10, height: 10 }] },
+            front: { image: idleUrl, frames: [{ x: 0, y: 0, width: 10, height: 10 }] },
+            back: { image: idleUrl, frames: [{ x: 0, y: 0, width: 10, height: 10 }] },
+          }, timing: { framesPerSecond: 1, loop: true } },
+        speaking: { sheets: { left: { image: validationCase === "invalid-asset"
                   ? missingUrl
-                  : speakingFrameUrl,
-              count: 1,
-            },
-            right: { image: speakingFrameUrl, count: 1 },
-            front: { image: speakingFrameUrl, count: 1 },
-            back: { image: speakingFrameUrl, count: 1 },
-          },
-          framesPerSecond: 1,
-          loop: true,
-        },
+                  : speakingFrameUrl, frames: [{ x: 0, y: 0, width: validationCase === "dimensions" ? 20 : 10, height: 10 }] }, right: { image: speakingFrameUrl, frames: [{ x: 0, y: 0, width: validationCase === "dimensions" ? 20 : 10, height: 10 }] }, front: { image: speakingFrameUrl, frames: [{ x: 0, y: 0, width: validationCase === "dimensions" ? 20 : 10, height: 10 }] }, back: { image: speakingFrameUrl, frames: [{ x: 0, y: 0, width: validationCase === "dimensions" ? 20 : 10, height: 10 }] } }, timing: { framesPerSecond: 1, loop: true } },
       },
       roles: { default: "idle", walking: "idle", speaking: "speaking" },
       visualAnchor: { x: validationCase === "anchor" ? 11 : 5, y: 5 },

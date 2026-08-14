@@ -14,7 +14,7 @@ import {
   animationCueTick,
   animationDurationTicks,
   validateAnimationReference,
-  type AnimationDefinition,
+  type AnyAnimationDefinition,
   type AnimationBearingAppearance,
 } from "../animation";
 import {
@@ -402,7 +402,7 @@ export function validateDirectionStepReferences(
           "reference.animation",
           `Animation '${direction.animation}' is not available in every Appearance of the subject.`,
         ));
-        if (animations.some((animation) => animation !== undefined && !animation.loop)) hasFiniteBoundary = true;
+        if (animations.some((animation) => animation !== undefined && !animation.timing.loop)) hasFiniteBoundary = true;
       } else {
         hasFiniteBoundary = true;
         if (direction.subject.kind === "character" && appearances.some((appearance) => !appearance.roles.walking)) {
@@ -424,7 +424,7 @@ export function validateDirectionStepReferences(
       const source = step.directions[direction.startAfter.direction];
       if (source?.type === "animation") {
         const animations = context.appearancesForSubject(source.subject).map((appearance) => appearance.animations[source.animation]);
-        if (animations.length === 0 || animations.some((animation) => animation?.cues?.[direction.startAfter!.cue] === undefined)) {
+        if (animations.length === 0 || animations.some((animation) => animation?.timing.cues?.[direction.startAfter!.cue] === undefined)) {
           diagnostics.push({ code: "reference.animation.cue", family: "reference", owner: "sequence", path: `${directionPath}.startAfter.cue`, message: `Animation Cue '${direction.startAfter.cue}' is not available in every Appearance of the source subject.` });
         }
       }
@@ -623,7 +623,7 @@ export function secondsToTicks(seconds: number): number {
 export function directionStartTick(
   step: DirectionStep,
   index: number,
-  animationFor: (subject: DirectedSubject, animation: string) => AnimationDefinition | undefined,
+  animationFor: (subject: DirectedSubject, animation: string) => AnyAnimationDefinition | undefined,
 ): number {
   const dependency = step.directions[index]?.startAfter;
   if (!dependency) return 0;
@@ -658,7 +658,7 @@ export interface DirectionStepInterpretation {
 export function interpretDirectionStep(
   step: DirectionStep,
   elapsedTicks: number,
-  animationFor: (subject: DirectedSubject, animation: string) => AnimationDefinition | undefined,
+  animationFor: (subject: DirectedSubject, animation: string) => AnyAnimationDefinition | undefined,
   characterMotionComplete: (direction: MotionDirection) => boolean = () => false,
 ): DirectionStepInterpretation {
   const durationElapsed = step.duration !== undefined && elapsedTicks >= secondsToTicks(step.duration);
@@ -670,8 +670,8 @@ export function interpretDirectionStep(
     let complete = false;
     if (direction.type === "animation") {
       const animation = animationFor(direction.subject, direction.animation);
-      finite = animation !== undefined && !animation.loop;
-      complete = animation !== undefined && !animation.loop && started &&
+      finite = animation !== undefined && !animation.timing.loop;
+      complete = animation !== undefined && !animation.timing.loop && started &&
         localTick >= animationDurationTicks(animation);
     } else if (direction.type === "motion") {
       finite = true;
@@ -785,7 +785,7 @@ export interface SequenceDirectionContext {
   readonly animationFor: (
     subject: DirectedSubject,
     animation: string,
-  ) => AnimationDefinition | undefined;
+  ) => AnyAnimationDefinition | undefined;
   readonly characterMotionComplete: (direction: MotionDirection) => boolean;
 }
 

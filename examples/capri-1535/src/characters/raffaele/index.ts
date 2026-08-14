@@ -1,4 +1,4 @@
-import { type CharacterDefinition, type NounDefinition } from "@asterixcapri/fondale";
+import { type CharacterDefinition, type NounDefinition, uniformGrid } from "@asterixcapri/fondale";
 
 import { micheleLearns } from "../learning";
 import idleUrl from "./idle-v2.png";
@@ -12,26 +12,8 @@ export const raffaele = ({
   appearances: {
     working: {
       animations: {
-        idle: {
-          frames: {
-            left: { image: idleUrl, count: 6 },
-            right: { image: idleUrl, count: 6 },
-            front: { image: idleUrl, count: 6 },
-            back: { image: idleUrl, count: 6 },
-          },
-          framesPerSecond: 4,
-          loop: true,
-        },
-        speaking: {
-          frames: {
-            left: { image: speakingUrl, count: 8 },
-            right: { image: speakingUrl, count: 8 },
-            front: { image: speakingUrl, count: 8 },
-            back: { image: speakingUrl, count: 8 },
-          },
-          framesPerSecond: 8,
-          loop: true,
-        },
+        idle: { sheets: { left: { image: idleUrl, frames: uniformGrid({ frameWidth: 96, frameHeight: 288, columns: 6, count: 6 }) }, right: { image: idleUrl, frames: uniformGrid({ frameWidth: 96, frameHeight: 288, columns: 6, count: 6 }) }, front: { image: idleUrl, frames: uniformGrid({ frameWidth: 96, frameHeight: 288, columns: 6, count: 6 }) }, back: { image: idleUrl, frames: uniformGrid({ frameWidth: 96, frameHeight: 288, columns: 6, count: 6 }) } }, timing: { framesPerSecond: 4, loop: true } },
+        speaking: { sheets: { left: { image: speakingUrl, frames: uniformGrid({ frameWidth: 96, frameHeight: 288, columns: 8, count: 8 }) }, right: { image: speakingUrl, frames: uniformGrid({ frameWidth: 96, frameHeight: 288, columns: 8, count: 8 }) }, front: { image: speakingUrl, frames: uniformGrid({ frameWidth: 96, frameHeight: 288, columns: 8, count: 8 }) }, back: { image: speakingUrl, frames: uniformGrid({ frameWidth: 96, frameHeight: 288, columns: 8, count: 8 }) } }, timing: { framesPerSecond: 8, loop: true } },
       },
       roles: { default: "idle", speaking: "speaking" },
       visualAnchor: { x: 48, y: 288 },

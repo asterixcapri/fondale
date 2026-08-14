@@ -50,26 +50,8 @@ const player = {
   appearances: {
     normal: {
       animations: {
-        idle: {
-          frames: {
-            left: { image: idleUrl, count: 1 },
-            right: { image: idleUrl, count: 1 },
-            front: { image: idleUrl, count: 1 },
-            back: { image: idleUrl, count: 1 },
-          },
-          framesPerSecond: 1,
-          loop: true,
-        },
-        walking: {
-          frames: {
-            left: { image: walkStripUrl, count: 3 },
-            right: { image: walkStripUrl, count: 3 },
-            front: { image: walkStripUrl, count: 3 },
-            back: { image: walkStripUrl, count: 3 },
-          },
-          framesPerSecond: 60,
-          loop: true,
-        },
+        idle: { sheets: { left: { image: idleUrl, frames: [{ x: 0, y: 0, width: 10, height: 10 }] }, right: { image: idleUrl, frames: [{ x: 0, y: 0, width: 10, height: 10 }] }, front: { image: idleUrl, frames: [{ x: 0, y: 0, width: 10, height: 10 }] }, back: { image: idleUrl, frames: [{ x: 0, y: 0, width: 10, height: 10 }] } }, timing: { framesPerSecond: 1, loop: true } },
+        walking: { sheets: { left: { image: walkStripUrl, frames: Array.from({ length: 3 }, (_, index) => ({ x: index * 10, y: 0, width: 10, height: 10 })) }, right: { image: walkStripUrl, frames: Array.from({ length: 3 }, (_, index) => ({ x: index * 10, y: 0, width: 10, height: 10 })) }, front: { image: walkStripUrl, frames: Array.from({ length: 3 }, (_, index) => ({ x: index * 10, y: 0, width: 10, height: 10 })) }, back: { image: walkStripUrl, frames: Array.from({ length: 3 }, (_, index) => ({ x: index * 10, y: 0, width: 10, height: 10 })) } }, timing: { framesPerSecond: 60, loop: true } },
       },
       roles: { default: "idle", walking: "walking" },
       visualAnchor: { x: 5, y: 10 },
@@ -163,12 +145,8 @@ const scene = {
       appearances: {
         normal: {
           animations: {
-            idle: { frames: [signalUrl], framesPerSecond: 1, loop: true },
-            signal: {
-              frames: [signalUrl, signalUrl, signalUrl, signalUrl],
-              framesPerSecond: live ? (completion ? 0.5 : 4 / 60) : 60,
-              cues: { go: live ? 0.5 : 2 / 60 },
-            },
+            idle: { sheet: { image: signalUrl, frames: [{ x: 0, y: 0, width: 10, height: 10 }] }, timing: { framesPerSecond: 1, loop: true } },
+            signal: { sheet: { image: signalUrl, frames: [{ x: 0, y: 0, width: 10, height: 10 }, { x: 0, y: 0, width: 10, height: 10 }, { x: 0, y: 0, width: 10, height: 10 }, { x: 0, y: 0, width: 10, height: 10 }] }, timing: { framesPerSecond: live ? (completion ? 0.5 : 4 / 60) : 60, cues: { go: live ? 0.5 : 2 / 60 } } },
           },
           roles: { default: "idle" },
           visualAnchor: { x: 5, y: 10 },

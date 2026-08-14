@@ -71,13 +71,14 @@ import {
   validateWalkingAppearanceRoles,
   type AnimationDefinition,
   type AnimationBearingAppearance,
-  type AnimationFrames,
+  type AnimationFrame,
   type AnimationRoles,
-  type AnimationStrip,
+  type AnimationSheet,
+  type AnimationTiming,
   type AnimationProjectView,
   type Appearance,
   type CharacterAnimationDefinition,
-  type CharacterAnimationFrames,
+  type CharacterAnimationSheets,
   type CharacterAppearance,
 } from "../animation";
 import {
@@ -119,12 +120,13 @@ export {
 } from "../world";
 export type {
   AnimationDefinition,
-  AnimationFrames,
+  AnimationFrame,
   AnimationRoles,
-  AnimationStrip,
+  AnimationSheet,
+  AnimationTiming,
   Appearance,
   CharacterAnimationDefinition,
-  CharacterAnimationFrames,
+  CharacterAnimationSheets,
   CharacterAppearance,
 } from "../animation";
 

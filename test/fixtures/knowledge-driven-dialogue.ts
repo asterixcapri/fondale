@@ -42,16 +42,7 @@ const talkToNoun = (character: string, label: string): NounDefinition => ({
 const noun = talkToNoun("antonio", "Antonio");
 const appearance = {
   animations: {
-    idle: {
-      frames: {
-        left: { image: characterUrl, count: 1 },
-        right: { image: characterUrl, count: 1 },
-        front: { image: characterUrl, count: 1 },
-        back: { image: characterUrl, count: 1 },
-      },
-      framesPerSecond: 1,
-      loop: true,
-    },
+    idle: { sheets: { left: { image: characterUrl, frames: [{ x: 0, y: 0, width: 10, height: 10 }] }, right: { image: characterUrl, frames: [{ x: 0, y: 0, width: 10, height: 10 }] }, front: { image: characterUrl, frames: [{ x: 0, y: 0, width: 10, height: 10 }] }, back: { image: characterUrl, frames: [{ x: 0, y: 0, width: 10, height: 10 }] } }, timing: { framesPerSecond: 1, loop: true } },
   },
   roles: { default: "idle", walking: "idle" },
 };

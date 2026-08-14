@@ -24,13 +24,15 @@ export {
 } from "./capabilities/hud";
 export {
   type AnimationDefinition,
-  type AnimationFrames,
+  type AnimationFrame,
   type AnimationRoles,
-  type AnimationStrip,
+  type AnimationSheet,
+  type AnimationTiming,
   type Appearance,
   type CharacterAnimationDefinition,
-  type CharacterAnimationFrames,
+  type CharacterAnimationSheets,
   type CharacterAppearance,
+  uniformGrid,
 } from "./capabilities/animation";
 export {
   dialogueInputMaxLength,

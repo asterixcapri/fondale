@@ -25,16 +25,7 @@ const player = {
   appearances: {
     idle: {
       animations: {
-        idle: {
-          frames: {
-            left: { image: "player.png", count: 1 },
-            right: { image: "player.png", count: 1 },
-            front: { image: "player.png", count: 1 },
-            back: { image: "player.png", count: 1 },
-          },
-          framesPerSecond: 1,
-          loop: true,
-        },
+        idle: { sheets: { left: { image: "player.png", frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, right: { image: "player.png", frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, front: { image: "player.png", frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, back: { image: "player.png", frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) } }, timing: { framesPerSecond: 1, loop: true } },
       },
       roles: { default: "idle", walking: "idle" },
     },
@@ -181,26 +172,8 @@ test("CoreSession exposes Animation presentation facts without browser interpret
     appearances: {
       idle: {
         animations: {
-          idle: {
-            frames: {
-              left: { image: "idle.png", count: 1 },
-              right: { image: "idle.png", count: 1 },
-              front: { image: "idle.png", count: 1 },
-              back: { image: "idle.png", count: 1 },
-            },
-            framesPerSecond: 1,
-            loop: true,
-          },
-          walking: {
-            frames: {
-              left: { image: "walk-1.png", count: 2 },
-              right: { image: "walk-1.png", count: 2 },
-              front: { image: "walk-1.png", count: 2 },
-              back: { image: "walk-1.png", count: 2 },
-            },
-            framesPerSecond: 2,
-            loop: true,
-          },
+          idle: { sheets: { left: { image: "idle.png", frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, right: { image: "idle.png", frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, front: { image: "idle.png", frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, back: { image: "idle.png", frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) } }, timing: { framesPerSecond: 1, loop: true } },
+          walking: { sheets: { left: { image: "walk-1.png", frames: Array.from({ length: 2 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, right: { image: "walk-1.png", frames: Array.from({ length: 2 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, front: { image: "walk-1.png", frames: Array.from({ length: 2 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, back: { image: "walk-1.png", frames: Array.from({ length: 2 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) } }, timing: { framesPerSecond: 2, loop: true } },
         },
         roles: { default: "idle", walking: "walking" },
       },
@@ -311,16 +284,7 @@ test("movement follows a route inside a concave Walkable Region", () => {
     appearances: {
       idle: {
         animations: {
-          idle: {
-            frames: {
-              left: { image: "player.png", count: 1 },
-              right: { image: "player.png", count: 1 },
-              front: { image: "player.png", count: 1 },
-              back: { image: "player.png", count: 1 },
-            },
-            framesPerSecond: 1,
-            loop: true,
-          },
+          idle: { sheets: { left: { image: "player.png", frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, right: { image: "player.png", frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, front: { image: "player.png", frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, back: { image: "player.png", frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) } }, timing: { framesPerSecond: 1, loop: true } },
         },
         roles: { default: "idle", walking: "idle" },
       },

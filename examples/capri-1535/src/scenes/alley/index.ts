@@ -16,11 +16,11 @@ export const alley = ({
       initialAppearance: "locked",
       appearances: {
         locked: {
-          animations: { idle: { frames: [lockedGateUrl], framesPerSecond: 1, loop: true } },
+          animations: { idle: { sheet: { image: lockedGateUrl, frames: [{ x: 0, y: 0, width: 46, height: 32 }] }, timing: { framesPerSecond: 1, loop: true } } },
           roles: { default: "idle" },
           visualAnchor: { x: 23, y: 25 },
         },
-        unlocked: { animations: { idle: { frames: [unlockedMarkerUrl], framesPerSecond: 1, loop: true } }, roles: { default: "idle" } },
+        unlocked: { animations: { idle: { sheet: { image: unlockedMarkerUrl, frames: [{ x: 0, y: 0, width: 20, height: 20 }] }, timing: { framesPerSecond: 1, loop: true } } }, roles: { default: "idle" } },
       },
       noun: ({
         labels: [

@@ -18,37 +18,71 @@ export interface VisualAnchor {
   readonly y: number;
 }
 
-/** One horizontal image strip containing a positive number of Animation frames. */
-export interface AnimationStrip {
-  readonly image: URL | string;
-  readonly count: number;
+/** One authored rectangular cell within an Animation Sheet, in image pixels. */
+export interface AnimationFrame {
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
 }
 
-/** Non-directional images or one horizontal strip used by an Object or Scenery Animation. */
-export type AnimationFrames = readonly (URL | string)[] | AnimationStrip;
+/** One Runtime Asset image and its ordered Animation frames. */
+export interface AnimationSheet {
+  readonly image: URL | string;
+  readonly frames: readonly AnimationFrame[];
+}
 
 /** Four synchronized authored presentations owned by one Character Animation. */
-export interface CharacterAnimationFrames {
-  readonly left: AnimationStrip;
-  readonly right: AnimationStrip;
-  readonly front: AnimationStrip;
-  readonly back: AnimationStrip;
+export interface CharacterAnimationSheets {
+  readonly left: AnimationSheet;
+  readonly right: AnimationSheet;
+  readonly front: AnimationSheet;
+  readonly back: AnimationSheet;
 }
 
-type AnyAnimationFrames = AnimationFrames | CharacterAnimationFrames;
-
-/** A declarative transient visual performance owned by an Appearance. */
-export interface AnimationDefinition<Frames extends AnyAnimationFrames = AnyAnimationFrames> {
-  readonly frames: Frames;
+/** Temporal traversal shared by directional and non-directional Animations. */
+export interface AnimationTiming {
   readonly framesPerSecond: number;
   readonly loop?: boolean;
   /** Named logical seconds from the start of the Animation. */
   readonly cues?: Readonly<Record<string, number>>;
 }
 
+/** A declarative transient visual performance owned by an Appearance. */
+export interface AnimationDefinition {
+  readonly sheet: AnimationSheet;
+  readonly timing: AnimationTiming;
+}
+
 /** A Character Animation whose artwork is authored independently for every Facing. */
-export type CharacterAnimationDefinition = AnimationDefinition<CharacterAnimationFrames>;
-type AnyAnimationDefinition = AnimationDefinition | CharacterAnimationDefinition;
+export interface CharacterAnimationDefinition {
+  readonly sheets: CharacterAnimationSheets;
+  readonly timing: AnimationTiming;
+}
+export type AnyAnimationDefinition = AnimationDefinition | CharacterAnimationDefinition;
+
+export interface UniformGridOptions {
+  readonly frameWidth: number;
+  readonly frameHeight: number;
+  readonly columns: number;
+  readonly count: number;
+  readonly x?: number;
+  readonly y?: number;
+  readonly columnGap?: number;
+  readonly rowGap?: number;
+}
+
+/** Returns row-major frame coordinates; semantic validation remains at startGame. */
+export function uniformGrid(options: UniformGridOptions): readonly AnimationFrame[] {
+  const { frameWidth, frameHeight, columns, count, x = 0, y = 0, columnGap = 0, rowGap = 0 } = options;
+  const length = Math.max(0, Number.isFinite(count) ? Math.floor(count) : 0);
+  return Array.from({ length }, (_, index) => ({
+    x: x + (index % columns) * (frameWidth + columnGap),
+    y: y + Math.floor(index / columns) * (frameHeight + rowGap),
+    width: frameWidth,
+    height: frameHeight,
+  }));
+}
 
 /** Semantic Animation selections used automatically by the Engine. */
 export interface AnimationRoles {
@@ -59,14 +93,14 @@ export interface AnimationRoles {
 
 /** @internal Shared read model for any Appearance carrying Animations. */
 export interface AnimationBearingAppearance {
-  readonly animations: Readonly<Record<string, AnimationDefinition>>;
+  readonly animations: Readonly<Record<string, AnyAnimationDefinition>>;
   readonly roles: AnimationRoles;
   readonly visualAnchor?: VisualAnchor;
 }
 
 /** A persistent visual condition that owns all transient Animations available in it. */
 export interface Appearance {
-  readonly animations: Readonly<Record<string, AnimationDefinition<AnimationFrames>>>;
+  readonly animations: Readonly<Record<string, AnimationDefinition>>;
   readonly roles: AnimationRoles;
   readonly visualAnchor?: VisualAnchor;
 }
@@ -216,40 +250,44 @@ function validateAppearanceContract(
   for (const [animationName, animation] of Object.entries(appearance.animations)) {
     const animationPath = `${path}.animations.${animationName}`;
     const frameCount = character
-      ? validateCharacterFrames(
-          isCharacterAnimationFrames(animation.frames) ? animation.frames : undefined,
+      ? validateCharacterSheets(
+          isCharacterAnimationDefinition(animation) ? animation.sheets : undefined,
           animationPath,
           diagnostics,
         )
-      : validateFrames(animation.frames, animationPath, diagnostics);
-    if (!Number.isFinite(animation.framesPerSecond) || animation.framesPerSecond <= 0) {
+      : validateAnimationSheet(
+          isCharacterAnimationDefinition(animation) ? undefined : animation.sheet,
+          `${animationPath}.sheet`,
+          diagnostics,
+        );
+    if (!Number.isFinite(animation.timing?.framesPerSecond) || animation.timing.framesPerSecond <= 0) {
       diagnostics.push({
         code: "definition.animation.frames-per-second",
         family: "definition",
         owner: "animation",
-        path: `${animationPath}.framesPerSecond`,
+        path: `${animationPath}.timing.framesPerSecond`,
         message: "Animation frames per second must be a positive finite number.",
       });
     }
-    if (animation.loop !== undefined && typeof animation.loop !== "boolean") {
+    if (animation.timing?.loop !== undefined && typeof animation.timing.loop !== "boolean") {
       diagnostics.push({
         code: "definition.animation.loop",
         family: "definition",
         owner: "animation",
-        path: `${animationPath}.loop`,
+        path: `${animationPath}.timing.loop`,
         message: "Animation loop must be a boolean when provided.",
       });
     }
-    const duration = frameCount > 0 && animation.framesPerSecond > 0
-      ? frameCount / animation.framesPerSecond
+    const duration = frameCount > 0 && animation.timing?.framesPerSecond > 0
+      ? frameCount / animation.timing.framesPerSecond
       : 0;
-    for (const [cue, at] of Object.entries(animation.cues ?? {}) as [string, number][]) {
+    for (const [cue, at] of Object.entries(animation.timing?.cues ?? {}) as [string, number][]) {
       if (!cue.trim() || !Number.isFinite(at) || at < 0 || at > duration) {
         diagnostics.push({
           code: "definition.animation.cue",
           family: "definition",
           owner: "animation",
-          path: `${animationPath}.cues.${cue}`,
+          path: `${animationPath}.timing.cues.${cue}`,
           message: "An Animation Cue must have a name and occur within the Animation duration.",
         });
       }
@@ -352,110 +390,74 @@ export function validateAnimationReference(
     : [{ code, family: "reference", owner: "animation", path, message }];
 }
 
-function validateFrames(
-  frames: AnyAnimationFrames,
-  animationPath: string,
-  diagnostics: AuthoringDiagnostic[],
-): number {
-  if (isImageAnimationFrames(frames)) {
-    if (frames.length === 0) {
-      diagnostics.push({
-        code: "definition.animation.frames",
-        family: "definition",
-        owner: "animation",
-        path: `${animationPath}.frames`,
-        message: "An Animation must contain at least one frame.",
-      });
-    }
-    frames.forEach((frame, index) => {
-      if (!(frame instanceof URL) && (typeof frame !== "string" || !frame.trim())) {
-        diagnostics.push({
-          code: "definition.animation.frame-source",
-          family: "definition",
-          owner: "animation",
-          path: `${animationPath}.frames[${index}]`,
-          message: "An Animation frame source must be a URL or non-empty string.",
-        });
-      }
-    });
-    return frames.length;
-  }
-
-  return isCharacterAnimationFrames(frames)
-    ? validateCharacterFrames(frames, animationPath, diagnostics)
-    : validateAnimationStrip(frames, `${animationPath}.frames`, diagnostics);
-}
-
-function validateAnimationStrip(
-  strip: AnimationStrip,
+function validateAnimationSheet(
+  sheet: AnimationSheet | undefined,
   path: string,
   diagnostics: AuthoringDiagnostic[],
 ): number {
-  if (!(strip?.image instanceof URL) && (typeof strip?.image !== "string" || !strip.image.trim())) {
+  if (!(sheet?.image instanceof URL) && (typeof sheet?.image !== "string" || !sheet.image.trim())) {
     diagnostics.push({
       code: "definition.animation.frame-source",
       family: "definition",
       owner: "animation",
       path: `${path}.image`,
-      message: "An Animation strip source must be a URL or non-empty string.",
+      message: "An Animation Sheet source must be a URL or non-empty string.",
     });
   }
-  if (!Number.isInteger(strip?.count) || strip.count <= 0) {
+  if (!Array.isArray(sheet?.frames) || sheet.frames.length === 0) {
     diagnostics.push({
       code: "definition.animation.frames",
       family: "definition",
       owner: "animation",
-      path: `${path}.count`,
-      message: "An Animation strip must contain a positive integer number of frames.",
+      path: `${path}.frames`,
+      message: "An Animation Sheet must contain at least one frame.",
     });
   }
-  return strip?.count ?? 0;
+  return sheet?.frames?.length ?? 0;
 }
 
-function validateCharacterFrames(
-  frames: CharacterAnimationFrames | undefined,
+function validateCharacterSheets(
+  sheets: CharacterAnimationSheets | undefined,
   animationPath: string,
   diagnostics: AuthoringDiagnostic[],
 ): number {
   const counts = new Set<number>();
   for (const direction of ["left", "right", "front", "back"] as const) {
-    const strip = frames?.[direction];
-    if (!strip || typeof strip !== "object") {
+    const sheet = sheets?.[direction];
+    if (!sheet || typeof sheet !== "object") {
       diagnostics.push({
         code: "definition.animation.facing-presentation",
         family: "definition",
         owner: "animation",
-        path: `${animationPath}.frames.${direction}`,
+        path: `${animationPath}.sheets.${direction}`,
         message: `A Character Animation must provide an authored ${direction} presentation.`,
       });
       continue;
     }
-    validateAnimationStrip(strip, `${animationPath}.frames.${direction}`, diagnostics);
-    if (Number.isInteger(strip.count) && strip.count > 0) {
-      counts.add(strip.count);
-    }
+    validateAnimationSheet(sheet, `${animationPath}.sheets.${direction}`, diagnostics);
+    counts.add(sheet.frames?.length ?? 0);
   }
   if (counts.size > 1) {
     diagnostics.push({
       code: "definition.animation.directional-frame-count",
       family: "definition",
       owner: "animation",
-      path: `${animationPath}.frames`,
-      message: "Directional Animation strips must contain the same number of frames.",
+      path: `${animationPath}.sheets`,
+      message: "Directional Animation Sheets must contain the same number of frames.",
     });
   }
-  return frames?.front?.count ?? 0;
+  return sheets?.front?.frames?.length ?? 0;
 }
 
 /** Animation-owned finite duration used by Sequence and browser presentation. */
 export function animationDurationTicks(animation: AnyAnimationDefinition): number {
   const count = animationFrameCount(animation);
-  return Math.max(1, Math.ceil(count / animation.framesPerSecond * 60));
+  return Math.max(1, Math.ceil(count / animation.timing.framesPerSecond * 60));
 }
 
 /** Animation-owned logical Cue position used by Sequence scheduling. */
-export function animationCueTick(animation: AnimationDefinition, cue: string): number | undefined {
-  const seconds = animation.cues?.[cue];
+export function animationCueTick(animation: AnyAnimationDefinition, cue: string): number | undefined {
+  const seconds = animation.timing.cues?.[cue];
   return seconds === undefined ? undefined : Math.max(0, Math.ceil(seconds * 60));
 }
 
@@ -463,19 +465,17 @@ export function animationCueTick(animation: AnimationDefinition, cue: string): n
 export function animationFrameIndex(
   animation: AnyAnimationDefinition,
   elapsedTicks: number,
-  loop = Boolean(animation.loop),
+  loop = Boolean(animation.timing.loop),
 ): number {
   const frameCount = animationFrameCount(animation);
-  const logicalFrame = Math.max(0, Math.floor(elapsedTicks * animation.framesPerSecond / 60));
+  const logicalFrame = Math.max(0, Math.floor(elapsedTicks * animation.timing.framesPerSecond / 60));
   return loop ? logicalFrame % frameCount : Math.min(frameCount - 1, logicalFrame);
 }
 
 export function animationFrameCount(animation: AnyAnimationDefinition): number {
-  return isImageAnimationFrames(animation.frames)
-    ? animation.frames.length
-    : isCharacterAnimationFrames(animation.frames)
-      ? animation.frames.front.count
-      : animation.frames.count;
+  return isCharacterAnimationDefinition(animation)
+    ? animation.sheets.front.frames.length
+    : animation.sheet.frames.length;
 }
 
 export interface AnimationPresentationContext {
@@ -556,7 +556,7 @@ export function animationPresentationForSubject(
 
   const animation = appearance.animations[animationName] ?? appearance.animations[appearance.roles.default];
   if (!animation) return undefined;
-  const loop = forceLoop || Boolean(animation.loop);
+  const loop = forceLoop || Boolean(animation.timing.loop);
   return Object.freeze({
     appearanceName,
     appearance,
@@ -695,14 +695,8 @@ function* reverseDirectionTimings(context: NonNullable<AnimationPresentationCont
   }
 }
 
-export function isImageAnimationFrames(
-  frames: AnyAnimationFrames,
-): frames is readonly (URL | string)[] {
-  return Array.isArray(frames);
-}
-
-export function isCharacterAnimationFrames(
-  frames: AnyAnimationFrames,
-): frames is CharacterAnimationFrames {
-  return !Array.isArray(frames) && frames !== null && typeof frames === "object" && "left" in frames;
+export function isCharacterAnimationDefinition(
+  animation: AnyAnimationDefinition,
+): animation is CharacterAnimationDefinition {
+  return animation !== null && typeof animation === "object" && "sheets" in animation;
 }

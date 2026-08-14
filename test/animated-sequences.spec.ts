@@ -35,27 +35,14 @@ function validateTestCharacterDefinition<T extends CharacterDefinition>(
 
 const staticAppearance = (image: string): Appearance => ({
   animations: {
-    idle: {
-      frames: [image],
-      framesPerSecond: 1,
-      loop: true,
-    },
+    idle: { sheet: { image: image, frames: [{ x: 0, y: 0, width: 1, height: 1 }] }, timing: { framesPerSecond: 1, loop: true } },
   },
   roles: { default: "idle" },
 });
 
 const staticCharacterAppearance = (image: string): CharacterAppearance => ({
   animations: {
-    idle: {
-      frames: {
-        left: { image, count: 1 },
-        right: { image, count: 1 },
-        front: { image, count: 1 },
-        back: { image, count: 1 },
-      },
-      framesPerSecond: 1,
-      loop: true,
-    },
+    idle: { sheets: { left: { image, frames: [{ x: 0, y: 0, width: 1, height: 1 }] }, right: { image, frames: [{ x: 0, y: 0, width: 1, height: 1 }] }, front: { image, frames: [{ x: 0, y: 0, width: 1, height: 1 }] }, back: { image, frames: [{ x: 0, y: 0, width: 1, height: 1 }] } }, timing: { framesPerSecond: 1, loop: true } },
   },
   roles: { default: "idle" },
 });
@@ -63,37 +50,9 @@ const staticCharacterAppearance = (image: string): CharacterAppearance => ({
 test("a Character Appearance owns authored Facing presentations and semantic Animation Roles", () => {
   const appearance: CharacterAppearance = {
     animations: {
-      idle: {
-        frames: {
-          left: { image: "idle.png", count: 2 },
-          right: { image: "idle.png", count: 2 },
-          front: { image: "idle.png", count: 2 },
-          back: { image: "idle.png", count: 2 },
-        },
-        framesPerSecond: 4,
-        loop: true,
-      },
-      speaking: {
-        frames: {
-          left: { image: "speak.png", count: 2 },
-          right: { image: "speak.png", count: 2 },
-          front: { image: "speak.png", count: 2 },
-          back: { image: "speak.png", count: 2 },
-        },
-        framesPerSecond: 8,
-        loop: true,
-        cues: { syllable: 0.125 },
-      },
-      walking: {
-        frames: {
-          left: { image: "walk-left.png", count: 4 },
-          right: { image: "walk-right.png", count: 4 },
-          front: { image: "walk-front.png", count: 4 },
-          back: { image: "walk-back.png", count: 4 },
-        },
-        framesPerSecond: 8,
-        loop: true,
-      },
+      idle: { sheets: { left: { image: "idle.png", frames: Array.from({ length: 2 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, right: { image: "idle.png", frames: Array.from({ length: 2 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, front: { image: "idle.png", frames: Array.from({ length: 2 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, back: { image: "idle.png", frames: Array.from({ length: 2 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) } }, timing: { framesPerSecond: 4, loop: true } },
+      speaking: { sheets: { left: { image: "speak.png", frames: Array.from({ length: 2 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, right: { image: "speak.png", frames: Array.from({ length: 2 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, front: { image: "speak.png", frames: Array.from({ length: 2 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, back: { image: "speak.png", frames: Array.from({ length: 2 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) } }, timing: { framesPerSecond: 8, loop: true, cues: { syllable: 0.125 } } },
+      walking: { sheets: { left: { image: "walk-left.png", frames: Array.from({ length: 4 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, right: { image: "walk-right.png", frames: Array.from({ length: 4 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, front: { image: "walk-front.png", frames: Array.from({ length: 4 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, back: { image: "walk-back.png", frames: Array.from({ length: 4 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) } }, timing: { framesPerSecond: 8, loop: true } },
     },
     roles: { default: "idle", speaking: "speaking", walking: "walking" },
     visualAnchor: { x: 8, y: 16 },
@@ -110,7 +69,7 @@ test("a Character Appearance owns authored Facing presentations and semantic Ani
 
   expect(character.appearances.normal).toEqual(appearance);
   const result = character.appearances.normal;
-  expect(Object.isFrozen(result.animations.speaking!.cues)).toBe(false);
+  expect(Object.isFrozen(result.animations.speaking!.timing.cues)).toBe(false);
   expect(Object.isFrozen(result.roles)).toBe(false);
 });
 
@@ -124,16 +83,7 @@ test("Appearance validation aggregates invalid Animation values and Role referen
       appearances: {
         normal: {
           animations: {
-            idle: {
-              frames: {
-                left: { image: "", count: 0 },
-                right: { image: "", count: 0 },
-                front: { image: "", count: 0 },
-                back: { image: "", count: 0 },
-              },
-              framesPerSecond: 0,
-              cues: { late: -1 },
-            },
+            idle: { sheets: { left: { image: "", frames: Array.from({ length: 0 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, right: { image: "", frames: Array.from({ length: 0 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, front: { image: "", frames: Array.from({ length: 0 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, back: { image: "", frames: Array.from({ length: 0 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) } }, timing: { framesPerSecond: 0, cues: { late: -1 } } },
           },
           roles: { default: "missing", speaking: "also-missing" },
         },
@@ -151,15 +101,7 @@ test("Appearance validation aggregates invalid Animation values and Role referen
       appearances: {
         normal: {
           animations: {
-            idle: {
-              frames: {
-                left: { image: "idle.png", count: 1 },
-                right: { image: "idle.png", count: 1 },
-                front: { image: "idle.png", count: 1 },
-                back: { image: "idle.png", count: 1 },
-              },
-              framesPerSecond: 1,
-            },
+            idle: { sheets: { left: { image: "idle.png", frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, right: { image: "idle.png", frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, front: { image: "idle.png", frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, back: { image: "idle.png", frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) } }, timing: { framesPerSecond: 1 } },
           },
           roles: {} as never,
         },
@@ -316,12 +258,7 @@ test("composition requires the final Scenery Motion to end at its resting positi
         appearances: {
           normal: {
             animations: {
-              idle: {
-                frames: ["marker.png", "marker.png"],
-                framesPerSecond: 1,
-                loop: true,
-                cues: { later: 1 },
-              },
+              idle: { sheet: { image: "marker.png", frames: [{ x: 0, y: 0, width: 1, height: 1 }, { x: 1, y: 0, width: 1, height: 1 }] }, timing: { framesPerSecond: 1, loop: true, cues: { later: 1 } } },
             },
             roles: { default: "idle" },
           },
@@ -703,36 +640,9 @@ function directedProject(
     appearances: {
       normal: {
         animations: {
-          idle: {
-            frames: {
-              left: { image: "idle.png", count: 1 },
-              right: { image: "idle.png", count: 1 },
-              front: { image: "idle.png", count: 1 },
-              back: { image: "idle.png", count: 1 },
-            },
-            framesPerSecond: 1,
-            loop: true,
-          },
-          gesture: {
-            frames: {
-              left: { image: "gesture-1.png", count: 2 },
-              right: { image: "gesture-1.png", count: 2 },
-              front: { image: "gesture-1.png", count: 2 },
-              back: { image: "gesture-1.png", count: 2 },
-            },
-            framesPerSecond: 60,
-            cues: { contact: 1 / 60 },
-          },
-          walk: {
-            frames: {
-              left: { image: "walk-left.png", count: 2 },
-              right: { image: "walk-right.png", count: 2 },
-              front: { image: "walk-front.png", count: 2 },
-              back: { image: "walk-back.png", count: 2 },
-            },
-            framesPerSecond: 60,
-            loop: true,
-          },
+          idle: { sheets: { left: { image: "idle.png", frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, right: { image: "idle.png", frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, front: { image: "idle.png", frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, back: { image: "idle.png", frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) } }, timing: { framesPerSecond: 1, loop: true } },
+          gesture: { sheets: { left: { image: "gesture-1.png", frames: Array.from({ length: 2 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, right: { image: "gesture-1.png", frames: Array.from({ length: 2 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, front: { image: "gesture-1.png", frames: Array.from({ length: 2 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, back: { image: "gesture-1.png", frames: Array.from({ length: 2 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) } }, timing: { framesPerSecond: 60, cues: { contact: 1 / 60 } } },
+          walk: { sheets: { left: { image: "walk-left.png", frames: Array.from({ length: 2 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, right: { image: "walk-right.png", frames: Array.from({ length: 2 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, front: { image: "walk-front.png", frames: Array.from({ length: 2 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, back: { image: "walk-back.png", frames: Array.from({ length: 2 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) } }, timing: { framesPerSecond: 60, loop: true } },
         },
         roles: { default: "idle", walking: "walk" },
       },
@@ -807,11 +717,8 @@ function directedProject(
         appearances: {
           normal: {
             animations: {
-              idle: { frames: ["marker.png"], framesPerSecond: 1, loop: true },
-              react: {
-                frames: ["react-1.png", "react-2.png"],
-                framesPerSecond: 60,
-              },
+              idle: { sheet: { image: "marker.png", frames: [{ x: 0, y: 0, width: 1, height: 1 }] }, timing: { framesPerSecond: 1, loop: true } },
+              react: { sheet: { image: "react-1.png", frames: [{ x: 0, y: 0, width: 1, height: 1 }, { x: 1, y: 0, width: 1, height: 1 }] }, timing: { framesPerSecond: 60 } },
             },
             roles: { default: "idle" },
           },
@@ -1036,16 +943,7 @@ test("directed Character navigation and Object Motion commit their canonical des
     appearances: {
       normal: {
         animations: {
-          idle: {
-            frames: {
-              left: { image: "actor.png", count: 1 },
-              right: { image: "actor.png", count: 1 },
-              front: { image: "actor.png", count: 1 },
-              back: { image: "actor.png", count: 1 },
-            },
-            framesPerSecond: 1,
-            loop: true,
-          },
+          idle: { sheets: { left: { image: "actor.png", frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, right: { image: "actor.png", frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, front: { image: "actor.png", frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, back: { image: "actor.png", frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) } }, timing: { framesPerSecond: 1, loop: true } },
         },
         roles: { default: "idle", walking: "idle" },
       },
@@ -1216,26 +1114,8 @@ function arrivalProject(audio?: URL) {
     appearances: {
       normal: {
         animations: {
-          idle: {
-            frames: {
-              left: { image: "idle.png", count: 1 },
-              right: { image: "idle.png", count: 1 },
-              front: { image: "idle.png", count: 1 },
-              back: { image: "idle.png", count: 1 },
-            },
-            framesPerSecond: 1,
-            loop: true,
-          },
-          walk: {
-            frames: {
-              left: { image: "walk-left.png", count: 2 },
-              right: { image: "walk-right.png", count: 2 },
-              front: { image: "walk-front.png", count: 2 },
-              back: { image: "walk-back.png", count: 2 },
-            },
-            framesPerSecond: 8,
-            loop: true,
-          },
+          idle: { sheets: { left: { image: "idle.png", frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, right: { image: "idle.png", frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, front: { image: "idle.png", frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, back: { image: "idle.png", frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) } }, timing: { framesPerSecond: 1, loop: true } },
+          walk: { sheets: { left: { image: "walk-left.png", frames: Array.from({ length: 2 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, right: { image: "walk-right.png", frames: Array.from({ length: 2 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, front: { image: "walk-front.png", frames: Array.from({ length: 2 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, back: { image: "walk-back.png", frames: Array.from({ length: 2 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) } }, timing: { framesPerSecond: 8, loop: true } },
         },
         roles: { default: "idle", walking: "walk" },
       },

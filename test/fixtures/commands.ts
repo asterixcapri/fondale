@@ -97,7 +97,7 @@ const extraObjects = Object.fromEntries(
       appearances: {
         scene: {
           animations: {
-            idle: { frames: [keyUrl], framesPerSecond: 1, loop: true },
+            idle: { sheet: { image: keyUrl, frames: [{ x: 0, y: 0, width: 20, height: 20 }] }, timing: { framesPerSecond: 1, loop: true } },
           },
           roles: { default: "idle" },
         },
@@ -147,7 +147,7 @@ const project = {
       appearances: {
         scene: {
           animations: {
-            idle: { frames: [keyUrl], framesPerSecond: 1, loop: true },
+            idle: { sheet: { image: keyUrl, frames: [{ x: 0, y: 0, width: 20, height: 20 }] }, timing: { framesPerSecond: 1, loop: true } },
           },
           roles: { default: "idle" },
         },
@@ -166,16 +166,7 @@ const project = {
       appearances: {
         idle: {
           animations: {
-            idle: {
-              frames: {
-                left: { image: keyUrl, count: 1 },
-                right: { image: keyUrl, count: 1 },
-                front: { image: keyUrl, count: 1 },
-                back: { image: keyUrl, count: 1 },
-              },
-              framesPerSecond: 1,
-              loop: true,
-            },
+            idle: { sheets: { left: { image: keyUrl, frames: [{ x: 0, y: 0, width: 20, height: 20 }] }, right: { image: keyUrl, frames: [{ x: 0, y: 0, width: 20, height: 20 }] }, front: { image: keyUrl, frames: [{ x: 0, y: 0, width: 20, height: 20 }] }, back: { image: keyUrl, frames: [{ x: 0, y: 0, width: 20, height: 20 }] } }, timing: { framesPerSecond: 1, loop: true } },
           },
           roles: { default: "idle", walking: "idle" },
         },
@@ -190,16 +181,7 @@ const project = {
       appearances: {
         idle: {
           animations: {
-            idle: {
-              frames: {
-                left: { image: keyUrl, count: 1 },
-                right: { image: keyUrl, count: 1 },
-                front: { image: keyUrl, count: 1 },
-                back: { image: keyUrl, count: 1 },
-              },
-              framesPerSecond: 1,
-              loop: true,
-            },
+            idle: { sheets: { left: { image: keyUrl, frames: [{ x: 0, y: 0, width: 20, height: 20 }] }, right: { image: keyUrl, frames: [{ x: 0, y: 0, width: 20, height: 20 }] }, front: { image: keyUrl, frames: [{ x: 0, y: 0, width: 20, height: 20 }] }, back: { image: keyUrl, frames: [{ x: 0, y: 0, width: 20, height: 20 }] } }, timing: { framesPerSecond: 1, loop: true } },
           },
           roles: { default: "idle" },
         },

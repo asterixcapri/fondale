@@ -6,7 +6,6 @@ import {
   validateAppearance,
   validateAppearanceSet,
   validateInitialAppearance,
-  isImageAnimationFrames,
   type Appearance,
   type CharacterAppearance,
 } from "../animation";
@@ -1293,13 +1292,15 @@ function cloneSceneryAppearance(appearance: SceneryAppearance): SceneryAppearanc
         name,
         {
           ...animation,
-          frames: isImageAnimationFrames(animation.frames)
-            ? animation.frames.map(cloneAssetReference)
-            : {
-                ...animation.frames,
-                image: cloneAssetReference(animation.frames.image),
-              },
-          ...(animation.cues ? { cues: { ...animation.cues } } : {}),
+          sheet: {
+            ...animation.sheet,
+            image: cloneAssetReference(animation.sheet.image),
+            frames: animation.sheet.frames.map((frame) => ({ ...frame })),
+          },
+          timing: {
+            ...animation.timing,
+            ...(animation.timing.cues ? { cues: { ...animation.timing.cues } } : {}),
+          },
         },
       ]),
     ),

@@ -76,16 +76,7 @@ const player = {
   appearances: {
     idle: {
       animations: {
-        idle: {
-          frames: {
-            left: { image: playerUrl, count: 1 },
-            right: { image: playerUrl, count: 1 },
-            front: { image: playerUrl, count: 1 },
-            back: { image: playerUrl, count: 1 },
-          },
-          framesPerSecond: 1,
-          loop: true,
-        },
+        idle: { sheets: { left: { image: playerUrl, frames: [{ x: 0, y: 0, width: 20, height: 20 }] }, right: { image: playerUrl, frames: [{ x: 0, y: 0, width: 20, height: 20 }] }, front: { image: playerUrl, frames: [{ x: 0, y: 0, width: 20, height: 20 }] }, back: { image: playerUrl, frames: [{ x: 0, y: 0, width: 20, height: 20 }] } }, timing: { framesPerSecond: 1, loop: true } },
       },
       roles: { default: "idle", walking: "idle" },
       visualAnchor: { x: 10, y: 20 },
@@ -101,16 +92,7 @@ const guide = {
   appearances: {
     idle: {
       animations: {
-        idle: {
-          frames: {
-            left: { image: playerUrl, count: 1 },
-            right: { image: playerUrl, count: 1 },
-            front: { image: playerUrl, count: 1 },
-            back: { image: playerUrl, count: 1 },
-          },
-          framesPerSecond: 1,
-          loop: true,
-        },
+        idle: { sheets: { left: { image: playerUrl, frames: [{ x: 0, y: 0, width: 20, height: 20 }] }, right: { image: playerUrl, frames: [{ x: 0, y: 0, width: 20, height: 20 }] }, front: { image: playerUrl, frames: [{ x: 0, y: 0, width: 20, height: 20 }] }, back: { image: playerUrl, frames: [{ x: 0, y: 0, width: 20, height: 20 }] } }, timing: { framesPerSecond: 1, loop: true } },
       },
       roles: { default: "idle" },
       visualAnchor: { x: 10, y: 20 },

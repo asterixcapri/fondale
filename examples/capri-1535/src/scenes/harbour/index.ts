@@ -1,4 +1,4 @@
-import { type NounDefinition, type SceneDefinition } from "@asterixcapri/fondale";
+import { type NounDefinition, type SceneDefinition, uniformGrid } from "@asterixcapri/fondale";
 
 import { rectangle } from "../../geometry";
 import backgroundUrl from "./background.png";
@@ -33,11 +33,7 @@ export const harbour = ({
       appearances: {
         moored: {
           animations: {
-            idle: {
-              frames: { image: harbourBoatRockingUrl, count: 8 },
-              framesPerSecond: 1.5,
-              loop: true,
-            },
+            idle: { sheet: { image: harbourBoatRockingUrl, frames: uniformGrid({ frameWidth: 520, frameHeight: 241, columns: 8, count: 8 }) }, timing: { framesPerSecond: 1.5, loop: true } },
           },
           roles: { default: "idle" },
           visualAnchor: { x: 260, y: 238 },
@@ -59,16 +55,16 @@ export const harbour = ({
       appearances: {
         withoutHandle: {
           animations: {
-            idle: { frames: [winchWithoutHandleUrl], framesPerSecond: 1, loop: true },
-            engaging: { frames: [winchWithoutHandleUrl], framesPerSecond: 1 },
+            idle: { sheet: { image: winchWithoutHandleUrl, frames: [{ x: 0, y: 0, width: 240, height: 164 }] }, timing: { framesPerSecond: 1, loop: true } },
+            engaging: { sheet: { image: winchWithoutHandleUrl, frames: [{ x: 0, y: 0, width: 240, height: 164 }] }, timing: { framesPerSecond: 1 } },
           },
           roles: { default: "idle" },
           visualAnchor: { x: 120, y: 164 },
         },
         withHandle: {
           animations: {
-            idle: { frames: [winchWithHandleUrl], framesPerSecond: 1, loop: true },
-            engaging: { frames: [winchWithHandleUrl], framesPerSecond: 1 },
+            idle: { sheet: { image: winchWithHandleUrl, frames: [{ x: 0, y: 0, width: 240, height: 164 }] }, timing: { framesPerSecond: 1, loop: true } },
+            engaging: { sheet: { image: winchWithHandleUrl, frames: [{ x: 0, y: 0, width: 240, height: 164 }] }, timing: { framesPerSecond: 1 } },
           },
           roles: { default: "idle" },
           visualAnchor: { x: 120, y: 164 },

@@ -280,11 +280,12 @@ identifies the capability or browser adapter responsible for the rule.
 | `LogicalResolution` | fixed viewport dimensions | positive integer width and height | shared by output canvas and HUD | positive-integer diagnostic | [Scene](recipes/first-scene.ts) |
 | `SceneSize` | complete Scene Space extent | positive integer width and height | omission defaults to Logical Resolution; neither axis may be smaller | Scene-size diagnostics | [Scene](recipes/first-scene.ts) |
 | `Facing` | authored orientation | front, back, left, right | required where present | type and reference validation | [Character](recipes/character-walking.ts) |
-| `AnimationStrip` | horizontal frame source | image and positive count | directions share one declarative shape | frame and asset diagnostics | [Character](recipes/character-walking.ts) |
-| `AnimationFrames` | non-directional Animation frame source | image list or one horizontal strip | concrete frames remain derived | frame and asset diagnostics | [Sequence](recipes/sequence.ts) |
-| `CharacterAnimationFrames` | Character Animation presentations | left, right, front, and back strips | all four share frame count and Runtime cell dimensions | Facing, frame, and asset diagnostics | [Character](recipes/character-walking.ts) |
-| `AnimationDefinition` | transient visual performance | frames, positive rate, loop, named Cues | loop defaults false | Animation/Cue diagnostics | [Sequence](recipes/sequence.ts) |
-| `CharacterAnimationDefinition` | transient Character performance | four synchronized Facing strips, positive rate, loop, named Cues | timing and Cues are shared across Facing | Animation/Cue diagnostics | [Character](recipes/character-walking.ts) |
+| `AnimationFrame` | ordered sheet cell | integer x, y, width, and height in image pixels | top-left origin; `uniformGrid` generates regular row-major cells | frame and asset diagnostics | [Character](recipes/character-walking.ts) |
+| `AnimationSheet` | coordinate-based frame source | one Runtime Asset image and ordered frames | a static Animation has one frame | frame and asset diagnostics | [Sequence](recipes/sequence.ts) |
+| `CharacterAnimationSheets` | Character Animation presentations | left, right, front, and back sheets | all four share frame count and Runtime cell dimensions | Facing, frame, and asset diagnostics | [Character](recipes/character-walking.ts) |
+| `AnimationTiming` | Animation traversal | positive frames per second, optional loop and named Cues | loop defaults false; Cues use logical seconds | Animation/Cue diagnostics | [Sequence](recipes/sequence.ts) |
+| `AnimationDefinition` | transient visual performance | one sheet and timing | artwork and traversal are authored separately | Animation/Cue diagnostics | [Sequence](recipes/sequence.ts) |
+| `CharacterAnimationDefinition` | transient Character performance | four synchronized Facing sheets and timing | timing and Cues are shared across Facing | Animation/Cue diagnostics | [Character](recipes/character-walking.ts) |
 | `AnimationRoles` | semantic Engine selections | default, optional speaking and walking names | default is required; speaking falls back to default | missing Animation diagnostics | [Character](recipes/character-walking.ts) |
 | `Appearance` | persistent non-directional visual condition | named Animations, roles, optional anchor | registry key identifies selected condition | Animation, role, asset, and anchor diagnostics | [Interaction](recipes/interaction.ts) |
 | `CharacterAppearance` | persistent Character visual condition | named four-Facing Animations, roles, optional anchor | every Animation is directionally complete | Appearance and Facing diagnostics | [Character](recipes/character-walking.ts) |
@@ -386,8 +387,8 @@ identifies the capability or browser adapter responsible for the rule.
 | `GameSession` | running lifecycle handle | save, start Reflection, status, diagnostics, stop | Reflection starts only while idle; stop is idempotent and terminal | lifecycle diagnostics | [Save](recipes/save-snapshot.ts) |
 
 Exact reachable fields also include `x`, `y`, `width`, `height`, `kind`,
-`image`, `visualAnchor`, `frames`, `left`, `right`, `front`, `back`, `framesPerSecond`,
-`count`, `loop`, `cues`, `animations`, `roles`, `default`, `speaking`, `walking`,
+`image`, `visualAnchor`, `sheet`, `sheets`, `timing`, `frames`, `left`, `right`, `front`, `back`,
+`framesPerSecond`, `loop`, `cues`, `animations`, `roles`, `default`, `speaking`, `walking`,
 `area`, `facing`, `font`, `initialScene`, `initialGroundPoint`, `initialFacing`,
 `initialAppearance`, `appearances`, `movementSpeed`, `noun`, `source`, `family`,
 `colors`, `text`, `preferred`, `selected`, `backing`, `border`, `inventoryWell`,
@@ -518,8 +519,8 @@ Runtime, save, asset and environment codes: `state.operation.invalid`,
 `asset.audio.load.failed`,
 `asset.background.dimensions`,
 `asset.cursor.dimensions`, `asset.font.load.failed`,
-`asset.inventory-appearance.dimensions`, `asset.animation-strip.frames`,
-`asset.animation-strip.dimensions`, `asset.visual-anchor.bounds`,
+`asset.inventory-appearance.dimensions`, `asset.animation-sheet.frame-bounds`,
+`asset.animation-sheet.dimensions`, `asset.visual-anchor.bounds`,
 `environment.dialogue-provider.missing`, `environment.start.failed`,
 `environment.target.occupied`, and
 `environment.webgl.unavailable`.

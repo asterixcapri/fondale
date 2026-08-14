@@ -67,7 +67,7 @@ import {
   appearanceForSubject,
   objectHasAppearance,
   validateAppearanceOperationReference,
-  type AnimationDefinition,
+  type AnyAnimationDefinition,
   type AnimationPresentation,
 } from "../animation";
 import { Camera, type CameraPresentation } from "../camera";
@@ -1173,7 +1173,7 @@ export function createCoreSession(
     return characterMotionReachedDestination(direction, character?.groundPoint);
   }
 
-  function directedAnimation(subject: DirectedSubject, animationName: string): AnimationDefinition | undefined {
+  function directedAnimation(subject: DirectedSubject, animationName: string): AnyAnimationDefinition | undefined {
     const appearance = appearanceForSubject(projectViews.animation, state, subject);
     return appearance?.animations[animationName];
   }

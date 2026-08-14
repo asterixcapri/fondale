@@ -11,16 +11,7 @@ export const brotherElia = ({
   appearances: {
     welcoming: {
       animations: {
-        idle: {
-          frames: {
-            left: { image: idleUrl, count: 1 },
-            right: { image: idleUrl, count: 1 },
-            front: { image: idleUrl, count: 1 },
-            back: { image: idleUrl, count: 1 },
-          },
-          framesPerSecond: 1,
-          loop: true,
-        },
+        idle: { sheets: { left: { image: idleUrl, frames: [{ x: 0, y: 0, width: 36, height: 82 }] }, right: { image: idleUrl, frames: [{ x: 0, y: 0, width: 36, height: 82 }] }, front: { image: idleUrl, frames: [{ x: 0, y: 0, width: 36, height: 82 }] }, back: { image: idleUrl, frames: [{ x: 0, y: 0, width: 36, height: 82 }] } }, timing: { framesPerSecond: 1, loop: true } },
       },
       roles: { default: "idle" },
     },

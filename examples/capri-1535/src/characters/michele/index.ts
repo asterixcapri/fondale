@@ -1,4 +1,4 @@
-import { type CharacterDefinition } from "@asterixcapri/fondale";
+import { type CharacterDefinition, uniformGrid } from "@asterixcapri/fondale";
 
 import idleBackUrl from "./workwear-idle-back.png";
 import idleFrontUrl from "./workwear-idle-front.png";
@@ -33,65 +33,12 @@ export const michele = ({
   appearances: {
     workwear: {
       animations: {
-        idle: {
-          frames: {
-            left: { image: idleLeftUrl, count: 6 },
-            right: { image: idleRightUrl, count: 6 },
-            front: { image: idleFrontUrl, count: 6 },
-            back: { image: idleBackUrl, count: 6 },
-          },
-          framesPerSecond: 4,
-          loop: true,
-        },
-        walking: {
-          frames: {
-            left: { image: walkingLeftUrl, count: 8 },
-            right: { image: walkingRightUrl, count: 8 },
-            front: { image: walkingFrontUrl, count: 8 },
-            back: { image: walkingBackUrl, count: 8 },
-          },
-          framesPerSecond: 10,
-          loop: true,
-        },
-        speaking: {
-          frames: {
-            left: { image: speakingLeftUrl, count: 8 },
-            right: { image: speakingRightUrl, count: 8 },
-            front: { image: speakingFrontUrl, count: 8 },
-            back: { image: speakingBackUrl, count: 8 },
-          },
-          framesPerSecond: 8,
-          loop: true,
-        },
-        resolve: {
-          frames: {
-            left: { image: resolveLeftUrl, count: 6 },
-            right: { image: resolveRightUrl, count: 6 },
-            front: { image: resolveFrontUrl, count: 6 },
-            back: { image: resolveBackUrl, count: 6 },
-          },
-          framesPerSecond: 8,
-        },
-        "use-winch": {
-          frames: {
-            left: { image: useWinchLeftUrl, count: 8 },
-            right: { image: useWinchRightUrl, count: 8 },
-            front: { image: useWinchFrontUrl, count: 8 },
-            back: { image: useWinchBackUrl, count: 8 },
-          },
-          framesPerSecond: 10,
-          cues: { contact: 0.3 },
-        },
-        "pick-up": {
-          frames: {
-            left: { image: pickUpLeftUrl, count: 8 },
-            right: { image: pickUpRightUrl, count: 8 },
-            front: { image: pickUpFrontUrl, count: 8 },
-            back: { image: pickUpBackUrl, count: 8 },
-          },
-          framesPerSecond: 10,
-          cues: { contact: 0.3 },
-        },
+        idle: { sheets: { left: { image: idleLeftUrl, frames: uniformGrid({ frameWidth: 192, frameHeight: 288, columns: 6, count: 6 }) }, right: { image: idleRightUrl, frames: uniformGrid({ frameWidth: 192, frameHeight: 288, columns: 6, count: 6 }) }, front: { image: idleFrontUrl, frames: uniformGrid({ frameWidth: 192, frameHeight: 288, columns: 6, count: 6 }) }, back: { image: idleBackUrl, frames: uniformGrid({ frameWidth: 192, frameHeight: 288, columns: 6, count: 6 }) } }, timing: { framesPerSecond: 4, loop: true } },
+        walking: { sheets: { left: { image: walkingLeftUrl, frames: uniformGrid({ frameWidth: 192, frameHeight: 288, columns: 8, count: 8 }) }, right: { image: walkingRightUrl, frames: uniformGrid({ frameWidth: 192, frameHeight: 288, columns: 8, count: 8 }) }, front: { image: walkingFrontUrl, frames: uniformGrid({ frameWidth: 192, frameHeight: 288, columns: 8, count: 8 }) }, back: { image: walkingBackUrl, frames: uniformGrid({ frameWidth: 192, frameHeight: 288, columns: 8, count: 8 }) } }, timing: { framesPerSecond: 10, loop: true } },
+        speaking: { sheets: { left: { image: speakingLeftUrl, frames: uniformGrid({ frameWidth: 192, frameHeight: 288, columns: 8, count: 8 }) }, right: { image: speakingRightUrl, frames: uniformGrid({ frameWidth: 192, frameHeight: 288, columns: 8, count: 8 }) }, front: { image: speakingFrontUrl, frames: uniformGrid({ frameWidth: 192, frameHeight: 288, columns: 8, count: 8 }) }, back: { image: speakingBackUrl, frames: uniformGrid({ frameWidth: 192, frameHeight: 288, columns: 8, count: 8 }) } }, timing: { framesPerSecond: 8, loop: true } },
+        resolve: { sheets: { left: { image: resolveLeftUrl, frames: uniformGrid({ frameWidth: 192, frameHeight: 288, columns: 6, count: 6 }) }, right: { image: resolveRightUrl, frames: uniformGrid({ frameWidth: 192, frameHeight: 288, columns: 6, count: 6 }) }, front: { image: resolveFrontUrl, frames: uniformGrid({ frameWidth: 192, frameHeight: 288, columns: 6, count: 6 }) }, back: { image: resolveBackUrl, frames: uniformGrid({ frameWidth: 192, frameHeight: 288, columns: 6, count: 6 }) } }, timing: { framesPerSecond: 8 } },
+        "use-winch": { sheets: { left: { image: useWinchLeftUrl, frames: uniformGrid({ frameWidth: 192, frameHeight: 288, columns: 8, count: 8 }) }, right: { image: useWinchRightUrl, frames: uniformGrid({ frameWidth: 192, frameHeight: 288, columns: 8, count: 8 }) }, front: { image: useWinchFrontUrl, frames: uniformGrid({ frameWidth: 192, frameHeight: 288, columns: 8, count: 8 }) }, back: { image: useWinchBackUrl, frames: uniformGrid({ frameWidth: 192, frameHeight: 288, columns: 8, count: 8 }) } }, timing: { framesPerSecond: 10, cues: { contact: 0.3 } } },
+        "pick-up": { sheets: { left: { image: pickUpLeftUrl, frames: uniformGrid({ frameWidth: 192, frameHeight: 288, columns: 8, count: 8 }) }, right: { image: pickUpRightUrl, frames: uniformGrid({ frameWidth: 192, frameHeight: 288, columns: 8, count: 8 }) }, front: { image: pickUpFrontUrl, frames: uniformGrid({ frameWidth: 192, frameHeight: 288, columns: 8, count: 8 }) }, back: { image: pickUpBackUrl, frames: uniformGrid({ frameWidth: 192, frameHeight: 288, columns: 8, count: 8 }) } }, timing: { framesPerSecond: 10, cues: { contact: 0.3 } } },
       },
       roles: { default: "idle", walking: "walking", speaking: "speaking" },
       visualAnchor: { x: 96, y: 288 },

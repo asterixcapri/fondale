@@ -13,8 +13,7 @@ import type {
   CoreSession,
 } from "../capabilities/game-session";
 import {
-  isImageAnimationFrames,
-  isCharacterAnimationFrames,
+  isCharacterAnimationDefinition,
   type AnimationPresentation,
 } from "../capabilities/animation";
 import type {
@@ -283,7 +282,7 @@ export class BrowserRenderer {
     direction: Facing,
   ): readonly Texture[] {
     const base = `${path}.animations.${animationName}`;
-    const key = isCharacterAnimationFrames(animation.frames) ? `${base}.${direction}` : base;
+    const key = isCharacterAnimationDefinition(animation) ? `${base}.${direction}` : base;
     return this.assets.animationFrames.get(key) ?? [];
   }
 
