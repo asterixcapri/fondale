@@ -1,0 +1,25 @@
+{
+  "assessment": "Draft only: facing and centering are correct, but the performance holds still at the beginning and end instead of sustaining a continuous walking loop. The returned file is also 8.75 seconds rather than the requested 5 seconds.",
+  "luma": {
+    "fileId": "0c9f53cc-6772-455b-92ad-b81618beb339",
+    "generationId": "bc1b4fa8-e167-485d-ad17-719440919ca4"
+  },
+  "request": {
+    "aspectRatio": "1:1",
+    "duration": "5s",
+    "loop": true,
+    "model": "ray-3.2",
+    "prompt": "Side-view 2D game sprite walk cycle. Character walks in place facing screen-left on a clean white background. Pelvis locked at frame center, ZERO root motion — no forward drift, no torso bounce or sway. Legs hit clear key poses (contact, passing, up), arms swing naturally close to the body. Six even steps, flat side profile, static camera, seamless loop, no backward steps.",
+    "resolution": "720p",
+    "startFrame": "../left-autosprite-source.png",
+    "type": "video"
+  },
+  "result": {
+    "codec": "h264",
+    "durationSeconds": 8.75,
+    "frameCount": 210,
+    "framesPerSecond": 24,
+    "height": 960,
+    "width": 960
+  }
+}
