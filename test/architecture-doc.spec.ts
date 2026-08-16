@@ -18,7 +18,9 @@ for (const viewport of [
     await expect(page.locator("main section")).toHaveCount(8);
     await expect(page.getByRole("heading", { name: "CoreSession: coordinatore deterministico" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Flussi di comunicazione consentiti" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Save e restore non controllano la sessione" })).toBeVisible();
+    await expect(page.getByRole("heading", {
+      name: "Save Snapshot e Continuation State restano distinti",
+    })).toBeVisible();
     expect(remoteRequests).toEqual([]);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   });

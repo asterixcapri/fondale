@@ -137,15 +137,15 @@ successful Cover Story applies a `RecordTestimonyOperation`; either effect is
 committed atomically only after verbalisation succeeds. Player speech must contain from 1 through
 `dialogueInputMaxLength` (500) characters.
 
-Only one Dialogue Turn may be pending. Leaving, saving, loading, or stopping
-the Game Session aborts it and ignores late provider results. Loading awaits
-`DialogueProvider.reset()` before a restored Conversation accepts new speech;
-provider-owned transcript, thread, model and usage data never enter a Save
-Snapshot. After an accepted turn's canonical effects commit, the Engine may
+Only one Dialogue Turn may be pending. Leaving or stopping the Game Session
+aborts it and ignores late provider results. Automatic continuation captures
+an accepted turn only after its canonical effects commit; provider-owned
+transcript, thread, model and usage data never enter a Save Snapshot. After an
+accepted turn's canonical effects commit, the Engine may
 evaluate a matching authored Conversation handoff. Its Sequence becomes the
 dominant Game Activity and retains ownership of exact Lines, Choices, timing
 and skip behavior. A resumable handoff stores only the canonical Conversation
-continuation; provider memory remains external and is still reset by Load.
+continuation; the Continuation State retains the external provider identity.
 
 `GameSession.startReflection()` opens Reflection only while the session is
 idle and the Player Character has a Dialogue Profile. `reflect` receives a
@@ -159,8 +159,8 @@ the latter as uncertain and possible before presenting one Player Character
 Line. The response, Hypotheses, suggestions, and Reflection thread never enter
 Game State. Reflection has no interlocutor, Disclosure, Cover Story, Testimony,
 or Game Operation path. With no known facts or Testimony, Fondale presents a
-limited response without asking the provider to invent one. Load resets both
-Conversation and Reflection memory before a restored activity accepts input.
+limited response without asking the provider to invent one. Conversation and
+Reflection memory is recovered through the provider identity on Continue.
 
 `FakeDialogueProvider` is the deterministic adapter used by Engine tests and
 browser fixtures. Its `interpretations` map multiple exact Player formulations
@@ -278,6 +278,10 @@ Generated wording is not stored. Stored values are passed as `unknown`
 to `startGame`; malformed, incompatible or semantically invalid values reject
 with Save-owned diagnostics before browser effects.
 Camera position, hover, pointer position and Player Preferences are not saved.
+The ordinary browser adapter stores one Continuation State per Project
+Identity, pairing the latest compatible Save Snapshot with its provider
+session identity. Continue restores both sides of that association; New Game
+replaces it. Player Preferences remain in separate browser storage.
 On oversized Scenes the internal Camera normally follows the visible Player
 Character, eases ordinary walking, snaps on startup, restoration and Scene
 entry, clamps independently on both axes, and translates the world on whole
@@ -352,7 +356,7 @@ identifies the capability or browser adapter responsible for the rule.
 | `ReflectionTestimony` | provider-visible remembered Claim | speaker and declared Claim | preserves attribution without asserting truth | derived only from committed Testimony | [Dialogue authoring](game-authoring.md) |
 | `ReflectionRelationship` | provider-visible directional Trust | `towards` Character and qualitative Trust | includes only the reflecting Character's outgoing Relationship | derived only from committed Relationship state | [Dialogue authoring](game-authoring.md) |
 | `Testimony` | canonical memory of a communicated Claim | speaker, listener and Claim ID | set-like and idempotent; stores no wording or truth | Save state validation | [Dialogue authoring](game-authoring.md) |
-| `DialogueProvider` | generated-dialogue adapter seam | interpret, verbalize, reflect, reset | ordinarily selected through a Dialogue Server URL; low-level injection remains available; Load awaits reset | missing connection is a startup diagnostic | [Dialogue authoring](game-authoring.md) |
+| `DialogueProvider` | generated-dialogue adapter seam | interpret, verbalize, reflect, reset | ordinarily selected through a Dialogue Server URL; low-level injection remains available; Continue retains its memory identity | missing connection is a startup diagnostic | [Dialogue authoring](game-authoring.md) |
 | `HttpDialogueProvider` | low-level browser-to-server Dialogue Provider adapter | endpoint and Game Session identity | advanced hosts only; follows turn cancellation and sends no server credentials | malformed or failed HTTP responses reject the turn | [Dialogue authoring](game-authoring.md) |
 | `DialogueHttpRequest` | browser transport request | interpret, verbalize, reflect, cancel or reset | every turn operation carries session and transient turn identity | server rejects an invalid envelope | [Dialogue authoring](game-authoring.md) |
 | `DialogueHttpResponse` | browser transport response | success value or public failure message | server failure details remain private | malformed responses reject the turn | [Dialogue authoring](game-authoring.md) |
@@ -406,7 +410,7 @@ identifies the capability or browser adapter responsible for the rule.
 | `AuthoringDiagnostic` | one author-facing issue | code, family, owner, path, message, suggestion, cause | stable code/path ordering | describes owning failure | [Scene](recipes/first-scene.ts) |
 | `AuthoringError` | aggregate failure | read-only diagnostics | one error per startup layer | thrown by startup | [Scene](recipes/first-scene.ts) |
 | `SaveSnapshot` | JSON-safe committed state | format, project identities and state | exact fields only | save validation diagnostics | [Save](recipes/save-snapshot.ts) |
-| `StartGameOptions` | browser mount options | target, optional snapshot, ordinary Dialogue Server URL or low-level Dialogue Provider | configured dialogue requires exactly one connection form; omitted snapshot starts fresh | environment/save/dialogue diagnostics | [Save](recipes/save-snapshot.ts) |
+| `StartGameOptions` | browser mount options | target, optional snapshot, ordinary Dialogue Server URL or low-level Dialogue Provider | configured dialogue requires exactly one connection form; ordinary omitted-snapshot startup uses Continue or New Game | environment/save/dialogue diagnostics | [Save](recipes/save-snapshot.ts) |
 | `GameSession` | running lifecycle handle | save, start Reflection, status, diagnostics, stop | Reflection starts only while idle; stop is idempotent and terminal | lifecycle diagnostics | [Save](recipes/save-snapshot.ts) |
 
 Exact reachable fields also include `x`, `y`, `width`, `height`, `kind`,

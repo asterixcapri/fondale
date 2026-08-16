@@ -231,18 +231,12 @@ try {
     document.body.append(frame);
 
     const core = createCoreSession(compiledProject);
-    const controls = {
-      slots: () => [],
-      save: () => undefined,
-      load: () => Promise.resolve({ ok: false as const, diagnostics: [] }),
-    };
     const renderer = new BrowserRenderer(
       application,
       frame,
       projectView.presentation,
       assets,
       core,
-      controls,
     );
     renderer.render([]);
     core.input({ type: "quick-hotspot", hotspot: 0, verb: "use" });

@@ -45,13 +45,13 @@ introducing a one-step Sequence.
 The Camera projects world input, Character speech and revealed Hotspots between
 Scene Space and the viewport. The Engine owns the semantic HUD:
 pointer-following Contextual Actions, the
-Inventory trigger and drawer, Choices, Options, Help and Save/Load. A Noun's
+Inventory trigger and drawer, Choices, Options and Help. A Noun's
 Preferred Verb supplies the primary action, while optional Secondary and
 Selected Object Verbs control the right mouse button and Object-first Commands.
 HUD prepares narrative text, Choice numbering, text timing, speech colour,
 layout intent, Player Preferences and modal transitions once. The browser maps
 those facts to accessible DOM, plays audio, forwards timers and actions, and
-stores preferences and Save Slots without choosing their presentation policy.
+stores Player Preferences and one Project Identity-specific Continuation State.
 The project-owned HUD Theme may choose local font and cursor assets, colours,
 opacity and speech styling, but cannot rearrange those controls.
 
@@ -59,6 +59,14 @@ A **Save Snapshot** is an inspectable JSON-safe copy of the latest committed
 Game State, identified by Project Identity, Project Version, and Fondale's
 format version. Stored data remains `unknown`; `startGame` validates it against
 the current project before doing browser or Runtime Asset work.
+
+A **Continuation State** is the browser-owned record that pairs the latest
+compatible Save Snapshot with the Dialogue Provider session identity whose
+Conversation and Reflection memory remains in PostgreSQL. Ordinary startup
+offers Continue when that record is valid and New Game to replace it; the
+Player does not create named saves or restore a historical state. Player
+Preferences use separate browser storage and never enter either the Save
+Snapshot or Continuation State.
 
 An **Authoring Diagnostic** has stable code, family, and author-facing path.
 Invalid definitions and external save data reject `startGame` with an

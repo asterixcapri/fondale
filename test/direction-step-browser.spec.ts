@@ -48,7 +48,7 @@ test("the browser applies cut, hold, and subject-follow Camera facts", async ({ 
   expect(follow.equals(cut)).toBe(false);
 });
 
-test("startGame saves, restores, and skips an active Direction Step through browser input", async ({ page }) => {
+test("Continue never restores a partial automatically persisted Direction Step", async ({ page }) => {
   await page.goto("/test/fixtures/direction-step.html?live");
   await page.evaluate(() => localStorage.clear());
   await page.reload();
@@ -60,40 +60,26 @@ test("startGame saves, restores, and skips an active Direction Step through brow
   await clickLogical(page, 213, 180);
   await expect.poll(async () => (await liveState(page)).activity?.type).toBe("sequence");
 
-  await frame.focus();
-  await page.keyboard.press("Control+s");
-  const save = frame.locator('[data-fondale-modal="save"]');
-  await save.locator("[data-fondale-save-name]").fill("During direction");
-  await save.locator("[data-fondale-save-confirm]").click();
-  const savedElapsed = await page.evaluate(() => {
-    const slots = JSON.parse(localStorage.getItem("fondale.save-slots") ?? "[]") as Array<{
-      snapshot: { state: { activity?: { active?: { elapsedTicks?: number } } } };
-    }>;
-    return slots[0]!.snapshot.state.activity?.active?.elapsedTicks;
-  });
-  expect(savedElapsed).toBeGreaterThan(0);
-  const savedCameraPixel = await renderedPixel(page, 400, 120);
+  await expect.poll(() => page.evaluate(() => {
+    const key = Array.from({ length: localStorage.length }, (_, index) => localStorage.key(index))
+      .find((candidate) => candidate?.startsWith("fondale.continuation."));
+    if (!key) return undefined;
+    const value = JSON.parse(localStorage.getItem(key)!) as {
+      snapshot: { state: { activity: unknown } };
+    };
+    return value.snapshot.state.activity;
+  })).toBeNull();
 
-  await frame.focus();
-  await page.waitForTimeout(1_000);
-  const progressedActivity = (await liveState(page)).activity;
-  const progressedElapsed = progressedActivity?.type === "sequence" &&
-    progressedActivity.active?.kind === "direction"
-    ? progressedActivity.active.elapsedTicks
-    : undefined;
-  expect(progressedElapsed).toBeGreaterThan(savedElapsed!);
-  await page.keyboard.press("Control+l");
-  await frame.locator('[data-fondale-load-slot="0"]').click();
-  await expect.poll(async () => {
-    const activity = (await liveState(page)).activity;
-    const elapsed = activity?.type === "sequence" && activity.active?.kind === "direction"
-      ? activity.active.elapsedTicks
-      : undefined;
-    return elapsed !== undefined && progressedElapsed !== undefined && elapsed < progressedElapsed;
-  }).toBe(true);
-  expect(await renderedPixel(page, 400, 120)).toEqual(savedCameraPixel);
+  await page.reload();
+  await page.locator("[data-fondale-continuation]")
+    .getByRole("button", { name: "Continue" }).click();
+  await page.waitForFunction(() => window.__directionStepLive !== undefined || window.__directionStepError !== undefined);
+  expect((await liveState(page)).activity).toBeNull();
+  expect((await liveState(page)).variables).toEqual({ completed: false, skipped: false });
 
-  await frame.focus();
+  await clickLogical(page, 213, 180);
+  await expect.poll(async () => (await liveState(page)).activity?.type).toBe("sequence");
+  await page.locator("[data-fondale-frame]").focus();
   await page.keyboard.press("Escape");
   await expect.poll(async () => (await liveState(page)).activity).toBeNull();
   expect((await liveState(page)).variables).toEqual({ completed: false, skipped: true });

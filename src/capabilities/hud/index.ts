@@ -61,7 +61,6 @@ export interface HUDPresentationContext {
   readonly world?: WorldPresentation;
   readonly camera?: CameraPresentation;
   readonly audioAvailable?: boolean;
-  readonly saveSlots?: readonly HUDSaveSlotFacts[];
   readonly speakerSilhouetteTops?: Readonly<Record<string, number>>;
   readonly sequenceActive?: boolean;
 }
@@ -69,16 +68,8 @@ export interface HUDPresentationContext {
 /** @internal Technical facts supplied by browser adapters when presenting HUD. */
 export type HUDAdapterFacts = Pick<
   HUDPresentationContext,
-  "audioAvailable" | "saveSlots" | "speakerSilhouetteTops"
+  "audioAvailable" | "speakerSilhouetteTops"
 >;
-
-/** @internal Save-owned compatibility facts supplied by the storage adapter. */
-export interface HUDSaveSlotFacts {
-  readonly name: string;
-  readonly savedAt: string;
-  readonly compatible: boolean;
-  readonly diagnostics: readonly AuthoringDiagnostic[];
-}
 
 /** @internal Sequence or Game Session narrative facts prepared for HUD policy. */
 export type HUDNarrativeFacts =
@@ -159,7 +150,7 @@ export interface HUDCommandResponsePresentation {
 }
 
 /** @internal */
-export type HUDModalKind = "options" | "help" | "save" | "load";
+export type HUDModalKind = "options" | "help";
 
 /** @internal System overlay presentation independent of DOM and localStorage. */
 export interface HUDSystemPresentation {
@@ -178,24 +169,6 @@ export interface HUDSystemPresentation {
         readonly title: "Help";
         readonly focus: "first-control";
         readonly text: string;
-      }
-    | {
-        readonly kind: "save";
-        readonly title: "Save";
-        readonly focus: "first-control";
-        readonly namePlaceholder: "Save name";
-      }
-    | {
-        readonly kind: "load";
-        readonly title: "Load";
-        readonly focus: "first-control";
-        readonly slots: readonly {
-          readonly index: number;
-          readonly label: string;
-          readonly enabled: boolean;
-          readonly diagnostics: readonly string[];
-        }[];
-        readonly emptyText: "No Save Slots.";
       };
 }
 
@@ -261,8 +234,6 @@ export type HUDInput =
   | { readonly type: "change-preferences"; readonly change: Partial<PlayerPreferences> }
   | { readonly type: "open-modal"; readonly modal: HUDModalKind }
   | { readonly type: "close-modal" }
-  | { readonly type: "save-slot"; readonly name: string }
-  | { readonly type: "load-slot"; readonly index: number }
   | {
       readonly type: "activate-noun";
       readonly target: WorldTarget;
@@ -285,9 +256,6 @@ export interface HUDInputResult {
     | { readonly type: "advance-sequence" }
     | { readonly type: "choose"; readonly alternative: number }
     | { readonly type: "skip-sequence" };
-  readonly adapter?:
-    | { readonly type: "save"; readonly name: string }
-    | { readonly type: "load"; readonly index: number };
   readonly preferences?: PlayerPreferences;
 }
 
@@ -507,17 +475,6 @@ export function createHUD(input: HUDProjectView): HUD {
         modal = null;
         return { focus: "restore" };
       }
-      if (hudInput.type === "save-slot") {
-        if (modal !== "save") return { focus: null };
-        modal = null;
-        return { focus: "restore", adapter: { type: "save", name: hudInput.name } };
-      }
-      if (hudInput.type === "load-slot") {
-        const slot = context.saveSlots?.[hudInput.index];
-        return modal === "load" && slot?.compatible
-          ? { focus: null, adapter: { type: "load", index: hudInput.index } }
-          : { focus: null };
-      }
       if (hudInput.type === "activate-inventory") {
         const entry = context.inventory.entries.find(({ object }) => object === hudInput.object);
         if (!entry || hudInput.action === "secondary" && !entry.secondaryVerb) return { focus: null };
@@ -584,24 +541,10 @@ function modalPresentation(
       kind: "help",
       title: "Help",
       focus: "first-control",
-      text: "Mouse: left main action, right secondary action when shown, middle skip Line or Command Response. Bag or I opens Inventory. Tab reveals Nouns. 1–6 selects a Choice. F5 Options. Ctrl+S Save. Ctrl+L Load. Period skips a Line or Command Response. Escape closes Inventory, deselects an Object, or skips a skippable Sequence.",
+      text: "Mouse: left main action, right secondary action when shown, middle skip Line or Command Response. Bag or I opens Inventory. Tab reveals Nouns. 1–6 selects a Choice. F5 Options. Period skips a Line or Command Response. Escape closes Inventory, deselects an Object, or skips a skippable Sequence.",
     };
   }
-  if (modal === "save") {
-    return { kind: "save", title: "Save", focus: "first-control", namePlaceholder: "Save name" };
-  }
-  return {
-    kind: "load",
-    title: "Load",
-    focus: "first-control",
-    slots: (context.saveSlots ?? []).map((slot, index) => ({
-      index,
-      label: slot.compatible ? slot.name : `${slot.name} — incompatible`,
-      enabled: slot.compatible,
-      diagnostics: slot.diagnostics.map(({ message }) => message),
-    })),
-    emptyText: "No Save Slots.",
-  };
+  return null;
 }
 
 function normalizedPreferences(value: unknown): PlayerPreferences {

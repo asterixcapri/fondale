@@ -40,7 +40,6 @@ import type {
   HUDCommandResponsePresentation,
 } from "../capabilities/hud";
 import { assetUrl, type LoadedAssets } from "./assets";
-import type { BrowserSessionControls } from "./save-slots";
 
 interface AnimationView {
   readonly sprite: Sprite;
@@ -74,7 +73,6 @@ export class BrowserRenderer {
     private readonly data: BrowserPresentationProjectView,
     private readonly assets: LoadedAssets,
     private readonly core: CoreSession,
-    private readonly controls: BrowserSessionControls,
   ) {
     this.world.sortableChildren = true;
     this.overlay = new EngineOverlay(
@@ -82,7 +80,6 @@ export class BrowserRenderer {
       data,
       assets,
       core,
-      controls,
       () => [...this.characterViews.keys()],
       (character) => this.characterViews.get(character)?.container.getBounds().minY,
       (point) => this.sceneToViewport(point),
@@ -448,7 +445,6 @@ class EngineOverlay {
     private readonly data: BrowserPresentationProjectView,
     private readonly assets: LoadedAssets,
     private readonly core: CoreSession,
-    private readonly controls: BrowserSessionControls,
     private readonly characterIds: () => readonly string[],
     private readonly characterSilhouetteTop: (character: string) => number | undefined,
     private readonly sceneToViewport: (point: Point) => Point,
@@ -823,12 +819,6 @@ class EngineOverlay {
     const previousResponseId = this.currentHUD.commandResponse?.id ?? null;
     const result = this.core.hudInput(input, this.adapterFacts());
     if (result.preferences) this.persistPreferences(result.preferences);
-    if (result.adapter?.type === "save") {
-      this.controls.save(result.adapter.name);
-    } else if (result.adapter?.type === "load") {
-      void this.controls.load(result.adapter.index);
-      return;
-    }
     this.currentHUD = this.core.hud(this.adapterFacts());
     this.inventorySignature = "";
     this.renderInventory();
@@ -1284,16 +1274,6 @@ class EngineOverlay {
       this.openModal(this.currentHUD.system.modal?.kind === "options" ? null : "options");
       return;
     }
-    if (event.ctrlKey && event.key.toLowerCase() === "s") {
-      event.preventDefault();
-      this.openModal("save");
-      return;
-    }
-    if (event.ctrlKey && event.key.toLowerCase() === "l") {
-      event.preventDefault();
-      this.openModal("load");
-      return;
-    }
     if (this.currentHUD.system.modal) {
       if (event.key === "Escape") {
         event.preventDefault();
@@ -1383,9 +1363,7 @@ class EngineOverlay {
     heading.style.cssText = "font:inherit;margin:0 0 6px;color:#58d6d2";
     this.modal.append(heading);
     if (presentation.kind === "options") this.renderOptions(presentation.audioAvailable);
-    else if (presentation.kind === "help") this.renderHelp(presentation.text);
-    else if (presentation.kind === "save") this.renderSave(presentation.namePlaceholder);
-    else this.renderLoad(presentation);
+    else this.renderHelp(presentation.text);
   }
 
   private renderOptions(audioAvailable: boolean): void {
@@ -1411,7 +1389,7 @@ class EngineOverlay {
     }
     textSpeed.select.addEventListener("change", () => this.updatePreference({ textSpeed: textSpeed.select.value as PlayerPreferences["textSpeed"] }));
     speech.input.addEventListener("change", () => this.updatePreference({ speechText: speech.input.checked }));
-    this.modal.append(controls, this.modalButton("Help", () => this.openModal("help")), this.modalButton("Save", () => this.openModal("save")), this.modalButton("Load", () => this.openModal("load")));
+    this.modal.append(controls, this.modalButton("Help", () => this.openModal("help")));
   }
 
   private renderHelp(helpText: string): void {
@@ -1419,41 +1397,6 @@ class EngineOverlay {
     text.dataset.fondaleHelp = "";
     text.textContent = helpText;
     this.modal.append(text, this.modalButton("Back", () => this.openModal("options")));
-  }
-
-  private renderSave(placeholder: string): void {
-    const name = document.createElement("input");
-    name.dataset.fondaleSaveName = "";
-    name.placeholder = placeholder;
-    const save = this.modalButton("Save", () => {
-      this.inputHUD({ type: "save-slot", name: name.value });
-    });
-    save.dataset.fondaleSaveConfirm = "";
-    this.modal.append(name, save);
-    name.focus();
-  }
-
-  private renderLoad(presentation: Extract<NonNullable<HUDPresentation["system"]["modal"]>, { kind: "load" }>): void {
-    const list = document.createElement("div");
-    list.dataset.fondaleSaveSlots = "";
-    presentation.slots.forEach((slot) => {
-      const button = this.modalButton(slot.label, () => {
-        this.inputHUD({ type: "load-slot", index: slot.index });
-      });
-      button.dataset.fondaleLoadSlot = String(slot.index);
-      button.disabled = !slot.enabled;
-      if (!slot.enabled) {
-        button.title = slot.diagnostics.join(" ");
-        const diagnostic = document.createElement("p");
-        diagnostic.dataset.fondaleLoadDiagnostic = String(slot.index);
-        diagnostic.textContent = slot.diagnostics.join(" ");
-        list.append(button, diagnostic);
-        return;
-      }
-      list.append(button);
-    });
-    if (!list.hasChildNodes()) list.textContent = presentation.emptyText;
-    this.modal.append(list);
   }
 
   private modalButton(text: string, action: () => void): HTMLButtonElement {
@@ -1510,7 +1453,6 @@ class EngineOverlay {
   private adapterFacts(): HUDAdapterFacts {
     return {
       audioAvailable: this.assets.audio.size > 0,
-      saveSlots: this.controls.slots(),
       speakerSilhouetteTops: Object.fromEntries(
         this.characterIds().flatMap((character) => {
           const top = this.characterSilhouetteTop(character);

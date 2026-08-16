@@ -6,6 +6,7 @@ import {
   type CommandLexicon,
   type GameProject,
   type NounDefinition,
+  type SaveSnapshot,
   type SceneDefinition,
   startGame,
   type GameSession,
@@ -15,6 +16,7 @@ declare global {
   interface Window {
     __dialogueSession?: GameSession;
     __dialogueProvider?: FakeDialogueProvider;
+    __restoreDialogueSession?: (snapshot: SaveSnapshot) => Promise<void>;
   }
 }
 
@@ -245,6 +247,10 @@ const target = document.querySelector<HTMLElement>("#game");
 if (target) {
   window.__dialogueProvider = dialogueProvider;
   window.__dialogueSession = await startGame(project, { target, dialogueProvider });
+  window.__restoreDialogueSession = async (snapshot) => {
+    window.__dialogueSession?.stop();
+    window.__dialogueSession = await startGame(project, { target, dialogueProvider, snapshot });
+  };
   document.querySelector<HTMLButtonElement>("#reflect")?.addEventListener("click", () => {
     window.__dialogueSession?.startReflection();
   });

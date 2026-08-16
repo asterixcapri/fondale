@@ -146,6 +146,36 @@ test("New Game replaces continuation while other Project Identities stay isolate
   ]));
 });
 
+test("ordinary play exposes no manual Save Slot controls or storage", async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem("fondale.save-slots", JSON.stringify([{
+      name: "Legacy save",
+      savedAt: "2026-08-16T12:00:00.000Z",
+      snapshot: { legacy: true },
+    }]));
+  });
+  await installDialogueStandIn(page);
+  await page.goto("/test/fixtures/continuation.html");
+  const frame = page.locator("[data-fondale-frame]");
+  await expect(frame).toBeVisible();
+
+  await frame.focus();
+  await page.keyboard.press("F5");
+  const options = frame.locator('[data-fondale-modal="options"]');
+  await expect(options.getByRole("button", { name: "Save", exact: true })).toHaveCount(0);
+  await expect(options.getByRole("button", { name: "Load", exact: true })).toHaveCount(0);
+  await options.getByRole("button", { name: "Help" }).click();
+  await expect(frame.locator("[data-fondale-help]")).not.toContainText("Ctrl+S");
+  await expect(frame.locator("[data-fondale-help]")).not.toContainText("Ctrl+L");
+
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("Control+s");
+  await expect(frame.locator('[data-fondale-modal="save"]')).toHaveCount(0);
+  await page.keyboard.press("Control+l");
+  await expect(frame.locator('[data-fondale-modal="load"]')).toHaveCount(0);
+  expect(await page.evaluate(() => localStorage.getItem("fondale.save-slots"))).toContain("Legacy save");
+});
+
 test("automatic continuation waits for an accepted Dialogue Turn without cancelling it", async ({
   page,
 }) => {

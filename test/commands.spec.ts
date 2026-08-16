@@ -459,7 +459,7 @@ test("the browser adapter plays Line audio at the HUD-owned preference volume", 
   )).toMatchObject({ volume: 0.35 });
 });
 
-test("Options, Help, named Save Slots, and selected Object restore through shortcuts", async ({ page }) => {
+test("Options and Help keep Player Preferences separate from continuation", async ({ page }) => {
   await page.goto("/test/fixtures/commands.html");
   await page.evaluate(() => localStorage.clear());
   await page.reload();
@@ -471,42 +471,16 @@ test("Options, Help, named Save Slots, and selected Object restore through short
   await expect(key).toHaveAttribute("aria-pressed", "true");
 
   await frame.focus();
-  await page.keyboard.press("Control+s");
-  const modal = frame.locator('[data-fondale-modal="save"]');
-  await modal.locator("[data-fondale-save-name]").fill("Davanti al portone");
-  await modal.locator("[data-fondale-save-confirm]").click();
-  await frame.focus();
-  await page.keyboard.press("Escape");
-  await expect(key).toHaveAttribute("aria-pressed", "false");
-  await page.keyboard.press("Control+l");
-  await frame.locator('[data-fondale-load-slot="0"]').click();
-  await expect(key).toHaveAttribute("aria-pressed", "true");
-
-  await frame.focus();
   await page.keyboard.press("F5");
   const options = frame.locator('[data-fondale-modal="options"]');
   await expect(options.getByLabel("Speech volume")).toBeVisible();
   await options.getByLabel("Speech volume").fill("0.5");
   expect(await page.evaluate(() => localStorage.getItem("fondale.preferences.test.commands")))
     .toContain('"audioVolume":0.5');
+  expect(await page.evaluate(() => Array.from({ length: localStorage.length }, (_, index) =>
+    localStorage.key(index)
+  ).find((candidate) => candidate?.startsWith("fondale.continuation.")))).toBeTruthy();
   await frame.getByRole("button", { name: "Help" }).click();
   await expect(frame.locator("[data-fondale-help]")).toContainText("Bag or I opens Inventory");
-  await expect(frame.locator("[data-fondale-help]")).toContainText("Ctrl+S Save");
-
-  await page.evaluate(() => {
-    const slots = JSON.parse(localStorage.getItem("fondale.save-slots") ?? "[]") as Array<Record<string, unknown>>;
-    const incompatible = structuredClone(slots[0]) as Record<string, unknown>;
-    incompatible.name = "Vecchio salvataggio";
-    (incompatible.snapshot as Record<string, unknown>).projectVersion = "0";
-    slots.push(incompatible);
-    localStorage.setItem("fondale.save-slots", JSON.stringify(slots));
-  });
-  await frame.focus();
-  await page.keyboard.press("Control+l");
-  const incompatibleLoad = frame.locator('[data-fondale-load-slot="1"]');
-  await expect(incompatibleLoad).toBeDisabled();
-  await expect(frame.locator('[data-fondale-load-diagnostic="1"]')).toContainText("Project Version");
-  await incompatibleLoad.dispatchEvent("click");
-  await expect(frame.locator('[data-fondale-modal="load"]')).toBeVisible();
-  await expect(key).toHaveAttribute("aria-pressed", "true");
+  await expect(frame.locator("[data-fondale-help]")).not.toContainText("Save");
 });

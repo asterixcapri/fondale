@@ -118,7 +118,7 @@
         <div class="arrow"></div>
         <article class="stage"><div class="number">2</div><div class="stage-body" style="--accent:var(--blue)"><h3>startGame → validazione e compilazione</h3><p><code>startGame</code> innesca la validazione distribuita: ogni capability verifica i propri invarianti e Game Project aggrega gli Authoring Diagnostic. Un risultato valido applica i default e crea una copia privata profondamente immutabile, senza modificare i dati dell’Author.</p><span class="exchange">Game Project → private compiled project</span></div></article>
         <div class="arrow"></div>
-        <article class="stage"><div class="number">3</div><div class="stage-body session" style="--accent:var(--gold)"><h3>Avvio → CoreSession</h3><p>Dopo la compilazione, <code>startGame</code> valida l’eventuale Save Snapshot non fidato, controlla browser e Runtime Asset e crea gli adapter. <strong>CoreSession</strong> crea o ripristina il Game State canonico e avvia il logical tick.</p><span class="exchange">compiled project + optional unknown snapshot</span></div></article>
+        <article class="stage"><div class="number">3</div><div class="stage-body session" style="--accent:var(--gold)"><h3>Avvio → CoreSession</h3><p>Dopo la compilazione, <code>startGame</code> offre Continue per un Continuation State valido oppure New Game, controlla browser e Runtime Asset e crea gli adapter. <strong>CoreSession</strong> crea o ripristina il Game State canonico e avvia il logical tick.</p><span class="exchange">compiled project + validated continuation or new state</span></div></article>
         <div class="arrow"></div>
         <article class="stage"><div class="number">4</div><div class="stage-body" style="--accent:var(--rose)"><h3>Input fisico → intenzione dichiarata</h3><p>Pointer e tastiera vengono tradotti in input di sessione o intenzioni HUD. L’adapter non sceglie Command Case, percorsi, conseguenze o avanzamento di Sequence.</p><span class="exchange">DOM / pointer / keyboard → CoreInput</span></div></article>
         <div class="arrow"></div>
@@ -184,13 +184,13 @@
     </section>
 
     <section id="save">
-      <h2>Save e restore non controllano la sessione</h2>
+      <h2>Save Snapshot e Continuation State restano distinti</h2>
       <div class="save-loop">
         <article class="card"><h3>Game State committed</h3><p>CoreSession espone una copia difensiva dei fatti canonici necessari, inclusa la Character Knowledge di ogni Character.</p></article>
         <div class="loop-arrow" aria-hidden="true">⇄</div>
-        <article class="card"><h3>Save Snapshot validato</h3><p>Save verifica formato, Project Identity, Project Version e attività in corso prima di creare una nuova sessione. localStorage resta nel browser.</p></article>
+        <article class="card"><h3>Continuation State nel browser</h3><p>localStorage associa l’ultimo Save Snapshot validato all’identità della memoria del Dialogue Provider. Continue recupera entrambi; New Game sostituisce l’associazione.</p></article>
       </div>
-      <p style="margin-top:16px;color:var(--muted)">Uno snapshot incompatibile viene rifiutato con diagnostica strutturata; non esiste restore parziale né migratore automatico dei salvataggi alpha 0.3.</p>
+      <p style="margin-top:16px;color:var(--muted)">Uno snapshot incompatibile viene rifiutato con diagnostica strutturata e lascia disponibile soltanto New Game. Il Player non gestisce salvataggi nominati o storici.</p>
     </section>
 
     <section id="regole">

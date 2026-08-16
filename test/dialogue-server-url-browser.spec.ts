@@ -123,7 +123,7 @@ test("Conversation and Reflection use the HTTP protocol behind the declared URL"
   ]);
 });
 
-test("URL-backed turns cancel over HTTP and Load resets their provider memory", async ({ page }) => {
+test("URL-backed turns cancel over HTTP when the Player leaves", async ({ page }) => {
   const requests: DialogueRequest[] = [];
   let releaseInterpretation!: () => void;
   const holdInterpretation = new Promise<void>((resolve) => {
@@ -143,15 +143,6 @@ test("URL-backed turns cancel over HTTP and Load resets their provider memory", 
   const firstFrame = await openFirstConversation(page);
   const conversation = firstFrame.locator("[data-fondale-conversation]");
   await expect(conversation).toBeVisible();
-  await page.evaluate(() => {
-    const snapshot = window.__dialogueUrlSessions![0].createSaveSnapshot();
-    localStorage.setItem("fondale.save-slots", JSON.stringify([{
-      name: "URL-backed Conversation",
-      savedAt: "2026-08-16T12:00:00.000Z",
-      snapshot,
-    }]));
-  });
-
   await conversation.locator("[data-fondale-dialogue-input]").fill("Wait for this answer.");
   await conversation.getByRole("button", { name: "Ask" }).click();
   await expect(conversation.locator("[data-fondale-dialogue-input]")).toBeDisabled();
@@ -159,13 +150,8 @@ test("URL-backed turns cancel over HTTP and Load resets their provider memory", 
   await expect.poll(() => requests.map(({ operation }) => operation)).toContain("cancel");
   releaseInterpretation();
 
-  await firstFrame.focus();
-  await page.keyboard.press("Control+l");
-  await firstFrame.locator('[data-fondale-load-slot="0"]').click();
-  await expect(conversation.locator("[data-fondale-dialogue-input]")).toBeEnabled();
-
   const firstSessionId = requests.find(({ operation }) => operation === "interpret")!.sessionId;
   expect(requests.filter(({ operation, sessionId }) =>
     operation === "reset" && sessionId === firstSessionId
-  )).toHaveLength(2);
+  )).toHaveLength(1);
 });

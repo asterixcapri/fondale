@@ -1,6 +1,6 @@
 import { test, type Page } from "@playwright/test";
 
-import { clickWorld, expect, openGame, saveAndLoadGameSession } from "./harness";
+import { clickWorld, continueGameSession, expect, openGame } from "./harness";
 
 /**
  * Opt-in live spike against the configured model vendor, Mastra and PostgreSQL.
@@ -85,10 +85,10 @@ test("the live Michele/Antonio spike behaves as the approved experience", async 
   expect(informed.length).toBeGreaterThan(uninformed.length);
   expect(await canonicalState(page)).toEqual(afterCoverStory);
 
-  // 7. Load starts a restored Game Session through the same declarative URL;
-  // the server integration suite verifies the corresponding memory reset.
+  // 7. Continue restores Game State and the provider identity through the same
+  // declarative URL, preserving the server-owned Conversation memory.
   await reflection.getByRole("button", { name: "Leave" }).click();
-  await saveAndLoadGameSession(page, "Live dialogue restore");
+  await continueGameSession(page);
   await expect(page.locator("[data-fondale-frame]")).toBeVisible();
   await expect.poll(() => page.evaluate(() => window.__liveDialogue!.session.getStatus()), {
     timeout: 30_000,

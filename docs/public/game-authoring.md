@@ -351,8 +351,10 @@ document.querySelector("#reflect")?.addEventListener("click", () => {
 ```
 
 For ordinary browser startup, the Author declares only `dialogueServerUrl`.
-Fondale creates the HTTP adapter and a fresh, cryptographically random Game
-Session identity, then checks the connection before mounting the game. Keep
+Fondale offers Continue for a compatible Continuation State or New Game to
+replace it. New Game creates a fresh, cryptographically random provider
+session identity; Continue restores the validated Save Snapshot and reuses its
+provider identity after a non-mutating readiness check. Keep
 `dialogueProvider` for Engine tests, technical fixtures, or an advanced host
 that deliberately owns a custom low-level adapter; never supply both options.
 
@@ -371,7 +373,7 @@ Hypotheses or investigation suggestions. Fondale labels Hypotheses as uncertain
 and suggestions as possible, presents the result as the Player Character's
 Line, and never adds generated material to Game State. A Dialogue Provider
 adapter must keep Conversation and Reflection memory in distinct threads;
-Fondale resets all provider memory on Load.
+provider memory remains external to both Save Snapshot and Game State.
 
 ## Startup diagnostics
 
@@ -392,12 +394,19 @@ try {
 }
 ```
 
-## Save and restore
+## Continuation and Save Snapshots
+
+Ordinary browser play persists one Continuation State automatically after
+stable committed progress. It is keyed by Project Identity and contains the
+latest Save Snapshot plus the provider session identity. Continue validates
+the snapshot before mounting; malformed or incompatible browser data exposes
+only New Game. Starting New Game replaces the current continuation. There are
+no named saves or manual Save/Load controls.
 
 `GameSession.createSaveSnapshot()` returns a JSON-safe `SaveSnapshot`. Treat
-stored data as untrusted and pass it directly to `startGame`; Save validates
-its shape, Project Identity, Project Version, and complete Game State before
-any browser work.
+stored data as untrusted. Advanced hosts may pass one directly to `startGame`;
+Save validates its shape, Project Identity, Project Version, and complete Game
+State before any browser work.
 
 ```ts
 const stored: unknown = JSON.parse(localStorage.getItem("save") ?? "null");

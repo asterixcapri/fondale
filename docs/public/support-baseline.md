@@ -4,7 +4,7 @@ Fondale 0.4 alpha is verified against the latest stable Google Chrome desktop wi
 WebGL. A regression there is a Fondale bug.
 
 - The mouse controls world Nouns, Inventory, Lines, Narrations, Command
-  Responses, Choices, Options and Save/Load.
+  Responses, Choices, Options, Continue and New Game.
 - Hover presents one primary Command phrase and, when authored, one secondary
   phrase in a readable pointer-following callout.
 - Left click executes the primary action; right click executes the visible
@@ -14,7 +14,8 @@ WebGL. A regression there is a Fondale bug.
   Response. Keys 1–6 choose a visible alternative.
 - A persistent bag or `I` opens the Inventory drawer. It exposes eight slots;
   arrows and the wheel paginate it, while Escape and outside click close it.
-- F5 opens Options; Ctrl+S and Ctrl+L open named Save and Load slots.
+- F5 opens Options. Compatible automatic progress offers Continue at startup;
+  New Game replaces that progress. Ordinary play has no manual Save or Load.
 - Keyboard focus uses the browser indicator; the selected first Noun also uses
   an outline, check mark, and pressed-state label, not colour alone.
 - Character speech uses a strong text edge above its speaker. Narration uses a
@@ -23,8 +24,8 @@ WebGL. A regression there is a Fondale bug.
 - Oversized Scenes follow the Player Character horizontally and vertically,
   clamp at Scene edges, draw the translated world on whole logical pixels, and
   project mouse actions and revealed world geometry through the same Camera.
-  Inventory, Choices, Command Responses, Narrations, Options, Help, Save and
-  Load remain fixed in the Logical Resolution.
+  Inventory, Choices, Command Responses, Narrations, Options and Help remain
+  fixed in the Logical Resolution.
 - The logical frame is uniformly fitted and letterboxed. Pixel scaling uses
   the largest fitting integer factor, or a uniform nearest-neighbour reduction
   when the target is smaller than the Logical Resolution.

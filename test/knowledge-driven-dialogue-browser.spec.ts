@@ -91,7 +91,7 @@ test("authored alternatives and the free-form field stay usable together by keyb
     .toEqual(["conversation:antonio"]);
 });
 
-test("Load restores a consumed alternative while provider memory starts again", async ({
+test("restoring a Save Snapshot keeps provider memory outside canonical Game State", async ({
   page,
 }) => {
   await openCharacterConversation(page, 315);
@@ -116,26 +116,23 @@ test("Load restores a consumed alternative while provider memory starts again", 
   await expect(page.locator('[data-fondale-line][data-fondale-speaker="antonio"]'))
     .toContainText("I saw the harbour chain being cut.");
   await page.keyboard.press(".");
-  const consumed = await page.evaluate(() => {
-    const snapshot = window.__dialogueSession!.createSaveSnapshot();
-    localStorage.setItem("fondale.save-slots", JSON.stringify([{
-      name: "Consumed alternative",
-      savedAt: "2026-08-13T12:00:00.000Z",
-      snapshot,
-    }]));
-    return snapshot.state.consumedAlternatives.antonio;
-  });
+  const consumed = await page.evaluate(() =>
+    window.__dialogueSession!.createSaveSnapshot().state.consumedAlternatives.antonio
+  );
   expect(consumed).toEqual([1]);
 
-  await page.locator("[data-fondale-frame]").focus();
-  await page.keyboard.press("Control+l");
-  await page.locator('[data-fondale-load-slot="0"]').click();
+  await page.evaluate(async () => {
+    const snapshot = window.__dialogueSession!.createSaveSnapshot();
+    await window.__restoreDialogueSession!(snapshot);
+  });
 
-  await expect(input).toBeVisible();
-  await expect(alternatives).toHaveCount(1);
-  await expect(alternatives.first()).toContainText("Who cut the harbour chain?");
-  expect(await page.evaluate(() => window.__dialogueProvider?.resetCount())).toBe(1);
-  expect(await page.evaluate(() => window.__dialogueProvider?.threadKeys())).toEqual([]);
+  const restoredConversation = page.locator("[data-fondale-conversation]");
+  await expect(restoredConversation.locator("[data-fondale-conversation-alternative]")).toHaveCount(1);
+  await expect(restoredConversation.locator("[data-fondale-conversation-alternative]").first())
+    .toContainText("Who cut the harbour chain?");
+  expect(await page.evaluate(() => window.__dialogueProvider?.resetCount())).toBe(0);
+  expect(await page.evaluate(() => window.__dialogueProvider?.threadKeys()))
+    .toEqual(["conversation:antonio"]);
   expect(await page.evaluate(() =>
     window.__dialogueSession?.createSaveSnapshot().state.consumedAlternatives.antonio
   )).toEqual([1]);
@@ -169,7 +166,7 @@ test("an authored alternative directing a Sequence hides the input field until i
   await expect(alternatives).toHaveCount(1);
 });
 
-test("Rifletti keeps Reflection separate and Load resets every provider thread", async ({ page }) => {
+test("Rifletti keeps Reflection separate from Conversation memory", async ({ page }) => {
   await openCharacterConversation(page, 315);
   const conversation = page.locator("[data-fondale-conversation]");
   const input = conversation.locator("[data-fondale-dialogue-input]");
@@ -198,31 +195,7 @@ test("Rifletti keeps Reflection separate and Load resets every provider thread",
     "conversation:antonio",
     "reflection:player",
   ]);
-
-  await page.keyboard.press(".");
-  const canonicalBefore = await page.evaluate(() => {
-    const snapshot = window.__dialogueSession!.createSaveSnapshot();
-    localStorage.setItem("fondale.save-slots", JSON.stringify([{
-      name: "Active Reflection",
-      savedAt: "2026-08-12T12:00:00.000Z",
-      snapshot,
-    }]));
-    return {
-      knowledge: snapshot.state.characterKnowledge.player,
-      testimonies: snapshot.state.testimonies,
-    };
-  });
-  await page.locator("[data-fondale-frame]").focus();
-  await page.keyboard.press("Control+l");
-  await page.locator('[data-fondale-load-slot="0"]').click();
-
-  await expect(reflection).toBeVisible();
-  expect(await page.evaluate(() => window.__dialogueProvider?.resetCount())).toBe(1);
-  expect(await page.evaluate(() => window.__dialogueProvider?.threadKeys())).toEqual([]);
-  expect(await page.evaluate(() => {
-    const state = window.__dialogueSession!.createSaveSnapshot().state;
-    return { knowledge: state.characterKnowledge.player, testimonies: state.testimonies };
-  })).toEqual(canonicalBefore);
+  expect(await page.evaluate(() => window.__dialogueProvider?.resetCount())).toBe(0);
 });
 
 test("an authored Sequence takes over the browser and then resumes its Conversation", async ({
@@ -333,57 +306,6 @@ test("the Player can leave a pending Conversation and its late response stays in
   await page.waitForTimeout(0);
 
   await expect(page.locator("[data-fondale-line]")).toHaveCount(0);
-  expect(await page.evaluate(() =>
-    window.__dialogueSession?.createSaveSnapshot().state.characterKnowledge.player
-  )).toEqual([]);
-});
-
-test("Load resets provider memory before restoring an active Conversation", async ({ page }) => {
-  await openCharacterConversation(page, 315);
-  const conversation = page.locator("[data-fondale-conversation]");
-  const input = conversation.locator("[data-fondale-dialogue-input]");
-  await expect(input).toBeVisible();
-  await page.evaluate(() => {
-    const snapshot = window.__dialogueSession!.createSaveSnapshot();
-    localStorage.setItem("fondale.save-slots", JSON.stringify([{
-      name: "Active Conversation",
-      savedAt: "2026-08-12T12:00:00.000Z",
-      snapshot,
-    }]));
-  });
-
-  await input.fill("Wait for this answer.");
-  await conversation.getByRole("button", { name: "Ask" }).click();
-  await expect(input).toBeDisabled();
-  const [pendingTurnId] = await page.evaluate(() =>
-    window.__dialogueProvider?.pendingTurnIds() ?? []
-  );
-  const lifecycle = await page.evaluate(async (turnId) => {
-    if (!turnId || !window.__dialogueProvider?.release(turnId)) {
-      return { released: false, staged: false };
-    }
-    for (let microtask = 0; microtask < 10; microtask += 1) await Promise.resolve();
-    const staged = document.querySelector<HTMLInputElement>(
-      "[data-fondale-dialogue-input]",
-    )?.value === "";
-    const frame = document.querySelector<HTMLElement>("[data-fondale-frame]");
-    frame?.dispatchEvent(new KeyboardEvent("keydown", {
-      key: "l",
-      ctrlKey: true,
-      bubbles: true,
-    }));
-    document.querySelector<HTMLButtonElement>('[data-fondale-load-slot="0"]')?.click();
-    return { released: true, staged };
-  }, pendingTurnId);
-  expect(lifecycle).toEqual({ released: true, staged: true });
-
-  await expect(input).toBeVisible();
-  await expect(input).toBeEnabled();
-  await expect(conversation).toContainText("Ask antonio");
-  expect(await page.evaluate(() => window.__dialogueProvider?.resetCount())).toBe(1);
-  expect(await page.evaluate((turnId) =>
-    turnId ? window.__dialogueProvider?.release(turnId) : false, pendingTurnId
-  )).toBe(false);
   expect(await page.evaluate(() =>
     window.__dialogueSession?.createSaveSnapshot().state.characterKnowledge.player
   )).toEqual([]);

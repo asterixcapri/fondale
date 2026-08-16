@@ -1,6 +1,6 @@
 import { test, type Page } from "@playwright/test";
 
-import { clickWorld, expect, hoverWorld, openGame, saveAndLoadGameSession, shoot } from "./harness";
+import { clickWorld, continueGameSession, expect, hoverWorld, openGame, shoot } from "./harness";
 
 test.setTimeout(90_000);
 
@@ -188,12 +188,15 @@ test("the Example exposes Rifletti as Player Character Reflection", async ({ pag
   await advance(page);
   await page.locator("[data-fondale-reflection]").getByRole("button", { name: "Leave" }).click();
 
-  await saveAndLoadGameSession(page, "Dialogue reset");
+  await continueGameSession(page);
 
   const sessionId = dialogueRequests[0]!.sessionId;
   expect(dialogueRequests.filter(({ operation, sessionId: candidate }) =>
     operation === "reset" && candidate === sessionId
-  )).toHaveLength(2);
+  )).toHaveLength(1);
+  expect(dialogueRequests.filter(({ operation, sessionId: candidate }) =>
+    operation === "ready" && candidate === sessionId
+  )).toHaveLength(1);
   expect(errors).toEqual([]);
 });
 
@@ -327,18 +330,7 @@ test("Michele completes one ordinary job before the drifting boat begins the adv
   await command(page, "use", 326, 190);
   await page.waitForTimeout(300);
   expect((await frame.locator("canvas").screenshot()).equals(winchStart)).toBe(false);
-  await frame.focus();
-  await page.keyboard.press("Control+s");
-  const winchSave = frame.locator('[data-fondale-modal="save"]');
-  await winchSave.locator("[data-fondale-save-name]").fill("Argano in movimento");
-  await winchSave.locator("[data-fondale-save-confirm]").click();
-  await frame.focus();
-  await page.keyboard.press("Escape");
   await expect(page.locator('[data-fondale-inventory-object="winchHandle"]')).toHaveCount(0);
-  await expect(line).toHaveCount(0);
-  await frame.focus();
-  await page.keyboard.press("Control+l");
-  await frame.locator('[data-fondale-load-slot="0"]').click();
   await expect(line).toContainText("può salpare", { timeout: 8_000 });
   await advance(page);
   await expect(line).toHaveCount(0);
@@ -350,16 +342,6 @@ test("Michele completes one ordinary job before the drifting boat begins the adv
   const arrivalStart = await frame.locator("canvas").screenshot();
   await page.waitForTimeout(400);
   expect((await frame.locator("canvas").screenshot()).equals(arrivalStart)).toBe(false);
-  await frame.focus();
-  await page.keyboard.press("Control+s");
-  const arrivalSave = frame.locator('[data-fondale-modal="save"]');
-  await arrivalSave.locator("[data-fondale-save-name]").fill("Approdo in corso");
-  await arrivalSave.locator("[data-fondale-save-confirm]").click();
-  await frame.focus();
-  await page.keyboard.press("Escape");
-  await frame.focus();
-  await page.keyboard.press("Control+l");
-  await frame.locator('[data-fondale-load-slot="1"]').click();
   await page.waitForTimeout(3_500);
   await shoot(page, "capri-1535-fortification-lower-path");
 
@@ -459,24 +441,21 @@ test("packaged text presentations remain legible across Aiano and Boffe", async 
   }
 });
 
-test("a Capri Project Version 4 Save remains visible and incompatible", async ({ page }) => {
+test("an incompatible Capri Continuation State offers only New Game", async ({ page }) => {
   await openGame(page);
-  const frame = page.locator("[data-fondale-frame]");
-  await frame.focus();
-  await page.keyboard.press("Control+s");
-  const save = frame.locator('[data-fondale-modal="save"]');
-  await save.locator("[data-fondale-save-name]").fill("Vecchia Capri");
-  await save.locator("[data-fondale-save-confirm]").click();
-  await page.evaluate(() => {
-    const slots = JSON.parse(localStorage.getItem("fondale.save-slots") ?? "[]") as Array<{
+  await expect.poll(() => page.evaluate(() => {
+    const key = Array.from({ length: localStorage.length }, (_, index) => localStorage.key(index))
+      .find((candidate) => candidate?.startsWith("fondale.continuation."));
+    if (!key) return false;
+    const continuation = JSON.parse(localStorage.getItem(key)!) as {
       snapshot: { projectVersion: string };
-    }>;
-    slots[0]!.snapshot.projectVersion = "4";
-    localStorage.setItem("fondale.save-slots", JSON.stringify(slots));
-  });
-  await frame.focus();
-  await page.keyboard.press("Control+l");
-  const oldSave = frame.locator('[data-fondale-load-slot="0"]');
-  await expect(oldSave).toBeDisabled();
-  await expect(oldSave).toContainText("incompatible");
+    };
+    continuation.snapshot.projectVersion = "4";
+    localStorage.setItem(key, JSON.stringify(continuation));
+    return true;
+  })).toBe(true);
+  await page.reload();
+  const startup = page.locator("[data-fondale-continuation]");
+  await expect(startup.getByRole("button", { name: "Continue" })).toHaveCount(0);
+  await expect(startup.getByRole("button", { name: "New Game" })).toBeVisible();
 });

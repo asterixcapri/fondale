@@ -22,7 +22,6 @@ import { BrowserFrame } from "./frame";
 import { DialogueHttpError, HttpDialogueProvider } from "./http-dialogue-provider";
 import { BrowserLoop } from "./loop";
 import { BrowserRenderer } from "./renderer";
-import { createBrowserSessionControls, type BrowserSessionControls } from "./save-slots";
 
 /** Options for mounting a new, independent Game Session. */
 export interface StartGameOptions {
@@ -157,16 +156,12 @@ export async function startGame(
   };
 
   try {
-    if (restored && dialogueProvider && options.dialogueServerUrl === undefined) {
-      await dialogueProvider.reset();
-    }
     frame = new BrowserFrame(options.target, projectView.startup);
     frame.checkEnvironment();
     const assets = await loadProjectAssets(projectView.assets);
     await frame.mount();
 
     core = createCoreSession(compiledProject, restored, dialogueProvider);
-    let controls: BrowserSessionControls;
     const mountRenderer = (session: CoreSession): BrowserRenderer => {
       const next = new BrowserRenderer(
         frame!.application,
@@ -174,20 +169,10 @@ export async function startGame(
         projectView.presentation,
         assets,
         session,
-        controls,
       );
       next.render([]);
       return next;
     };
-    const replaceCore = async (snapshot: ValidatedSaveSnapshot) => {
-      core!.stop();
-      renderer!.destroy();
-      if (dialogueProvider) await dialogueProvider.reset();
-      core = createCoreSession(compiledProject, snapshot, dialogueProvider);
-      renderer = mountRenderer(core);
-      loop!.reset();
-    };
-    controls = createBrowserSessionControls(compiledProject, () => core!, replaceCore);
     renderer = mountRenderer(core);
     loop = new BrowserLoop(
       frame.application,

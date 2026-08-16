@@ -96,9 +96,11 @@ system-overlay presentation from resolved capability facts. It also owns text
 timing, speech visibility and colour, Choice numbering, layout intent, Player
 Preference semantics and modal transitions. The browser remains the adapter
 for DOM, focus application, audio playback, timers, localStorage and physical
-input; Save continues to decide whether each stored Save Slot is compatible.
-These internal ownership changes do not alter `HUDTheme`, keyboard shortcuts,
-Save Slot storage, or the Player-visible overlay structure.
+input. Named saves and manual Save/Load controls have been removed. Ordinary
+startup now uses one Project Identity-specific automatic Continuation State:
+Continue restores its validated Save Snapshot and provider identity, while New
+Game replaces it. `HUDTheme` remains unchanged, and Player Preferences remain
+separate from continuation data.
 
 ## Authoring Diagnostic attribution
 

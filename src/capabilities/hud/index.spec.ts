@@ -345,7 +345,7 @@ test("HUD prepares narrative presentation and interaction intentions from capabi
   });
 });
 
-test("HUD owns Command Response, Player Preference, and system overlay policy", () => {
+test("HUD owns Command Response, Player Preference, Options, and Help policy", () => {
   const hud = createHUD({
     logicalResolution: { width: 426, height: 240 },
     theme: {
@@ -373,23 +373,6 @@ test("HUD owns Command Response, Player Preference, and system overlay policy", 
   const systemContext = {
     ...context,
     audioAvailable: true,
-    saveSlots: [{
-      name: "Before the gate",
-      savedAt: "2026-08-11T10:00:00.000Z",
-      compatible: false,
-      diagnostics: [{
-        code: "save.project.version",
-        family: "save" as const,
-        owner: "save" as const,
-        path: "snapshot",
-        message: "Save Snapshot uses another Project Version.",
-      }],
-    }, {
-      name: "At the harbour",
-      savedAt: "2026-08-11T11:00:00.000Z",
-      compatible: true,
-      diagnostics: [],
-    }],
   };
 
   hud.notify({ type: "command-response", text: "The gate is locked." });
@@ -427,43 +410,6 @@ test("HUD owns Command Response, Player Preference, and system overlay policy", 
   expect(hud.presentation(systemContext).system.modal).toMatchObject({
     kind: "help",
     title: "Help",
-  });
-  hud.input({ type: "open-modal", modal: "save" }, systemContext);
-  expect(hud.input({ type: "save-slot", name: "At the gate" }, systemContext)).toEqual({
-    focus: "restore",
-    adapter: { type: "save", name: "At the gate" },
-  });
-  expect(hud.presentation(systemContext).system.modal).toBeNull();
-
-  expect(hud.input({ type: "open-modal", modal: "load" }, systemContext))
-    .toEqual({ focus: "modal" });
-  expect(hud.presentation(systemContext).system).toEqual({
-    blocksWorldInput: true,
-    preferences: { textSpeed: "fast", speechText: false, audioVolume: 0.5 },
-    modal: {
-      kind: "load",
-      title: "Load",
-      focus: "first-control",
-      slots: [{
-        index: 0,
-        label: "Before the gate — incompatible",
-        enabled: false,
-        diagnostics: ["Save Snapshot uses another Project Version."],
-      }, {
-        index: 1,
-        label: "At the harbour",
-        enabled: true,
-        diagnostics: [],
-      }],
-      emptyText: "No Save Slots.",
-    },
-  });
-  expect(hud.input({ type: "load-slot", index: 0 }, systemContext)).toEqual({
-    focus: null,
-  });
-  expect(hud.input({ type: "load-slot", index: 1 }, systemContext)).toEqual({
-    focus: null,
-    adapter: { type: "load", index: 1 },
   });
   expect(hud.input({ type: "close-modal" }, systemContext)).toEqual({
     focus: "restore",
