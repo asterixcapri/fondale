@@ -305,6 +305,43 @@ test("contextual HUD presentation remains inside a smaller letterboxed viewport"
   }
 });
 
+test("the HUD responds independently to the visible size of a high-resolution Game", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto("/test/fixtures/commands.html?high-resolution");
+  const frame = page.locator("[data-fondale-frame]");
+  const canvas = frame.locator("canvas");
+  const trigger = frame.locator("[data-fondale-inventory-trigger]");
+  await trigger.click();
+  const panel = frame.locator("[data-fondale-inventory-panel]");
+  const widePanel = await panel.boundingBox();
+  const wideTrigger = await trigger.boundingBox();
+  const wideFont = Number.parseFloat(await panel.evaluate((element) => getComputedStyle(element).fontSize));
+  if (!widePanel || !wideTrigger) throw new Error("missing wide HUD bounds");
+
+  expect(widePanel.width / 1280).toBeCloseTo(0.22, 2);
+  expect(widePanel.width).toBeLessThanOrEqual(300);
+  expect(wideTrigger.width).toBeLessThanOrEqual(56);
+
+  await page.setViewportSize({ width: 900, height: 700 });
+  await expect(frame).toHaveCSS("width", "900px");
+  const compactPanel = await panel.boundingBox();
+  const compactTrigger = await trigger.boundingBox();
+  const compactFont = Number.parseFloat(await panel.evaluate((element) => getComputedStyle(element).fontSize));
+  const canvasBounds = await canvas.boundingBox();
+  const overlayBounds = await frame.locator("[data-fondale-overlay]").boundingBox();
+  if (!compactPanel || !compactTrigger || !canvasBounds || !overlayBounds) {
+    throw new Error("missing compact HUD bounds");
+  }
+
+  expect(compactPanel.width).toBeLessThan(widePanel.width);
+  expect(compactPanel.width).toBeGreaterThanOrEqual(180);
+  expect(compactTrigger.width).toBeLessThan(wideTrigger.width);
+  expect(compactTrigger.width).toBeGreaterThanOrEqual(36);
+  expect(compactFont).toBeLessThan(wideFont);
+  expect(compactFont).toBeGreaterThanOrEqual(12);
+  expect(overlayBounds).toEqual(canvasBounds);
+});
+
 test("Speech is readable over the Scene and Choice temporarily owns input", async ({ page }) => {
   await page.goto("/test/fixtures/commands.html");
   const frame = page.locator("[data-fondale-frame]");

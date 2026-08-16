@@ -53,9 +53,6 @@ interface CharacterView extends AnimationView {
   readonly container: Container;
 }
 
-const commandPreviewFontSize = "6px";
-const commandResponseFontSize = "8px";
-const speechFontSize = "9px";
 const speechTextShadow = "-2px -2px #000,0 -2px #000,2px -2px #000,-2px 0 #000,2px 0 #000,-2px 2px #000,0 2px #000,2px 2px #000,-1px -1px #000,1px -1px #000,-1px 1px #000,1px 1px #000,3px 3px #000";
 
 /** Applies capability presentation facts to PixiJS, DOM, audio, and physical input. */
@@ -439,6 +436,8 @@ class EngineOverlay {
   private dismissedActionSignature: string | null = null;
   private dialogueWasVisible = false;
   private alternativesSignature = "";
+  private readonly resizeObserver: ResizeObserver;
+  private lastCursorPoint: Point | null = null;
 
   constructor(
     private readonly frame: HTMLElement,
@@ -457,14 +456,11 @@ class EngineOverlay {
     this.root.dataset.fondaleOverlay = "";
     Object.assign(this.root.style, {
       position: "absolute",
-      left: "0",
-      top: "0",
-      width: `${data.logicalResolution.width}px`,
-      height: `${data.logicalResolution.height}px`,
-      transform: "scale(var(--fondale-scale, 1))",
-      transformOrigin: "0 0",
+      inset: "0",
+      width: "100%",
+      height: "100%",
       color: "white",
-      font: `7px/1.25 ${JSON.stringify(data.hudTheme?.font.family ?? "monospace")}`,
+      font: `var(--fondale-hud-font-size,12px)/1.25 ${JSON.stringify(data.hudTheme?.font.family ?? "monospace")}`,
       textShadow: "1px 1px #000",
       pointerEvents: "none",
     });
@@ -475,7 +471,7 @@ class EngineOverlay {
       zIndex: "8",
       left: "4px",
       top: "4px",
-      width: "190px",
+      width: "min(42%,420px)",
       pointerEvents: "none",
     });
     this.primaryAction.dataset.fondalePrimaryAction = "";
@@ -485,16 +481,16 @@ class EngineOverlay {
         "display:flex",
         "align-items:center",
         "width:max-content",
-        "max-width:190px",
-        "gap:4px",
+        "max-width:100%",
+        "gap:clamp(4px,1%,8px)",
         "box-sizing:border-box",
-        "padding:3px 6px",
+        "padding:clamp(5px,1%,9px) clamp(8px,2%,14px)",
         "color:#ffffff",
         `background:${colorWithAlpha(data.hudTheme?.colors.backing ?? "#071016", 0.82)}`,
         `border:1px solid ${data.hudTheme?.colors.border ?? "#789690"}`,
         "border-radius:4px",
         "box-shadow:0 2px 7px rgba(0,0,0,.72)",
-        `font-size:${commandPreviewFontSize}`,
+        "font-size:var(--fondale-command-font-size,11px)",
         "line-height:1.25",
         "white-space:normal",
         "text-shadow:1px 1px #000,-1px -1px #000",
@@ -522,10 +518,11 @@ class EngineOverlay {
     Object.assign(this.inventory.style, {
       display: "grid",
       gridTemplateColumns: "repeat(4,minmax(0,1fr))",
-      gridTemplateRows: "repeat(2,34px)",
+      gridTemplateRows: "repeat(2,minmax(0,1fr))",
+      aspectRatio: "2 / 1",
       alignContent: "start",
       minHeight: "0",
-      gap: "3px",
+      gap: "clamp(3px,1%,6px)",
     });
     this.inventory.dataset.fondaleInventory = "";
     this.inventory.addEventListener("wheel", (event) => {
@@ -553,12 +550,12 @@ class EngineOverlay {
     this.inventoryTrigger.style.cssText = [
       "position:absolute",
       "z-index:9",
-      "left:7px",
-      "bottom:7px",
+      "left:clamp(8px,2%,20px)",
+      "bottom:clamp(8px,2%,20px)",
       "display:grid",
       "place-items:center",
-      "width:20px",
-      "height:20px",
+      "width:clamp(36px,5%,56px)",
+      "height:clamp(36px,5%,56px)",
       "padding:0",
       "pointer-events:auto",
       `color:${data.hudTheme?.colors.preferred ?? "#f2ad62"}`,
@@ -566,15 +563,15 @@ class EngineOverlay {
       `border:1px solid ${data.hudTheme?.colors.preferred ?? "#f2ad62"}`,
       "border-radius:50%",
       "box-shadow:0 2px 7px rgba(0,0,0,.8)",
-      "font:700 8px/1 sans-serif",
+      "font:700 var(--fondale-hud-font-size,12px)/1 sans-serif",
     ].join(";");
     const bag = document.createElement("span");
     bag.setAttribute("aria-hidden", "true");
-    bag.style.cssText = `position:relative;display:block;width:11px;height:8px;margin-top:3px;box-sizing:border-box;background:${data.hudTheme?.colors.preferred ?? "#f2ad62"};border:1px solid ${data.hudTheme?.colors.text ?? "#f4dfb4"};border-radius:2px 2px 3px 3px`;
+    bag.style.cssText = `position:relative;display:block;width:55%;height:42%;margin-top:10%;box-sizing:border-box;background:${data.hudTheme?.colors.preferred ?? "#f2ad62"};border:1px solid ${data.hudTheme?.colors.text ?? "#f4dfb4"};border-radius:2px 2px 3px 3px`;
     const bagHandle = document.createElement("span");
-    bagHandle.style.cssText = `position:absolute;left:3px;top:-5px;width:4px;height:4px;box-sizing:border-box;border:1px solid ${data.hudTheme?.colors.preferred ?? "#f2ad62"};border-bottom:0;border-radius:3px 3px 0 0`;
+    bagHandle.style.cssText = `position:absolute;left:27%;top:-55%;width:36%;height:55%;box-sizing:border-box;border:1px solid ${data.hudTheme?.colors.preferred ?? "#f2ad62"};border-bottom:0;border-radius:3px 3px 0 0`;
     const bagBand = document.createElement("span");
-    bagBand.style.cssText = "position:absolute;left:0;right:0;top:3px;height:1px;background:#6e4d16";
+    bagBand.style.cssText = "position:absolute;left:0;right:0;top:42%;height:1px;background:#6e4d16";
     bag.append(bagHandle, bagBand);
     this.inventoryTrigger.append(bag);
     this.inventoryTrigger.addEventListener("click", () => this.inputHUD({ type: "toggle-inventory" }));
@@ -592,13 +589,13 @@ class EngineOverlay {
       "position:absolute",
       "display:none",
       "z-index:20",
-      "top:6px",
-      "right:6px",
-      "width:158px",
+      "top:clamp(8px,2%,20px)",
+      "right:clamp(8px,2%,20px)",
+      "width:clamp(180px,22%,300px)",
       "box-sizing:border-box",
       "grid-template-rows:auto auto auto",
-      "gap:4px",
-      "padding:6px",
+      "gap:clamp(4px,1%,8px)",
+      "padding:clamp(8px,2%,14px)",
       "pointer-events:auto",
       `color:${data.hudTheme?.colors.text ?? "#f4dfb4"}`,
       `background:${colorWithAlpha(data.hudTheme?.colors.backing ?? "#0c1626", 0.96)}`,
@@ -629,13 +626,15 @@ class EngineOverlay {
     this.dialogueForm.style.cssText = [
       "position:absolute",
       "display:none",
-      "left:73px",
-      "bottom:12px",
-      "width:280px",
+      "left:50%",
+      "bottom:clamp(12px,3%,28px)",
+      "width:clamp(280px,64%,720px)",
+      "max-width:calc(100% - 24px)",
+      "transform:translateX(-50%)",
       "box-sizing:border-box",
       "grid-template-columns:1fr auto auto",
-      "gap:4px",
-      "padding:7px",
+      "gap:clamp(4px,1%,8px)",
+      "padding:clamp(8px,2%,16px)",
       "z-index:9",
       "pointer-events:auto",
       `color:${data.hudTheme?.colors.text ?? "#f4dfb4"}`,
@@ -688,13 +687,15 @@ class EngineOverlay {
     this.modal.style.cssText = [
       "position:absolute",
       "display:none",
-      "left:73px",
-      "top:30px",
-      "width:280px",
-      "max-height:160px",
+      "left:50%",
+      "top:clamp(16px,8%,64px)",
+      "width:clamp(280px,64%,720px)",
+      "max-width:calc(100% - 24px)",
+      "max-height:75%",
+      "transform:translateX(-50%)",
       "overflow:auto",
       "box-sizing:border-box",
-      "padding:10px",
+      "padding:clamp(10px,2%,18px)",
       "z-index:10",
       "pointer-events:auto",
       "color:#f4dfb4",
@@ -706,10 +707,10 @@ class EngineOverlay {
     this.reveal.setAttribute("aria-pressed", "false");
     this.reveal.style.cssText = [
       "position:absolute",
-      "right:4px",
-      "top:4px",
+      "right:clamp(8px,2%,20px)",
+      "top:clamp(8px,2%,20px)",
       "pointer-events:auto",
-      "font:7px/1.25 monospace",
+      "font:var(--fondale-hud-font-size,12px)/1.25 monospace",
       "color:white",
       "background:#211b2d",
       "border:1px solid white",
@@ -744,6 +745,9 @@ class EngineOverlay {
       this.modal,
     );
     this.frame.append(this.root);
+    this.updateResponsiveStyles();
+    this.resizeObserver = new ResizeObserver(() => this.updateResponsiveStyles());
+    this.resizeObserver.observe(this.frame);
     this.frame.addEventListener("keydown", this.onKeyDown);
     this.frame.addEventListener("keyup", this.onKeyUp);
     this.persistPreferences(this.currentHUD.system.preferences);
@@ -837,9 +841,13 @@ class EngineOverlay {
   }
 
   showCursor(point: Point): void {
-    const actionHeight = this.secondaryAction.style.display === "none" ? 25 : 39;
-    this.action.style.left = `${Math.max(3, Math.min(this.data.logicalResolution.width - 193, point.x + 7))}px`;
-    this.action.style.top = `${Math.max(3, Math.min(this.data.logicalResolution.height - actionHeight, point.y - actionHeight))}px`;
+    this.lastCursorPoint = point;
+    const displayPoint = this.toDisplayPoint(point);
+    const margin = this.responsiveSpacing();
+    const actionWidth = this.action.offsetWidth;
+    const actionHeight = this.action.offsetHeight;
+    this.action.style.left = `${Math.max(margin, Math.min(this.root.clientWidth - actionWidth - margin, displayPoint.x + margin))}px`;
+    this.action.style.top = `${Math.max(margin, Math.min(this.root.clientHeight - actionHeight - margin, displayPoint.y - actionHeight))}px`;
   }
 
   hideCursor(): void {
@@ -848,6 +856,7 @@ class EngineOverlay {
   destroy(): void {
     this.clearLineTimer();
     this.clearResponseTimer();
+    this.resizeObserver.disconnect();
     this.root.parentElement?.removeEventListener("keydown", this.onKeyDown);
     this.root.parentElement?.removeEventListener("keyup", this.onKeyUp);
     this.root.remove();
@@ -899,6 +908,7 @@ class EngineOverlay {
       const displaySize = Math.min(this.data.inventoryAppearanceSize ?? 24, 24);
       image.width = displaySize;
       image.height = displaySize;
+      image.style.cssText = "width:70%;height:70%;max-width:48px;max-height:48px;object-fit:contain";
       image.alt = "";
       image.src = assetUrl(entry.inventoryAppearance);
       button.append(image);
@@ -1046,7 +1056,7 @@ class EngineOverlay {
           "filter:brightness(1)",
           "transition:filter 80ms linear,transform 80ms linear",
           `color:${narrative.color}`,
-          `font:${speechFontSize}/1.25 ${JSON.stringify(this.data.hudTheme?.font.family ?? "monospace")}`,
+          `font:var(--fondale-speech-font-size,14px)/1.25 ${JSON.stringify(this.data.hudTheme?.font.family ?? "monospace")}`,
           `text-shadow:${speechTextShadow}`,
         ].join(";");
         const idle = (): void => {
@@ -1174,18 +1184,28 @@ class EngineOverlay {
   ): void {
     if (!presentation.layout) return;
     const { anchor, maxWidth, safeArea } = presentation.layout;
+    const displayAnchor = this.toDisplayPoint(anchor);
+    const scale = this.displayScale();
+    const margin = this.responsiveSpacing();
+    const displaySafeArea = {
+      left: Math.max(margin, safeArea.left * scale.x),
+      top: Math.max(margin, safeArea.top * scale.y),
+      right: Math.min(this.root.clientWidth - margin, safeArea.right * scale.x),
+      bottom: Math.min(this.root.clientHeight - margin, safeArea.bottom * scale.y),
+    };
+    const displayMaxWidth = this.responsiveTextWidth(maxWidth, displaySafeArea.right - displaySafeArea.left);
     element.dataset.fondalePresentation = "speech";
     element.dataset.fondaleSpeaker = presentation.speaker;
     element.style.cssText = [
       "position:absolute",
-      `width:${maxWidth}px`,
-      `max-width:${maxWidth}px`,
+      `width:${displayMaxWidth}px`,
+      `max-width:${displayMaxWidth}px`,
       "white-space:normal",
       "overflow-wrap:anywhere",
-      `max-height:${safeArea.bottom - safeArea.top}px`,
+      `max-height:${displaySafeArea.bottom - displaySafeArea.top}px`,
       "overflow-y:auto",
       "text-align:center",
-      `font-size:${speechFontSize}`,
+      "font-size:var(--fondale-speech-font-size,14px)",
       `color:${presentation.color}`,
       "box-sizing:border-box",
       "padding:2px 4px",
@@ -1197,9 +1217,9 @@ class EngineOverlay {
       "pointer-events:none",
       `display:${presentation.visible ? "block" : "none"}`,
     ].join(";");
-    element.style.left = `${Math.max(safeArea.left, Math.min(safeArea.right - maxWidth, anchor.x - maxWidth / 2))}px`;
+    element.style.left = `${Math.max(displaySafeArea.left, Math.min(displaySafeArea.right - displayMaxWidth, displayAnchor.x - displayMaxWidth / 2))}px`;
     const height = element.offsetHeight;
-    element.style.top = `${Math.max(safeArea.top, Math.min(safeArea.bottom - height, anchor.y - height - 2))}px`;
+    element.style.top = `${Math.max(displaySafeArea.top, Math.min(displaySafeArea.bottom - height, displayAnchor.y - height - margin / 2))}px`;
   }
 
   private positionLowerText(
@@ -1207,28 +1227,36 @@ class EngineOverlay {
     presentation: HUDCommandResponsePresentation | Extract<HUDNarrativePresentation, { kind: "narration" }>,
     kind: "command-response" | "narration",
   ): void {
-    const { maxWidth, availableRight, bottom } = presentation.layout;
+    const { maxWidth } = presentation.layout;
+    const margin = this.responsiveSpacing();
+    const inventoryReservation = this.currentHUD.inventory.open
+      ? this.inventoryPanel.offsetWidth + margin * 2
+      : 0;
+    const availableRight = this.root.clientWidth - inventoryReservation;
+    const displayMaxWidth = this.responsiveTextWidth(maxWidth, availableRight - margin * 2);
     element.dataset.fondalePresentation = kind;
     delete element.dataset.fondaleSpeaker;
     element.style.position = "absolute";
     element.style.bottom = "auto";
     element.style.display = presentation.visible ? "block" : "none";
     element.style.boxSizing = "border-box";
-    element.style.width = `${Math.min(maxWidth, availableRight - 4)}px`;
-    element.style.maxWidth = `${maxWidth}px`;
+    element.style.width = `${displayMaxWidth}px`;
+    element.style.maxWidth = `${displayMaxWidth}px`;
     element.style.whiteSpace = "normal";
     element.style.overflowWrap = "anywhere";
     element.style.textAlign = "center";
-    element.style.padding = "4px 7px";
-    element.style.fontSize = kind === "narration" ? speechFontSize : commandResponseFontSize;
+    element.style.padding = "clamp(6px,1%,10px) clamp(10px,2%,16px)";
+    element.style.fontSize = kind === "narration"
+      ? "var(--fondale-speech-font-size,14px)"
+      : "var(--fondale-response-font-size,13px)";
     element.style.color = presentation.color;
     element.style.background = colorWithAlpha(this.data.hudTheme?.colors.backing ?? "#071016", 0.88);
     element.style.border = `1px solid ${this.data.hudTheme?.colors.border ?? "#5c7182"}`;
     element.style.borderRadius = "4px";
     element.style.boxShadow = "0 2px 8px rgba(0,0,0,.72)";
     element.style.textShadow = "1px 1px #000,-1px -1px #000";
-    element.style.left = `${Math.max(2, (availableRight - Math.min(maxWidth, availableRight - 4)) / 2)}px`;
-    element.style.top = `${Math.max(4, this.data.logicalResolution.height - element.offsetHeight - bottom)}px`;
+    element.style.left = `${Math.max(margin, (availableRight - displayMaxWidth) / 2)}px`;
+    element.style.top = `${Math.max(margin, this.root.clientHeight - element.offsetHeight - margin)}px`;
     element.style.zIndex = this.currentHUD.inventory.open ? "21" : "7";
   }
 
@@ -1259,6 +1287,53 @@ class EngineOverlay {
         revealLabel(area, noun.label, noun.target.kind),
       );
     }
+  }
+
+  private updateResponsiveStyles(): void {
+    const fit = Math.min(
+      this.root.clientWidth / 426,
+      this.root.clientHeight / 240,
+    );
+    this.root.style.setProperty("--fondale-hud-font-size", `${clamp(12, 7 * fit, 18)}px`);
+    this.root.style.setProperty("--fondale-command-font-size", `${clamp(11, 6 * fit, 16)}px`);
+    this.root.style.setProperty("--fondale-response-font-size", `${clamp(13, 8 * fit, 20)}px`);
+    this.root.style.setProperty("--fondale-speech-font-size", `${clamp(14, 9 * fit, 22)}px`);
+    if (this.lastCursorPoint && this.action.style.display !== "none") {
+      this.showCursor(this.lastCursorPoint);
+    }
+    const line = this.narrative.querySelector<HTMLElement>("[data-fondale-line]");
+    if (line && this.currentHUD.narrative?.kind === "line") {
+      this.positionSpeech(line, this.currentHUD.narrative);
+    }
+    const narration = this.narrative.querySelector<HTMLElement>("[data-fondale-narration]");
+    if (narration && this.currentHUD.narrative?.kind === "narration") {
+      this.positionLowerText(narration, this.currentHUD.narrative, "narration");
+    }
+    if (this.currentHUD.commandResponse) {
+      this.positionLowerText(this.response, this.currentHUD.commandResponse, "command-response");
+    }
+  }
+
+  private displayScale(): Point {
+    return {
+      x: this.root.clientWidth / this.data.logicalResolution.width,
+      y: this.root.clientHeight / this.data.logicalResolution.height,
+    };
+  }
+
+  private toDisplayPoint(point: Point): Point {
+    const scale = this.displayScale();
+    return { x: point.x * scale.x, y: point.y * scale.y };
+  }
+
+  private responsiveSpacing(): number {
+    return clamp(8, Math.min(this.root.clientWidth, this.root.clientHeight) * 0.02, 20);
+  }
+
+  private responsiveTextWidth(authoredWidth: number, availableWidth: number): number {
+    const available = Math.max(0, availableWidth);
+    const preferred = this.root.clientWidth * authoredWidth / 426;
+    return clamp(Math.min(240, available), preferred, Math.min(720, available));
   }
 
   private readonly onKeyDown = (event: KeyboardEvent): void => {
@@ -1420,8 +1495,8 @@ class EngineOverlay {
     button.style.cssText = [
       "display:grid",
       "place-items:center",
-      "width:16px",
-      "height:16px",
+      "width:clamp(28px,10%,40px)",
+      "height:clamp(28px,10%,40px)",
       "margin:0",
       "padding:0",
       "box-sizing:border-box",
@@ -1430,7 +1505,7 @@ class EngineOverlay {
       "background:transparent",
       "border:1px solid transparent",
       "border-radius:3px",
-      "font:700 10px/1 sans-serif",
+      "font:700 var(--fondale-hud-font-size,12px)/1 sans-serif",
       "text-shadow:1px 1px #000",
     ].join(";");
     button.addEventListener("pointerenter", active);
@@ -1603,6 +1678,10 @@ function colorWithAlpha(color: string, alpha: number): string {
     : digits;
   const channels = [0, 2, 4].map((offset) => Number.parseInt(expanded.slice(offset, offset + 2), 16));
   return `rgba(${channels.join(",")},${Math.max(0, Math.min(1, alpha))})`;
+}
+
+function clamp(minimum: number, preferred: number, maximum: number): number {
+  return Math.min(maximum, Math.max(minimum, preferred));
 }
 
 function worldPresentationSignature(world: WorldPresentation): string {

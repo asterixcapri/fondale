@@ -1,4 +1,5 @@
 import backgroundUrl from "./background.png";
+import responsiveHUDBackgroundUrl from "./responsive-hud-background.svg";
 import keyInventoryUrl from "../../docs/public/recipes/key-inventory-32.png";
 import keyUrl from "../../docs/public/recipes/key.png";
 import {
@@ -14,6 +15,11 @@ import {
 
 const silenceAudio =
   "data:audio/wav;base64,UklGRnQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YVAAAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgA==";
+const highResolution = new URLSearchParams(window.location.search).has("high-resolution");
+const logicalResolution = highResolution
+  ? { width: 1280, height: 720 }
+  : { width: 426, height: 240 };
+const sceneBackground = highResolution ? responsiveHUDBackgroundUrl : backgroundUrl;
 
 const door = {
   labels: [{ text: "Portone" }],
@@ -135,7 +141,7 @@ const globalResponse = { text: "Non succede nulla." };
 const project = {
   identity: "test.commands",
   version: "1",
-  logicalResolution: { width: 426, height: 240 },
+  logicalResolution,
   initialScene: "opening",
   playerCharacter: "player",
   inventoryAppearanceSize: 32,
@@ -252,7 +258,7 @@ const project = {
   },
   scenes: {
     opening: {
-      background: backgroundUrl,
+      background: sceneBackground,
       walkableRegion: [
         { x: 0, y: 100 },
         { x: 426, y: 100 },
@@ -339,7 +345,7 @@ const project = {
       ],
     } satisfies SceneDefinition,
     hall: {
-      background: backgroundUrl,
+      background: sceneBackground,
       walkableRegion: [
         { x: 0, y: 100 },
         { x: 426, y: 100 },
