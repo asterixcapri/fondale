@@ -1,0 +1,24 @@
+# Drifting boat artwork provenance
+
+The accepted composition was produced on 2026-08-16 with Codex's built-in
+image-generation tool. `generated-source.png` is the untouched `1672×941`
+result. `background.png` is the lossless fitted `1280×720` clean Background Art
+Master and is copied byte-for-byte to the Scene's Runtime Background.
+
+The prompt requested a 1535 Mediterranean gozzo at blue-violet dusk, a broad
+connected deck route, cut rigging, a forced chest, an unreadable abraded vessel
+name, a dark blood trail, an empty stern shelter, intentional foreground hull
+and rigging overlaps, and no people. It specified the shared illustrated
+neo-retro language, coral horizon accent, plausible scale for Michele's
+`256 px` native cell, and a HUD-safe lower band.
+
+`composition.png` recomposes the fitted wounded-sailor Runtime image at
+`x=970, y=350`, giving its Visual Anchor the Scene Space position
+`(1098, 602)`. This is the accepted default assembled Scene. The clean
+Background deliberately contains no sailor, so removing the Character reveals
+a complete shelter and deck.
+
+The mast, rigging, shelter edges and foreground hull remain part of the
+Background artwork. Their Scene-local depth behaviour uses Background Region
+Appearances over the same clean plate, so they require no duplicated
+transparent Scenery Runtime Asset.

@@ -7,7 +7,7 @@ before the canonical final encounter and bundle transfer are integrated.
 
 **Blocked by:** 01 — Lock the project scale and reference Michele.
 
-**Status:** ready-for-agent
+**Status:** claimed
 
 - [ ] The drifting boat has an accepted dusk Composition Art Master, clean Background Art Master, Runtime Background and exact-size geometry diagnostic.
 - [ ] The intended Scene Size is `1280×720` and changes only if final blocking proves another exact size necessary.

@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
+  <image href="background.png" width="1280" height="720" />
+  <rect width="1280" height="720" fill="#15101d" opacity="0.18" />
+
+  <g fill="#55d6be" fill-opacity="0.2" stroke="#55d6be" stroke-width="3">
+    <polygon points="80,520 1220,480 1220,610 80,610" />
+  </g>
+  <text x="530" y="585" fill="#b8fff1" font-family="sans-serif" font-size="22">Walkable Region</text>
+
+  <g fill="#ffcf56" fill-opacity="0.13" stroke="#ffcf56" stroke-width="2">
+    <rect x="70" y="75" width="200" height="260" /><rect x="375" y="315" width="225" height="205" />
+    <rect x="565" y="285" width="335" height="110" /><rect x="850" y="420" width="120" height="135" />
+    <rect x="980" y="340" width="270" height="265" />
+  </g>
+  <g fill="#ffe49a" font-family="sans-serif" font-size="15">
+    <text x="76" y="70">Hotspot: cut rigging</text><text x="380" y="310">Hotspot: forced chest</text>
+    <text x="570" y="280">Hotspot: abraded name</text><text x="880" y="415">Hotspot: blood</text>
+    <text x="980" y="335">Hotspot / sailor bounds</text>
+  </g>
+
+  <g fill="#ee6c9f" stroke="#fff" stroke-width="2">
+    <circle cx="155" cy="560" r="7"/><circle cx="245" cy="545" r="7"/><circle cx="520" cy="550" r="7"/>
+    <circle cx="760" cy="540" r="7"/><circle cx="940" cy="555" r="7"/><circle cx="930" cy="570" r="8"/>
+    <circle cx="1098" cy="602" r="8"/>
+  </g>
+  <g fill="#ffd0df" font-family="sans-serif" font-size="14">
+    <text x="120" y="550">Entrance / passage approach</text><text x="205" y="535">rigging</text>
+    <text x="480" y="540">chest</text><text x="720" y="530">name</text><text x="900" y="545">blood</text>
+    <text x="850" y="590">Michele handoff</text><text x="1050" y="625">sailor anchor</text>
+  </g>
+
+  <g fill="#65a9ff" fill-opacity="0.14" stroke="#65a9ff" stroke-width="2">
+    <polygon points="0,0 410,0 410,420 390,420 390,535 300,560 210,520 210,390 0,350" />
+    <polygon points="895,35 1280,35 1280,255 930,255" /><rect x="1180" y="150" width="65" height="465" />
+    <polygon points="0,580 160,600 430,615 760,605 1020,590 1280,575 1280,720 0,720" />
+  </g>
+  <g fill="#bcd8ff" font-family="sans-serif" font-size="14">
+    <text x="275" y="25">Scenery: mast + rigging (baseline 560)</text>
+    <text x="930" y="30">Scenery: shelter roof/post (baseline 615)</text>
+    <text x="500" y="700">Scenery: foreground hull (baseline 625)</text>
+  </g>
+
+  <g fill="#ffffff" fill-opacity="0.18" stroke="#fff" stroke-dasharray="6 4">
+    <rect x="300" y="326" width="80" height="194"/><rect x="625" y="345" width="90" height="220"/>
+    <rect x="790" y="364" width="100" height="246"/>
+  </g>
+  <g fill="#fff" font-family="sans-serif" font-size="13">
+    <text x="300" y="320">Michele far: 194 px @ 0.76</text><text x="625" y="340">middle: 220 px @ 0.86</text>
+    <text x="790" y="358">near: 246 px @ 0.96</text>
+  </g>
+
+  <g stroke="#ff8a5b" stroke-width="2" stroke-dasharray="7 5">
+    <line x1="0" y1="520" x2="1280" y2="520"/><line x1="0" y1="565" x2="1280" y2="565"/>
+    <line x1="0" y1="610" x2="1280" y2="610"/>
+  </g>
+  <g fill="#ffc0a6" font-family="sans-serif" font-size="13">
+    <text x="10" y="515">Perspective 0.76</text><text x="10" y="560">Perspective 0.86</text>
+    <text x="10" y="630">Perspective 0.96 / HUD-safe boundary</text>
+  </g>
+  <rect x="0" y="610" width="1280" height="110" fill="#15101d" opacity="0.22" stroke="#ff8a5b" stroke-width="2" />
+</svg>
