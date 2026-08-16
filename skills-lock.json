@@ -28,7 +28,7 @@
     "define-character": {
       "source": "./skills",
       "sourceType": "local",
-      "computedHash": "fdafb51ad01110e411bc38967b18cbf8bc59166a319f4c2a67afb8ff9d41def3"
+      "computedHash": "80134ab1434a765203fc7459d263e80624621b1e0ef1b3e8c290a85a132b5a18"
     },
     "define-dialogue": {
       "source": "./skills",
