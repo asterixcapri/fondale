@@ -14,6 +14,7 @@ import { variables } from "./variables";
 export const project = ({
   identity: "org.asterixcapri.capri-1535-example",
   version: "8",
+  narrativeContext: "Capri in 1535, amid harbour labour, sea trade, friars, and local intrigue.",
   logicalResolution: { width: 1280, height: 720 },
   inventoryAppearanceSize: 32,
   letterboxColor: "#15101d",

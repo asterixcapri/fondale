@@ -133,9 +133,11 @@ different Mastra-supported vendor is selected by the vendor prefix in that
 same model identifier. Which vendor hosts the model is configuration, so
 changing it changes no code and no file name. The key is read by Node alone: it never
 reaches the browser, a diagnostic, an error message or the repository.
-`DIALOGUE_LANGUAGE` and `DIALOGUE_SETTING` provide the Game Project's
-presentation context without hardcoding Capri-specific material in the server
-package.
+The Game Project's `narrativeContext` supplies its fictional setting with every
+request, so the server package and its environment contain no Capri-specific
+presentation configuration. Fondale currently has no explicit language or
+locale setting; the Example's Italian wording comes from its authored content
+and Player speech.
 
 Interpretation asks for a closed structured output restricted to the Narrative
 Facts the speaking Character actually knows, and Fondale independently rejects

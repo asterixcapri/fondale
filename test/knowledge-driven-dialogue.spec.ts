@@ -96,6 +96,7 @@ function knowledgeProject(): GameProject {
   return {
     identity: "test.knowledge-driven-dialogue",
     version: "1",
+    narrativeContext: "A historical mystery in the harbour of Capri in 1535.",
     logicalResolution: { width: 100, height: 100 },
     scenes: { opening },
     narrativeFacts: {
@@ -141,6 +142,7 @@ function rollbackProject(operations: readonly GameOperation[]): GameProject {
   return {
     identity: "test.knowledge-rollback",
     version: "1",
+    narrativeContext: "A historical mystery in the harbour of Capri in 1535.",
     logicalResolution: { width: 100, height: 100 },
     scenes: { opening },
     narrativeFacts: {

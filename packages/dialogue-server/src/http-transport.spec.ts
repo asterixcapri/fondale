@@ -10,15 +10,15 @@ test("the local transport forwards the Dialogue Provider contract to one Game Se
   const calls: string[] = [];
   const provider: DialogueProvider = {
     interpret(request, context) {
-      calls.push(`interpret:${request.playerInput}:${context.turnId}`);
+      calls.push(`interpret:${request.narrativeContext}:${request.playerInput}:${context.turnId}`);
       return Promise.resolve({ factId: request.candidates[0]!.id });
     },
     verbalize(request, context) {
-      calls.push(`verbalize:${request.fact!.id}:${context.turnId}`);
+      calls.push(`verbalize:${request.narrativeContext}:${request.fact!.id}:${context.turnId}`);
       return Promise.resolve(request.fact!.proposition);
     },
     reflect(request, context) {
-      calls.push(`reflect:${request.character}:${context.turnId}`);
+      calls.push(`reflect:${request.narrativeContext}:${request.character}:${context.turnId}`);
       return Promise.resolve({ summary: request.facts[0]!.proposition });
     },
     reset() {
@@ -43,6 +43,7 @@ test("the local transport forwards the Dialogue Provider contract to one Game Se
   try {
     const context = { turnId: "turn-1", signal: new AbortController().signal };
     const interpretation = await client.interpret({
+      narrativeContext: "A storm-bound lighthouse mystery.",
       playerInput: "Where is it?",
       speaker: "antonio",
       listener: "michele",
@@ -50,6 +51,7 @@ test("the local transport forwards the Dialogue Provider contract to one Game Se
     }, context);
     assert.deepEqual(interpretation, { factId: "lantern" });
     assert.equal(await client.verbalize({
+      narrativeContext: "A storm-bound lighthouse mystery.",
       playerInput: "Where is it?",
       speaker: "antonio",
       listener: "michele",
@@ -58,6 +60,7 @@ test("the local transport forwards the Dialogue Provider contract to one Game Se
       profile: {},
     }, context), "The lantern is below.");
     assert.deepEqual(await client.reflect({
+      narrativeContext: "A storm-bound lighthouse mystery.",
       playerInput: "What do I know?",
       character: "michele",
       facts: [{ id: "lantern", proposition: "The lantern is below." }],
@@ -68,9 +71,9 @@ test("the local transport forwards the Dialogue Provider contract to one Game Se
 
     assert.deepEqual(sessions, ["game-session-1"]);
     assert.deepEqual(calls, [
-      "interpret:Where is it?:turn-1",
-      "verbalize:lantern:turn-1",
-      "reflect:michele:turn-1",
+      "interpret:A storm-bound lighthouse mystery.:Where is it?:turn-1",
+      "verbalize:A storm-bound lighthouse mystery.:lantern:turn-1",
+      "reflect:A storm-bound lighthouse mystery.:michele:turn-1",
       "reset",
     ]);
   } finally {
@@ -98,6 +101,7 @@ test("the local transport never exposes server-side failure details", async () =
   try {
     await assert.rejects(
       client.interpret({
+        narrativeContext: "A storm-bound lighthouse mystery.",
         playerInput: "Where is it?",
         speaker: "antonio",
         listener: "michele",
@@ -138,6 +142,7 @@ test("cancelling while a Game Session provider initializes never starts the turn
 
   try {
     const pending = client.interpret({
+      narrativeContext: "A storm-bound lighthouse mystery.",
       playerInput: "Where is it?",
       speaker: "antonio",
       listener: "michele",

@@ -157,6 +157,8 @@ export interface DialogueClaimCandidate {
 
 /** Untrusted Player speech and the only declared facts relevant to one Conversation. */
 export interface DialogueInterpretationRequest {
+  /** Project-wide fictional setting used only to guide phrasing. */
+  readonly narrativeContext: string;
   readonly playerInput: string;
   readonly speaker: string;
   readonly listener: string;
@@ -185,6 +187,8 @@ export interface DialoguePortrayalProfile {
 
 /** Engine-authorised semantic payload for a Dialogue Provider to express. */
 export interface DialogueVerbalizationRequest {
+  /** Project-wide fictional setting used only to guide phrasing. */
+  readonly narrativeContext: string;
   readonly playerInput: string;
   readonly speaker: string;
   readonly listener: string;
@@ -208,6 +212,8 @@ export interface ReflectionRelationship {
 
 /** The complete authorised context from which a provider may compose Reflection. */
 export interface ReflectionRequest {
+  /** Project-wide fictional setting used only to guide phrasing. */
+  readonly narrativeContext: string;
   readonly playerInput: string;
   readonly character: string;
   readonly facts: readonly DialogueFactCandidate[];
@@ -465,6 +471,7 @@ export interface KnowledgeDrivenDialogueState {
 
 /** @internal Narrow authored view needed by Knowledge-Driven Dialogue validation. */
 export interface KnowledgeDrivenDialogueProjectView {
+  readonly narrativeContext?: string;
   readonly narrativeFacts: Readonly<Record<string, NarrativeFactDefinition>>;
   readonly claims?: Readonly<Record<string, ClaimDefinition>>;
   readonly variables: Readonly<Record<string, boolean>>;
@@ -539,6 +546,9 @@ export interface KnowledgeDrivenDialogue {
 export function createKnowledgeDrivenDialogue(
   project: KnowledgeDrivenDialogueProjectView,
 ): KnowledgeDrivenDialogue {
+  // Compiled Game Projects have already established the non-empty invariant;
+  // direct capability tests may deliberately construct a narrower project view.
+  const narrativeContext = project.narrativeContext?.trim() ?? "";
   return Object.freeze({
     initialState() {
       return {
@@ -641,6 +651,7 @@ export function createKnowledgeDrivenDialogue(
         proposition: project.narrativeFacts[id]!.proposition,
       })));
       const request = Object.freeze({
+        narrativeContext,
         playerInput,
         speaker: input.speaker,
         listener: input.listener,
@@ -694,6 +705,7 @@ export function createKnowledgeDrivenDialogue(
         }
       }
       const response = await abortable(provider.verbalize(Object.freeze({
+        narrativeContext,
         playerInput,
         speaker: input.speaker,
         listener: input.listener,
@@ -769,6 +781,7 @@ export function createKnowledgeDrivenDialogue(
         });
       }
       const reflection = await abortable(provider.reflect(Object.freeze({
+        narrativeContext,
         playerInput,
         character: input.character,
         facts,
@@ -1157,6 +1170,20 @@ export function validateKnowledgeDrivenDialogueProject(
   project: KnowledgeDrivenDialogueProjectView,
 ): readonly AuthoringDiagnostic[] {
   const diagnostics: AuthoringDiagnostic[] = [];
+
+  const requiresProvider = Object.values(project.characters).some(
+    ({ dialogue }) => dialogue !== undefined,
+  );
+  if (requiresProvider &&
+      (typeof project.narrativeContext !== "string" || !project.narrativeContext.trim())) {
+    diagnostics.push({
+      code: "definition.narrative-context.required",
+      family: "definition",
+      owner: "dialogue",
+      path: "narrativeContext",
+      message: "Narrative Context must be non-empty text when Knowledge-Driven Dialogue is used.",
+    });
+  }
 
   for (const [factId, fact] of Object.entries(project.narrativeFacts)) {
     if (!factId.trim()) {

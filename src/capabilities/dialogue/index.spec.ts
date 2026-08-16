@@ -14,6 +14,7 @@ import {
 } from ".";
 
 const unusedReflection = () => Promise.reject(new Error("Reflection is not used by this test."));
+const narrativeContext = "A historical mystery in the harbour of Capri in 1535.";
 
 function dialogueTurnLifecycleFixture() {
   return createKnowledgeDrivenDialogue({
@@ -32,6 +33,7 @@ function dialogueTurnLifecycleFixture() {
 
 test("Knowledge-Driven Dialogue reports invalid Narrative Facts and Character Knowledge", () => {
   const project = {
+    narrativeContext,
     narrativeFacts: {
       "": { proposition: "A fact without a stable identity." },
       empty: { proposition: "   " },
@@ -87,6 +89,7 @@ test("Knowledge-Driven Dialogue reports invalid Narrative Facts and Character Kn
 
 test("Knowledge-Driven Dialogue reports invalid Claims and Cover Stories", () => {
   const project = {
+    narrativeContext,
     narrativeFacts: {
       open: { proposition: "Antonio was seen at the harbour." },
       secret: { proposition: "Antonio was aboard the Santa Lucia." },
@@ -154,6 +157,7 @@ test("Knowledge-Driven Dialogue reports invalid Claims and Cover Stories", () =>
 
 test("Knowledge-Driven Dialogue rejects a Cover Story for an unknown-to-character fact", () => {
   const project = {
+    narrativeContext,
     narrativeFacts: {
       secret: { proposition: "Antonio was aboard the Santa Lucia." },
     },
@@ -181,6 +185,7 @@ test("Knowledge-Driven Dialogue rejects a Cover Story for an unknown-to-characte
 
 test("Knowledge-Driven Dialogue accepts guarded, secret and qualitative authoring", () => {
   const project = {
+    narrativeContext,
     narrativeFacts: {
       guarded: { proposition: "Antonio saw who cut the chain." },
       secret: { proposition: "Antonio cut the chain himself." },
@@ -215,6 +220,7 @@ test("Knowledge-Driven Dialogue accepts guarded, secret and qualitative authorin
 
 test("Knowledge-Driven Dialogue rejects incoherent Disclosure, Relationships and numeric profiles", () => {
   const project = {
+    narrativeContext,
     narrativeFacts: { known: { proposition: "The harbour chain was cut." } },
     variables: { declared: false },
     characters: {
@@ -249,6 +255,7 @@ test("Knowledge-Driven Dialogue rejects incoherent Disclosure, Relationships and
 
 test("Knowledge-Driven Dialogue accepts authored Conversation alternatives", () => {
   const project = {
+    narrativeContext,
     narrativeFacts: {},
     variables: { winchFound: false },
     characters: {
@@ -276,6 +283,7 @@ test("Knowledge-Driven Dialogue accepts authored Conversation alternatives", () 
 
 test("Knowledge-Driven Dialogue rejects invalid Conversation alternatives", () => {
   const project = {
+    narrativeContext,
     narrativeFacts: {},
     variables: { declared: false },
     characters: {
@@ -316,6 +324,7 @@ test("Knowledge-Driven Dialogue rejects invalid Conversation alternatives", () =
 
 function consumableAlternativesProject(): KnowledgeDrivenDialogueProjectView {
   return {
+    narrativeContext,
     narrativeFacts: {},
     variables: {},
     characters: {
@@ -377,6 +386,7 @@ test("Knowledge-Driven Dialogue rejects consuming an alternative a Character doe
 
 test("Knowledge-Driven Dialogue rejects an alternative that starts a Sequence", () => {
   const project = {
+    narrativeContext,
     narrativeFacts: {},
     variables: {},
     characters: {
@@ -408,6 +418,7 @@ test("Knowledge-Driven Dialogue rejects more than six simultaneously eligible al
     response: `Answer ${index}.`,
   });
   const project = {
+    narrativeContext,
     narrativeFacts: {},
     variables: { winchFound: false },
     characters: {
@@ -445,6 +456,7 @@ test("Knowledge-Driven Dialogue rejects more than six simultaneously eligible al
 
 test("Knowledge-Driven Dialogue reports malformed profile collections without throwing", () => {
   const project = {
+    narrativeContext,
     narrativeFacts: {},
     variables: {},
     characters: {
@@ -569,6 +581,7 @@ test("Testimony has a canonical order independent of communication order", () =>
 
 test("Knowledge-Driven Dialogue rejects inherited object names as undeclared identities", () => {
   const project = {
+    narrativeContext,
     narrativeFacts: {},
     variables: {},
     characters: {
@@ -601,6 +614,7 @@ test("Knowledge-Driven Dialogue rejects inherited object names as undeclared ide
 
 test("a Dialogue Turn exposes only known open candidates and stages one Engine operation", async () => {
   const dialogue = createKnowledgeDrivenDialogue({
+    narrativeContext,
     narrativeFacts: {
       known: { proposition: "The harbour chain was cut." },
       hidden: { proposition: "Antonio hid the winch." },
@@ -639,12 +653,14 @@ test("a Dialogue Turn exposes only known open candidates and stages one Engine o
   }, provider);
 
   expect(interpretationRequest).toEqual({
+    narrativeContext,
     playerInput: "What happened?",
     speaker: "antonio",
     listener: "player",
     candidates: [{ id: "known", proposition: "The harbour chain was cut." }],
   });
   expect(verbalizationRequest).toEqual({
+    narrativeContext,
     playerInput: "What happened?",
     speaker: "antonio",
     listener: "player",
@@ -796,6 +812,7 @@ test("Dialogue policy deterministically authorises answer, withholding and clari
 
 test("Dialogue policy authorises only a declared Cover Story for a concealed fact", async () => {
   const dialogue = createKnowledgeDrivenDialogue({
+    narrativeContext,
     narrativeFacts: {
       secret: { proposition: "Antonio was aboard the Santa Lucia." },
     },
@@ -840,6 +857,7 @@ test("Dialogue policy authorises only a declared Cover Story for a concealed fac
   }, provider);
 
   expect(verbalizationRequest).toEqual({
+    narrativeContext,
     playerInput: "Were you aboard?",
     speaker: "antonio",
     listener: "player",
@@ -872,6 +890,7 @@ test("Dialogue policy authorises only a declared Cover Story for a concealed fac
   }, provider);
 
   expect(verbalizationRequest).toEqual({
+    narrativeContext,
     playerInput: "Were you aboard?",
     speaker: "antonio",
     listener: "player",
@@ -1040,6 +1059,7 @@ test("FakeDialogueProvider deterministically controls pending, late, failed and 
 
 test("Reflection exposes only the Player Character's committed understanding", async () => {
   const dialogue = createKnowledgeDrivenDialogue({
+    narrativeContext,
     narrativeFacts: {
       known: { proposition: "The harbour chain was cut." },
       hidden: { proposition: "Antonio ordered the sabotage." },
@@ -1089,6 +1109,7 @@ test("Reflection exposes only the Player Character's committed understanding", a
   }, provider);
 
   expect(reflectionRequest).toEqual({
+    narrativeContext,
     playerInput: "What do I know?",
     character: "player",
     facts: [{ id: "known", proposition: "The harbour chain was cut." }],
@@ -1165,5 +1186,90 @@ test("Knowledge-Driven Dialogue reports an invalid Game Variable set by learning
       owner: "dialogue",
       path: "narrativeFacts.blank.setsVariable",
     }),
+  ]);
+});
+
+test("Knowledge-Driven Dialogue requires Narrative Context only when a provider is needed", () => {
+  const dialogueCharacters = {
+    antonio: { dialogue: { knowledge: [] } },
+  };
+
+  expect(validateKnowledgeDrivenDialogueProject({
+    narrativeFacts: {},
+    variables: {},
+    characters: dialogueCharacters,
+  })).toEqual([
+    expect.objectContaining({
+      code: "definition.narrative-context.required",
+      owner: "dialogue",
+      path: "narrativeContext",
+    }),
+  ]);
+  expect(validateKnowledgeDrivenDialogueProject({
+    narrativeContext: "   ",
+    narrativeFacts: {},
+    variables: {},
+    characters: dialogueCharacters,
+  })).toEqual([
+    expect.objectContaining({
+      code: "definition.narrative-context.required",
+      owner: "dialogue",
+      path: "narrativeContext",
+    }),
+  ]);
+  expect(validateKnowledgeDrivenDialogueProject({
+    narrativeFacts: {},
+    variables: {},
+    characters: {},
+  })).toEqual([]);
+});
+
+test("Knowledge-Driven Dialogue sends the Game Project Narrative Context to every provider phase", async () => {
+  const dialogue = createKnowledgeDrivenDialogue({
+    narrativeContext: "A storm-bound lighthouse mystery on a remote island.",
+    narrativeFacts: { beacon: { proposition: "The beacon lens is cracked." } },
+    variables: {},
+    characters: {
+      player: {
+        dialogue: { knowledge: [{ factId: "beacon", disclosure: { level: "open" } }] },
+      },
+      keeper: {
+        dialogue: { knowledge: [{ factId: "beacon", disclosure: { level: "open" } }] },
+      },
+    },
+  });
+  const requests: unknown[] = [];
+  const provider: DialogueProvider = {
+    interpret(request) {
+      requests.push(request);
+      return Promise.resolve({ factId: "beacon" });
+    },
+    verbalize(request) {
+      requests.push(request);
+      return Promise.resolve("The beacon lens is cracked.");
+    },
+    reflect(request) {
+      requests.push(request);
+      return Promise.resolve({ summary: "The beacon lens is cracked." });
+    },
+    reset: () => Promise.resolve(),
+  };
+
+  await dialogue.respond({ ...dialogue.initialState(), variables: {} }, {
+    speaker: "keeper",
+    listener: "player",
+    playerInput: "Why is the beacon dark?",
+  }, provider);
+  await dialogue.reflect(dialogue.initialState(), {
+    character: "player",
+    playerInput: "What do I know about the beacon?",
+  }, provider);
+
+  expect(requests.map((request) =>
+    (request as { readonly narrativeContext?: unknown }).narrativeContext
+  )).toEqual([
+    "A storm-bound lighthouse mystery on a remote island.",
+    "A storm-bound lighthouse mystery on a remote island.",
+    "A storm-bound lighthouse mystery on a remote island.",
   ]);
 });

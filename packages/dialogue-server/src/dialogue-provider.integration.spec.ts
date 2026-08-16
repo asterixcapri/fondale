@@ -16,6 +16,7 @@ import {
 } from "./dialogue-provider.js";
 
 const databaseUrl = process.env.DIALOGUE_ADAPTER_TEST_DATABASE_URL;
+const narrativeContext = "A historical mystery in the harbour of Capri in 1535.";
 if (!databaseUrl) {
   throw new Error("DIALOGUE_ADAPTER_TEST_DATABASE_URL is required for adapter integration verification.");
 }
@@ -36,6 +37,7 @@ test("the PostgreSQL adapter persists only visible Dialogue Lines across restart
 
   try {
     const interpretation = await firstProvider.interpret({
+      narrativeContext,
       playerInput: "Where is the lantern?",
       speaker: "antonio",
       listener: "michele",
@@ -47,6 +49,7 @@ test("the PostgreSQL adapter persists only visible Dialogue Lines across restart
     assert.deepEqual(interpretation, { factId: "lantern-location" });
 
     const response = await firstProvider.verbalize({
+      narrativeContext,
       playerInput: "Where is the lantern?",
       speaker: "antonio",
       listener: "michele",
@@ -69,6 +72,7 @@ test("the PostgreSQL adapter persists only visible Dialogue Lines across restart
   });
   try {
     const response = await restartedProvider.verbalize({
+      narrativeContext,
       playerInput: "Remind me where it is.",
       speaker: "antonio",
       listener: "michele",
@@ -111,6 +115,7 @@ test("Conversation, Reflection and Game Sessions use isolated PostgreSQL threads
       /no earlier visible Lines/);
 
     const reflection = await firstSession.reflect({
+      narrativeContext,
       playerInput: "What do I know?",
       character: "michele",
       facts: [{ id: "harbour", proposition: "The harbour is below." }],
@@ -264,6 +269,7 @@ test("Reflection memory stores the exact Character Line shown by Fondale", async
   };
   const provider = await createDialogueProvider({ databaseUrl, sessionId, model });
   const request = {
+    narrativeContext,
     playerInput: "First reflection",
     character: "michele",
     facts: [{ id: "harbour", proposition: "The harbour is below." }],
@@ -298,6 +304,7 @@ function answer(
   signal = new AbortController().signal,
 ): Promise<string> {
   return provider.verbalize({
+    narrativeContext,
     playerInput,
     speaker,
     listener: "michele",

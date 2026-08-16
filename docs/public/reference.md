@@ -108,7 +108,8 @@ without storing generated wording or treating the Claim as truth.
 ## Knowledge-Driven Dialogue
 
 For ordinary startup, a Game Project that declares at least one Character
-Dialogue Profile supplies `StartGameOptions.dialogueServerUrl`. Fondale creates
+Dialogue Profile declares a non-empty project-level `narrativeContext` and
+supplies `StartGameOptions.dialogueServerUrl`. Fondale creates
 the browser HTTP adapter, assigns a fresh cryptographically random Game Session
 identity, and checks the connection before mounting. Server credentials and
 model configuration remain outside the browser. Low-level `dialogueProvider`
@@ -120,8 +121,9 @@ The `DialogueProvider` interface keeps `interpret`, `verbalize`, `reflect`, and
 `DialogueTurnContext`, containing a non-canonical `turnId` and `AbortSignal`.
 The context fields are `turnId` and `signal`.
 Interpretation receives untrusted `playerInput`, speaker and listener
-identities, and the known `DialogueFactCandidate` values relevant to that
-Conversation. Its `DialogueInterpretation` selects one declared `factId` or
+identities, the Game Project's presentation-only Narrative Context, and the
+known `DialogueFactCandidate` values relevant to that Conversation. Its
+`DialogueInterpretation` selects one declared `factId` or
 returns `null` with a `reason` of `ambiguous` or `no-relevant-fact`.
 
 After validating the interpretation, deterministic Dialogue policy applies
@@ -147,9 +149,10 @@ continuation; provider memory remains external and is still reset by Load.
 
 `GameSession.startReflection()` opens Reflection only while the session is
 idle and the Player Character has a Dialogue Profile. `reflect` receives a
-`ReflectionRequest` containing only that Character's committed Narrative Fact
-propositions, remembered Claims attributed to their speakers, and directional
-Relationships. It cannot see undiscovered Character Knowledge or the complete
+`ReflectionRequest` containing that Character's committed Narrative Fact
+propositions, remembered Claims attributed to their speakers, directional
+Relationships, and the presentation-only Narrative Context. It cannot see
+undiscovered Character Knowledge or the complete
 Narrative Fact registry. A `ReflectionResponse` separates its supported
 summary from optional Hypotheses and investigation suggestions; Fondale labels
 the latter as uncertain and possible before presenting one Player Character
@@ -223,7 +226,9 @@ Narration, Choice, and Direction facts without resolving authored paths again.
 `GameProject` is ordinary declarative TypeScript data, commonly checked with
 `satisfies`. Required values are identity, version, Logical Resolution, Scene
 registry and initial Scene; the optional `narrativeFacts` and `claims`
-registries default empty. `startGame` validates and creates a private deeply
+registries default empty. A project with any Character Dialogue Profile also
+requires non-empty `narrativeContext`; projects without Knowledge-Driven
+Dialogue do not. `startGame` validates and creates a private deeply
 immutable snapshot. Optional registries default empty; letterbox has default
 `#000000` (that is, default `#000000`). Registry keys are identities. Cross-references, geometry,
 conditions, operation targets, Nouns, fallbacks and assets are validated before
@@ -336,13 +341,13 @@ identifies the capability or browser adapter responsible for the rule.
 | `DialogueGameOperation` | Dialogue-owned canonical transition | learn fact, record Testimony, set Trust, set Dialogue State | participates in an atomic operation batch | operation/reference diagnostics | [Dialogue authoring](game-authoring.md) |
 | `DialogueFactCandidate` | known fact eligible for interpretation | stable id and canonical proposition | Disclosure is applied after interpretation | unknown selections are rejected | [Dialogue authoring](game-authoring.md) |
 | `DialogueClaimCandidate` | authorised Cover Story content | stable id and non-canonical proposition | sent only when policy selects its concealed fact's Cover Story | undeclared Claims never reach verbalisation | [Dialogue authoring](game-authoring.md) |
-| `DialogueInterpretationRequest` | untrusted speech interpretation input | playerInput, speaker, listener, candidates | candidates are frozen and capability-authorised | provider failure rejects the turn | [Dialogue authoring](game-authoring.md) |
+| `DialogueInterpretationRequest` | untrusted speech interpretation input | Narrative Context, playerInput, speaker, listener, candidates | candidates are frozen and capability-authorised | provider failure rejects the turn | [Dialogue authoring](game-authoring.md) |
 | `DialogueInterpretation` | provider-selected semantic reference | declared factId, or null with an unresolved reason | ambiguity clarifies; no relevant fact withholds | unknown fact ID or reason rejects before verbalization | [Dialogue authoring](game-authoring.md) |
 | `ResponseStrategy` | Engine-authorised conversational approach | answer, cover-story, withhold, evade, refuse, clarify | selected deterministically before verbalisation | invalid provider output rejects the turn | [Dialogue authoring](game-authoring.md) |
 | `DialoguePortrayalProfile` | provider-visible qualitative portrayal | optional biography, Personality, Voice and Dialogue State | carries no semantic authority | validated at startup | [Dialogue authoring](game-authoring.md) |
-| `DialogueVerbalizationRequest` | authorised expression input | speech identities, strategy, portrayal and optional fact or Claim | a concealed fact is absent when its Cover Story Claim is present | empty response rejects the turn | [Dialogue authoring](game-authoring.md) |
+| `DialogueVerbalizationRequest` | authorised expression input | Narrative Context, speech identities, strategy, portrayal and optional fact or Claim | a concealed fact is absent when its Cover Story Claim is present | empty response rejects the turn | [Dialogue authoring](game-authoring.md) |
 | `DialogueTurnContext` | transient provider-call lifecycle | turn ID and AbortSignal | shared by Conversation phases or supplied to Reflection; never saved | lifecycle invalidation aborts the signal and ignores late results | [Dialogue authoring](game-authoring.md) |
-| `ReflectionRequest` | authorised Player Character reflection context | input, Character, known facts, attributed Testimony and directional Relationships | excludes hidden truth and every other Character's knowledge | provider failure rejects only the Reflection turn | [Dialogue authoring](game-authoring.md) |
+| `ReflectionRequest` | authorised Player Character reflection context | Narrative Context, input, Character, known facts, attributed Testimony and directional Relationships | excludes hidden truth and every other Character's knowledge | provider failure rejects only the Reflection turn | [Dialogue authoring](game-authoring.md) |
 | `ReflectionResponse` | non-canonical generated reflection | supported summary, optional Hypotheses and suggestions | Hypotheses and suggestions are labelled uncertain/possible and never saved | malformed or empty output rejects the turn | [Dialogue authoring](game-authoring.md) |
 | `ReflectionTestimony` | provider-visible remembered Claim | speaker and declared Claim | preserves attribution without asserting truth | derived only from committed Testimony | [Dialogue authoring](game-authoring.md) |
 | `ReflectionRelationship` | provider-visible directional Trust | `towards` Character and qualitative Trust | includes only the reflecting Character's outgoing Relationship | derived only from committed Relationship state | [Dialogue authoring](game-authoring.md) |
@@ -383,7 +388,7 @@ identifies the capability or browser adapter responsible for the rule.
 | `DirectionStep` | concurrent directed beat | directions and optional duration | all finite boundaries or authored duration, whichever is first | finite-boundary diagnostics | [Sequence](recipes/sequence.ts) |
 | `SequenceStep` | finite step union | Line, Narration, Choice, Branch, Operations, Direction | nested starts forbidden | Sequence diagnostics | [Sequence](recipes/sequence.ts) |
 | `SequenceDefinition` | root modal flow | finite steps, optional owning Scene, skippable and Skip Outcome | directed flows remain in one Scene | cycle/reference/direction diagnostics | [Sequence](recipes/sequence.ts) |
-| `GameProject` | declarative project authoring | identity, version, resolution, registries, commands, theme | startup captures an isolated immutable snapshot | aggregated startup diagnostics | [Scene](recipes/first-scene.ts) |
+| `GameProject` | declarative project authoring | identity, version, resolution, registries, commands, theme, and Narrative Context when dialogue is used | startup captures an isolated immutable snapshot | aggregated startup diagnostics | [Scene](recipes/first-scene.ts) |
 | `NounLabel` | conditional visible name | text and optional condition | one final unconditional label | conditional/text diagnostics | [Interaction](recipes/interaction.ts) |
 | `PreferredVerbCase` | conditional contextual action | Verb and optional condition | one final unconditional Verb per declared set | conditional diagnostic | [Interaction](recipes/interaction.ts) |
 | `SelectedObjectVerbCase` | Object-first contextual action | Give or Use and optional condition | one final unconditional Verb when declared | conditional diagnostic | [Inventory](recipes/inventory.ts) |
@@ -419,7 +424,7 @@ Exact reachable fields also include `x`, `y`, `width`, `height`, `kind`,
 `skipOutcome`, `subject`, `animation`, `animationStartedTick`, `startAfter`, `cue`, `duration`, `mode`,
 `point`, `from`, `to`, `directions`,
 `identity`, `version`,
-`logicalResolution`, `scenes`, `narrativeFacts`, `claims`, `proposition`, `characters`,
+`logicalResolution`, `scenes`, `narrativeContext`, `narrativeFacts`, `claims`, `proposition`, `characters`,
 `dialogue`, `knowledge`, `factId`, `disclosure`, `level`, `characterKnowledge`,
 `coverStories`, `concealsFactId`, `claimId`, `testimonies`,
 `id`, `playerInput`, `speaker`, `listener`, `candidates`, `fact`, `claim`, `interpretations`,
@@ -507,6 +512,7 @@ directional Relationship edges, and `reference.narrative-fact.variable` for the
 Game Variable a Narrative Fact sets when it is learned.
 
 Knowledge-Driven Dialogue definition and operation codes include
+`definition.narrative-context.required`,
 `definition.narrative-fact.identity`, `definition.narrative-fact.proposition`,
 `definition.narrative-fact.sets-variable`,
 `definition.claim.identity`, `definition.claim.proposition`,

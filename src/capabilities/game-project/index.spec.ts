@@ -521,6 +521,7 @@ test("Game Project aggregates Knowledge-Driven Dialogue diagnostics at startup",
   const result = compileGameProject({
     identity: "example.dialogue-diagnostics",
     version: "1",
+    narrativeContext: "A historical mystery in the harbour of Capri in 1535.",
     logicalResolution: { width: 320, height: 180 },
     scenes: { opening },
     narrativeFacts: {

@@ -224,6 +224,7 @@ test("startGame requires a Dialogue Server URL or Provider before reading the ta
   let targetReads = 0;
   const dialogueProject = {
     ...project,
+    narrativeContext: "A historical mystery in the harbour of Capri in 1535.",
     characters: {
       antonio: {
         initialScene: "opening",

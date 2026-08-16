@@ -317,6 +317,25 @@ Variable.
 
 ## Player Character Reflection
 
+A Game Project that gives any Character a Dialogue Profile must declare one
+non-empty Narrative Context at project level:
+
+```ts
+const dialogueProject = {
+  // Other Game Project definitions...
+  narrativeContext:
+    "Capri in 1535, amid harbour labour, sea trade, friars, and local intrigue.",
+  characters: { michele, raffaele },
+} satisfies GameProject;
+```
+
+Fondale sends this description with interpretation, verbalisation and
+Reflection. It guides phrasing and fictional atmosphere only: it does not
+declare a Narrative Fact, grant Character Knowledge, bypass Disclosure or
+change Game State. A project without Knowledge-Driven Dialogue does not need
+it. The current Support Baseline has no explicit language, locale or language
+Player Preference; do not configure those on the Dialogue Server.
+
 Give the Player Character a Dialogue Profile to make Reflection available,
 then expose an Example-specific control that calls the running Game Session:
 

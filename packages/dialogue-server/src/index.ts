@@ -18,7 +18,6 @@ export {
   createLiveDialogueModel,
   createLiveDialogueModelFromEnvironment,
   defaultDialogueModelId,
-  type DialoguePresentation,
   type LiveDialogueDiagnostic,
   type LiveDialogueModel,
 } from "./live-dialogue-model.js";

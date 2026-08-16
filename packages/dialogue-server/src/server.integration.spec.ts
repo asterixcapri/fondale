@@ -42,6 +42,7 @@ test("the public Dialogue Server interface serves one complete remote turn", asy
   try {
     const context = { turnId: "turn-1", signal: new AbortController().signal };
     const request = {
+      narrativeContext: "A historical mystery in the harbour of Capri in 1535.",
       playerInput: "Where is the lantern?",
       speaker: "antonio",
       listener: "michele",
@@ -54,6 +55,7 @@ test("the public Dialogue Server interface serves one complete remote turn", asy
       factId: "lantern-location",
     });
     assert.equal(await provider.verbalize({
+      narrativeContext: request.narrativeContext,
       playerInput: request.playerInput,
       speaker: request.speaker,
       listener: request.listener,

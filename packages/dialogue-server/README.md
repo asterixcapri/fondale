@@ -40,8 +40,8 @@ retaining local data with `docker compose stop`, or remove its volume with
 ## Configuration
 
 `DATABASE_URL`, `DIALOGUE_MODEL_API_KEY`, `DIALOGUE_MODEL_ID`,
-`DIALOGUE_LANGUAGE`, `DIALOGUE_SETTING`, `DIALOGUE_ADAPTER_HOST`,
-`DIALOGUE_ADAPTER_PORT` and `DIALOGUE_ALLOWED_ORIGINS` are private server
+`DIALOGUE_ADAPTER_HOST`, `DIALOGUE_ADAPTER_PORT` and
+`DIALOGUE_ALLOWED_ORIGINS` are private server
 configuration. None uses a `VITE_` prefix or enters a browser bundle.
 
 `DIALOGUE_MODEL_ID` defaults to
@@ -49,6 +49,11 @@ configuration. None uses a `VITE_` prefix or enters a browser bundle.
 `127.0.0.1:4315`. A comma-separated `DIALOGUE_ALLOWED_ORIGINS` overrides the
 two local Vite origins accepted by default. Credentials and model diagnostics
 stay in the Node.js process and never enter Game State.
+
+Fictional setting is not deployment configuration. Each Game Project declares
+its own non-empty Narrative Context, and every dialogue request carries it to
+the shared model as presentation guidance only. Explicit language and locale
+configuration are outside the current Support Baseline.
 
 ## Production startup
 

@@ -61,6 +61,7 @@ const character = (
 export const project = ({
   identity: "test.knowledge-driven-dialogue-browser",
   version: "1",
+  narrativeContext: "A historical mystery in the harbour of Capri in 1535.",
   logicalResolution: { width: 426, height: 240 },
   initialScene: "opening",
   playerCharacter: "player",

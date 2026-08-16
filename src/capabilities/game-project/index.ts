@@ -155,6 +155,8 @@ export type GameOperation =
 export interface GameProject {
   readonly identity: string;
   readonly version: string;
+  /** Fictional setting used only to phrase Knowledge-Driven Dialogue. */
+  readonly narrativeContext?: string;
   readonly logicalResolution: LogicalResolution;
   readonly scenes: Readonly<Record<string, SceneDefinition>>;
   readonly narrativeFacts?: Readonly<Record<string, NarrativeFactDefinition>>;
@@ -298,6 +300,7 @@ export function compileGameProject(input: GameProject): GameProjectCompilation {
     objects,
   }));
   diagnostics.push(...validateKnowledgeDrivenDialogueProject({
+    ...(input.narrativeContext === undefined ? {} : { narrativeContext: input.narrativeContext }),
     narrativeFacts,
     claims,
     variables,
@@ -451,6 +454,7 @@ export function getSaveCompositionView(project: CompiledGameProject): SaveCompos
 
 function dialogueProjectView(data: GameProjectData): KnowledgeDrivenDialogueProjectView {
   return Object.freeze({
+    ...(data.narrativeContext === undefined ? {} : { narrativeContext: data.narrativeContext }),
     narrativeFacts: data.narrativeFacts,
     claims: data.claims,
     variables: data.variables,

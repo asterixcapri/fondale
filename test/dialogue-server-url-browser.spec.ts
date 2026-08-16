@@ -4,7 +4,10 @@ type DialogueOperation = "interpret" | "verbalize" | "reflect" | "cancel" | "res
 type DialogueRequest = {
   readonly operation: DialogueOperation;
   readonly sessionId: string;
-  readonly request?: { readonly playerInput?: string };
+  readonly request?: {
+    readonly narrativeContext?: string;
+    readonly playerInput?: string;
+  };
 };
 
 async function openFirstConversation(page: Page): Promise<Locator> {
@@ -100,6 +103,7 @@ test("Conversation and Reflection use the HTTP protocol behind the declared URL"
   await firstFrame.focus();
   await page.keyboard.press(".");
   await conversation.getByRole("button", { name: "Leave" }).click();
+  await expect(conversation).toBeHidden();
 
   expect(await page.evaluate(() => window.__dialogueUrlSessions?.[0].startReflection())).toBe(true);
   const reflection = firstFrame.locator("[data-fondale-reflection]");
@@ -112,6 +116,11 @@ test("Conversation and Reflection use the HTTP protocol behind the declared URL"
     "reset", "reset", "interpret", "verbalize", "reflect",
   ]);
   expect(new Set(requests.slice(2).map(({ sessionId }) => sessionId)).size).toBe(1);
+  expect(requests.slice(2).map(({ request }) => request?.narrativeContext)).toEqual([
+    "A historical mystery in the harbour of Capri in 1535.",
+    "A historical mystery in the harbour of Capri in 1535.",
+    "A historical mystery in the harbour of Capri in 1535.",
+  ]);
 });
 
 test("URL-backed turns cancel over HTTP and Load resets their provider memory", async ({ page }) => {
