@@ -1,8 +1,7 @@
 # Approdo dei pescatori di Marina Grande
 
 Seconda prova selezionata dall'utente l'8 agosto 2026. Generata con lo strumento
-`imagegen` integrato e poi processata a 426x240 con
-`tools/process_background.py`.
+`imagegen` integrato e poi processata a 426x240.
 
 ## Riferimenti
 

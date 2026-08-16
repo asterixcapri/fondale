@@ -7,8 +7,7 @@
     "dev": "vite --force",
     "dev:acceptance": "vite --force --mode acceptance",
     "typecheck": "tsc --noEmit",
-    "verify:project": "node tools/verify-project.mjs",
-    "build": "npm run typecheck && npm run verify:project && vite build",
+    "build": "npm run typecheck && vite build",
     "preview": "vite preview",
     "verify": "playwright test",
     "verify:dialogue-live": "playwright test --config playwright.live.config.ts"

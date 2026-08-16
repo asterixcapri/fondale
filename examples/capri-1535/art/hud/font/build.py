@@ -101,7 +101,7 @@ def main():
     builder.setupNameTable({"familyName": "Capri Pixel", "styleName": "Regular", "uniqueFontIdentifier": "Fondale Capri Pixel 1.0", "fullName": "Capri Pixel", "psName": "CapriPixel-Regular", "version": "Version 1.0"})
     builder.setupPost()
     builder.setupMaxp()
-    output = Path(__file__).parents[1] / "src/hud/capri-pixel.ttf"
+    output = Path(__file__).parents[3] / "src/hud/capri-pixel.ttf"
     output.parent.mkdir(parents=True, exist_ok=True)
     builder.save(output)
     print(output)

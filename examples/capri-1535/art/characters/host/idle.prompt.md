@@ -6,6 +6,5 @@ trousers and sturdy shoes.
 Style: original warm Mediterranean pixel-art-inspired adventure illustration.
 Production ground: flat chroma green, no shadow, no text, no watermark.
 
-Generated with the built-in image generation tool and processed by
-`tools/build_sprite.py`; the prologue reuses the processed sprite for Brother Elia
-under `src/characters/brother-elia/`.
+Generated with the built-in image generation tool and processed into the
+Runtime Asset reused for Brother Elia under `src/characters/brother-elia/`.
