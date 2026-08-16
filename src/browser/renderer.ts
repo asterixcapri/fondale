@@ -639,27 +639,13 @@ class EngineOverlay {
       pointerEvents: "none",
     });
     this.dialogueForm.dataset.fondaleDialogue = "";
-    this.dialogueForm.style.cssText = [
-      "position:absolute",
-      "display:none",
-      "left:50%",
-      "bottom:clamp(12px,3%,28px)",
-      "width:clamp(280px,64%,720px)",
-      "max-width:calc(100% - 24px)",
-      "transform:translateX(-50%)",
-      "box-sizing:border-box",
-      "grid-template-columns:1fr auto auto",
-      "row-gap:clamp(6px,1%,10px)",
-      "column-gap:clamp(10px,2%,16px)",
-      "padding:clamp(8px,2%,16px)",
-      "z-index:9",
-      "pointer-events:auto",
-      `color:${data.hudTheme?.colors.text ?? "#f4dfb4"}`,
-      `background:${colorWithAlpha(data.hudTheme?.colors.backing ?? "#0c1626", 0.96)}`,
-      `border:1px solid ${data.hudTheme?.colors.border ?? "#5c7182"}`,
-      "border-radius:4px",
-      "box-shadow:0 3px 10px rgba(0,0,0,.8)",
-    ].join(";");
+    this.stylePhraseSurface(this.dialogueForm);
+    Object.assign(this.dialogueForm.style, {
+      display: "none",
+      gridTemplateColumns: "1fr auto auto",
+      rowGap: "clamp(6px,1%,10px)",
+      columnGap: "clamp(10px,2%,16px)",
+    });
     this.dialogueAlternatives.dataset.fondaleConversationAlternatives = "";
     this.dialogueAlternatives.style.cssText = "grid-column:1/-1;display:none;gap:2px";
     this.dialogueHeading.style.cssText = "grid-column:1/-1";
@@ -1061,15 +1047,8 @@ class EngineOverlay {
     } else if (narrative.kind === "choice") {
       const list = document.createElement("div");
       list.dataset.fondaleChoice = "";
-      list.style.cssText = [
-        "display:grid",
-        "gap:2px",
-        "padding:14px 8px 4px",
-        "box-sizing:border-box",
-        "pointer-events:auto",
-        "border:0",
-        `background:linear-gradient(to top,${colorWithAlpha(this.data.hudTheme?.colors.backing ?? "#071016", 0.65)} 0%,${colorWithAlpha(this.data.hudTheme?.colors.backing ?? "#071016", 0.42)} 62%,transparent 100%)`,
-      ].join(";");
+      this.stylePhraseSurface(list);
+      Object.assign(list.style, { display: "grid", gap: "2px" });
       narrative.alternatives.forEach((choice) => {
         const button = this.createPhraseButton(
           choice.label,
@@ -1549,6 +1528,27 @@ class EngineOverlay {
     });
     button.addEventListener("click", select);
     return button;
+  }
+
+  private stylePhraseSurface(surface: HTMLElement): void {
+    surface.dataset.fondalePhraseSurface = "";
+    surface.style.cssText = [
+      "position:absolute",
+      "left:50%",
+      "bottom:clamp(12px,3%,28px)",
+      "width:clamp(280px,64%,720px)",
+      "max-width:calc(100% - 24px)",
+      "transform:translateX(-50%)",
+      "box-sizing:border-box",
+      "padding:clamp(8px,2%,16px)",
+      "z-index:9",
+      "pointer-events:auto",
+      `color:${this.data.hudTheme?.colors.text ?? "#f4dfb4"}`,
+      `background:${colorWithAlpha(this.data.hudTheme?.colors.backing ?? "#0c1626", 0.96)}`,
+      `border:1px solid ${this.data.hudTheme?.colors.border ?? "#5c7182"}`,
+      "border-radius:4px",
+      "box-shadow:0 3px 10px rgba(0,0,0,.8)",
+    ].join(";");
   }
 
   private styleInventoryControl(button: HTMLButtonElement): void {

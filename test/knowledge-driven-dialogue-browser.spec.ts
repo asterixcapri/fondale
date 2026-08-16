@@ -61,6 +61,11 @@ test("authored alternatives and the free-form field stay usable together by keyb
   const input = conversation.locator("[data-fondale-dialogue-input]");
   const alternatives = conversation.locator("[data-fondale-conversation-alternative]");
 
+  await expect(conversation).toHaveAttribute("data-fondale-phrase-surface", "");
+  await expect(conversation).toHaveCSS("background-color", "rgba(12, 22, 38, 0.96)");
+  await expect(conversation).toHaveCSS("border-top-width", "1px");
+  await expect(conversation).toHaveCSS("border-radius", "4px");
+  await expect(conversation).toHaveCSS("box-shadow", "rgba(0, 0, 0, 0.8) 0px 3px 10px 0px");
   await expect(input).toBeVisible();
   await expect(alternatives).toHaveCount(2);
   await expect(alternatives.first()).toBeVisible();

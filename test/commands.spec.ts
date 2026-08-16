@@ -424,9 +424,12 @@ test("Dialogue Choices use the Player Character speech styling", async ({ page }
   await expect(alternatives).toHaveCount(2);
   await expect(alternatives.nth(0)).toHaveText("1. Grazie!");
   await expect(alternatives.nth(1)).toHaveText("2. Non ora.");
-  await expect(choice).toHaveCSS("border-top-width", "0px");
-  expect(await choice.evaluate((element) => getComputedStyle(element).backgroundImage))
-    .toContain("linear-gradient");
+  await expect(choice).toHaveAttribute("data-fondale-phrase-surface", "");
+  await expect(choice).toHaveCSS("background-color", "rgba(12, 22, 38, 0.96)");
+  await expect(choice).toHaveCSS("background-image", "none");
+  await expect(choice).toHaveCSS("border-top-width", "1px");
+  await expect(choice).toHaveCSS("border-radius", "4px");
+  await expect(choice).toHaveCSS("box-shadow", "rgba(0, 0, 0, 0.8) 0px 3px 10px 0px");
   await expect(alternatives.nth(0)).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
   await expect(alternatives.nth(0)).toHaveCSS("border-top-width", "0px");
   await expect(alternatives.nth(0)).toHaveCSS("outline-style", "none");
