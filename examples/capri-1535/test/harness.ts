@@ -1,5 +1,7 @@
 import { expect, type Page } from "@playwright/test";
 
+import { installDialogueServerStub } from "./dialogue-server-stub";
+
 export const SHOTS_DIR = "test/shots";
 
 /**
@@ -9,8 +11,15 @@ export const SHOTS_DIR = "test/shots";
  * nobody reads the browser console in an autonomous run — an error that only
  * shows up there is an error that never gets found.
  */
-export async function openGame(page: Page, url = "/"): Promise<{ errors: string[] }> {
+export async function openGame(
+  page: Page,
+  url = "/",
+  options: { readonly dialogueServer?: "stub" | "live" } = {},
+): Promise<{ errors: string[]; dialogueRequests: Awaited<ReturnType<typeof installDialogueServerStub>> }> {
   const errors: string[] = [];
+  const dialogueRequests = options.dialogueServer === "live"
+    ? []
+    : await installDialogueServerStub(page);
   page.on("console", (message) => {
     if (message.type() === "error") {
       const location = message.location().url;
@@ -22,7 +31,7 @@ export async function openGame(page: Page, url = "/"): Promise<{ errors: string[
   await page.goto(url);
   await page.locator("[data-fondale-frame]").waitFor({ timeout: 20_000 });
 
-  return { errors };
+  return { errors, dialogueRequests };
 }
 
 /** Clicks one logical Scene Space point through the visible canvas. */

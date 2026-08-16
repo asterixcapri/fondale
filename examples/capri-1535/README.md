@@ -26,15 +26,14 @@ npm run dev
 ```
 
 Then open <http://localhost:5173>. If the server is not reachable the game
-does not start and says, in the page, which two commands to run; the reason
+does not start and shows an actionable connection diagnostic; the reason
 stays on the server console, and no server configuration or credential ever
 reaches the browser.
 
-The Dialogue Provider is chosen when the Example is built, never by the Player:
-the ordinary build talks to the adapter, and `npm run dev:acceptance` builds
-the same entry point against a fake in-browser provider. That is the
-build the acceptance suite drives, which is why `npm run verify` needs no
-database, model or network.
+The Example declares only the Dialogue Server URL. Fondale owns the HTTP
+adapter, Game Session identity and connection check. The acceptance suite
+intercepts that production HTTP seam with test-owned deterministic support,
+which is why `npm run verify` needs no database, model or network.
 
 The committed tarball under `vendor/` stands in for the npm registry while the
 library is developed in the same repository. It contains the same installable
@@ -42,8 +41,6 @@ artifact an external project consumes. To refresh it from the Fondale project:
 
 ```sh
 npm pack --pack-destination examples/capri-1535/vendor
-npm pack --workspace @asterixcapri/fondale-dialogue-server \
-  --pack-destination examples/capri-1535/vendor
 node examples/capri-1535/tools/sync-package-lock.mjs
 ```
 
@@ -93,24 +90,24 @@ cp .env.local.example .env.local
 npm run dev
 ```
 
-In the Example directory, `npm run dev:dialogue-adapter` remains a temporary
-compatibility alias for the same package-owned development command while the
-Capri migration lands. In another terminal run `npm run dev`, then open
-<http://localhost:5173>. The server listens only on `127.0.0.1:4315` by default and accepts the Example's
-local Vite origins. `DATABASE_URL` and all other provider configuration are
-read only by Node; there are no `VITE_` credential variables and server
-failures are not returned verbatim to the browser.
+In the Example directory, run `npm run dev` in a third terminal, then open
+<http://localhost:5173>. The server listens only on `127.0.0.1:4315` by
+default and accepts the Example's local Vite origins. `DATABASE_URL` and all
+other provider configuration are read only by Node; there are no `VITE_`
+credential variables and server failures are not returned verbatim to the
+browser.
 
-The acceptance build still uses the Example's deterministic in-browser fake,
-so its standard verification has no model or network cost. The local server
-always uses its configured live model and stores only visible Conversation and
-Reflection history in PostgreSQL.
+The acceptance harness responds to the production Dialogue HTTP protocol from
+test-owned code. The local server always uses its configured live model and
+stores only visible Conversation and Reflection history in PostgreSQL.
 
-Run the adapter verification independently from the standard suite:
+Run Dialogue Server verification from its owning workspace, independently from
+the Example's standard suite:
 
 ```sh
+cd ../../packages/dialogue-server
 DIALOGUE_ADAPTER_TEST_DATABASE_URL=postgresql://fondale:fondale@127.0.0.1:54329/fondale_dialogue \
-  npm run verify:dialogue-adapter
+  npm run verify:integration
 ```
 
 This verifies durable continuation, thread isolation, targeted reset,
@@ -150,22 +147,27 @@ The technical Michele/Antonio fixture lives at
 canonical story. With the adapter running in `live` mode you can open it
 in the browser and talk to Antonio yourself.
 
-The live verification is opt-in and stays outside `npm run build`,
-`npm run verify` and `npm run verify:dialogue-adapter`. It needs local
-PostgreSQL, a model API key with credit, and the network:
+The live verification is opt-in and stays outside `npm run build` and
+`npm run verify`. It needs local PostgreSQL, an independently running Dialogue
+Server, a model API key with credit, and the network. Start each owner in its
+own terminal:
 
 ```sh
-cd ../../packages/dialogue-server
+# Terminal 1 — packages/dialogue-server
 docker compose up -d
-cd ../../examples/capri-1535
-DIALOGUE_ADAPTER_TEST_DATABASE_URL=postgresql://fondale:fondale@127.0.0.1:54329/fondale_dialogue \
-  npm run verify:dialogue-live
+
+# Terminal 2 — packages/dialogue-server
+npm run dev
+
+# Terminal 3 — examples/capri-1535
+npm run verify:dialogue-live
 ```
 
-It starts its own dev server and adapter, then observes paraphrased questions,
+It starts only its own Vite server, then observes paraphrased questions,
 a communicated `open` fact, a protected `secret`, the declared Cover Story and
-its remembered Testimony, durable multi-turn continuity, Load resetting every
-provider thread, and Reflection separating uncertain Hypothesis. It asserts
-canonical Game State and provider memory only; the generated Lines are printed
-for a human to read, never compared with an expected sentence. The adapter
-console reports model ID, latency and token cost, all outside Game State.
+its remembered Testimony, multi-turn continuity, restored canonical state, and
+Reflection separating uncertain Hypothesis. It asserts through the browser
+seam; the generated Lines are printed for a human to read, never compared with
+an expected sentence. The server's integration suite owns direct PostgreSQL
+memory assertions. The server console reports model ID, latency and token cost,
+all outside Game State.

@@ -5,7 +5,8 @@ import { acceptancePort, ordinaryPort } from "./test/ports";
 export default defineConfig({
   testDir: "./test",
   // The live spike has its own harness in `playwright.live.config.ts`: the
-  // standard suite never reaches OpenRouter, PostgreSQL or the network.
+  // standard suite intercepts the production HTTP seam and never reaches a
+  // model, PostgreSQL or the external network.
   testIgnore: ["live-dialogue.spec.ts"],
   outputDir: "./test/.artifacts",
   fullyParallel: false,

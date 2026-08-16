@@ -12,7 +12,7 @@ production while its tests still require no PostgreSQL, network or model.
 
 **Blocked by:** 01 — Start a Game Project from a Dialogue Server URL; 02 — Run the Dialogue Server independently.
 
-**Status:** ready-for-agent
+**Status:** claimed
 
 - [ ] Capri declares only the Dialogue Server URL for generated-dialogue infrastructure.
 - [ ] Capri runtime source contains no Dialogue Provider or HTTP adapter import, implementation, factory or protocol handling.

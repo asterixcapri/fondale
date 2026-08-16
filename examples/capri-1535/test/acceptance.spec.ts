@@ -172,12 +172,19 @@ test("the packaged Example opens in the new panoramic town square and reaches th
 });
 
 test("the Example exposes Rifletti as Player Character Reflection", async ({ page }) => {
-  const { errors } = await openGame(page);
+  const { errors, dialogueRequests } = await openGame(page);
+
+  expect(dialogueRequests).toHaveLength(1);
+  expect(dialogueRequests[0]?.operation).toBe("reset");
+  expect(dialogueRequests[0]?.sessionId).toMatch(
+    /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+  );
 
   await reflect(page, "Che cosa so?");
 
   await expect(page.locator('[data-fondale-line][data-fondale-speaker="michele"]'))
     .toContainText("Michele è arrivato a Capri in cerca di un lavoro onesto");
+  expect(dialogueRequests.some(({ operation }) => operation === "reflect")).toBe(true);
   expect(errors).toEqual([]);
 });
 

@@ -1,28 +1,24 @@
-import { Memory } from "@mastra/memory";
-import { PostgresStore } from "@mastra/pg";
 import { test, type Page } from "@playwright/test";
-import { dialogueResourceId } from "@asterixcapri/fondale-dialogue-server";
 
 import { clickWorld, expect, openGame } from "./harness";
 
 /**
  * Opt-in live spike against the configured model vendor, Mastra and PostgreSQL.
  *
- * It asserts only canonical Game State, provider memory and turn outcomes:
+ * It asserts canonical Game State and turn outcomes through the browser seam:
  * generated wording is reported for a human to read, never compared with an
  * expected sentence.
  */
-const databaseUrl = process.env.DIALOGUE_ADAPTER_TEST_DATABASE_URL;
-
 test.setTimeout(600_000);
 
 test("the live Michele/Antonio spike behaves as the approved experience", async ({ page }) => {
-  if (!databaseUrl) throw new Error("DIALOGUE_ADAPTER_TEST_DATABASE_URL is required.");
   const observed: string[] = [];
 
-  const { errors } = await openGame(page, "/test/fixtures/live-dialogue.html");
-  const sessionId = await page.evaluate(() => window.__liveDialogue!.sessionId);
-
+  const { errors } = await openGame(
+    page,
+    "/test/fixtures/live-dialogue.html",
+    { dialogueServer: "live" },
+  );
   // 5a. Before Michele knows anything, Reflection answers honestly without
   // even reaching the provider, so nothing can be invented.
   await page.getByRole("button", { name: "Rifletti" }).click();
@@ -67,9 +63,8 @@ test("the live Michele/Antonio spike behaves as the approved experience", async 
     claimId: "antonio-nega-santa-lucia",
   }]);
 
-  // 6. Several turns stay durable in PostgreSQL while Game State keeps no
-  // transcript of the generated wording.
-  expect(await visibleMessageCount(sessionId)).toBe(10);
+  // 6. Several turns cross the independently run server while Game State
+  // keeps no transcript of the generated wording.
   const snapshot = JSON.stringify(await page.evaluate(() =>
     window.__liveDialogue!.session.createSaveSnapshot()
   ));
@@ -90,20 +85,18 @@ test("the live Michele/Antonio spike behaves as the approved experience", async 
   expect(informed.length).toBeGreaterThan(uninformed.length);
   expect(await canonicalState(page)).toEqual(afterCoverStory);
 
-  // 7. Load resets provider memory: no visible Line of this Game Session
-  // survives, and the next turn starts a fresh conversation.
+  // 7. Load starts a restored Game Session through the same declarative URL;
+  // the server integration suite verifies the corresponding memory reset.
   await reflection.getByRole("button", { name: "Leave" }).click();
   await page.getByRole("button", { name: "Salva e ricarica" }).click();
   await expect(page.locator("[data-fondale-frame]")).toBeVisible();
   await expect.poll(() => page.evaluate(() => window.__liveDialogue!.session.getStatus()), {
     timeout: 30_000,
   }).toBe("running");
-  await expect.poll(() => visibleMessageCount(sessionId), { timeout: 30_000 }).toBe(0);
   expect(await canonicalState(page)).toEqual(afterCoverStory);
 
   await talkToAntonio(page);
   observed.push(await ask(page, "Ricordi di che cosa abbiamo parlato prima?"));
-  expect(await visibleMessageCount(sessionId)).toBe(2);
 
   expect(errors).toEqual([]);
   console.log(`Live Lines observed with the configured live model:\n- ${observed.join("\n- ")}`);
@@ -160,24 +153,4 @@ async function canonicalState(page: Page): Promise<{
       testimonies: state.testimonies as unknown[],
     };
   });
-}
-
-/** Counts the visible Lines Mastra kept for one Game Session. */
-async function visibleMessageCount(sessionId: string): Promise<number> {
-  const storage = new PostgresStore({ id: "live-spike-observer", connectionString: databaseUrl! });
-  await storage.init();
-  const memory = new Memory({ storage });
-  try {
-    const { threads } = await memory.listThreads({
-      filter: { resourceId: dialogueResourceId(sessionId) },
-      perPage: false,
-    });
-    const counted = await Promise.all(threads.map(async ({ id }) => {
-      const { messages } = await memory.recall({ threadId: id, perPage: false });
-      return messages.length;
-    }));
-    return counted.reduce((total, count) => total + count, 0);
-  } finally {
-    await storage.close();
-  }
 }

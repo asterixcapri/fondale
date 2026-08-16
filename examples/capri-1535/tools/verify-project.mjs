@@ -7,6 +7,7 @@ const packageJson = JSON.parse(readFileSync(join(project, "package.json"), "utf8
 const lock = readFileSync(join(project, "package-lock.json"), "utf8");
 const viteConfig = readFileSync(join(project, "vite.config.ts"), "utf8");
 const tarball = "vendor/asterixcapri-fondale-0.4.0.tgz";
+const retiredDialogueServerTarball = "vendor/asterixcapri-fondale-dialogue-server-0.4.0.tgz";
 const retiredArtDirectories = ["concept", "example", "rooms", "sprites"];
 const retiredSourceFiles = ["src/nouns.ts"];
 
@@ -26,6 +27,23 @@ for (const script of ["dev", "dev:acceptance", "typecheck", "build", "preview", 
 }
 if (!existsSync(join(project, tarball))) {
   throw new Error("The Example's vendored Fondale tarball is missing.");
+}
+if (existsSync(join(project, retiredDialogueServerTarball))) {
+  throw new Error("The Example must not vendor the separately deployed Dialogue Server.");
+}
+for (const dependency of [
+  "@asterixcapri/fondale-dialogue-server",
+  "@mastra/memory",
+  "@mastra/pg",
+]) {
+  if (packageJson.dependencies?.[dependency] || packageJson.devDependencies?.[dependency]) {
+    throw new Error(`The Example must not own server dependency '${dependency}'.`);
+  }
+}
+for (const script of ["dev:dialogue-adapter", "verify:dialogue-adapter"]) {
+  if (packageJson.scripts?.[script]) {
+    throw new Error(`The Example must not own server script '${script}'.`);
+  }
 }
 for (const directory of retiredArtDirectories) {
   if (existsSync(join(project, "art", directory))) {
@@ -70,14 +88,29 @@ for (const sourceFile of sourceDirectories.flatMap(findTypeScriptFiles)) {
     throw new Error(`The Example source reaches into repository art from ${sourceFile}.`);
   }
 }
-// A Player has one experience: the Dialogue Provider belongs to the build, not
-// to a query parameter anybody can type into the address bar.
+// A Player has one experience: the separately run Dialogue Server belongs to
+// the environment, not to a query parameter anybody can type into the address
+// bar. The Game Project declares only its URL; Fondale owns the browser adapter.
 const entryPoint = readFileSync(join(project, "src/main.ts"), "utf8");
 if (/\.get\(\s*["']dialogue["']\s*\)/.test(entryPoint)) {
   throw new Error("The Example must not let a Player select a Dialogue Provider.");
 }
-if (!entryPoint.includes('import.meta.env.MODE === "acceptance"')) {
-  throw new Error("The Example must select its Dialogue Provider when it is built.");
+if (!entryPoint.includes("dialogueServerUrl")) {
+  throw new Error("The Example must declare its Dialogue Server URL at browser startup.");
+}
+const forbiddenRuntimeDialogueInfrastructure = [
+  [/(?:^|\W)HttpDialogueProvider(?:$|\W)/, "HTTP Dialogue Provider adapter"],
+  [/(?:^|\W)(?:Fake)?DialogueProvider(?:$|\W)/, "Dialogue Provider implementation"],
+  [/(?:^|\W)(?:DATABASE_URL|DIALOGUE_MODEL_API_KEY|DIALOGUE_MODEL_ID)(?:$|\W)/, "server configuration"],
+  [/(?:from\s+|import\s*\(\s*)["'](?:@mastra\/|@asterixcapri\/fondale-dialogue-server)/, "server or model dependency"],
+];
+for (const sourceFile of findTypeScriptFiles(join(project, "src"))) {
+  const source = readFileSync(sourceFile, "utf8");
+  for (const [pattern, description] of forbiddenRuntimeDialogueInfrastructure) {
+    if (pattern.test(source)) {
+      throw new Error(`The Example runtime contains ${description} in ${sourceFile}.`);
+    }
+  }
 }
 if (viteConfig.includes("../") || !viteConfig.includes('outDir: "dist"')) {
   throw new Error("The Example build output must remain inside the Example project.");

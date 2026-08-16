@@ -6,26 +6,20 @@
   "scripts": {
     "dev": "vite --force",
     "dev:acceptance": "vite --force --mode acceptance",
-    "dev:dialogue-adapter": "npm --prefix ../.. run dev --workspace @asterixcapri/fondale-dialogue-server",
     "prototype:hud": "vite --force --mode prototype --port 5174",
     "typecheck": "tsc --noEmit",
     "verify:project": "node tools/verify-project.mjs",
     "build": "npm run typecheck && npm run verify:project && vite build",
     "preview": "vite preview",
     "verify": "playwright test",
-    "verify:dialogue-adapter": "npm --prefix ../.. run verify:dialogue-server && npm --prefix ../.. run verify:dialogue-server:integration && node --import tsx --test \"src/*.spec.ts\"",
     "verify:dialogue-live": "playwright test --config playwright.live.config.ts"
   },
   "dependencies": {
-    "@asterixcapri/fondale": "file:vendor/asterixcapri-fondale-0.4.0.tgz",
-    "@asterixcapri/fondale-dialogue-server": "file:vendor/asterixcapri-fondale-dialogue-server-0.4.0.tgz"
+    "@asterixcapri/fondale": "file:vendor/asterixcapri-fondale-0.4.0.tgz"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",
-    "@mastra/memory": "^1.26.1",
-    "@mastra/pg": "^1.20.0",
     "@types/node": "^22.20.1",
-    "tsx": "^4.23.12",
     "typescript": "^5.9.3",
     "vite": "^6.4.3",
     "vite-plugin-singlefile": "^2.3.3"

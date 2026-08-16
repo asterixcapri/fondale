@@ -1,5 +1,4 @@
 import {
-  HttpDialogueProvider,
   startGame,
   type CharacterDefinition,
   type GameProject,
@@ -23,18 +22,13 @@ import { logicalBackground } from "./logical-background";
 declare global {
   interface Window {
     __liveDialogue?: {
-      readonly sessionId: string;
       session: GameSession;
     };
   }
 }
 
 const background = await logicalBackground(backgroundUrl);
-const sessionId = crypto.randomUUID();
-const dialogueProvider = new HttpDialogueProvider({
-  endpoint: "http://127.0.0.1:4315/dialogue",
-  sessionId,
-});
+const dialogueServerUrl = "http://127.0.0.1:4315/dialogue";
 
 const idle = (image: string, width: number, height: number) => ({
   animations: { idle: { sheets: { left: { image, frames: [{ x: 0, y: 0, width, height }] }, right: { image, frames: [{ x: 0, y: 0, width, height }] }, front: { image, frames: [{ x: 0, y: 0, width, height }] }, back: { image, frames: [{ x: 0, y: 0, width, height }] } }, timing: { framesPerSecond: 1, loop: true } } },
@@ -150,8 +144,7 @@ const project = ({
 
 const target = document.querySelector<HTMLElement>("#game")!;
 const live = {
-  sessionId,
-  session: await startGame(project, { target, dialogueProvider }),
+  session: await startGame(project, { target, dialogueServerUrl }),
 };
 window.__liveDialogue = live;
 
@@ -161,7 +154,7 @@ document.querySelector<HTMLButtonElement>("#reflect")!.addEventListener("click",
 document.querySelector<HTMLButtonElement>("#reload")!.addEventListener("click", async () => {
   const snapshot: unknown = JSON.parse(JSON.stringify(live.session.createSaveSnapshot()));
   live.session.stop();
-  live.session = await startGame(project, { target, snapshot, dialogueProvider });
+  live.session = await startGame(project, { target, snapshot, dialogueServerUrl });
 });
 window.addEventListener("unhandledrejection", (event) => {
   document.querySelector<HTMLOutputElement>("#error")!.textContent = String(event.reason);

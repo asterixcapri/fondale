@@ -1,22 +1,14 @@
 import type {
   DialogueFactCandidate,
+  DialogueHttpRequest,
   DialogueInterpretation,
   DialogueVerbalizationRequest,
   ResponseStrategy,
 } from "@asterixcapri/fondale";
+import type { Page } from "@playwright/test";
 
-/**
- * The Example's own scripted reading and wording of prologue dialogue.
- *
- * It is shared by the two places that need to answer a typed question without a
- * model: the local adapter's default Dialogue Model, and the provider injected
- * into the acceptance build. Both go through here so a Player and the suite
- * meet the same words.
- *
- * Nothing here decides content. Interpretation only ever returns one of the
- * candidates the Engine offered for that turn, and verbalisation only ever
- * dresses the Fact, Claim or Response Strategy the Engine already authorised.
- */
+export const dialogueServerUrl = "http://127.0.0.1:4315/dialogue";
+
 const factKeywords: Readonly<Record<string, readonly string[]>> = {
   "michele-arrived-in-capri": ["chi sei", "da dove", "lavoro onesto"],
   "winch-lacks-its-handle": ["argano"],
@@ -46,7 +38,37 @@ const strategyWording: Readonly<Record<ResponseStrategy, string>> = {
   "cover-story": "Le cose sono andate diversamente.",
 };
 
-/** The offered Narrative Fact the Player's own words point at, if any. */
+export async function installDialogueServerStub(
+  page: Page,
+): Promise<DialogueHttpRequest[]> {
+  const requests: DialogueHttpRequest[] = [];
+  await page.route(dialogueServerUrl, async (route) => {
+    const request = route.request().postDataJSON() as DialogueHttpRequest;
+    requests.push(request);
+    const value = execute(request);
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ ok: true, ...(value === undefined ? {} : { value }) }),
+    });
+  });
+  return requests;
+}
+
+function execute(request: DialogueHttpRequest): unknown {
+  switch (request.operation) {
+    case "interpret":
+      return readPrologueQuestion(request.request.playerInput, request.request.candidates);
+    case "verbalize":
+      return speakPrologueResponse(request.request);
+    case "reflect":
+      return { summary: composePrologueReflection(request.request.facts) };
+    case "cancel":
+    case "reset":
+      return undefined;
+  }
+}
+
 export function readPrologueQuestion(
   playerInput: string,
   candidates: readonly DialogueFactCandidate[],
@@ -58,14 +80,12 @@ export function readPrologueQuestion(
   return match ? { factId: match.id } : { factId: null, reason: "no-relevant-fact" };
 }
 
-/** The Italian wording for whatever the Engine authorised this turn. */
 export function speakPrologueResponse(request: DialogueVerbalizationRequest): string {
   if (request.fact) return factWording[request.fact.id] ?? request.fact.proposition;
   if (request.claim) return request.claim.proposition;
   return strategyWording[request.strategy];
 }
 
-/** What Michele tells himself about the Character Knowledge he has committed. */
 export function composePrologueReflection(
   facts: readonly DialogueFactCandidate[],
 ): string {

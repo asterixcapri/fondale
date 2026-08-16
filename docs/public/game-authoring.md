@@ -337,6 +337,14 @@ Session identity, then checks the connection before mounting the game. Keep
 `dialogueProvider` for Engine tests, technical fixtures, or an advanced host
 that deliberately owns a custom low-level adapter; never supply both options.
 
+PostgreSQL, the Dialogue Server and the browser game remain independently
+started processes. Start PostgreSQL with `docker compose up -d` from the
+Dialogue Server infrastructure directory, start Node there with `npm run dev`,
+then start the Game Project from its own directory with `npm run dev`. The
+Engine compiles the Game Project in the browser and sends only the authorised
+material for each Dialogue Turn; the Dialogue Server never loads the Game
+Project or reads its files.
+
 The provider's `reflect` method receives a `ReflectionRequest` containing only
 the Player Character's committed facts, attributed Testimony, and directional
 Relationships. It returns a `ReflectionResponse` with a summary and optional

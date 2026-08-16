@@ -10,10 +10,6 @@ const packages = [{
   name: "@asterixcapri/fondale",
   version: "0.4.0",
   tarball: "vendor/asterixcapri-fondale-0.4.0.tgz",
-}, {
-  name: "@asterixcapri/fondale-dialogue-server",
-  version: "0.4.0",
-  tarball: "vendor/asterixcapri-fondale-dialogue-server-0.4.0.tgz",
 }];
 
 for (const packageDefinition of packages) {
