@@ -26,14 +26,8 @@ export const winchInstallation = ({
       directions: [
         {
           type: "animation",
-          subject: { kind: "character", character: "michele" },
-          animation: "use-winch",
-        },
-        {
-          type: "animation",
           subject: { kind: "scenery", scenery: "winch" },
           animation: "engaging",
-          startAfter: { direction: 0, cue: "contact" },
         },
       ],
     },

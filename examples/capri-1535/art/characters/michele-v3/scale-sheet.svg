@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
+  <rect width="1280" height="720" fill="#162126"/>
+  <text x="64" y="72" fill="#f2e5c4" font-family="sans-serif" font-size="32">Michele V3 production scale</text>
+  <text x="64" y="108" fill="#aebdc0" font-family="sans-serif" font-size="18">1280×720 Logical Resolution · 256×256 Runtime cell · Visual Anchor (128, 252)</text>
+  <line x1="64" y1="600" x2="1216" y2="600" stroke="#d5b56f" stroke-width="2"/>
+  <text x="64" y="632" fill="#d5b56f" font-family="sans-serif" font-size="16">shared Ground Point</text>
+
+  <g transform="translate(160 453.84) scale(0.58)">
+    <svg width="256" height="256" viewBox="0 0 256 256" overflow="hidden">
+      <image href="../../../src/characters/michele/v3-workwear-idle-front.png" width="4096" height="256"/>
+    </svg>
+    <rect width="256" height="256" fill="none" stroke="#6fa6b5" stroke-width="2" vector-effect="non-scaling-stroke"/>
+    <circle cx="128" cy="252" r="5" fill="#e05f4f" vector-effect="non-scaling-stroke"/>
+  </g>
+  <text x="160" y="664" fill="#f2e5c4" font-family="sans-serif" font-size="18">Far · 0.58× · ≈144 px figure</text>
+
+  <g transform="translate(480 398.4) scale(0.8)">
+    <svg width="256" height="256" viewBox="0 0 256 256" overflow="hidden">
+      <image href="../../../src/characters/michele/v3-workwear-idle-front.png" width="4096" height="256"/>
+    </svg>
+    <rect width="256" height="256" fill="none" stroke="#6fa6b5" stroke-width="2" vector-effect="non-scaling-stroke"/>
+    <circle cx="128" cy="252" r="5" fill="#e05f4f" vector-effect="non-scaling-stroke"/>
+  </g>
+  <text x="480" y="664" fill="#f2e5c4" font-family="sans-serif" font-size="18">Middle · 0.80× · ≈199 px figure</text>
+
+  <g transform="translate(850 348)">
+    <svg width="256" height="256" viewBox="0 0 256 256" overflow="hidden">
+      <image href="../../../src/characters/michele/v3-workwear-idle-front.png" width="4096" height="256"/>
+    </svg>
+    <rect width="256" height="256" fill="none" stroke="#6fa6b5" stroke-width="2"/>
+    <circle cx="128" cy="252" r="5" fill="#e05f4f"/>
+  </g>
+  <text x="850" y="664" fill="#f2e5c4" font-family="sans-serif" font-size="18">Near · 1.00× · ≈249 px figure</text>
+</svg>
