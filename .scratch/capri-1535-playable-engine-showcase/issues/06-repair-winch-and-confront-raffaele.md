@@ -23,4 +23,3 @@ still opens the route toward the coastal fortification.
 - [ ] No choice blocks completion, removes an essential Object or withholds access to the fortification.
 - [ ] The route toward the coastal fortification becomes eligible only after the repair outcome is committed.
 - [ ] Browser acceptance proves installation timing, every social branch and convergence on the unlocked route.
-

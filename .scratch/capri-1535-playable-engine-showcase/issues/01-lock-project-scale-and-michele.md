@@ -21,4 +21,3 @@ new Scene composition depends on it.
 - [ ] The V3 portrayal remains recognisable in costume, silhouette, palette and equipment across all presentations.
 - [ ] Raffaele and Brother Elia remain outside the directional-artwork scope of this ticket.
 - [ ] The Example builds and a browser check demonstrates Michele walking and turning in all four Facings.
-

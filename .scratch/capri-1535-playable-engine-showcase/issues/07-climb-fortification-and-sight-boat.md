@@ -23,4 +23,3 @@ Camera direction needed by the showcase.
 - [ ] The skip outcome commits the same boat and progression state as full playback.
 - [ ] The boat never appears landed before Michele has observed it drifting.
 - [ ] Browser verification covers the complete climb, Camera limits, lookout interaction, full Sequence and skipped Sequence.
-

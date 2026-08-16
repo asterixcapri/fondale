@@ -24,4 +24,3 @@ longer traps it.
 - [ ] Collecting the handle places it exactly once in Inventory and cannot leave the puzzle in an unrecoverable state.
 - [ ] Scene transitions and browser continuation restore seized, lubricated or freed state correctly.
 - [ ] Browser acceptance proves the ordinary solution, premature-pull feedback and persistence.
-

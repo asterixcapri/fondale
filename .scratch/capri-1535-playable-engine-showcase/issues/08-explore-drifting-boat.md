@@ -23,4 +23,3 @@ registry fragment.
 - [ ] The sailor's identity, survival and further history remain unresolved.
 - [ ] The final state clearly marks the prologue complete while retaining the opened bundle and all committed knowledge in continuation.
 - [ ] Browser acceptance proves clue exploration, the encounter, Object transfer, opening and final cliffhanger.
-

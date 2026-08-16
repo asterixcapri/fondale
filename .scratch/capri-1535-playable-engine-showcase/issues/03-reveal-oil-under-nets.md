@@ -23,4 +23,3 @@ Object, collect it and recognise it later in Inventory.
 - [ ] Unsupported uses of the oil do not consume it or mutate progress.
 - [ ] Scene return and browser continuation preserve both the nets state and oil location.
 - [ ] Browser acceptance proves discovery, reveal, collection and the alternate early-discovery order.
-

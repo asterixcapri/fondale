@@ -24,4 +24,3 @@ default-state artwork needed by the later harbour puzzle slices.
 - [ ] The critical path remains completable through authored alternatives alone.
 - [ ] The Scene's horizontal Camera, Hotspots, approaches, foreground overlap and HUD-safe composition are verified in the browser.
 - [ ] The Example builds and browser acceptance proves the complete opening through receipt of the letter.
-

@@ -27,4 +27,3 @@ Example from documentation that matches the shipped Game Project.
 - [ ] Michele's walking and directed Animations pass motion review in every required Facing and representative depth.
 - [ ] The Example README describes the same four-Scene route, Dialogue Server requirement, deterministic verification and live opt-in flow.
 - [ ] The package build and full standard browser suite pass from the assembled tree.
-

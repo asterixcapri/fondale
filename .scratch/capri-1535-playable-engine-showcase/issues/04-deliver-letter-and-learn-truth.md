@@ -24,4 +24,3 @@ mechanical well puzzle ready for its following slice.
 - [ ] The critical exchange is completable without free-form dialogue or a model-dependent wording.
 - [ ] Returning to either Scene preserves the delivered-letter and learned-knowledge state.
 - [ ] The Example builds and browser acceptance proves travel, delivery, disclosure and return.
-
