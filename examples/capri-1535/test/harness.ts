@@ -50,6 +50,19 @@ export async function hoverWorld(page: Page, x: number, y: number): Promise<void
   await page.mouse.move(box.x + (x / 426) * box.width, box.y + (y / 240) * box.height);
 }
 
+/** Saves the current Game Session and restores the first Save Slot. */
+export async function saveAndLoadGameSession(page: Page, saveName: string): Promise<void> {
+  const frame = page.locator("[data-fondale-frame]");
+  await frame.focus();
+  await page.keyboard.press("Control+s");
+  const save = frame.locator('[data-fondale-modal="save"]');
+  await save.locator("[data-fondale-save-name]").fill(saveName);
+  await save.locator("[data-fondale-save-confirm]").click();
+  await frame.focus();
+  await page.keyboard.press("Control+l");
+  await frame.locator('[data-fondale-load-slot="0"]').click();
+}
+
 /** Saves a screenshot under a stable name the agent can open and look at. */
 export async function shoot(page: Page, name: string): Promise<void> {
   await page.screenshot({ path: `${SHOTS_DIR}/${name}.png` });

@@ -1,6 +1,6 @@
 import { test, type Page } from "@playwright/test";
 
-import { clickWorld, expect, openGame } from "./harness";
+import { clickWorld, expect, openGame, saveAndLoadGameSession } from "./harness";
 
 /**
  * Opt-in live spike against the configured model vendor, Mastra and PostgreSQL.
@@ -88,15 +88,7 @@ test("the live Michele/Antonio spike behaves as the approved experience", async 
   // 7. Load starts a restored Game Session through the same declarative URL;
   // the server integration suite verifies the corresponding memory reset.
   await reflection.getByRole("button", { name: "Leave" }).click();
-  const frame = page.locator("[data-fondale-frame]");
-  await frame.focus();
-  await page.keyboard.press("Control+s");
-  const save = frame.locator('[data-fondale-modal="save"]');
-  await save.locator("[data-fondale-save-name]").fill("Live dialogue restore");
-  await save.locator("[data-fondale-save-confirm]").click();
-  await frame.focus();
-  await page.keyboard.press("Control+l");
-  await frame.locator('[data-fondale-load-slot="0"]').click();
+  await saveAndLoadGameSession(page, "Live dialogue restore");
   await expect(page.locator("[data-fondale-frame]")).toBeVisible();
   await expect.poll(() => page.evaluate(() => window.__liveDialogue!.session.getStatus()), {
     timeout: 30_000,

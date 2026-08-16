@@ -1,6 +1,6 @@
 import { test, type Page } from "@playwright/test";
 
-import { clickWorld, expect, hoverWorld, openGame, shoot } from "./harness";
+import { clickWorld, expect, hoverWorld, openGame, saveAndLoadGameSession, shoot } from "./harness";
 
 test.setTimeout(90_000);
 
@@ -188,15 +188,7 @@ test("the Example exposes Rifletti as Player Character Reflection", async ({ pag
   await advance(page);
   await page.locator("[data-fondale-reflection]").getByRole("button", { name: "Leave" }).click();
 
-  const frame = page.locator("[data-fondale-frame]");
-  await frame.focus();
-  await page.keyboard.press("Control+s");
-  const save = frame.locator('[data-fondale-modal="save"]');
-  await save.locator("[data-fondale-save-name]").fill("Dialogue reset");
-  await save.locator("[data-fondale-save-confirm]").click();
-  await frame.focus();
-  await page.keyboard.press("Control+l");
-  await frame.locator('[data-fondale-load-slot="0"]').click();
+  await saveAndLoadGameSession(page, "Dialogue reset");
 
   const sessionId = dialogueRequests[0]!.sessionId;
   expect(dialogueRequests.filter(({ operation, sessionId: candidate }) =>
