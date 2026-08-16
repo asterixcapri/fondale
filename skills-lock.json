@@ -57,6 +57,12 @@
       "skillPath": "skills/engineering/domain-modeling/SKILL.md",
       "computedHash": "363cb0f53b0b431e7c00086ad1f823500b7e1b70b5616ee969c979f0934e9e6e"
     },
+    "execute-ticket-graph": {
+      "source": "asterixcapri/skills",
+      "sourceType": "github",
+      "skillPath": "skills/execute-ticket-graph/SKILL.md",
+      "computedHash": "c88db09e8a321a854a740c9f503337a7d75e8eab4506f5448c0bede0f46e6d27"
+    },
     "git-guardrails-claude-code": {
       "source": "mattpocock/skills",
       "sourceType": "github",
