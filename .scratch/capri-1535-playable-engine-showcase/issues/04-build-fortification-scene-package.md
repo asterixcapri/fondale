@@ -7,7 +7,7 @@ full Camera and Perspective Scale range before the boat sighting is integrated.
 
 **Blocked by:** 01 — Lock the project scale and reference Michele.
 
-**Status:** ready-for-human
+**Status:** resolved
 
 - [x] The fortification has an accepted portrait Composition Art Master, clean Background Art Master, Runtime Background and exact-size geometry diagnostic.
 - [x] The Scene is `1280×1440` unless final blocking proves another exact height necessary while preserving genuine vertical travel.
@@ -28,3 +28,6 @@ full Camera and Perspective Scale range before the boat sighting is integrated.
   geometry, broad connected navigation, Camera-safe entrances and a browser
   fixture covering every vertical band. The root build and browser verification
   pass on an isolated test port.
+- 2026-08-17: Lifecycle finalized as `resolved` after the independent Standards
+  and Spec reviews reported no remaining findings and the root browser suite
+  passed `311/311`.
