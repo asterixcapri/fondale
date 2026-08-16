@@ -1,7 +1,12 @@
 import { type NounDefinition, type SceneDefinition } from "@asterixcapri/fondale";
 
+import { woundedSailorGroundPoint } from "../../characters/wounded-sailor";
 import { rectangle } from "../../geometry";
 import backgroundUrl from "./background.png";
+import foregroundHullUrl from "./foreground-hull-overlay.png";
+import mastRiggingUrl from "./mast-rigging-overlay.png";
+import shelterPostUrl from "./shelter-post-overlay.png";
+import shelterRoofUrl from "./shelter-roof-overlay.png";
 
 const clue = (label: string, response: string) => ({
   labels: [{ text: label }],
@@ -11,7 +16,7 @@ const clue = (label: string, response: string) => ({
 
 export const sailorHandoff = {
   michele: { groundPoint: { x: 930, y: 570 }, facing: "right" as const },
-  sailor: { groundPoint: { x: 1098, y: 602 }, facing: "left" as const },
+  sailor: { groundPoint: woundedSailorGroundPoint, facing: "left" as const },
   cameraCenter: { x: 1030, y: 430 },
 } as const;
 
@@ -33,65 +38,49 @@ export const driftingBoat = ({
   scenery: {
     mastAndCutRigging: {
       baseline: 560,
+      position: { x: 0, y: 560 },
       initialAppearance: "default",
       appearances: {
         default: {
-          kind: "background-region",
-          area: [
-            { x: 0, y: 0 },
-            { x: 410, y: 0 },
-            { x: 410, y: 420 },
-            { x: 390, y: 420 },
-            { x: 390, y: 535 },
-            { x: 300, y: 560 },
-            { x: 210, y: 520 },
-            { x: 210, y: 390 },
-            { x: 0, y: 350 },
-          ],
+          animations: { idle: { sheet: { image: mastRiggingUrl, frames: [{ x: 0, y: 0, width: 410, height: 560 }] }, timing: { framesPerSecond: 1, loop: true } } },
+          roles: { default: "idle" },
+          visualAnchor: { x: 0, y: 560 },
         },
       },
     },
     shelterRoof: {
       baseline: 615,
+      position: { x: 895, y: 255 },
       initialAppearance: "default",
       appearances: {
         default: {
-          kind: "background-region",
-          area: [
-            { x: 895, y: 35 },
-            { x: 1280, y: 35 },
-            { x: 1280, y: 255 },
-            { x: 930, y: 255 },
-          ],
+          animations: { idle: { sheet: { image: shelterRoofUrl, frames: [{ x: 0, y: 0, width: 385, height: 220 }] }, timing: { framesPerSecond: 1, loop: true } } },
+          roles: { default: "idle" },
+          visualAnchor: { x: 0, y: 220 },
         },
       },
     },
     shelterPost: {
       baseline: 615,
+      position: { x: 1180, y: 615 },
       initialAppearance: "default",
       appearances: {
         default: {
-          kind: "background-region",
-          area: rectangle(1180, 150, 1245, 615),
+          animations: { idle: { sheet: { image: shelterPostUrl, frames: [{ x: 0, y: 0, width: 65, height: 465 }] }, timing: { framesPerSecond: 1, loop: true } } },
+          roles: { default: "idle" },
+          visualAnchor: { x: 0, y: 465 },
         },
       },
     },
     foregroundHull: {
       baseline: 625,
+      position: { x: 0, y: 720 },
       initialAppearance: "default",
       appearances: {
         default: {
-          kind: "background-region",
-          area: [
-            { x: 0, y: 580 },
-            { x: 160, y: 600 },
-            { x: 430, y: 615 },
-            { x: 760, y: 605 },
-            { x: 1020, y: 590 },
-            { x: 1280, y: 575 },
-            { x: 1280, y: 720 },
-            { x: 0, y: 720 },
-          ],
+          animations: { idle: { sheet: { image: foregroundHullUrl, frames: [{ x: 0, y: 0, width: 1280, height: 145 }] }, timing: { framesPerSecond: 1, loop: true } } },
+          roles: { default: "idle" },
+          visualAnchor: { x: 0, y: 145 },
         },
       },
     },

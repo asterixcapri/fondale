@@ -18,7 +18,9 @@ neo-retro language, coral horizon accent, plausible scale for Michele's
 Background deliberately contains no sailor, so removing the Character reveals
 a complete shelter and deck.
 
-The mast, rigging, shelter edges and foreground hull remain part of the
-Background artwork. Their Scene-local depth behaviour uses Background Region
-Appearances over the same clean plate, so they require no duplicated
-transparent Scenery Runtime Asset.
+The mast and rigging, shelter roof, shelter post and foreground hull are
+separated into transparent overlay Art Masters after the composition is fixed.
+Their fitted Runtime copies preserve the exact crop, position and Visual Anchor
+of those masters. Each overlay recomposes byte-for-byte over the clean plate,
+so its removal reveals complete painted timber, canvas or sea rather than a
+hole, while its Scenery Baseline supplies the intended Character occlusion.

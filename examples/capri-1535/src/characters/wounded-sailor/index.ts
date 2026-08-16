@@ -4,10 +4,12 @@ import staticUrl from "./static.png";
 
 const staticFrame = [{ x: 0, y: 0, width: 256, height: 256 }];
 
+export const woundedSailorGroundPoint = { x: 1098, y: 602 } as const;
+
 /** One deliberately static presentation; all Facings reuse the same Runtime image. */
 export const woundedSailor = ({
   initialScene: "driftingBoat",
-  initialGroundPoint: { x: 1098, y: 602 },
+  initialGroundPoint: woundedSailorGroundPoint,
   initialFacing: "left",
   initialAppearance: "wounded",
   appearances: {
@@ -35,7 +37,7 @@ export const woundedSailor = ({
     cases: [{
       verb: "look-at",
       response: {
-        text: "Respira appena. Stringe al petto un involto cerato, come se fosse l'ultima cosa rimasta da difendere.",
+        text: "Respira appena. Tiene una mano sulle bende, come se anche quel piccolo gesto gli costasse fatica.",
       },
     }, {
       verb: "talk-to",
