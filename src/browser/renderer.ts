@@ -661,7 +661,7 @@ class EngineOverlay {
       "box-shadow:0 3px 10px rgba(0,0,0,.8)",
     ].join(";");
     this.dialogueAlternatives.dataset.fondaleConversationAlternatives = "";
-    this.dialogueAlternatives.style.cssText = "grid-column:1/-1;display:none;gap:1px";
+    this.dialogueAlternatives.style.cssText = "grid-column:1/-1;display:none;gap:2px";
     this.dialogueHeading.style.cssText = "grid-column:1/-1";
     this.dialogueHeading.htmlFor = "fondale-dialogue-input";
     this.dialogueInput.id = "fondale-dialogue-input";
@@ -1071,29 +1071,12 @@ class EngineOverlay {
         `background:linear-gradient(to top,${colorWithAlpha(this.data.hudTheme?.colors.backing ?? "#071016", 0.65)} 0%,${colorWithAlpha(this.data.hudTheme?.colors.backing ?? "#071016", 0.42)} 62%,transparent 100%)`,
       ].join(";");
       narrative.alternatives.forEach((choice) => {
-        const button = document.createElement("button");
-        button.type = "button";
+        const button = this.createPhraseButton(
+          choice.label,
+          narrative.color,
+          () => this.inputHUD({ type: "choose", alternative: choice.index }),
+        );
         button.dataset.fondaleAlternative = String(choice.index);
-        button.style.cssText = [
-          "display:block",
-          "width:100%",
-          "padding:2px 0",
-          "box-sizing:border-box",
-          "background:transparent",
-          "border:0",
-          "outline:none",
-          "text-align:left",
-          "filter:brightness(1)",
-          "transition:filter 80ms linear,transform 80ms linear",
-          `color:${narrative.color}`,
-          `font:var(--fondale-speech-font-size,14px)/1.25 ${JSON.stringify(this.data.hudTheme?.font.family ?? "monospace")}`,
-          `text-shadow:${speechTextShadow}`,
-        ].join(";");
-        this.styleTextAlternativeInteraction(button);
-        button.textContent = choice.label;
-        button.addEventListener("click", () => this.inputHUD({
-          type: "choose", alternative: choice.index,
-        }));
         list.append(button);
       });
       this.narrative.append(list);
@@ -1150,30 +1133,15 @@ class EngineOverlay {
       this.alternativesSignature = signature;
       this.dialogueAlternatives.replaceChildren();
       for (const alternative of alternatives) {
-        const button = document.createElement("button");
-        button.type = "button";
+        const button = this.createPhraseButton(
+          alternative.text,
+          this.data.hudTheme?.colors.preferred ?? "#f4dfb4",
+          () => this.core.input({
+            type: "select-alternative",
+            alternative: alternative.index,
+          }),
+        );
         button.dataset.fondaleConversationAlternative = String(alternative.index);
-        button.textContent = alternative.text;
-        button.style.cssText = [
-          "display:block",
-          "width:100%",
-          "padding:3px 4px",
-          "box-sizing:border-box",
-          "background:transparent",
-          "border:0",
-          "outline:none",
-          "text-align:left",
-          "font:inherit",
-          "cursor:pointer",
-          "filter:brightness(1)",
-          "transition:filter 80ms linear,transform 80ms linear",
-          `color:${this.data.hudTheme?.colors.preferred ?? "#f4dfb4"}`,
-        ].join(";");
-        this.styleTextAlternativeInteraction(button);
-        button.addEventListener("click", () => this.core.input({
-          type: "select-alternative",
-          alternative: alternative.index,
-        }));
         this.dialogueAlternatives.append(button);
       }
     }
@@ -1541,7 +1509,30 @@ class EngineOverlay {
     button.addEventListener("blur", idle);
   }
 
-  private styleTextAlternativeInteraction(button: HTMLButtonElement): void {
+  private createPhraseButton(
+    text: string,
+    color: string,
+    select: () => void,
+  ): HTMLButtonElement {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = text;
+    button.style.cssText = [
+      "display:block",
+      "width:100%",
+      "padding:3px 4px",
+      "box-sizing:border-box",
+      "background:transparent",
+      "border:0",
+      "outline:none",
+      "text-align:left",
+      "cursor:pointer",
+      "filter:brightness(1)",
+      "transition:filter 80ms linear,transform 80ms linear",
+      `color:${color}`,
+      `font:var(--fondale-speech-font-size,14px)/1.25 ${JSON.stringify(this.data.hudTheme?.font.family ?? "monospace")}`,
+      `text-shadow:${speechTextShadow}`,
+    ].join(";");
     const idle = (): void => {
       button.style.filter = "brightness(1)";
       button.style.transform = "none";
@@ -1556,6 +1547,8 @@ class EngineOverlay {
     button.addEventListener("pointerleave", () => {
       if (document.activeElement !== button) idle();
     });
+    button.addEventListener("click", select);
+    return button;
   }
 
   private styleInventoryControl(button: HTMLButtonElement): void {

@@ -67,6 +67,12 @@ test("authored alternatives and the free-form field stay usable together by keyb
   await expect(alternatives.first()).toContainText("Who cut the harbour chain?");
   await expect(alternatives.first()).toHaveCSS("filter", "brightness(1)");
   await expect(alternatives.nth(1)).toHaveCSS("filter", "brightness(1)");
+  const [alternativeFontSize, phraseFontSize] = await Promise.all([
+    alternatives.first().evaluate((element) => getComputedStyle(element).fontSize),
+    page.locator("[data-fondale-overlay]").evaluate((element) => getComputedStyle(element)
+      .getPropertyValue("--fondale-speech-font-size")),
+  ]);
+  expect(alternativeFontSize).toBe(phraseFontSize);
 
   await alternatives.first().hover();
   await expect(alternatives.first()).toHaveCSS("filter", "brightness(1.45)");
