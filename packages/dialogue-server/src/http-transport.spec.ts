@@ -8,7 +8,7 @@ import { createDialogueAdapterServer } from "./http-server.js";
 
 test("the local transport forwards the Dialogue Provider contract to one Game Session", async () => {
   const calls: string[] = [];
-  const provider: DialogueProvider = {
+  const provider: DialogueProvider & { close(): Promise<void> } = {
     interpret(request, context) {
       calls.push(`interpret:${request.narrativeContext}:${request.playerInput}:${context.turnId}`);
       return Promise.resolve({ factId: request.candidates[0]!.id });
@@ -23,6 +23,10 @@ test("the local transport forwards the Dialogue Provider contract to one Game Se
     },
     reset() {
       calls.push("reset");
+      return Promise.resolve();
+    },
+    close() {
+      calls.push("close");
       return Promise.resolve();
     },
   };
@@ -69,12 +73,21 @@ test("the local transport forwards the Dialogue Provider contract to one Game Se
     }, context), { summary: "The lantern is below." });
     await client.reset();
 
-    assert.deepEqual(sessions, ["game-session-1"]);
+    assert.deepEqual(sessions, [
+      "game-session-1",
+      "game-session-1",
+      "game-session-1",
+      "game-session-1",
+    ]);
     assert.deepEqual(calls, [
       "interpret:A storm-bound lighthouse mystery.:Where is it?:turn-1",
+      "close",
       "verbalize:A storm-bound lighthouse mystery.:lantern:turn-1",
+      "close",
       "reflect:A storm-bound lighthouse mystery.:michele:turn-1",
+      "close",
       "reset",
+      "close",
     ]);
   } finally {
     await server.close();

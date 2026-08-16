@@ -25,7 +25,6 @@ export async function createDialogueAdapterServer(options: {
   readonly createProvider: (sessionId: string) => Promise<ClosableDialogueProvider>;
   readonly allowedOrigins?: readonly string[];
 }): Promise<DialogueAdapterServer> {
-  const providers = new Map<string, Promise<ClosableDialogueProvider>>();
   const activeTurns = new Map<string, AbortController>();
   const allowedOrigins = options.allowedOrigins ?? [
     "http://127.0.0.1:5173",
@@ -70,19 +69,16 @@ export async function createDialogueAdapterServer(options: {
     if (context.req.raw.signal.aborted) abort();
     else context.req.raw.signal.addEventListener("abort", abort, { once: true });
     if (turnKey) activeTurns.set(turnKey, controller);
+    let provider: ClosableDialogueProvider | undefined;
     try {
-      let providerPromise = providers.get(body.sessionId);
-      if (!providerPromise) {
-        providerPromise = options.createProvider(body.sessionId);
-        providers.set(body.sessionId, providerPromise);
-      }
-      const provider = await providerPromise;
+      provider = await options.createProvider(body.sessionId);
       if (controller.signal.aborted) return abandoned(context);
       const value = await execute(provider, body, controller.signal);
       if (controller.signal.aborted) return abandoned(context);
       return json(context, 200, { ok: true, value });
     } finally {
       if (turnKey && activeTurns.get(turnKey) === controller) activeTurns.delete(turnKey);
+      await provider?.close?.();
     }
   });
 
@@ -113,10 +109,6 @@ export async function createDialogueAdapterServer(options: {
         server.close((error) => error ? reject(error) : resolve());
         (server as { closeIdleConnections?: () => void }).closeIdleConnections?.();
       });
-      const settledProviders = await Promise.allSettled(providers.values());
-      await Promise.all(settledProviders.flatMap((result) =>
-        result.status === "fulfilled" && result.value.close ? [result.value.close()] : []
-      ));
     },
   };
 }

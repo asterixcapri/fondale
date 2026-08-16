@@ -6,6 +6,13 @@ transport, Mastra-backed Conversation memory, PostgreSQL storage and live model
 calls. The browser Engine sends only the material authorised for the current
 Dialogue Turn; this server never loads a Game Project or its files.
 
+HTTP compute is stateless. Every operation creates a request-scoped Dialogue
+Provider from the request's Game Session identity, reads its Conversation or
+Reflection thread from PostgreSQL, and closes the Provider after the response.
+The Node.js process retains no Game Session-to-Provider map; PostgreSQL is the
+sole durable owner of provider transcripts and context-window memory. One
+configured Dialogue Model and its credentials are shared by all requests.
+
 ## Local development
 
 Database, server and browser Engine are three independent processes. From this

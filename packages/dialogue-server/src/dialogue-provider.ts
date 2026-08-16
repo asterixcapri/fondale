@@ -16,7 +16,7 @@ export interface AdapterDialogueProvider extends DialogueProvider {
   close(): Promise<void>;
 }
 
-/** Mastra resource that owns every conversational thread of one Game Session. */
+/** Durable Mastra resource that owns every conversational thread of one Game Session. */
 export function dialogueResourceId(sessionId: string): string {
   return `fondale-dialogue-session:${sessionId}`;
 }
@@ -39,6 +39,7 @@ export async function verifyDialogueStorage(databaseUrl: string): Promise<void> 
   }
 }
 
+/** Opens one request-scoped view of a Game Session's PostgreSQL-backed memory. */
 export async function createDialogueProvider(options: {
   readonly databaseUrl: string;
   readonly sessionId: string;

@@ -20,7 +20,7 @@ export interface DialogueServerOptions {
   readonly allowedOrigins?: readonly string[];
 }
 
-/** Starts one reusable server whose internal providers are isolated by Game Session. */
+/** Starts one reusable server whose request-scoped providers recover memory from PostgreSQL. */
 export async function createDialogueServer(
   options: DialogueServerOptions,
 ): Promise<DialogueServer> {
