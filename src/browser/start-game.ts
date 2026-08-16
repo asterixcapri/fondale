@@ -117,7 +117,7 @@ export async function startGame(
     });
     dialogueProvider = httpDialogueProvider;
     try {
-      if (startupChoice === "continue") await httpDialogueProvider.ready();
+      if (startupChoice === "continue" || restored) await httpDialogueProvider.ready();
       else await httpDialogueProvider.reset();
     } catch (error) {
       throw new AuthoringError([dialogueConnectionDiagnostic(error)]);

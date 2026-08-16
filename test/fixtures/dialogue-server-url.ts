@@ -10,6 +10,7 @@ declare global {
   interface Window {
     __dialogueUrlSessions?: readonly [GameSession, GameSession];
     __dialogueUrlDiagnostics?: readonly AuthoringDiagnostic[];
+    __restoreFirstDialogueUrlSession?: () => Promise<void>;
   }
 }
 
@@ -24,6 +25,17 @@ try {
       dialogueServerUrl: "/test-dialogue",
     }),
   ]);
+  window.__restoreFirstDialogueUrlSession = async () => {
+    const [first, second] = window.__dialogueUrlSessions!;
+    const snapshot = first.createSaveSnapshot();
+    first.stop();
+    const restored = await startGame(project, {
+      target: document.querySelector<HTMLElement>("#game-one")!,
+      dialogueServerUrl: "/test-dialogue",
+      snapshot,
+    });
+    window.__dialogueUrlSessions = [restored, second];
+  };
 } catch (error) {
   if (error instanceof AuthoringError) window.__dialogueUrlDiagnostics = error.diagnostics;
   else throw error;

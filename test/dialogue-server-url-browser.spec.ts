@@ -1,6 +1,6 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
-type DialogueOperation = "interpret" | "verbalize" | "reflect" | "cancel" | "reset";
+type DialogueOperation = "interpret" | "verbalize" | "reflect" | "cancel" | "ready" | "reset";
 type DialogueRequest = {
   readonly operation: DialogueOperation;
   readonly sessionId: string;
@@ -78,6 +78,25 @@ test("browser startup reports an unreachable Dialogue Server actionably", async 
     message: "Fondale could not reach the declared Dialogue Server.",
     suggestion: "Start the Dialogue Server and verify dialogueServerUrl.",
   }]);
+});
+
+test("URL-backed Save Snapshot restoration checks readiness without resetting memory", async ({
+  page,
+}) => {
+  const requests: DialogueRequest[] = [];
+  await page.route("**/test-dialogue", async (route) => {
+    requests.push(route.request().postDataJSON() as DialogueRequest);
+    await route.fulfill({ json: { ok: true } });
+  });
+  await page.goto("/test/fixtures/dialogue-server-url.html");
+  await expect.poll(() => page.evaluate(() => window.__dialogueUrlSessions?.length)).toBe(2);
+
+  await page.evaluate(() => window.__restoreFirstDialogueUrlSession!());
+
+  expect(requests.at(-1)).toEqual({
+    operation: "ready",
+    sessionId: expect.any(String),
+  });
 });
 
 test("Conversation and Reflection use the HTTP protocol behind the declared URL", async ({ page }) => {
