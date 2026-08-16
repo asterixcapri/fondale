@@ -6,7 +6,6 @@
   "scripts": {
     "dev": "vite --force",
     "dev:acceptance": "vite --force --mode acceptance",
-    "prototype:hud": "vite --force --mode prototype --port 5174",
     "typecheck": "tsc --noEmit",
     "verify:project": "node tools/verify-project.mjs",
     "build": "npm run typecheck && npm run verify:project && vite build",
