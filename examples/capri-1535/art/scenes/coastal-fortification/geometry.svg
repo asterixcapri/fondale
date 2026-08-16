@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="1440" viewBox="0 0 1280 1440">
+  <style>
+    text { font: 17px sans-serif; paint-order: stroke; stroke: #101522; stroke-width: 5px; fill: #fff; }
+    .minor { font-size: 14px; }
+    .point { fill: #fff; stroke: #101522; stroke-width: 3px; }
+  </style>
+  <image href="composition.png" width="1280" height="1440" />
+
+  <polygon points="180,1400 1040,1400 975,900 950,900 950,650 1040,650 1040,220 700,220 700,500 480,560 480,720 620,780 560,900 250,900 250,1120 180,1390"
+    fill="#2dd4bf" fill-opacity="0.24" stroke="#2dd4bf" stroke-width="5" />
+  <text x="390" y="1370">Walkable Region · broad connected climb</text>
+
+  <polygon points="0,840 35,845 25,870 75,860 55,895 105,870 70,920 135,895 100,945 130,960 95,980 120,1010 100,1030 130,1050 110,1075 160,1110 145,1125 200,1140 180,1160 235,1180 220,1200 265,1220 250,1440 0,1440"
+    fill="#a78bfa" fill-opacity="0.22" stroke="#a78bfa" stroke-width="4" />
+  <line x1="0" y1="1390" x2="250" y2="1390" stroke="#a78bfa" stroke-width="4" />
+  <text x="20" y="875" class="minor">leftForegroundParapet · visible bounds · Baseline 1390</text>
+  <text x="20" y="900" class="minor">position (0,1440) · Visual Anchor (0,600)</text>
+  <line x1="0" y1="1440" x2="250" y2="1440" stroke="#fff" stroke-width="5" />
+  <text x="20" y="1420" class="minor">ground-contact footprint</text>
+
+  <polygon points="1280,700 1230,720 1245,740 1205,755 1220,780 1175,800 1195,825 1150,845 1165,870 1120,890 1140,915 1095,935 1110,960 1065,985 1080,1010 1035,1035 1055,1060 1015,1090 1030,1120 990,1155 1005,1190 965,1230 980,1270 935,1310 950,1350 905,1400 900,1440 1280,1440"
+    fill="#a78bfa" fill-opacity="0.22" stroke="#a78bfa" stroke-width="4" />
+  <line x1="970" y1="1410" x2="1280" y2="1410" stroke="#a78bfa" stroke-width="4" />
+  <text x="930" y="735" class="minor">rightForegroundRocks · visible bounds</text>
+  <text x="930" y="760" class="minor">position (1280,1440) · Visual Anchor (400,740)</text>
+  <text x="1060" y="1400" class="minor">Baseline 1410</text>
+  <line x1="900" y1="1440" x2="1280" y2="1440" stroke="#fff" stroke-width="5" />
+  <text x="1010" y="1425" class="minor">ground-contact footprint</text>
+
+  <rect x="40" y="140" width="530" height="430" fill="#38bdf8" fill-opacity="0.18"
+    stroke="#38bdf8" stroke-width="4" stroke-dasharray="12 8" />
+  <text x="60" y="175">reserved arriving-boat Scenery corridor</text>
+  <text x="60" y="200" class="minor">future visible bounds and horizontal Motion remain clear</text>
+
+  <rect x="650" y="100" width="410" height="330" fill="#ef4444" fill-opacity="0.15"
+    stroke="#ef4444" stroke-width="4" stroke-dasharray="12 8" />
+  <text x="690" y="125" class="minor">lookout Hotspot</text>
+  <rect x="40" y="140" width="530" height="430" fill="none" stroke="#ef4444"
+    stroke-width="3" stroke-dasharray="12 8" />
+  <text x="60" y="550" class="minor">open-sea Hotspot</text>
+  <rect x="250" y="1120" width="650" height="280" fill="none" stroke="#ef4444"
+    stroke-width="3" stroke-dasharray="12 8" />
+  <text x="270" y="1145" class="minor">lower-landing Hotspot</text>
+
+  <circle cx="540" cy="1320" r="10" fill="#60a5fa" stroke="#101522" stroke-width="3" />
+  <text x="555" y="1315" class="minor">fromHarbour entrance / approach (540,1320) · lower focal area</text>
+  <circle cx="850" cy="230" r="10" fill="#60a5fa" stroke="#101522" stroke-width="3" />
+  <text x="865" y="225" class="minor">atLookout entrance / approach (850,230)</text>
+  <circle cx="700" cy="500" r="8" class="point" />
+  <text x="715" y="495" class="minor">open-sea approach (700,500)</text>
+
+  <polyline points="540,1320 720,1000 790,840 700,680 850,500 850,230"
+    fill="none" stroke="#fff" stroke-width="4" stroke-dasharray="11 8" />
+  <text x="570" y="1250" class="minor">representative landing → lookout route</text>
+
+  <g fill="#f8fafc" fill-opacity="0.24" stroke="#f8fafc" stroke-width="3">
+    <rect x="494" y="1077" width="92" height="243" />
+    <rect x="654" y="520" width="92" height="200" />
+    <rect x="804" y="82" width="92" height="148" />
+  </g>
+  <text x="465" y="1065" class="minor">Michele near · 0.95 · 243px cell</text>
+  <text x="620" y="508" class="minor">middle · 0.78 · 200px cell</text>
+  <text x="765" y="75" class="minor">far · 0.58 · 148px cell</text>
+
+  <line x1="30" y1="220" x2="1250" y2="220" stroke="#fbbf24" stroke-width="3" />
+  <line x1="30" y1="720" x2="1250" y2="720" stroke="#fbbf24" stroke-width="3" />
+  <line x1="30" y1="1380" x2="1250" y2="1380" stroke="#fbbf24" stroke-width="3" />
+  <text x="20" y="212" class="minor">Perspective Scale 0.58</text>
+  <text x="20" y="712" class="minor">0.78</text>
+  <text x="20" y="1372" class="minor">0.95</text>
+
+  <rect x="0" y="0" width="1280" height="1440" fill="none" stroke="#fff" stroke-width="5" />
+  <rect x="0" y="0" width="1280" height="720" fill="none" stroke="#f472b6" stroke-width="3" />
+  <rect x="0" y="720" width="1280" height="720" fill="none" stroke="#f472b6" stroke-width="3" />
+  <text x="430" y="30">Coastal fortification geometry · Scene Space 1280×1440 · 1:1</text>
+  <text x="990" y="700" class="minor">upper Camera edge / HUD-safe frame</text>
+  <text x="990" y="1420" class="minor">lower Camera edge / HUD-safe frame</text>
+</svg>
