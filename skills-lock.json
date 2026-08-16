@@ -61,7 +61,7 @@
       "source": "asterixcapri/skills",
       "sourceType": "github",
       "skillPath": "skills/execute-ticket-graph/SKILL.md",
-      "computedHash": "43cf385d6b34acee77aad291a77137fa95abed26e4a08703044803df767f1369"
+      "computedHash": "407efd38beda508f3cf0f1e3eca585e01f30b2c0362b249d9fb163290ffa4654"
     },
     "git-guardrails-claude-code": {
       "source": "mattpocock/skills",
