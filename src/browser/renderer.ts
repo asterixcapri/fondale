@@ -647,7 +647,7 @@ class EngineOverlay {
       columnGap: "clamp(10px,2%,16px)",
     });
     this.dialogueAlternatives.dataset.fondaleConversationAlternatives = "";
-    this.dialogueAlternatives.style.cssText = "grid-column:1/-1;display:none;gap:2px";
+    this.dialogueAlternatives.style.cssText = "grid-column:1/-1;display:none;gap:2px;margin-bottom:6px";
     this.dialogueHeading.style.cssText = "grid-column:1/-1";
     this.dialogueHeading.htmlFor = "fondale-dialogue-input";
     this.dialogueInput.id = "fondale-dialogue-input";
@@ -1325,6 +1325,22 @@ class EngineOverlay {
       }
       return;
     }
+    if (this.currentHUD.inventory.open) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        this.inputHUD({ type: "close-inventory" });
+      }
+      return;
+    }
+    if (
+      event.key.toLowerCase() === "i" &&
+      this.currentHUD.inventory.keyboardShortcutAvailable &&
+      this.currentHUD.inventory.triggerVisible
+    ) {
+      event.preventDefault();
+      this.inputHUD({ type: "toggle-inventory" });
+      return;
+    }
     if (event.key === "Escape" && this.currentHUD.sequenceActive) {
       event.preventDefault();
       this.inputHUD({ type: "skip-sequence" });
@@ -1362,11 +1378,6 @@ class EngineOverlay {
     }
     if (event.key === "." && this.dismissResponse()) {
       event.preventDefault();
-      return;
-    }
-    if (event.key.toLowerCase() === "i" && this.currentHUD.inventory.keyboardShortcutAvailable) {
-      event.preventDefault();
-      this.inputHUD({ type: "toggle-inventory" });
       return;
     }
     if (event.key === "Tab" && this.currentHUD.nounRevealControl === "keyboard") {

@@ -555,7 +555,9 @@ export function createCoreSession(
       )),
       camera: cameraPresentation,
       inventorySuspended:
-        state.activity?.type === "sequence" && state.activity.active?.kind === "choice",
+        state.activity?.type === "conversation" ||
+        state.activity?.type === "reflection" ||
+        state.activity?.type === "sequence",
     };
   }
 

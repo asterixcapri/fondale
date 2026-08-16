@@ -352,6 +352,7 @@ test("Speech is readable over the Scene and Choice temporarily owns input", asyn
   await page.mouse.click(host.x, host.y);
   const line = frame.locator("[data-fondale-line]");
   await expect(line).toHaveText("Benvenuto.");
+  await expect(frame.locator("[data-fondale-inventory-trigger]")).toBeHidden();
   await expect(line).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
   await expect(line).toHaveCSS("border-top-width", "0px");
   await expect(line).not.toHaveCSS("text-shadow", "none");
@@ -377,12 +378,7 @@ test("Speech is readable over the Scene and Choice temporarily owns input", asyn
     .toBeLessThanOrEqual(15);
   expect(Number.parseFloat(await narration.evaluate((element) => getComputedStyle(element).maxWidth)))
     .toBeGreaterThan(150);
-  await frame.locator("[data-fondale-inventory-trigger]").click();
-  const inventoryBounds = await frame.locator("[data-fondale-inventory-panel]").boundingBox();
-  const shiftedNarrationBounds = await narration.boundingBox();
-  if (!inventoryBounds || !shiftedNarrationBounds) throw new Error("missing lower text bounds");
-  expect(shiftedNarrationBounds.x + shiftedNarrationBounds.width).toBeLessThanOrEqual(inventoryBounds.x);
-  await frame.locator("[data-fondale-inventory-close]").click();
+  await expect(frame.locator("[data-fondale-inventory-trigger]")).toBeHidden();
 
   await page.keyboard.press(".");
   const choice = frame.locator("[data-fondale-choice]");
@@ -390,8 +386,13 @@ test("Speech is readable over the Scene and Choice temporarily owns input", asyn
   await expect(frame.locator("[data-fondale-inventory-trigger]")).toBeHidden();
   await page.keyboard.press("1");
   await expect(line).toHaveText("Grazie!");
+  await expect(frame.locator("[data-fondale-inventory-trigger]")).toBeHidden();
   await page.mouse.click(host.x, host.y, { button: "middle" });
   await expect(line).toHaveText("A te.");
+  await expect(frame.locator("[data-fondale-inventory-trigger]")).toBeHidden();
+  await page.keyboard.press(".");
+  await expect(line).toHaveCount(0);
+  await expect(frame.locator("[data-fondale-inventory-trigger]")).toBeVisible();
 });
 
 test("wrapped Speech remains inside the full Scene", async ({ page }) => {
@@ -402,6 +403,14 @@ test("wrapped Speech remains inside the full Scene", async ({ page }) => {
   const door = await logicalPoint(frame, 230, 110);
   await page.mouse.click(door.x, door.y, { button: "right" });
   const speech = frame.locator("[data-fondale-line]");
+  await expect(speech).toContainText("domanda molto lunga");
+  const inventoryTrigger = frame.locator("[data-fondale-inventory-trigger]");
+  await expect(inventoryTrigger).toBeVisible();
+  await frame.focus();
+  await page.keyboard.press("i");
+  await expect(frame.locator("[data-fondale-inventory-panel]")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(frame.locator("[data-fondale-inventory-panel]")).toBeHidden();
   await expect(speech).toContainText("domanda molto lunga");
   const speechBounds = await speech.boundingBox();
   if (!speechBounds) throw new Error("missing speech bounds");

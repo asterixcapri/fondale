@@ -60,7 +60,13 @@ test("authored alternatives and the free-form field stay usable together by keyb
   const conversation = page.locator("[data-fondale-conversation]");
   const input = conversation.locator("[data-fondale-dialogue-input]");
   const alternatives = conversation.locator("[data-fondale-conversation-alternative]");
+  const inventoryTrigger = page.locator("[data-fondale-inventory-trigger]");
 
+  await expect(inventoryTrigger).toBeHidden();
+  await page.locator("[data-fondale-frame]").focus();
+  await page.keyboard.press("i");
+  await expect(page.locator("[data-fondale-inventory-panel]")).toBeHidden();
+  await input.focus();
   await expect(conversation).toHaveAttribute("data-fondale-phrase-surface", "");
   await expect(conversation).toHaveCSS("background-color", "rgba(12, 22, 38, 0.96)");
   await expect(conversation).toHaveCSS("border-top-width", "1px");
@@ -87,8 +93,15 @@ test("authored alternatives and the free-form field stay usable together by keyb
 
   const inputBounds = await input.boundingBox();
   const askBounds = await conversation.getByRole("button", { name: "Ask" }).boundingBox();
-  if (!inputBounds || !askBounds) throw new Error("Conversation controls are unavailable");
+  const alternativesBounds = await conversation
+    .locator("[data-fondale-conversation-alternatives]").boundingBox();
+  const headingBounds = await conversation.locator('label[for="fondale-dialogue-input"]').boundingBox();
+  if (!inputBounds || !askBounds || !alternativesBounds || !headingBounds) {
+    throw new Error("Conversation controls are unavailable");
+  }
   expect(askBounds.x - inputBounds.x - inputBounds.width).toBeGreaterThanOrEqual(10);
+  expect(headingBounds.y - alternativesBounds.y - alternativesBounds.height)
+    .toBeGreaterThanOrEqual(12);
 
   await expect(input).toBeFocused();
   await page.keyboard.press("Shift+Tab");
@@ -207,6 +220,7 @@ test("Rifletti keeps Reflection separate from Conversation memory", async ({ pag
 
   const reflection = page.locator("[data-fondale-reflection]");
   await expect(reflection).toBeVisible();
+  await expect(page.locator("[data-fondale-inventory-trigger]")).toBeHidden();
   await expect(page.locator("[data-fondale-conversation]")).toHaveCount(0);
   await expect(reflection).toContainText("Reflection");
   await reflection.locator("[data-fondale-dialogue-input]").fill("What have I learned?");

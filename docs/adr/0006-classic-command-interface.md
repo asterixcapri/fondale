@@ -49,8 +49,10 @@ presentazione transitoria. Un Object raccolto, consumato o ricollocato non
 scompare silenziosamente: il cambiamento produce una risposta percepibile e un
 aggiornamento visivo coerente fra Scene e Inventory.
 
-Ogni Scene Passage possiede un Noun e preferisce Walk To. Durante una Choice,
-le alternative occupano temporaneamente il HUD al posto di Verb e Inventory.
+Ogni Scene Passage possiede un Noun e preferisce Walk To. Durante Conversation,
+Reflection e Sequence, la presentazione narrativa occupa temporaneamente il HUD
+e sospende sia il controllo visibile sia la scorciatoia dell'Inventory. Una Line
+isolata durante l'esplorazione lascia invece disponibile l'Inventory.
 I termini semantici restano inglesi, mentre un Command Lexicon del Game Project
 fornisce etichette e modelli grammaticali localizzati senza inferenze
 linguistiche dell'Engine.
@@ -94,8 +96,8 @@ diagnostico permanente viene rimosso dal normale HUD.
 Save e Load sono accessibili dalla schermata Engine-owned Options e tramite
 Ctrl+S e Ctrl+L; F5 apre Options. I Save Slot sono nominati e identificati per
 Game Project e versione. Le Line pronunciate sono ancorate sopra il Character
-che parla e la narrazione è centrata nella Scene. Le Choice
-sostituiscono temporaneamente Verb e Inventory con l'elenco delle frasi nel HUD;
+che parla e la narrazione è centrata nella Scene. Le Choice sostituiscono
+temporaneamente i controlli di esplorazione con l'elenco delle frasi nel HUD;
 per impostazione predefinita la frase selezionata viene pronunciata dal Player
 Character nella Scene prima di proseguire, ma una Choice Alternative può
 dichiararsi non pronunciata. Poi il Command State sospeso viene ripristinato.
