@@ -94,6 +94,66 @@ test("the local transport forwards the Dialogue Provider contract to one Game Se
   }
 });
 
+test("transport retries preserve the session, Dialogue Turn and provider operation", async () => {
+  const calls: string[] = [];
+  const provider: DialogueProvider = {
+    interpret(_request, context) {
+      calls.push(`interpret:${context.turnId}`);
+      return Promise.resolve({ factId: "fact" });
+    },
+    verbalize(_request, context) {
+      calls.push(`verbalize:${context.turnId}`);
+      return Promise.resolve("Authorised answer.");
+    },
+    reflect: () => Promise.reject(new Error("unused")),
+    reset: () => Promise.resolve(),
+  };
+  const sessions: string[] = [];
+  const server = await createDialogueAdapterServer({
+    host: "127.0.0.1",
+    port: 0,
+    createProvider(sessionId) {
+      sessions.push(sessionId);
+      return Promise.resolve(provider);
+    },
+  });
+  const client = new HttpDialogueProvider({ endpoint: server.url, sessionId: "session-1" });
+  const context = { turnId: "turn-1", signal: new AbortController().signal };
+  const interpretationRequest = {
+    narrativeContext: "A storm-bound lighthouse mystery.",
+    playerInput: "Where is it?",
+    speaker: "antonio",
+    listener: "michele",
+    candidates: [{ id: "fact", proposition: "It is below." }],
+  } as const;
+  const verbalizationRequest = {
+    narrativeContext: interpretationRequest.narrativeContext,
+    playerInput: interpretationRequest.playerInput,
+    speaker: interpretationRequest.speaker,
+    listener: interpretationRequest.listener,
+    strategy: "answer",
+    fact: interpretationRequest.candidates[0],
+    profile: {},
+  } as const;
+
+  try {
+    await client.interpret(interpretationRequest, context);
+    await client.interpret(interpretationRequest, context);
+    await client.verbalize(verbalizationRequest, context);
+    await client.verbalize(verbalizationRequest, context);
+
+    assert.deepEqual(sessions, ["session-1", "session-1", "session-1", "session-1"]);
+    assert.deepEqual(calls, [
+      "interpret:turn-1",
+      "interpret:turn-1",
+      "verbalize:turn-1",
+      "verbalize:turn-1",
+    ]);
+  } finally {
+    await server.close();
+  }
+});
+
 test("the local transport never exposes server-side failure details", async () => {
   const provider: DialogueProvider = {
     interpret: () => Promise.reject(new Error("DATABASE_URL=postgresql://user:secret@database")),
@@ -170,6 +230,63 @@ test("cancelling while a Game Session provider initializes never starts the turn
     assert.equal(interpretations, 0);
   } finally {
     resolveProvider(provider);
+    await server.close();
+  }
+});
+
+test("reset cancels an active Dialogue Turn before it acknowledges completion", async () => {
+  let markStarted!: () => void;
+  const started = new Promise<void>((resolve) => {
+    markStarted = resolve;
+  });
+  let resets = 0;
+  const provider: DialogueProvider = {
+    interpret: () => Promise.reject(new Error("unused")),
+    verbalize(_request, context) {
+      markStarted();
+      return new Promise((_resolve, reject) => {
+        context.signal.addEventListener("abort", () => reject(context.signal.reason), {
+          once: true,
+        });
+      });
+    },
+    reflect: () => Promise.reject(new Error("unused")),
+    reset() {
+      resets += 1;
+      return Promise.resolve();
+    },
+  };
+  const server = await createDialogueAdapterServer({
+    host: "127.0.0.1",
+    port: 0,
+    createProvider: () => Promise.resolve(provider),
+  });
+  const client = new HttpDialogueProvider({
+    endpoint: server.url,
+    sessionId: "game-session-1",
+  });
+  const controller = new AbortController();
+
+  try {
+    const pendingOutcome = client.verbalize({
+      narrativeContext: "A storm-bound lighthouse mystery.",
+      playerInput: "Wait for me.",
+      speaker: "antonio",
+      listener: "michele",
+      strategy: "refuse",
+      profile: {},
+    }, { turnId: "turn-1", signal: controller.signal })
+      .then(() => "completed", () => "cancelled");
+    await started;
+    await client.reset();
+
+    assert.equal(resets, 1);
+    assert.equal(await Promise.race([
+      pendingOutcome,
+      new Promise<string>((resolve) => setTimeout(() => resolve("pending"), 50)),
+    ]), "cancelled");
+  } finally {
+    controller.abort(new DOMException("Cancelled", "AbortError"));
     await server.close();
   }
 });

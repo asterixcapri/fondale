@@ -8,6 +8,7 @@ import type {
   ReflectionRequest,
   ReflectionResponse,
 } from "@asterixcapri/fondale";
+import { PostgresStore } from "@mastra/pg";
 
 import { throwIfAborted } from "./cancellation.js";
 import type { DialogueModel, VisibleDialogueLine } from "./dialogue-model.js";
@@ -92,6 +93,201 @@ test("the PostgreSQL adapter persists only visible Dialogue Lines across restart
   } finally {
     await restartedProvider.reset();
     await restartedProvider.close();
+  }
+});
+
+test("completed provider operations are reused without duplicating the visible exchange", async () => {
+  const sessionId = crypto.randomUUID();
+  let interpretations = 0;
+  let verbalizations = 0;
+  const verbalizationHistories: (readonly VisibleDialogueLine[])[] = [];
+  const model: DialogueModel = {
+    interpret(request) {
+      interpretations += 1;
+      const factId = request.candidates[0]?.id;
+      return Promise.resolve(factId
+        ? { factId }
+        : { factId: null, reason: "no-relevant-fact" });
+    },
+    verbalize(_request, history) {
+      verbalizations += 1;
+      verbalizationHistories.push(history);
+      return Promise.resolve(`Answer ${verbalizations}.`);
+    },
+    reflect: () => Promise.resolve({ summary: "unused" }),
+  };
+  const provider = await createDialogueProvider({ databaseUrl, sessionId, model });
+  const context = turnContext("same-turn");
+  const interpretationRequest = {
+    narrativeContext,
+    playerInput: "Where is it?",
+    speaker: "antonio",
+    listener: "michele",
+    candidates: [{ id: "fact", proposition: "It is below." }],
+  } as const;
+
+  try {
+    assert.deepEqual(await provider.interpret(interpretationRequest, context), { factId: "fact" });
+    assert.deepEqual(await provider.interpret(interpretationRequest, context), { factId: "fact" });
+    assert.equal(await answer(provider, "antonio", "Where is it?", "same-turn"), "Answer 1.");
+    assert.equal(await answer(provider, "antonio", "Where is it?", "same-turn"), "Answer 1.");
+    assert.equal(interpretations, 1);
+    assert.equal(verbalizations, 1);
+
+    assert.equal(await answer(provider, "antonio", "What did I ask?", "next-turn"), "Answer 2.");
+    assert.equal(verbalizations, 2);
+    assert.deepEqual(verbalizationHistories[1], [
+      { role: "player", text: "Where is it?" },
+      { role: "character", text: "Answer 1." },
+    ]);
+  } finally {
+    await provider.reset();
+    await provider.close();
+  }
+});
+
+test("concurrent request-scoped providers commit one completed operation", async () => {
+  const sessionId = crypto.randomUUID();
+  let verbalizations = 0;
+  let releaseFirst!: () => void;
+  let markFirstStarted!: () => void;
+  const firstStarted = new Promise<void>((resolve) => {
+    markFirstStarted = resolve;
+  });
+  const model: DialogueModel = {
+    interpret: () => Promise.resolve({ factId: null, reason: "no-relevant-fact" }),
+    async verbalize(request, history) {
+      verbalizations += 1;
+      if (request.playerInput === "After concurrency") {
+        return `history:${history.map(({ text }) => text).join(" | ")}`;
+      }
+      markFirstStarted();
+      await new Promise<void>((resolve) => {
+        releaseFirst = resolve;
+      });
+      return "One completed answer.";
+    },
+    reflect: () => Promise.resolve({ summary: "unused" }),
+  };
+  const first = await createDialogueProvider({ databaseUrl, sessionId, model });
+  const second = await createDialogueProvider({ databaseUrl, sessionId, model });
+
+  try {
+    const firstAttempt = answer(first, "antonio", "Concurrent question", "same-turn");
+    await firstStarted;
+    const secondAttempt = answer(second, "antonio", "Concurrent question", "same-turn");
+    await new Promise((resolve) => setTimeout(resolve, 25));
+    assert.equal(verbalizations, 1);
+    releaseFirst();
+    assert.deepEqual(await Promise.all([firstAttempt, secondAttempt]), [
+      "One completed answer.",
+      "One completed answer.",
+    ]);
+    assert.equal(verbalizations, 1);
+
+    assert.equal(await answer(first, "antonio", "After concurrency", "next-turn"),
+      "history:Concurrent question | One completed answer.");
+  } finally {
+    releaseFirst?.();
+    await first.reset();
+    await first.close();
+    await second.close();
+  }
+});
+
+test("a failed idempotency commit leaves no visible exchange", async () => {
+  const sessionId = crypto.randomUUID();
+  const administration = await createAdministrationStore();
+  const model: DialogueModel = {
+    interpret: () => Promise.resolve({ factId: null, reason: "no-relevant-fact" }),
+    async verbalize(request, history) {
+      if (request.playerInput === "Fail during commit") {
+        await administration.db.none(`
+          INSERT INTO fondale_dialogue_operations (session_id, turn_id, operation, result)
+          VALUES ($1, $2, 'verbalize', '"conflicting outcome"'::jsonb)
+        `, [sessionId, "failed-commit"]);
+        return "This Line must roll back.";
+      }
+      return history.length === 0 ? "No earlier visible Lines." : "Unexpected history.";
+    },
+    reflect: () => Promise.resolve({ summary: "unused" }),
+  };
+  const provider = await createDialogueProvider({ databaseUrl, sessionId, model });
+
+  try {
+    await assert.rejects(
+      answer(provider, "antonio", "Fail during commit", "failed-commit"),
+    );
+    await administration.db.none(`
+      DELETE FROM fondale_dialogue_operations
+      WHERE session_id = $1 AND turn_id = $2 AND operation = 'verbalize'
+    `, [sessionId, "failed-commit"]);
+    assert.equal(await answer(provider, "antonio", "What remains?", "next-turn"),
+      "No earlier visible Lines.");
+  } finally {
+    await provider.reset();
+    await provider.close();
+    await administration.close();
+  }
+});
+
+test("cancellation racing persistence commits both visible Lines or neither", async () => {
+  const sessionId = crypto.randomUUID();
+  const administration = await createAdministrationStore();
+  let markModelStarted!: () => void;
+  const modelStarted = new Promise<void>((resolve) => {
+    markModelStarted = resolve;
+  });
+  let releaseModel!: () => void;
+  const modelMayFinish = new Promise<void>((resolve) => {
+    releaseModel = resolve;
+  });
+  const model: DialogueModel = {
+    interpret: () => Promise.resolve({ factId: null, reason: "no-relevant-fact" }),
+    async verbalize(request, history) {
+      if (request.playerInput === "Cancel while storing") {
+        markModelStarted();
+        await modelMayFinish;
+        return "A complete Character Line.";
+      }
+      return `history:${history.length}`;
+    },
+    reflect: () => Promise.resolve({ summary: "unused" }),
+  };
+  const provider = await createDialogueProvider({ databaseUrl, sessionId, model });
+  const lock = await administration.pool.connect();
+  const controller = new AbortController();
+
+  try {
+    const pendingOutcome = answer(
+      provider,
+      "antonio",
+      "Cancel while storing",
+      "racing-turn",
+      controller.signal,
+    ).then(() => "completed", () => "cancelled");
+    await modelStarted;
+    await lock.query("BEGIN");
+    await lock.query("LOCK TABLE fondale_dialogue_operations IN ACCESS EXCLUSIVE MODE");
+    releaseModel();
+    await waitForBlockedOperation(administration);
+    controller.abort(new DOMException("Cancelled", "AbortError"));
+    await lock.query("COMMIT");
+    const outcome = await pendingOutcome;
+    const nextResponse = await answer(provider, "antonio", "What remains?", "next-turn");
+
+    if (outcome === "completed") {
+      assert.equal(nextResponse, "history:2");
+    } else {
+      assert(["history:0", "history:2"].includes(nextResponse));
+    }
+  } finally {
+    releaseModel?.();
+    await lock.query("ROLLBACK").catch(() => undefined);
+    lock.release();
+    await provider.reset();
+    await provider.close();
+    await administration.close();
   }
 });
 
@@ -316,6 +512,30 @@ function answer(
 
 function turnContext(turnId: string) {
   return { turnId, signal: new AbortController().signal };
+}
+
+async function waitForBlockedOperation(storage: PostgresStore): Promise<void> {
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    const { blocked } = await storage.db.one<{ readonly blocked: number }>(`
+      SELECT count(*)::int AS blocked
+      FROM pg_stat_activity
+      WHERE datname = current_database()
+        AND query LIKE '%INSERT INTO fondale_dialogue_operations%'
+        AND wait_event_type = 'Lock'
+    `);
+    if (blocked > 0) return;
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+  throw new Error("Timed out waiting for the provider persistence transaction.");
+}
+
+async function createAdministrationStore(): Promise<PostgresStore> {
+  const storage = new PostgresStore({
+    id: `fondale-dialogue-test-${crypto.randomUUID()}`,
+    connectionString: databaseUrl,
+  });
+  await storage.init();
+  return storage;
 }
 
 /**

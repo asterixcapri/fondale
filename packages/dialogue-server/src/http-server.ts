@@ -25,7 +25,7 @@ export async function createDialogueAdapterServer(options: {
   readonly createProvider: (sessionId: string) => Promise<ClosableDialogueProvider>;
   readonly allowedOrigins?: readonly string[];
 }): Promise<DialogueAdapterServer> {
-  const activeTurns = new Map<string, AbortController>();
+  const activeTurns = new Map<string, Set<AbortController>>();
   const allowedOrigins = options.allowedOrigins ?? [
     "http://127.0.0.1:5173",
     "http://localhost:5173",
@@ -59,8 +59,14 @@ export async function createDialogueAdapterServer(options: {
     }
     const turnKey = "turnId" in body ? `${body.sessionId}\0${body.turnId}` : undefined;
     if (body.operation === "cancel") {
-      activeTurns.get(turnKey!)?.abort(new DOMException("Aborted", "AbortError"));
+      abortControllers(activeTurns.get(turnKey!));
       return json(context, 200, { ok: true });
+    }
+    if (body.operation === "reset") {
+      const sessionPrefix = `${body.sessionId}\0`;
+      for (const [key, controllers] of activeTurns) {
+        if (key.startsWith(sessionPrefix)) abortControllers(controllers);
+      }
     }
     // The Web-standard request already aborts when the Player closes the
     // Conversation or the browser goes away, so the turn follows it directly.
@@ -68,7 +74,11 @@ export async function createDialogueAdapterServer(options: {
     const abort = () => controller.abort(new DOMException("Aborted", "AbortError"));
     if (context.req.raw.signal.aborted) abort();
     else context.req.raw.signal.addEventListener("abort", abort, { once: true });
-    if (turnKey) activeTurns.set(turnKey, controller);
+    if (turnKey) {
+      const controllers = activeTurns.get(turnKey) ?? new Set<AbortController>();
+      controllers.add(controller);
+      activeTurns.set(turnKey, controllers);
+    }
     let provider: ClosableDialogueProvider | undefined;
     try {
       provider = await options.createProvider(body.sessionId);
@@ -76,8 +86,15 @@ export async function createDialogueAdapterServer(options: {
       const value = await execute(provider, body, controller.signal);
       if (controller.signal.aborted) return abandoned(context);
       return json(context, 200, { ok: true, value });
+    } catch (cause) {
+      if (controller.signal.aborted) return abandoned(context);
+      throw cause;
     } finally {
-      if (turnKey && activeTurns.get(turnKey) === controller) activeTurns.delete(turnKey);
+      if (turnKey) {
+        const controllers = activeTurns.get(turnKey);
+        controllers?.delete(controller);
+        if (controllers?.size === 0) activeTurns.delete(turnKey);
+      }
       await provider?.close?.();
     }
   });
@@ -111,6 +128,12 @@ export async function createDialogueAdapterServer(options: {
       });
     },
   };
+}
+
+function abortControllers(controllers: ReadonlySet<AbortController> | undefined): void {
+  for (const controller of controllers ?? []) {
+    controller.abort(new DOMException("Aborted", "AbortError"));
+  }
 }
 
 async function execute(
