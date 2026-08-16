@@ -13,7 +13,7 @@ services:
       timeout: 2s
       retries: 15
     volumes:
-      - dialogue-adapter-postgres:/var/lib/postgresql/data
+      - dialogue-server-postgres:/var/lib/postgresql/data
 
 volumes:
-  dialogue-adapter-postgres:
+  dialogue-server-postgres:

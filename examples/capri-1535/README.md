@@ -3,28 +3,31 @@
 This is a self-contained consumer of the packaged `@asterixcapri/fondale`
 library.
 
-Running the game needs the local Dialogue Provider adapter and PostgreSQL:
+Running the game needs the separately run Dialogue Server and PostgreSQL:
 Raffaele and Frate Elia offer authored questions and a free-form field
-together, and the free-form half is answered by the adapter. Set both up as
-described under [Local Dialogue Provider adapter](#local-dialogue-provider-adapter)
-first. From this directory:
+together, and the free-form half is answered by the server. Set both up as
+described under [Local Dialogue Server](#local-dialogue-server) first. From the
+repository root:
 
 ```sh
-npm ci
-docker compose up -d
+cd packages/dialogue-server
 cp .env.local.example .env.local
-npm run dev:dialogue-adapter
-```
-
-In a second terminal:
-
-```sh
+docker compose up -d
 npm run dev
 ```
 
-Then open <http://localhost:5173>. If the adapter is not reachable the game
+After adding the model key to the server-owned `.env.local`, start the game in
+a separate terminal:
+
+```sh
+cd examples/capri-1535
+npm ci
+npm run dev
+```
+
+Then open <http://localhost:5173>. If the server is not reachable the game
 does not start and says, in the page, which two commands to run; the reason
-stays on the adapter console, and no server configuration or credential ever
+stays on the server console, and no server configuration or credential ever
 reaches the browser.
 
 The Dialogue Provider is chosen when the Example is built, never by the Player:
@@ -72,23 +75,28 @@ Michele learns either way reaches Reflection, and learning that the cloister
 pulley is jammed sets a Game Variable, which is what opens one further authored
 question for Frate Elia.
 
-## Local Dialogue Provider adapter
+## Local Dialogue Server
 
-The adapter runs as a separate Node.js process and is part of what it takes to
+The Dialogue Server runs as a separate Node.js process and is part of what it takes to
 run the game. The installable `@asterixcapri/fondale-dialogue-server` package
 implements Fondale's public `DialogueProvider` interface, uses Mastra Memory
 with `@mastra/pg`, and keeps PostgreSQL credentials outside the Vite bundle.
 
-Start a local PostgreSQL 16 instance (or supply any PostgreSQL 11+ database):
+The server workspace owns both its private environment template and its local
+PostgreSQL Compose definition. From `packages/dialogue-server`, start a local
+PostgreSQL instance (or supply a compatible database), then start Node as a
+separate operation:
 
 ```sh
 docker compose up -d
 cp .env.local.example .env.local
-npm run dev:dialogue-adapter
+npm run dev
 ```
 
-In a second terminal run `npm run dev`, then open <http://localhost:5173>. The
-adapter listens only on `127.0.0.1:4315` by default and accepts the Example's
+In the Example directory, `npm run dev:dialogue-adapter` remains a temporary
+compatibility alias for the same package-owned development command while the
+Capri migration lands. In another terminal run `npm run dev`, then open
+<http://localhost:5173>. The server listens only on `127.0.0.1:4315` by default and accepts the Example's
 local Vite origins. `DATABASE_URL` and all other provider configuration are
 read only by Node; there are no `VITE_` credential variables and server
 failures are not returned verbatim to the browser.
@@ -110,7 +118,7 @@ cancellation, failure cleanup, structured interpretation and the HTTP seam.
 Neither `npm run build` nor `npm run verify` starts PostgreSQL or reads adapter
 configuration.
 
-Stop the local database while retaining its volume with:
+From `packages/dialogue-server`, stop the local database while retaining its volume with:
 
 ```sh
 docker compose stop
@@ -147,7 +155,9 @@ The live verification is opt-in and stays outside `npm run build`,
 PostgreSQL, a model API key with credit, and the network:
 
 ```sh
+cd ../../packages/dialogue-server
 docker compose up -d
+cd ../../examples/capri-1535
 DIALOGUE_ADAPTER_TEST_DATABASE_URL=postgresql://fondale:fondale@127.0.0.1:54329/fondale_dialogue \
   npm run verify:dialogue-live
 ```

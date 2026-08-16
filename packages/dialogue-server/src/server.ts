@@ -1,5 +1,8 @@
 import type { DialogueModel } from "./dialogue-model.js";
-import { createDialogueProvider } from "./dialogue-provider.js";
+import {
+  createDialogueProvider,
+  verifyDialogueStorage,
+} from "./dialogue-provider.js";
 import {
   createDialogueAdapterServer,
   type DialogueAdapterServer,
@@ -18,9 +21,10 @@ export interface DialogueServerOptions {
 }
 
 /** Starts one reusable server whose internal providers are isolated by Game Session. */
-export function createDialogueServer(
+export async function createDialogueServer(
   options: DialogueServerOptions,
 ): Promise<DialogueServer> {
+  await verifyDialogueStorage(options.databaseUrl);
   return createDialogueAdapterServer({
     host: options.host,
     port: options.port,

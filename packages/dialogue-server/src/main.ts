@@ -23,7 +23,7 @@ const server = await createDialogueServer({
   ...(allowedOrigins ? { allowedOrigins } : {}),
 });
 
-console.log(`Fondale local Dialogue Provider listening at ${server.url}`);
+console.log(`Fondale Dialogue Server listening at ${server.url}`);
 
 for (const signal of ["SIGINT", "SIGTERM"] as const) {
   process.once(signal, () => {

@@ -21,6 +21,24 @@ export function dialogueResourceId(sessionId: string): string {
   return `fondale-dialogue-session:${sessionId}`;
 }
 
+/** Proves the configured provider storage is ready before the HTTP port opens. */
+export async function verifyDialogueStorage(databaseUrl: string): Promise<void> {
+  const storage = new PostgresStore({
+    id: `fondale-dialogue-startup-${randomUUID()}`,
+    connectionString: databaseUrl,
+  });
+  try {
+    await storage.init();
+  } catch (cause) {
+    throw new Error(
+      "Dialogue Server could not connect to PostgreSQL. Check DATABASE_URL and start PostgreSQL separately with `docker compose up -d`.",
+      { cause },
+    );
+  } finally {
+    await storage.close().catch(() => undefined);
+  }
+}
+
 export async function createDialogueProvider(options: {
   readonly databaseUrl: string;
   readonly sessionId: string;

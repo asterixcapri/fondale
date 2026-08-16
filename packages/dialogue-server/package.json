@@ -15,14 +15,17 @@
   },
   "files": [
     "dist",
+    ".env.local.example",
+    "compose.yml",
     "LICENSE",
     "README.md"
   ],
   "scripts": {
+    "dev": "node --env-file-if-exists=.env.local --import tsx src/main.ts",
     "typecheck": "tsc -p tsconfig.json",
     "build": "vite build --config vite.config.ts && tsc -p tsconfig.build.json",
     "verify": "npm run verify:unit",
-    "verify:unit": "node --import tsx --test src/configuration.spec.ts src/http-transport.spec.ts src/live-dialogue-model.spec.ts",
+    "verify:unit": "node --import tsx --test src/configuration.spec.ts src/development-entry.spec.ts src/http-transport.spec.ts src/live-dialogue-model.spec.ts src/server-startup.spec.ts",
     "verify:integration": "node --import tsx --test src/dialogue-provider.integration.spec.ts src/server.integration.spec.ts",
     "prepack": "npm run build"
   },
