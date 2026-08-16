@@ -7,7 +7,7 @@ well at their correct scale before the letter and well puzzle are integrated.
 
 **Blocked by:** 01 — Lock the project scale and reference Michele.
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [ ] The cloister has an accepted full-size Composition Art Master, clean Background Art Master, Runtime Background and exact-size geometry diagnostic.
 - [ ] The intended Scene Size is `1280×720` and changes only if final blocking proves another exact size necessary.
@@ -20,3 +20,11 @@ well at their correct scale before the letter and well puzzle are integrated.
 - [ ] Every default-state Hotspot and approach is valid and the focal area remains readable beneath the HUD.
 - [ ] An isolated browser fixture renders and explores the whole Scene through the public packaged API.
 - [ ] The package builds without depending on the harbour, fortification or drifting-boat Scene packages.
+
+## Comments
+
+- 2026-08-16 — Integrated as commit `390ea16` on `main`. The regenerated
+  cloister package passed the root build, its isolated browser fixture and the
+  combined browser suite (`311/311`). Michele remains byte-identical to the
+  approved V3 sprites; Brother Elia uses exactly the approved single static
+  Runtime image.

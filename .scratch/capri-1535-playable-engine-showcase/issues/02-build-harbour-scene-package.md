@@ -8,7 +8,7 @@ integrated.
 
 **Blocked by:** 01 — Lock the project scale and reference Michele.
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [ ] The harbour has an accepted full-size Composition Art Master, clean Background Art Master, Runtime Background and exact-size geometry diagnostic.
 - [ ] The Scene is `1920×720` unless final blocking proves another exact width necessary while preserving the `1280×720` Logical Resolution.
@@ -21,3 +21,10 @@ integrated.
 - [ ] Every default-state Hotspot, approach, foreground overlap and Camera edge is valid and HUD-safe.
 - [ ] An isolated browser fixture renders and explores the whole Scene through the public packaged API.
 - [ ] The package builds without depending on the other three new Scene packages.
+
+## Comments
+
+- 2026-08-16 — Integrated as commit `6778c60` on `main`. The regenerated
+  harbour package passed the root build, its isolated browser fixture and the
+  combined browser suite (`311/311`). Michele remains byte-identical to the
+  approved V3 sprites; Raffaele uses exactly one static Runtime image.
