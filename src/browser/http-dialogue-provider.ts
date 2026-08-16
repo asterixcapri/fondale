@@ -10,6 +10,19 @@ import type {
 
 import type { DialogueHttpRequest, DialogueHttpResponse } from "./dialogue-http-protocol";
 
+type DialogueHttpFailure = "unreachable" | "invalid-response" | "request-failed";
+
+/** @internal Classifies transport failures without exposing server details at startup. */
+export class DialogueHttpError extends Error {
+  constructor(
+    readonly kind: DialogueHttpFailure,
+    message: string,
+    options?: ErrorOptions,
+  ) {
+    super(message, options);
+  }
+}
+
 export class HttpDialogueProvider implements DialogueProvider {
   private readonly endpoint: string;
   private readonly sessionId: string;
@@ -73,14 +86,26 @@ export class HttpDialogueProvider implements DialogueProvider {
         await this.notifyCancellation(body.turnId);
         throw signal.reason ?? cause;
       }
-      throw cause;
+      throw new DialogueHttpError(
+        "unreachable",
+        "The Dialogue Server could not be reached.",
+        { cause },
+      );
     }
-    const payload: unknown = await response.json();
+    let payload: unknown;
+    try {
+      payload = await response.json();
+    } catch (cause) {
+      throw invalidDialogueResponse(cause);
+    }
     if (!isDialogueResponse(payload)) {
-      throw new Error("The Dialogue Provider returned an invalid response.");
+      throw invalidDialogueResponse();
     }
     if (!response.ok || !payload.ok) {
-      throw new Error(payload.ok ? "The Dialogue Provider request failed." : payload.error);
+      throw new DialogueHttpError(
+        "request-failed",
+        payload.ok ? "The Dialogue Provider request failed." : payload.error,
+      );
     }
     return payload.value as T;
   }
@@ -96,6 +121,14 @@ export class HttpDialogueProvider implements DialogueProvider {
       } satisfies DialogueHttpRequest),
     }).catch(() => undefined);
   }
+}
+
+function invalidDialogueResponse(cause?: unknown): DialogueHttpError {
+  return new DialogueHttpError(
+    "invalid-response",
+    "The Dialogue Provider returned an invalid response.",
+    cause === undefined ? undefined : { cause },
+  );
 }
 
 function isDialogueResponse(value: unknown): value is DialogueHttpResponse {

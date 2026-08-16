@@ -58,7 +58,7 @@ const character = (
   movementSpeed: 900,
   ...definition,
 });
-const project = ({
+export const project = ({
   identity: "test.knowledge-driven-dialogue-browser",
   version: "1",
   logicalResolution: { width: 426, height: 240 },
@@ -240,12 +240,11 @@ const dialogueProvider = new FakeDialogueProvider({
     },
   },
 });
-window.__dialogueProvider = dialogueProvider;
-
-window.__dialogueSession = await startGame(project, {
-  target: document.querySelector<HTMLElement>("#game")!,
-  dialogueProvider,
-});
-document.querySelector<HTMLButtonElement>("#reflect")!.addEventListener("click", () => {
-  window.__dialogueSession?.startReflection();
-});
+const target = document.querySelector<HTMLElement>("#game");
+if (target) {
+  window.__dialogueProvider = dialogueProvider;
+  window.__dialogueSession = await startGame(project, { target, dialogueProvider });
+  document.querySelector<HTMLButtonElement>("#reflect")?.addEventListener("click", () => {
+    window.__dialogueSession?.startReflection();
+  });
+}

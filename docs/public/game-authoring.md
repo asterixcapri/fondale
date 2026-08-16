@@ -321,12 +321,21 @@ Give the Player Character a Dialogue Profile to make Reflection available,
 then expose an Example-specific control that calls the running Game Session:
 
 ```ts
-const session = await startGame(dialogueProject, { target, dialogueProvider });
+const session = await startGame(dialogueProject, {
+  target,
+  dialogueServerUrl: "http://127.0.0.1:4315/dialogue",
+});
 
 document.querySelector("#reflect")?.addEventListener("click", () => {
   session.startReflection();
 });
 ```
+
+For ordinary browser startup, the Author declares only `dialogueServerUrl`.
+Fondale creates the HTTP adapter and a fresh, cryptographically random Game
+Session identity, then checks the connection before mounting the game. Keep
+`dialogueProvider` for Engine tests, technical fixtures, or an advanced host
+that deliberately owns a custom low-level adapter; never supply both options.
 
 The provider's `reflect` method receives a `ReflectionRequest` containing only
 the Player Character's committed facts, attributed Testimony, and directional

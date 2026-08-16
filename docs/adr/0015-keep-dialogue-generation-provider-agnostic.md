@@ -1,9 +1,12 @@
 # Keep dialogue generation provider-agnostic
 
 Fondale defines a public Dialogue Provider contract and requires each Game
-Project integration to supply its implementation rather than calling a
-particular model vendor itself. The Author may route that contract to a secured
-remote service, local model, or deterministic test double, keeping provider
+Project integration to select its implementation rather than calling a
+particular model vendor itself. Ordinary browser startup selects a separately
+run Dialogue Server by URL, from which Fondale constructs the HTTP adapter and
+transient Game Session identity; tests and advanced hosts may instead inject a
+low-level Provider. These forms may route the contract to a secured remote
+service, local model, or deterministic test double, keeping provider
 credentials and costs outside the browser Engine while preserving one stable
 Knowledge-Driven Dialogue capability across providers.
 

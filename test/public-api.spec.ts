@@ -220,7 +220,7 @@ test("startGame validates an untrusted Save Snapshot before reading the target",
   expect(targetReads).toBe(0);
 });
 
-test("startGame requires a Dialogue Provider before reading the target", async () => {
+test("startGame requires a Dialogue Server URL or Provider before reading the target", async () => {
   let targetReads = 0;
   const dialogueProject = {
     ...project,
@@ -254,9 +254,38 @@ test("startGame requires a Dialogue Provider before reading the target", async (
     diagnostics: [
       expect.objectContaining({
         code: "environment.dialogue-provider.missing",
-        path: "startGame.dialogueProvider",
+        path: "startGame",
+        message: "This Game Project requires dialogueServerUrl or dialogueProvider.",
       }),
     ],
+  });
+  expect(targetReads).toBe(0);
+});
+
+test("startGame rejects a Dialogue Server URL combined with a low-level Provider", async () => {
+  let targetReads = 0;
+  const promise = startGame(project, {
+    dialogueServerUrl: "https://dialogue.example.test/dialogue",
+    dialogueProvider: {
+      interpret: () => Promise.reject(new Error("unused")),
+      verbalize: () => Promise.reject(new Error("unused")),
+      reflect: () => Promise.reject(new Error("unused")),
+      reset: () => Promise.resolve(),
+    },
+    get target(): HTMLElement {
+      targetReads += 1;
+      throw new Error("target must remain untouched");
+    },
+  });
+
+  await expect(promise).rejects.toMatchObject({
+    diagnostics: [{
+      code: "environment.dialogue-connection.ambiguous",
+      family: "environment",
+      owner: "dialogue",
+      path: "startGame",
+      message: "Supply either dialogueServerUrl or dialogueProvider, not both.",
+    }],
   });
   expect(targetReads).toBe(0);
 });

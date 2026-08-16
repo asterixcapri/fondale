@@ -120,12 +120,13 @@ the Player to disambiguate without producing canonical effects.
 _Avoid_: Generated speech, prompt instruction, Voice
 
 **Dialogue Provider**:
-An Author-supplied integration that interprets the Player's free-form language
+An Author-selected integration that interprets the Player's free-form language
 and verbalises an Engine-authorised response with enough Conversation context
 for continuity, without gaining authority over Narrative Facts or Game State.
 It owns non-canonical agent memory concerns such as transcripts, context-window
-management, and summaries, and clears that memory when Fondale loads a Save
-Snapshot.
+management, and summaries, clears that memory when Fondale loads a Save
+Snapshot, and is ordinarily selected through a separately run Dialogue Server
+URL while tests and advanced hosts may supply a low-level implementation.
 _Avoid_: LLM, OpenAI client, Engine service, narrative authority
 
 **Dialogue Turn**:

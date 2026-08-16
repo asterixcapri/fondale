@@ -107,11 +107,16 @@ without storing generated wording or treating the Claim as truth.
 
 ## Knowledge-Driven Dialogue
 
-`DialogueProvider` is the provider-agnostic startup seam for a Game Project
-that declares at least one Character Dialogue Profile. `StartGameOptions`
-receives it as `dialogueProvider`; Fondale never creates a model client. The
-interface keeps `interpret`, `verbalize`, `reflect`, and `reset` as separate
-responsibilities. Provider turns receive a transient
+For ordinary startup, a Game Project that declares at least one Character
+Dialogue Profile supplies `StartGameOptions.dialogueServerUrl`. Fondale creates
+the browser HTTP adapter, assigns a fresh cryptographically random Game Session
+identity, and checks the connection before mounting. Server credentials and
+model configuration remain outside the browser. Low-level `dialogueProvider`
+injection remains available to Engine tests, technical fixtures, and advanced
+hosts; supplying both connection forms is invalid.
+
+The `DialogueProvider` interface keeps `interpret`, `verbalize`, `reflect`, and
+`reset` as separate responsibilities. Provider turns receive a transient
 `DialogueTurnContext`, containing a non-canonical `turnId` and `AbortSignal`.
 The context fields are `turnId` and `signal`.
 Interpretation receives untrusted `playerInput`, speaker and listener
@@ -168,12 +173,14 @@ adapter result. The fake's internal `resets` count is exposed through
 `resetCount()`, and `threadKeys()` exposes distinct Conversation and Reflection
 memory identities since the last reset.
 
-`HttpDialogueProvider` is the reusable browser adapter for a remote Dialogue
-Provider server. It sends one `DialogueHttpRequest` for
-interpretation, verbalisation, Reflection, cancellation, or reset and accepts
-only a `DialogueHttpResponse`; its `sessionId` isolates provider-owned memory
-and its request follows the Dialogue Turn's `AbortSignal`. Server credentials,
-model configuration and failure details never enter this adapter.
+`HttpDialogueProvider` is the reusable low-level browser adapter for advanced
+hosts connecting to a remote Dialogue Server. Ordinary Game Projects let
+`startGame` own it through `dialogueServerUrl`. It sends one
+`DialogueHttpRequest` for interpretation, verbalisation, Reflection,
+cancellation, or reset and accepts only a `DialogueHttpResponse`; its
+`sessionId` isolates provider-owned memory and its request follows the Dialogue
+Turn's `AbortSignal`. Server credentials, model configuration and failure
+details never enter this adapter.
 
 The authored condition fields are `trustAtLeast`, `variable`, and `equals`.
 Conversation handoff fields are `handoffs` and `after`. Qualitative profile
@@ -254,8 +261,9 @@ the destination in Scene Space.
 `startGame` first compiles an isolated project snapshot and validates any
 untrusted Save Snapshot, then resolves to `GameSession` after assets validate,
 WebGL starts, and the first frame is drawn. `StartGameOptions` contains an
-unowned `target`, optional unknown `snapshot`, and the `dialogueProvider`
-required when any Character declares a Dialogue Profile. `GameSession` exposes
+unowned `target`, optional unknown `snapshot`, ordinary `dialogueServerUrl`,
+and alternative low-level `dialogueProvider`. A Game Project with a Dialogue
+Profile requires exactly one connection form. `GameSession` exposes
 `createSaveSnapshot`, `getStatus`, `getDiagnostics`, and idempotent terminal
 `stop`.
 
@@ -339,8 +347,8 @@ identifies the capability or browser adapter responsible for the rule.
 | `ReflectionTestimony` | provider-visible remembered Claim | speaker and declared Claim | preserves attribution without asserting truth | derived only from committed Testimony | [Dialogue authoring](game-authoring.md) |
 | `ReflectionRelationship` | provider-visible directional Trust | `towards` Character and qualitative Trust | includes only the reflecting Character's outgoing Relationship | derived only from committed Relationship state | [Dialogue authoring](game-authoring.md) |
 | `Testimony` | canonical memory of a communicated Claim | speaker, listener and Claim ID | set-like and idempotent; stores no wording or truth | Save state validation | [Dialogue authoring](game-authoring.md) |
-| `DialogueProvider` | generated-dialogue adapter seam | interpret, verbalize, reflect, reset | supplied at startup; Engine creates no client; Load awaits reset | missing adapter is a startup diagnostic | [Dialogue authoring](game-authoring.md) |
-| `HttpDialogueProvider` | browser-to-server Dialogue Provider adapter | endpoint and Game Session identity | follows turn cancellation and sends no server credentials | malformed or failed HTTP responses reject the turn | [Dialogue authoring](game-authoring.md) |
+| `DialogueProvider` | generated-dialogue adapter seam | interpret, verbalize, reflect, reset | ordinarily selected through a Dialogue Server URL; low-level injection remains available; Load awaits reset | missing connection is a startup diagnostic | [Dialogue authoring](game-authoring.md) |
+| `HttpDialogueProvider` | low-level browser-to-server Dialogue Provider adapter | endpoint and Game Session identity | advanced hosts only; follows turn cancellation and sends no server credentials | malformed or failed HTTP responses reject the turn | [Dialogue authoring](game-authoring.md) |
 | `DialogueHttpRequest` | browser transport request | interpret, verbalize, reflect, cancel or reset | every turn operation carries session and transient turn identity | server rejects an invalid envelope | [Dialogue authoring](game-authoring.md) |
 | `DialogueHttpResponse` | browser transport response | success value or public failure message | server failure details remain private | malformed responses reject the turn | [Dialogue authoring](game-authoring.md) |
 | `FakeDialogueProvider` | deterministic Dialogue Provider adapter | interpretation, verbalization, reflection, pending/failure controls, thread keys and reset count | no external dependency, timing assumption or generated authority | missing configured mapping rejects the turn | [Dialogue authoring](game-authoring.md) |
@@ -393,7 +401,7 @@ identifies the capability or browser adapter responsible for the rule.
 | `AuthoringDiagnostic` | one author-facing issue | code, family, owner, path, message, suggestion, cause | stable code/path ordering | describes owning failure | [Scene](recipes/first-scene.ts) |
 | `AuthoringError` | aggregate failure | read-only diagnostics | one error per startup layer | thrown by startup | [Scene](recipes/first-scene.ts) |
 | `SaveSnapshot` | JSON-safe committed state | format, project identities and state | exact fields only | save validation diagnostics | [Save](recipes/save-snapshot.ts) |
-| `StartGameOptions` | browser mount options | target, optional snapshot and Dialogue Provider | omitted snapshot starts fresh; configured dialogue requires its adapter | environment/save/dialogue diagnostics | [Save](recipes/save-snapshot.ts) |
+| `StartGameOptions` | browser mount options | target, optional snapshot, ordinary Dialogue Server URL or low-level Dialogue Provider | configured dialogue requires exactly one connection form; omitted snapshot starts fresh | environment/save/dialogue diagnostics | [Save](recipes/save-snapshot.ts) |
 | `GameSession` | running lifecycle handle | save, start Reflection, status, diagnostics, stop | Reflection starts only while idle; stop is idempotent and terminal | lifecycle diagnostics | [Save](recipes/save-snapshot.ts) |
 
 Exact reachable fields also include `x`, `y`, `width`, `height`, `kind`,
@@ -415,7 +423,7 @@ Exact reachable fields also include `x`, `y`, `width`, `height`, `kind`,
 `dialogue`, `knowledge`, `factId`, `disclosure`, `level`, `characterKnowledge`,
 `coverStories`, `concealsFactId`, `claimId`, `testimonies`,
 `id`, `playerInput`, `speaker`, `listener`, `candidates`, `fact`, `claim`, `interpretations`,
-`verbalizations`, `dialogueProvider`,
+`verbalizations`, `dialogueServerUrl`, `dialogueProvider`,
 `playerCharacter`, `objects`,
 `sequences`, `variables`, `inventoryAppearanceSize`, `initialScene`,
 `letterboxColor`, `commandLexicon`, `commandFallbacks`, `hudTheme`, `verb`,
@@ -531,7 +539,10 @@ Runtime, save, asset and environment codes: `state.operation.invalid`,
 `asset.cursor.dimensions`, `asset.font.load.failed`,
 `asset.inventory-appearance.dimensions`, `asset.animation-sheet.frame-bounds`,
 `asset.animation-sheet.dimensions`, `asset.visual-anchor.bounds`,
-`environment.dialogue-provider.missing`, `environment.start.failed`,
+`environment.dialogue-connection.ambiguous`,
+`environment.dialogue-provider.missing`,
+`environment.dialogue-server.connection-failed`,
+`environment.dialogue-server.unreachable`, `environment.start.failed`,
 `environment.target.occupied`, and
 `environment.webgl.unavailable`.
 

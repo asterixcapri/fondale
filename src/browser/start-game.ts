@@ -18,6 +18,7 @@ import {
 } from "../capabilities/save";
 import { loadProjectAssets } from "./assets";
 import { BrowserFrame } from "./frame";
+import { DialogueHttpError, HttpDialogueProvider } from "./http-dialogue-provider";
 import { BrowserLoop } from "./loop";
 import { BrowserRenderer } from "./renderer";
 import { createBrowserSessionControls, type BrowserSessionControls } from "./save-slots";
@@ -28,7 +29,9 @@ export interface StartGameOptions {
   readonly target: HTMLElement;
   /** Optional untrusted Save Snapshot data to validate and restore at startup. */
   readonly snapshot?: unknown;
-  /** Required adapter when any Character declares a Dialogue Profile. */
+  /** Ordinary connection to a separately run Dialogue Server. */
+  readonly dialogueServerUrl?: string;
+  /** Low-level alternative for Engine tests, technical fixtures, and advanced hosts. */
   readonly dialogueProvider?: DialogueProvider;
 }
 
@@ -57,15 +60,35 @@ export async function startGame(
   const compilation = compileGameProject(project);
   if (!compilation.ok) throw new AuthoringError(compilation.diagnostics);
   const compiledProject = compilation.project;
-  const dialogueConfigured = createKnowledgeDrivenDialogue(
+  if (options.dialogueServerUrl !== undefined && options.dialogueProvider !== undefined) {
+    throw new AuthoringError([{
+      code: "environment.dialogue-connection.ambiguous",
+      family: "environment", owner: "dialogue",
+      path: "startGame",
+      message: "Supply either dialogueServerUrl or dialogueProvider, not both.",
+    }]);
+  }
+  const requiresDialogueConnection = createKnowledgeDrivenDialogue(
     getGameSessionCompositionView(compiledProject).dialogue,
   ).requiresProvider();
-  if (dialogueConfigured && !options.dialogueProvider) {
+  let dialogueProvider = options.dialogueProvider;
+  if (requiresDialogueConnection && options.dialogueServerUrl !== undefined) {
+    dialogueProvider = new HttpDialogueProvider({
+      endpoint: options.dialogueServerUrl,
+      sessionId: crypto.randomUUID(),
+    });
+    try {
+      await dialogueProvider.reset();
+    } catch (error) {
+      throw new AuthoringError([dialogueConnectionDiagnostic(error)]);
+    }
+  }
+  if (requiresDialogueConnection && !dialogueProvider) {
     throw new AuthoringError([{
       code: "environment.dialogue-provider.missing",
       family: "environment", owner: "dialogue",
-      path: "startGame.dialogueProvider",
-      message: "This Game Project requires a Dialogue Provider startup dependency.",
+      path: "startGame",
+      message: "This Game Project requires dialogueServerUrl or dialogueProvider.",
     }]);
   }
   let restored: ValidatedSaveSnapshot | undefined;
@@ -88,13 +111,15 @@ export async function startGame(
   };
 
   try {
-    if (restored && options.dialogueProvider) await options.dialogueProvider.reset();
+    if (restored && dialogueProvider && options.dialogueServerUrl === undefined) {
+      await dialogueProvider.reset();
+    }
     frame = new BrowserFrame(options.target, projectView.startup);
     frame.checkEnvironment();
     const assets = await loadProjectAssets(projectView.assets);
     await frame.mount();
 
-    core = createCoreSession(compiledProject, restored, options.dialogueProvider);
+    core = createCoreSession(compiledProject, restored, dialogueProvider);
     let controls: BrowserSessionControls;
     const mountRenderer = (session: CoreSession): BrowserRenderer => {
       const next = new BrowserRenderer(
@@ -111,8 +136,8 @@ export async function startGame(
     const replaceCore = async (snapshot: ValidatedSaveSnapshot) => {
       core!.stop();
       renderer!.destroy();
-      if (options.dialogueProvider) await options.dialogueProvider.reset();
-      core = createCoreSession(compiledProject, snapshot, options.dialogueProvider);
+      if (dialogueProvider) await dialogueProvider.reset();
+      core = createCoreSession(compiledProject, snapshot, dialogueProvider);
       renderer = mountRenderer(core);
       loop!.reset();
     };
@@ -158,4 +183,23 @@ export async function startGame(
       },
     ]);
   }
+}
+
+function dialogueConnectionDiagnostic(error: unknown): AuthoringDiagnostic {
+  if (error instanceof DialogueHttpError && error.kind === "unreachable") {
+    return {
+      code: "environment.dialogue-server.unreachable",
+      family: "environment", owner: "dialogue",
+      path: "startGame.dialogueServerUrl",
+      message: "Fondale could not reach the declared Dialogue Server.",
+      suggestion: "Start the Dialogue Server and verify dialogueServerUrl.",
+    };
+  }
+  return {
+    code: "environment.dialogue-server.connection-failed",
+    family: "environment", owner: "dialogue",
+    path: "startGame.dialogueServerUrl",
+    message: "The declared Dialogue Server rejected its connection check.",
+    suggestion: "Verify dialogueServerUrl and the Dialogue Server configuration.",
+  };
 }
