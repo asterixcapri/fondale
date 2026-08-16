@@ -7,7 +7,7 @@ before the canonical final encounter and bundle transfer are integrated.
 
 **Blocked by:** 01 — Lock the project scale and reference Michele.
 
-**Status:** resolved
+**Status:** ready-for-human
 
 - [x] The drifting boat has an accepted dusk Composition Art Master, clean Background Art Master, Runtime Background and exact-size geometry diagnostic.
 - [x] The intended Scene Size is `1280×720` and changes only if final blocking proves another exact size necessary.
@@ -34,3 +34,14 @@ before the canonical final encounter and bundle transfer are integrated.
   animation/Camera/HUD tests (308/311 parallel; targeted retries pass), and the
   Example's five canonical acceptance cases remain stale against this
   harbour-only base; all independent Scene package fixtures pass.
+- 2026-08-17 — Required gate remains blocked outside ticket scope. With no
+  other Playwright, Vite, build or verify process running, two complete
+  `npm run build && npm run verify` executions both built successfully and
+  reached `310/311`; one missed an intermediate frame in the pre-existing
+  non-looping multi-row Scenery timing test, while the next failed the
+  pre-existing multi-row Character phase sample. The ticket diff from base
+  changes neither `test/multi-row-animation-sheet-browser.spec.ts` nor Engine
+  animation/browser code. Satisfying this nondeterministic repository gate
+  requires an out-of-scope correction to that test or its Engine timing seam,
+  so the completed Scene package is handed to a human rather than represented
+  as fully verified.
