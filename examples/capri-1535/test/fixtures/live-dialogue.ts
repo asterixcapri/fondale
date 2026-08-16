@@ -151,11 +151,6 @@ window.__liveDialogue = live;
 document.querySelector<HTMLButtonElement>("#reflect")!.addEventListener("click", () => {
   live.session.startReflection();
 });
-document.querySelector<HTMLButtonElement>("#reload")!.addEventListener("click", async () => {
-  const snapshot: unknown = JSON.parse(JSON.stringify(live.session.createSaveSnapshot()));
-  live.session.stop();
-  live.session = await startGame(project, { target, snapshot, dialogueServerUrl });
-});
 window.addEventListener("unhandledrejection", (event) => {
   document.querySelector<HTMLOutputElement>("#error")!.textContent = String(event.reason);
 });

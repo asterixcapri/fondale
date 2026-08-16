@@ -7,7 +7,7 @@ import { ordinaryPort } from "./ports";
  * that build with the declared address refused, which is what a first-time
  * human meets before starting the dialogue stack.
  */
-test("the ordinary build explains an unreachable adapter without leaking configuration", async ({
+test("the ordinary build explains an unreachable Dialogue Server without leaking configuration", async ({
   page,
 }) => {
   await page.route("http://127.0.0.1:4315/**", (route) => route.abort());

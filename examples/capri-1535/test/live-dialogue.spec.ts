@@ -17,7 +17,7 @@ test("the live Michele/Antonio spike behaves as the approved experience", async 
   const { errors } = await openGame(
     page,
     "/test/fixtures/live-dialogue.html",
-    { dialogueServer: "live" },
+    { stubDialogueServer: false },
   );
   // 5a. Before Michele knows anything, Reflection answers honestly without
   // even reaching the provider, so nothing can be invented.
@@ -88,7 +88,15 @@ test("the live Michele/Antonio spike behaves as the approved experience", async 
   // 7. Load starts a restored Game Session through the same declarative URL;
   // the server integration suite verifies the corresponding memory reset.
   await reflection.getByRole("button", { name: "Leave" }).click();
-  await page.getByRole("button", { name: "Salva e ricarica" }).click();
+  const frame = page.locator("[data-fondale-frame]");
+  await frame.focus();
+  await page.keyboard.press("Control+s");
+  const save = frame.locator('[data-fondale-modal="save"]');
+  await save.locator("[data-fondale-save-name]").fill("Live dialogue restore");
+  await save.locator("[data-fondale-save-confirm]").click();
+  await frame.focus();
+  await page.keyboard.press("Control+l");
+  await frame.locator('[data-fondale-load-slot="0"]').click();
   await expect(page.locator("[data-fondale-frame]")).toBeVisible();
   await expect.poll(() => page.evaluate(() => window.__liveDialogue!.session.getStatus()), {
     timeout: 30_000,

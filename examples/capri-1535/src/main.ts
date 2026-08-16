@@ -7,7 +7,6 @@ import {
 import { project } from "./game";
 
 const target = document.querySelector<HTMLElement>("#game")!;
-const restore = document.querySelector<HTMLButtonElement>("#restore")!;
 const errorOutput = document.querySelector<HTMLOutputElement>("#error")!;
 const reflection = document.querySelector<HTMLButtonElement>("#reflection")!;
 
@@ -18,7 +17,6 @@ window.addEventListener("unhandledrejection", (event) => {
 });
 
 if (import.meta.env.MODE === "prototype") {
-  restore.hidden = true;
   reflection.hidden = true;
   const focus = new URLSearchParams(window.location.search).get("focus");
   if (focus === "return-style") {
@@ -44,13 +42,6 @@ if (import.meta.env.MODE === "prototype") {
   }
 
   if (session) {
-    let activeSession = session;
-    reflection.addEventListener("click", () => activeSession.startReflection());
-
-    restore.addEventListener("click", async () => {
-      const stored: unknown = JSON.parse(JSON.stringify(activeSession.createSaveSnapshot()));
-      activeSession.stop();
-      activeSession = await startGame(project, { target, snapshot: stored, dialogueServerUrl });
-    });
+    reflection.addEventListener("click", () => session.startReflection());
   }
 }

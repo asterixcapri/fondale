@@ -45,17 +45,20 @@ export async function installDialogueServerStub(
   await page.route(dialogueServerUrl, async (route) => {
     const request = route.request().postDataJSON() as DialogueHttpRequest;
     requests.push(request);
-    const value = execute(request);
+    const responseValue = executeDialogueOperation(request);
     await route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify({ ok: true, ...(value === undefined ? {} : { value }) }),
+      body: JSON.stringify({
+        ok: true,
+        ...(responseValue === undefined ? {} : { value: responseValue }),
+      }),
     });
   });
   return requests;
 }
 
-function execute(request: DialogueHttpRequest): unknown {
+function executeDialogueOperation(request: DialogueHttpRequest): unknown {
   switch (request.operation) {
     case "interpret":
       return readPrologueQuestion(request.request.playerInput, request.request.candidates);
@@ -69,7 +72,7 @@ function execute(request: DialogueHttpRequest): unknown {
   }
 }
 
-export function readPrologueQuestion(
+function readPrologueQuestion(
   playerInput: string,
   candidates: readonly DialogueFactCandidate[],
 ): DialogueInterpretation {
@@ -80,13 +83,13 @@ export function readPrologueQuestion(
   return match ? { factId: match.id } : { factId: null, reason: "no-relevant-fact" };
 }
 
-export function speakPrologueResponse(request: DialogueVerbalizationRequest): string {
+function speakPrologueResponse(request: DialogueVerbalizationRequest): string {
   if (request.fact) return factWording[request.fact.id] ?? request.fact.proposition;
   if (request.claim) return request.claim.proposition;
   return strategyWording[request.strategy];
 }
 
-export function composePrologueReflection(
+function composePrologueReflection(
   facts: readonly DialogueFactCandidate[],
 ): string {
   if (facts.length === 0) return "Non ho ancora scoperto niente che valga la pena ripensare.";

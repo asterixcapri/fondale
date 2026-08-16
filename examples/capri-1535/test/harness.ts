@@ -14,10 +14,10 @@ export const SHOTS_DIR = "test/shots";
 export async function openGame(
   page: Page,
   url = "/",
-  options: { readonly dialogueServer?: "stub" | "live" } = {},
+  options: { readonly stubDialogueServer?: boolean } = {},
 ): Promise<{ errors: string[]; dialogueRequests: Awaited<ReturnType<typeof installDialogueServerStub>> }> {
   const errors: string[] = [];
-  const dialogueRequests = options.dialogueServer === "live"
+  const dialogueRequests = options.stubDialogueServer === false
     ? []
     : await installDialogueServerStub(page);
   page.on("console", (message) => {
