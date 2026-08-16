@@ -16,8 +16,8 @@ docker compose up -d
 npm run dev
 ```
 
-After adding the model key to the server-owned `.env.local`, start the game in
-a separate terminal:
+After adding the model key to the server-owned `.env.local`, start the Game
+Project in a separate terminal:
 
 ```sh
 cd examples/capri-1535

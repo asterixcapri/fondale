@@ -4,11 +4,11 @@
 implementation of Fondale's public `DialogueProvider` seam. It owns HTTP
 transport, Mastra-backed Conversation memory, PostgreSQL storage and live model
 calls. The browser Engine sends only the material authorised for the current
-Dialogue Turn; this server never loads a Game Project or game files.
+Dialogue Turn; this server never loads a Game Project or its files.
 
 ## Local development
 
-Database, server and browser game are three independent processes. From this
+Database, server and browser Engine are three independent processes. From this
 directory, create the server's private local configuration once:
 
 ```sh
