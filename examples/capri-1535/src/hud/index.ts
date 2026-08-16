@@ -1,6 +1,6 @@
 import { type CommandLexicon, type HUDTheme } from "@asterixcapri/fondale";
 
-import fontUrl from "./capri-pixel.ttf";
+import fontUrl from "./alegreya-sans-medium.ttf";
 import cursorDownUrl from "./cursors/down.svg";
 import cursorEnterUrl from "./cursors/enter.svg";
 import cursorLeftUrl from "./cursors/left.svg";
@@ -40,7 +40,7 @@ export const italianCommandFallbacks = {
 } as const;
 
 export const capriHudTheme = ({
-  font: { family: "Capri Pixel", source: fontUrl },
+  font: { family: "Alegreya Sans", source: fontUrl },
   colors: {
     text: "#f4dfb4",
     preferred: "#f2ad62",

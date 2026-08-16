@@ -173,6 +173,62 @@ test("the packaged Example opens in the new panoramic town square and reaches th
 
 test("the Example exposes Rifletti as Player Character Reflection", async ({ page }) => {
   const { errors, dialogueRequests } = await openGame(page);
+  await expect(page.locator("[data-fondale-overlay]")).toHaveCSS(
+    "font-family",
+    /Alegreya Sans/,
+  );
+  await expect.poll(() => page.evaluate(() => document.fonts.check(
+    '12px "Alegreya Sans"',
+  ))).toBe(true);
+  const reflectionControl = page.getByRole("button", { name: "Rifletti" });
+  const reflectionBounds = await reflectionControl.boundingBox();
+  const frameBounds = await page.locator("[data-fondale-frame]").boundingBox();
+  const inventoryControl = page.locator("[data-fondale-inventory-trigger]");
+  const inventoryBounds = await inventoryControl.boundingBox();
+  if (!reflectionBounds || !frameBounds || !inventoryBounds) {
+    throw new Error("HUD corner controls are unavailable");
+  }
+  expect(Math.abs(reflectionBounds.width - reflectionBounds.height)).toBeLessThanOrEqual(1);
+  expect(frameBounds.x + frameBounds.width - reflectionBounds.x - reflectionBounds.width)
+    .toBeLessThanOrEqual(20);
+  expect(frameBounds.y + frameBounds.height - reflectionBounds.y - reflectionBounds.height)
+    .toBeLessThanOrEqual(20);
+  expect(reflectionBounds.width).toBeCloseTo(inventoryBounds.width, 0);
+  const [reflectionStyle, inventoryStyle] = await Promise.all([
+    reflectionControl.evaluate((element) => {
+      const style = getComputedStyle(element);
+      return { background: style.backgroundColor, radius: style.borderRadius, shadow: style.boxShadow };
+    }),
+    inventoryControl.evaluate((element) => {
+      const style = getComputedStyle(element);
+      return { background: style.backgroundColor, radius: style.borderRadius, shadow: style.boxShadow };
+    }),
+  ]);
+  expect(reflectionStyle).toEqual(inventoryStyle);
+  await expect(reflectionControl.locator("[data-capri-reflection-icon]")).toBeVisible();
+
+  const interactionStyle = async (control: typeof reflectionControl) => control.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return {
+      cursor: style.cursor,
+      filter: style.filter,
+      outlineColor: style.outlineColor,
+      outlineOffset: style.outlineOffset,
+      outlineWidth: style.outlineWidth,
+    };
+  });
+  await inventoryControl.hover();
+  const inventoryHoverStyle = await interactionStyle(inventoryControl);
+  await reflectionControl.hover();
+  const reflectionHoverStyle = await interactionStyle(reflectionControl);
+  expect(inventoryHoverStyle).toEqual(reflectionHoverStyle);
+  expect(reflectionHoverStyle).toMatchObject({ cursor: "pointer", filter: "brightness(1.3)" });
+
+  await inventoryControl.focus();
+  const inventoryFocusStyle = await interactionStyle(inventoryControl);
+  await reflectionControl.focus();
+  const reflectionFocusStyle = await interactionStyle(reflectionControl);
+  expect(inventoryFocusStyle).toEqual(reflectionFocusStyle);
 
   expect(dialogueRequests).toHaveLength(1);
   expect(dialogueRequests[0]?.operation).toBe("reset");

@@ -554,8 +554,8 @@ class EngineOverlay {
       "bottom:clamp(8px,2%,20px)",
       "display:grid",
       "place-items:center",
-      "width:clamp(36px,5%,56px)",
-      "height:clamp(36px,5%,56px)",
+      "width:var(--fondale-control-size,36px)",
+      "height:var(--fondale-control-size,36px)",
       "padding:0",
       "pointer-events:auto",
       `color:${data.hudTheme?.colors.preferred ?? "#f2ad62"}`,
@@ -564,7 +564,23 @@ class EngineOverlay {
       "border-radius:50%",
       "box-shadow:0 2px 7px rgba(0,0,0,.8)",
       "font:700 var(--fondale-hud-font-size,12px)/1 sans-serif",
+      "cursor:pointer",
     ].join(";");
+    const idleInventoryTrigger = (): void => {
+      this.inventoryTrigger.style.filter = "brightness(1)";
+      this.inventoryTrigger.style.outline = "none";
+    };
+    const activateInventoryTrigger = (): void => {
+      this.inventoryTrigger.style.filter = "brightness(1.3)";
+      this.inventoryTrigger.style.outline = `2px solid ${data.hudTheme?.colors.text ?? "#f4dfb4"}`;
+      this.inventoryTrigger.style.outlineOffset = "2px";
+    };
+    this.inventoryTrigger.addEventListener("pointerenter", activateInventoryTrigger);
+    this.inventoryTrigger.addEventListener("pointerleave", () => {
+      if (document.activeElement !== this.inventoryTrigger) idleInventoryTrigger();
+    });
+    this.inventoryTrigger.addEventListener("focus", activateInventoryTrigger);
+    this.inventoryTrigger.addEventListener("blur", idleInventoryTrigger);
     const bag = document.createElement("span");
     bag.setAttribute("aria-hidden", "true");
     bag.style.cssText = `position:relative;display:block;width:55%;height:42%;margin-top:10%;box-sizing:border-box;background:${data.hudTheme?.colors.preferred ?? "#f2ad62"};border:1px solid ${data.hudTheme?.colors.text ?? "#f4dfb4"};border-radius:2px 2px 3px 3px`;
@@ -591,7 +607,7 @@ class EngineOverlay {
       "z-index:20",
       "top:clamp(8px,2%,20px)",
       "right:clamp(8px,2%,20px)",
-      "width:clamp(180px,22%,300px)",
+      "width:clamp(260px,30%,480px)",
       "box-sizing:border-box",
       "grid-template-rows:auto auto auto",
       "gap:clamp(4px,1%,8px)",
@@ -633,7 +649,8 @@ class EngineOverlay {
       "transform:translateX(-50%)",
       "box-sizing:border-box",
       "grid-template-columns:1fr auto auto",
-      "gap:clamp(4px,1%,8px)",
+      "row-gap:clamp(6px,1%,10px)",
+      "column-gap:clamp(10px,2%,16px)",
       "padding:clamp(8px,2%,16px)",
       "z-index:9",
       "pointer-events:auto",
@@ -651,13 +668,22 @@ class EngineOverlay {
     this.dialogueInput.dataset.fondaleDialogueInput = "";
     this.dialogueInput.type = "text";
     this.dialogueInput.autocomplete = "off";
-    this.dialogueInput.style.cssText = "min-width:0;font:inherit;padding:3px;color:#111;background:#fff;border:1px solid #777";
+    this.dialogueInput.style.cssText = [
+      "min-width:0",
+      "font:inherit",
+      "padding:6px 8px",
+      `color:${data.hudTheme?.colors.text ?? "#f4dfb4"}`,
+      `background:${colorWithAlpha(data.hudTheme?.colors.inventoryWell ?? "#211b2d", 0.9)}`,
+      `border:1px solid ${data.hudTheme?.colors.border ?? "#5c7182"}`,
+      "border-radius:4px",
+      "outline:none",
+    ].join(";");
     this.dialogueSubmit.type = "submit";
     this.dialogueSubmit.textContent = "Ask";
-    this.dialogueSubmit.style.cssText = "font:inherit;padding:3px 7px";
+    this.styleOverlayButton(this.dialogueSubmit);
     this.dialogueLeave.type = "button";
     this.dialogueLeave.textContent = "Leave";
-    this.dialogueLeave.style.cssText = "font:inherit;padding:3px 7px";
+    this.styleOverlayButton(this.dialogueLeave);
     this.dialogueLeave.addEventListener("click", () => {
       this.core.input({ type: "escape" });
     });
@@ -698,9 +724,11 @@ class EngineOverlay {
       "padding:clamp(10px,2%,18px)",
       "z-index:10",
       "pointer-events:auto",
-      "color:#f4dfb4",
-      "background:rgba(12,22,38,.96)",
-      "border:1px solid #d99a58",
+      `color:${data.hudTheme?.colors.text ?? "#f4dfb4"}`,
+      `background:${colorWithAlpha(data.hudTheme?.colors.backing ?? "#0c1626", 0.96)}`,
+      `border:1px solid ${data.hudTheme?.colors.preferred ?? "#f2ad62"}`,
+      "border-radius:5px",
+      "box-shadow:0 4px 14px rgba(0,0,0,.85)",
     ].join(";");
     this.reveal.type = "button";
     this.reveal.textContent = "Reveal hotspots";
@@ -710,11 +738,13 @@ class EngineOverlay {
       "right:clamp(8px,2%,20px)",
       "top:clamp(8px,2%,20px)",
       "pointer-events:auto",
-      "font:var(--fondale-hud-font-size,12px)/1.25 monospace",
-      "color:white",
-      "background:#211b2d",
-      "border:1px solid white",
-      "padding:3px",
+      "font:inherit",
+      `color:${data.hudTheme?.colors.text ?? "#f4dfb4"}`,
+      `background:${colorWithAlpha(data.hudTheme?.colors.backing ?? "#0c1626", 0.94)}`,
+      `border:1px solid ${data.hudTheme?.colors.preferred ?? "#f2ad62"}`,
+      "border-radius:4px",
+      "box-shadow:0 2px 7px rgba(0,0,0,.8)",
+      "padding:6px 8px",
     ].join(";");
     this.reveal.addEventListener("click", () => {
       this.inputHUD({
@@ -908,7 +938,7 @@ class EngineOverlay {
       const displaySize = Math.min(this.data.inventoryAppearanceSize ?? 24, 24);
       image.width = displaySize;
       image.height = displaySize;
-      image.style.cssText = "width:70%;height:70%;max-width:48px;max-height:48px;object-fit:contain";
+      image.style.cssText = "width:75%;height:75%;max-width:64px;max-height:64px;object-fit:contain";
       image.alt = "";
       image.src = assetUrl(entry.inventoryAppearance);
       button.append(image);
@@ -1059,20 +1089,7 @@ class EngineOverlay {
           `font:var(--fondale-speech-font-size,14px)/1.25 ${JSON.stringify(this.data.hudTheme?.font.family ?? "monospace")}`,
           `text-shadow:${speechTextShadow}`,
         ].join(";");
-        const idle = (): void => {
-          button.style.filter = "brightness(1)";
-          button.style.transform = "none";
-        };
-        const activeStyle = (): void => {
-          button.style.filter = "brightness(1.45)";
-          button.style.transform = "translateX(2px)";
-        };
-        button.addEventListener("focus", activeStyle);
-        button.addEventListener("blur", idle);
-        button.addEventListener("pointerenter", activeStyle);
-        button.addEventListener("pointerleave", () => {
-          if (document.activeElement !== button) idle();
-        });
+        this.styleTextAlternativeInteraction(button);
         button.textContent = choice.label;
         button.addEventListener("click", () => this.inputHUD({
           type: "choose", alternative: choice.index,
@@ -1080,7 +1097,7 @@ class EngineOverlay {
         list.append(button);
       });
       this.narrative.append(list);
-      list.querySelector<HTMLButtonElement>("button")?.focus();
+      this.frame.focus({ preventScroll: true });
     }
   }
 
@@ -1140,15 +1157,19 @@ class EngineOverlay {
         button.style.cssText = [
           "display:block",
           "width:100%",
-          "padding:1px 0",
+          "padding:3px 4px",
           "box-sizing:border-box",
           "background:transparent",
           "border:0",
+          "outline:none",
           "text-align:left",
           "font:inherit",
           "cursor:pointer",
+          "filter:brightness(1)",
+          "transition:filter 80ms linear,transform 80ms linear",
           `color:${this.data.hudTheme?.colors.preferred ?? "#f4dfb4"}`,
         ].join(";");
+        this.styleTextAlternativeInteraction(button);
         button.addEventListener("click", () => this.core.input({
           type: "select-alternative",
           alternative: alternative.index,
@@ -1298,6 +1319,7 @@ class EngineOverlay {
     this.root.style.setProperty("--fondale-command-font-size", `${clamp(11, 6 * fit, 16)}px`);
     this.root.style.setProperty("--fondale-response-font-size", `${clamp(13, 8 * fit, 20)}px`);
     this.root.style.setProperty("--fondale-speech-font-size", `${clamp(14, 9 * fit, 22)}px`);
+    this.root.style.setProperty("--fondale-control-size", `${clamp(36, 20 * fit, 56)}px`);
     if (this.lastCursorPoint && this.action.style.display !== "none") {
       this.showCursor(this.lastCursorPoint);
     }
@@ -1380,13 +1402,14 @@ class EngineOverlay {
           return;
         }
         const buttons = [...this.narrative.querySelectorAll<HTMLButtonElement>("button")];
-        const current = Math.max(0, buttons.indexOf(document.activeElement as HTMLButtonElement));
+        const current = buttons.indexOf(document.activeElement as HTMLButtonElement);
         if (event.key === "ArrowDown" || event.key === "ArrowRight") {
           event.preventDefault();
           buttons[(current + 1) % buttons.length]?.focus();
         } else if (event.key === "ArrowUp" || event.key === "ArrowLeft") {
           event.preventDefault();
-          buttons[(current - 1 + buttons.length) % buttons.length]?.focus();
+          const previous = current < 0 ? buttons.length - 1 : (current - 1 + buttons.length) % buttons.length;
+          buttons[previous]?.focus();
         }
       return;
     }
@@ -1478,9 +1501,61 @@ class EngineOverlay {
     const button = document.createElement("button");
     button.type = "button";
     button.textContent = text;
-    button.style.cssText = `${overlayButtonStyle};pointer-events:auto;margin:3px`;
+    this.styleOverlayButton(button);
+    button.style.margin = "3px";
     button.addEventListener("click", action);
     return button;
+  }
+
+  private styleOverlayButton(button: HTMLButtonElement): void {
+    const idle = (): void => {
+      button.style.filter = "brightness(1)";
+      button.style.outline = "none";
+    };
+    const active = (): void => {
+      button.style.filter = "brightness(1.25)";
+      button.style.outline = `2px solid ${this.data.hudTheme?.colors.preferred ?? "#f2ad62"}`;
+      button.style.outlineOffset = "1px";
+    };
+    button.style.cssText = [
+      "display:inline-grid",
+      "place-items:center",
+      "min-height:28px",
+      "padding:6px 10px",
+      "box-sizing:border-box",
+      "pointer-events:auto",
+      "font:inherit",
+      `color:${this.data.hudTheme?.colors.text ?? "#f4dfb4"}`,
+      `background:${colorWithAlpha(this.data.hudTheme?.colors.inventoryWell ?? "#211b2d", 0.9)}`,
+      `border:1px solid ${this.data.hudTheme?.colors.border ?? "#5c7182"}`,
+      "border-radius:4px",
+      "box-shadow:0 2px 7px rgba(0,0,0,.65)",
+      "text-shadow:1px 1px #000",
+      "cursor:pointer",
+    ].join(";");
+    button.addEventListener("pointerenter", active);
+    button.addEventListener("pointerleave", () => {
+      if (document.activeElement !== button) idle();
+    });
+    button.addEventListener("focus", active);
+    button.addEventListener("blur", idle);
+  }
+
+  private styleTextAlternativeInteraction(button: HTMLButtonElement): void {
+    const idle = (): void => {
+      button.style.filter = "brightness(1)";
+      button.style.transform = "none";
+    };
+    const active = (): void => {
+      button.style.filter = "brightness(1.45)";
+      button.style.transform = "translateX(2px)";
+    };
+    button.addEventListener("focus", active);
+    button.addEventListener("blur", idle);
+    button.addEventListener("pointerenter", active);
+    button.addEventListener("pointerleave", () => {
+      if (document.activeElement !== button) idle();
+    });
   }
 
   private styleInventoryControl(button: HTMLButtonElement): void {
@@ -1661,15 +1736,6 @@ function checkboxPreference(
   label.append(input, text);
   return { label, input };
 }
-
-const overlayButtonStyle = [
-  "font:inherit",
-  "color:white",
-  "background:rgba(20,15,28,.9)",
-  "border:1px solid white",
-  "padding:2px",
-  "text-shadow:1px 1px #000",
-].join(";");
 
 function colorWithAlpha(color: string, alpha: number): string {
   const digits = color.slice(1);

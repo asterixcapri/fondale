@@ -65,6 +65,19 @@ test("authored alternatives and the free-form field stay usable together by keyb
   await expect(alternatives).toHaveCount(2);
   await expect(alternatives.first()).toBeVisible();
   await expect(alternatives.first()).toContainText("Who cut the harbour chain?");
+  await expect(alternatives.first()).toHaveCSS("filter", "brightness(1)");
+  await expect(alternatives.nth(1)).toHaveCSS("filter", "brightness(1)");
+
+  await alternatives.first().hover();
+  await expect(alternatives.first()).toHaveCSS("filter", "brightness(1.45)");
+  await alternatives.nth(1).hover();
+  await expect(alternatives.first()).toHaveCSS("filter", "brightness(1)");
+  await expect(alternatives.nth(1)).toHaveCSS("filter", "brightness(1.45)");
+
+  const inputBounds = await input.boundingBox();
+  const askBounds = await conversation.getByRole("button", { name: "Ask" }).boundingBox();
+  if (!inputBounds || !askBounds) throw new Error("Conversation controls are unavailable");
+  expect(askBounds.x - inputBounds.x - inputBounds.width).toBeGreaterThanOrEqual(10);
 
   await expect(input).toBeFocused();
   await page.keyboard.press("Shift+Tab");

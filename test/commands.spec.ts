@@ -318,9 +318,9 @@ test("the HUD responds independently to the visible size of a high-resolution Ga
   const wideFont = Number.parseFloat(await panel.evaluate((element) => getComputedStyle(element).fontSize));
   if (!widePanel || !wideTrigger) throw new Error("missing wide HUD bounds");
 
-  expect(widePanel.width / 1280).toBeCloseTo(0.22, 2);
-  expect(widePanel.width).toBeLessThanOrEqual(300);
-  expect(wideTrigger.width).toBeLessThanOrEqual(56);
+  expect(widePanel.width / 1280).toBeCloseTo(0.3, 2);
+  expect(widePanel.width).toBeLessThanOrEqual(480);
+  expect(Math.abs(wideTrigger.width - wideTrigger.height)).toBeLessThanOrEqual(1);
 
   await page.setViewportSize({ width: 900, height: 700 });
   await expect(frame).toHaveCSS("width", "900px");
@@ -334,9 +334,10 @@ test("the HUD responds independently to the visible size of a high-resolution Ga
   }
 
   expect(compactPanel.width).toBeLessThan(widePanel.width);
-  expect(compactPanel.width).toBeGreaterThanOrEqual(180);
+  expect(compactPanel.width).toBeGreaterThanOrEqual(260);
   expect(compactTrigger.width).toBeLessThan(wideTrigger.width);
   expect(compactTrigger.width).toBeGreaterThanOrEqual(36);
+  expect(Math.abs(compactTrigger.width - compactTrigger.height)).toBeLessThanOrEqual(1);
   expect(compactFont).toBeLessThan(wideFont);
   expect(compactFont).toBeGreaterThanOrEqual(12);
   expect(overlayBounds).toEqual(canvasBounds);
@@ -430,9 +431,11 @@ test("Dialogue Choices use the Player Character speech styling", async ({ page }
   await expect(alternatives.nth(0)).toHaveCSS("border-top-width", "0px");
   await expect(alternatives.nth(0)).toHaveCSS("outline-style", "none");
   await expect(alternatives.nth(0)).toHaveCSS("text-align", "left");
-  await expect(alternatives.nth(0)).toHaveCSS("filter", "brightness(1.45)");
+  await expect(alternatives.nth(0)).toHaveCSS("filter", "brightness(1)");
+  await expect(alternatives.nth(1)).toHaveCSS("filter", "brightness(1)");
   await alternatives.nth(1).hover();
   await expect(alternatives.nth(1)).toHaveCSS("filter", "brightness(1.45)");
+  await expect(alternatives.nth(0)).toHaveCSS("filter", "brightness(1)");
   const playerChoiceStyle = await alternatives.first().evaluate((element) => {
     const style = getComputedStyle(element);
     return {

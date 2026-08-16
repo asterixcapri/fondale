@@ -9,24 +9,45 @@
       html, body, #game { margin: 0; width: 100%; height: 100%; overflow: hidden; }
       body { background: #15101d; }
       #reflection {
-        position: fixed;
-        z-index: 2;
-        top: 8px;
-        right: 8px;
-        padding: 6px 8px;
-        color: white;
-        background: #211b2d;
-        border: 2px solid white;
-        font: 12px monospace;
+        position: absolute;
+        z-index: 30;
+        right: clamp(8px, 2vw, 20px);
+        bottom: clamp(8px, 2vw, 20px);
+        display: grid;
+        place-items: center;
+        width: clamp(40px, 5vw, 56px);
+        height: clamp(40px, 5vw, 56px);
+        padding: 8px;
+        color: #58d6d2;
+        background: rgba(12, 22, 38, .94);
+        border: 1px solid #58d6d2;
+        border-radius: 50%;
+        box-shadow: 0 2px 7px rgba(0, 0, 0, .8);
+        cursor: pointer;
+        visibility: hidden;
       }
-      #reflection { left: 8px; right: auto; }
+      #reflection:hover, #reflection:focus-visible {
+        filter: brightness(1.3);
+        outline: 2px solid #f4dfb4;
+        outline-offset: 2px;
+      }
+      #reflection svg { width: 100%; height: 100%; }
       #error { position: fixed; inset: 20% 10%; color: white; font: 16px monospace; }
       #error:empty { display: none; }
     </style>
   </head>
   <body>
     <div id="game"></div>
-    <button id="reflection" type="button">Rifletti</button>
+    <button id="reflection" type="button" aria-label="Rifletti" title="Rifletti">
+      <svg data-capri-reflection-icon viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M7 16.5a5.5 5.5 0 0 1-.7-11A6.8 6.8 0 0 1 12 2.8c2.3 0 4.4 1.1 5.7 2.9a5.4 5.4 0 0 1-.8 10.8H7Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+        <circle cx="6" cy="19.2" r="1.4" fill="currentColor"/>
+        <circle cx="3.4" cy="21.4" r=".8" fill="currentColor"/>
+        <circle cx="9" cy="10" r=".8" fill="currentColor"/>
+        <circle cx="12" cy="10" r=".8" fill="currentColor"/>
+        <circle cx="15" cy="10" r=".8" fill="currentColor"/>
+      </svg>
+    </button>
     <output id="error"></output>
     <script type="module" src="./src/main.ts"></script>
   </body>

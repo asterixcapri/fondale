@@ -28,5 +28,7 @@ try {
 }
 
 if (session) {
+  target.querySelector("[data-fondale-frame]")?.append(reflection);
+  reflection.style.visibility = "visible";
   reflection.addEventListener("click", () => session.startReflection());
 }

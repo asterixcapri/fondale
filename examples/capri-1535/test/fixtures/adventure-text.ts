@@ -15,7 +15,7 @@ const requestedScene = new URLSearchParams(location.search).get("scene");
 const sceneFamily = requestedScene === "boffe" ? "boffe" : requestedScene === "harbour" ? "harbour" : "aiano";
 const background = await logicalBackground(`/art/scenes/${sceneFamily}/background.png`);
 const hudTheme = ({
-  font: { family: "Capri Pixel", source: "/src/hud/capri-pixel.ttf" },
+  font: { family: "Alegreya Sans", source: "/src/hud/alegreya-sans-medium.ttf" },
   colors: {
     text: "#f4dfb4",
     preferred: "#f2ad62",
