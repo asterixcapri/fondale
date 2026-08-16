@@ -53,7 +53,12 @@ try {
         return error instanceof AuthoringError ? error.diagnostics[0]!.code : String(error);
       }
     },
-    restart: () => startGame(project, { target }),
+    restart() {
+      const restarting = startGame(project, { target });
+      [...target.querySelectorAll<HTMLButtonElement>("[data-fondale-continuation] button")]
+        .find(({ textContent }) => textContent === "New Game")?.click();
+      return restarting;
+    },
     mutateProject: () => {
       variables.changedAfterStart = true;
     },

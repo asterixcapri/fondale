@@ -23,6 +23,7 @@ export type DialogueHttpRequest = {
     readonly request: ReflectionRequest;
   }
   | { readonly operation: "cancel"; readonly turnId: string }
+  | { readonly operation: "ready" }
   | { readonly operation: "reset" }
 );
 

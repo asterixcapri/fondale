@@ -26,6 +26,7 @@ export class DialogueHttpError extends Error {
 export class HttpDialogueProvider implements DialogueProvider {
   private readonly endpoint: string;
   private readonly sessionId: string;
+  private readonly turnNamespace = crypto.randomUUID();
 
   constructor(options: { readonly endpoint: string; readonly sessionId: string }) {
     this.endpoint = options.endpoint;
@@ -39,7 +40,7 @@ export class HttpDialogueProvider implements DialogueProvider {
     return this.send({
       operation: "interpret",
       sessionId: this.sessionId,
-      turnId: context.turnId,
+      turnId: this.transportTurnId(context.turnId),
       request,
     }, context.signal);
   }
@@ -51,7 +52,7 @@ export class HttpDialogueProvider implements DialogueProvider {
     return this.send({
       operation: "verbalize",
       sessionId: this.sessionId,
-      turnId: context.turnId,
+      turnId: this.transportTurnId(context.turnId),
       request,
     }, context.signal);
   }
@@ -63,13 +64,22 @@ export class HttpDialogueProvider implements DialogueProvider {
     return this.send({
       operation: "reflect",
       sessionId: this.sessionId,
-      turnId: context.turnId,
+      turnId: this.transportTurnId(context.turnId),
       request,
     }, context.signal);
   }
 
   reset(): Promise<void> {
     return this.send({ operation: "reset", sessionId: this.sessionId });
+  }
+
+  /** Checks server reachability without opening or changing provider memory. */
+  ready(): Promise<void> {
+    return this.send({ operation: "ready", sessionId: this.sessionId });
+  }
+
+  private transportTurnId(turnId: string): string {
+    return `${this.turnNamespace}:${turnId}`;
   }
 
   private async send<T>(body: DialogueHttpRequest, signal?: AbortSignal): Promise<T> {

@@ -62,6 +62,9 @@ export async function createDialogueAdapterServer(options: {
       abortControllers(activeTurns.get(turnKey!));
       return json(context, 200, { ok: true });
     }
+    if (body.operation === "ready") {
+      return json(context, 200, { ok: true });
+    }
     if (body.operation === "reset") {
       const sessionPrefix = `${body.sessionId}\0`;
       for (const [key, controllers] of activeTurns) {
@@ -142,6 +145,7 @@ async function execute(
   signal: AbortSignal,
 ): Promise<unknown> {
   if (body.operation === "reset") return provider.reset();
+  if (body.operation === "ready") return;
   if (body.operation === "cancel") return;
   const context: DialogueTurnContext = { turnId: body.turnId, signal };
   switch (body.operation) {
@@ -181,7 +185,7 @@ function isDialogueRequest(value: unknown): value is DialogueHttpRequest {
   const candidate = value as Record<string, unknown>;
   if (typeof candidate.sessionId !== "string" || !candidate.sessionId.trim() ||
       candidate.sessionId.length > 200) return false;
-  if (candidate.operation === "reset") return true;
+  if (candidate.operation === "ready" || candidate.operation === "reset") return true;
   if (candidate.operation === "cancel") {
     return typeof candidate.turnId === "string" && candidate.turnId.length > 0;
   }

@@ -14,6 +14,7 @@ export class BrowserLoop {
     private readonly application: Application,
     private readonly currentCore: () => CoreSession,
     private readonly currentRenderer: () => BrowserRenderer,
+    private readonly onProgress?: () => void,
   ) {}
 
   async start(): Promise<void> {
@@ -40,7 +41,11 @@ export class BrowserLoop {
     const frameTime = performance.now();
     const steps = this.clock.advance(frameTime - this.previousFrameTime);
     this.previousFrameTime = frameTime;
-    if (steps > 0) core.steps(steps);
-    this.currentRenderer().render(core.takeEffects());
+    if (steps > 0) {
+      core.steps(steps);
+      this.onProgress?.();
+    }
+    const effects = core.takeEffects();
+    this.currentRenderer().render(effects);
   };
 }

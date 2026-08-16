@@ -184,6 +184,11 @@ interface DialogueTurnContent {
 
 export type CoreWorldTarget = WorldTarget;
 
+export interface CoreContinuationSnapshot {
+  readonly revision: number;
+  readonly snapshot: SaveSnapshot;
+}
+
 /** Internal deterministic seam shared by browser and tests. */
 export interface CoreSession {
   input(input: CoreInput): void;
@@ -192,6 +197,8 @@ export interface CoreSession {
   effects(): readonly CoreEffect[];
   takeEffects(): readonly CoreEffect[];
   createSaveSnapshot(): SaveSnapshot;
+  /** Creates an automatic snapshot only at a stable committed boundary. */
+  createContinuationSnapshot(): CoreContinuationSnapshot | undefined;
   lifecycle(): "running" | "failed" | "stopped";
   diagnostics(): readonly AuthoringDiagnostic[];
   hitTest(point: Point): CoreWorldTarget | null;
@@ -260,6 +267,8 @@ export function createCoreSession(
     readonly response: string;
     readonly playerCharacter: string;
   } | null = null;
+  let continuationProgressFingerprint: string | undefined;
+  let continuationRevision = 0;
 
   const session: CoreSession = {
     input(input) {
@@ -289,6 +298,21 @@ export function createCoreSession(
       assertRunning();
       invalidateProviderTurn();
       return save.createSnapshot(state);
+    },
+    createContinuationSnapshot() {
+      if (status !== "running" || inputs.length > 0 || pendingProviderTurn ||
+          dialogueCompletion || reflectionCompletion || !isStableActivity(state.activity)) {
+        return undefined;
+      }
+      const fingerprint = stableContinuationProgress(state);
+      if (fingerprint !== continuationProgressFingerprint) {
+        continuationProgressFingerprint = fingerprint;
+        continuationRevision += 1;
+      }
+      return {
+        revision: continuationRevision,
+        snapshot: save.createSnapshot(state),
+      };
     },
     lifecycle: () => status,
     diagnostics: () => structuredClone(failureDiagnostics),
@@ -1299,6 +1323,16 @@ export function createCoreSession(
 
   advanceCamera();
   return session;
+}
+
+function isStableActivity(activity: GameActivityState | null): boolean {
+  return activity === null || activity.type === "conversation" || activity.type === "reflection";
+}
+
+/** Core-owned identity for stable progress; the returned Save remains exact. */
+function stableContinuationProgress(state: GameState): string {
+  const { tick: _logicalTime, ...progress } = state;
+  return JSON.stringify(progress);
 }
 
 function initialState(

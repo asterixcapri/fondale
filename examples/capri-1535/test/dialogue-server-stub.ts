@@ -67,6 +67,7 @@ function executeDialogueOperation(request: DialogueHttpRequest): unknown {
     case "reflect":
       return { summary: composePrologueReflection(request.request.facts) };
     case "cancel":
+    case "ready":
     case "reset":
       return undefined;
   }

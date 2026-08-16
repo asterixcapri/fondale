@@ -90,6 +90,23 @@ test("CoreSession validates step counts and has an explicit lifecycle", () => {
   expect(session.snapshot()).toEqual(initial);
 });
 
+test("automatic continuation revisions change only with stable committed progress", () => {
+  const session = createTestSession(project);
+  const initial = session.createContinuationSnapshot()!;
+  session.steps(10);
+  const idle = session.createContinuationSnapshot()!;
+
+  expect(idle.revision).toBe(initial.revision);
+  expect(idle.snapshot.state.tick).toBe(10);
+  session.input({ type: "move", point: { x: 80, y: 70 } });
+  session.steps(1);
+  expect(session.createContinuationSnapshot()).toBeUndefined();
+  session.steps(120);
+  const moved = session.createContinuationSnapshot()!;
+  expect(moved.revision).toBe(initial.revision + 1);
+  expect(moved.snapshot.state.characters.player!.groundPoint).toEqual({ x: 80, y: 70 });
+});
+
 test("CoreSession consumes cloned inputs in queue order and preserves effect order", () => {
   const session = createTestSession(project);
   const firstPoint = { x: 80, y: 10 };

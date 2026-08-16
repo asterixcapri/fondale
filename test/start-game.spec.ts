@@ -32,6 +32,22 @@ test("the browser frame refits when its display target is resized", async ({
   await expect(frame).toHaveCSS("height", "240px");
 });
 
+test("a Project without dialogue can Continue its automatic browser state", async ({ page }) => {
+  await page.setViewportSize({ width: 1000, height: 700 });
+  await page.goto("/test/fixtures/start-game.html");
+  await page.waitForFunction(() => window.__startTest !== undefined);
+
+  await page.reload();
+  const startup = page.locator("[data-fondale-continuation]");
+  await expect(startup.getByRole("button", { name: "Continue" })).toBeVisible();
+  await expect(startup).toHaveCSS("width", "852px");
+  await expect(startup).toHaveCSS("height", "480px");
+  await expect(startup.locator("canvas")).toHaveCount(0);
+  await startup.getByRole("button", { name: "Continue" }).click();
+  await page.waitForFunction(() => window.__startTest !== undefined);
+  await expect(page.locator("[data-fondale-frame] canvas")).toBeVisible();
+});
+
 test("a Game Session owns its target and stop is idempotent and terminal", async ({
   page,
 }) => {

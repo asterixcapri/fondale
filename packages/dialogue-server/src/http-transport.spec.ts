@@ -6,6 +6,29 @@ import type { DialogueProvider } from "@asterixcapri/fondale";
 import { HttpDialogueProvider } from "@asterixcapri/fondale";
 import { createDialogueAdapterServer } from "./http-server.js";
 
+test("startup readiness does not open or reset provider memory", async () => {
+  let providersCreated = 0;
+  const server = await createDialogueAdapterServer({
+    host: "127.0.0.1",
+    port: 0,
+    createProvider: () => {
+      providersCreated += 1;
+      return Promise.reject(new Error("readiness must not open a provider"));
+    },
+  });
+  const client = new HttpDialogueProvider({
+    endpoint: server.url,
+    sessionId: "continued-session",
+  });
+
+  try {
+    await client.ready();
+    assert.equal(providersCreated, 0);
+  } finally {
+    await server.close();
+  }
+});
+
 test("the local transport forwards the Dialogue Provider contract to one Game Session", async () => {
   const calls: string[] = [];
   const provider: DialogueProvider & { close(): Promise<void> } = {
@@ -79,12 +102,16 @@ test("the local transport forwards the Dialogue Provider contract to one Game Se
       "game-session-1",
       "game-session-1",
     ]);
+    const transportTurnId = calls[0]!.slice(
+      "interpret:A storm-bound lighthouse mystery.:Where is it?:".length,
+    );
+    assert.match(transportTurnId, /^[0-9a-f-]{36}:turn-1$/);
     assert.deepEqual(calls, [
-      "interpret:A storm-bound lighthouse mystery.:Where is it?:turn-1",
+      `interpret:A storm-bound lighthouse mystery.:Where is it?:${transportTurnId}`,
       "close",
-      "verbalize:A storm-bound lighthouse mystery.:lantern:turn-1",
+      `verbalize:A storm-bound lighthouse mystery.:lantern:${transportTurnId}`,
       "close",
-      "reflect:A storm-bound lighthouse mystery.:michele:turn-1",
+      `reflect:A storm-bound lighthouse mystery.:michele:${transportTurnId}`,
       "close",
       "reset",
       "close",
@@ -143,11 +170,13 @@ test("transport retries preserve the session, Dialogue Turn and provider operati
     await client.verbalize(verbalizationRequest, context);
 
     assert.deepEqual(sessions, ["session-1", "session-1", "session-1", "session-1"]);
+    const transportTurnId = calls[0]!.slice("interpret:".length);
+    assert.match(transportTurnId, /^[0-9a-f-]{36}:turn-1$/);
     assert.deepEqual(calls, [
-      "interpret:turn-1",
-      "interpret:turn-1",
-      "verbalize:turn-1",
-      "verbalize:turn-1",
+      `interpret:${transportTurnId}`,
+      `interpret:${transportTurnId}`,
+      `verbalize:${transportTurnId}`,
+      `verbalize:${transportTurnId}`,
     ]);
   } finally {
     await server.close();

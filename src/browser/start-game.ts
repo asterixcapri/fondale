@@ -17,6 +17,7 @@ import {
   type ValidatedSaveSnapshot,
 } from "../capabilities/save";
 import { loadProjectAssets } from "./assets";
+import { BrowserContinuation, chooseContinuation } from "./continuation";
 import { BrowserFrame } from "./frame";
 import { DialogueHttpError, HttpDialogueProvider } from "./http-dialogue-provider";
 import { BrowserLoop } from "./loop";
@@ -71,19 +72,14 @@ export async function startGame(
   const requiresDialogueConnection = createKnowledgeDrivenDialogue(
     getGameSessionCompositionView(compiledProject).dialogue,
   ).requiresProvider();
-  let dialogueProvider = options.dialogueProvider;
-  if (requiresDialogueConnection && options.dialogueServerUrl !== undefined) {
-    dialogueProvider = new HttpDialogueProvider({
-      endpoint: options.dialogueServerUrl,
-      sessionId: crypto.randomUUID(),
-    });
-    try {
-      await dialogueProvider.reset();
-    } catch (error) {
-      throw new AuthoringError([dialogueConnectionDiagnostic(error)]);
-    }
+  let restored: ValidatedSaveSnapshot | undefined;
+  if (options.snapshot !== undefined) {
+    const validation = createSave(compiledProject).validate(options.snapshot);
+    if (!validation.ok) throw new AuthoringError(validation.diagnostics);
+    restored = validation.snapshot;
   }
-  if (requiresDialogueConnection && !dialogueProvider) {
+  if (requiresDialogueConnection && options.dialogueServerUrl === undefined &&
+      options.dialogueProvider === undefined) {
     throw new AuthoringError([{
       code: "environment.dialogue-provider.missing",
       family: "environment", owner: "dialogue",
@@ -91,19 +87,69 @@ export async function startGame(
       message: "This Game Project requires dialogueServerUrl or dialogueProvider.",
     }]);
   }
-  let restored: ValidatedSaveSnapshot | undefined;
-  if (options.snapshot !== undefined) {
-    const validation = createSave(compiledProject).validate(options.snapshot);
-    if (!validation.ok) throw new AuthoringError(validation.diagnostics);
-    restored = validation.snapshot;
-  }
   const projectView = getBrowserProjectView(compiledProject);
+  const continuation = options.dialogueProvider === undefined && options.snapshot === undefined
+    ? new BrowserContinuation(compiledProject, projectView.startup.identity)
+    : undefined;
+  const storedContinuation = continuation?.read() ?? { status: "absent" as const };
+  const availableContinuation = storedContinuation.status === "valid"
+    ? storedContinuation.state
+    : undefined;
+  const startupChoice = storedContinuation.status === "absent"
+    ? "new-game"
+    : await chooseContinuation(
+      options.target,
+      projectView.startup,
+      storedContinuation.status === "valid",
+    );
+  if (startupChoice === "continue") restored = availableContinuation!.snapshot;
+
+  let dialogueProvider = options.dialogueProvider;
+  let providerSessionId = continuation
+    ? startupChoice === "continue"
+      ? availableContinuation!.providerSessionId
+      : crypto.randomUUID()
+    : undefined;
+  if (requiresDialogueConnection && options.dialogueServerUrl !== undefined) {
+    providerSessionId ??= crypto.randomUUID();
+    const httpDialogueProvider = new HttpDialogueProvider({
+      endpoint: options.dialogueServerUrl,
+      sessionId: providerSessionId,
+    });
+    dialogueProvider = httpDialogueProvider;
+    try {
+      if (startupChoice === "continue") await httpDialogueProvider.ready();
+      else await httpDialogueProvider.reset();
+    } catch (error) {
+      throw new AuthoringError([dialogueConnectionDiagnostic(error)]);
+    }
+  }
   let frame: BrowserFrame | undefined;
   let loop: BrowserLoop | undefined;
   let renderer: BrowserRenderer | undefined;
   let core: CoreSession | undefined;
+  let continuationTimer: ReturnType<typeof setTimeout> | undefined;
+  let lastContinuationRevision: number | undefined;
+
+  const persistContinuation = () => {
+    if (!continuation || !providerSessionId || !core) return;
+    const continuationSnapshot = core.createContinuationSnapshot();
+    if (!continuationSnapshot ||
+        continuationSnapshot.revision === lastContinuationRevision) return;
+    if (continuation.write(providerSessionId, continuationSnapshot.snapshot)) {
+      lastContinuationRevision = continuationSnapshot.revision;
+    }
+  };
+  const scheduleContinuation = () => {
+    if (!continuation || continuationTimer !== undefined) return;
+    continuationTimer = setTimeout(() => {
+      continuationTimer = undefined;
+      persistContinuation();
+    }, 100);
+  };
 
   const cleanup = () => {
+    clearTimeout(continuationTimer);
     loop?.destroy();
     renderer?.destroy();
     core?.stop();
@@ -143,8 +189,14 @@ export async function startGame(
     };
     controls = createBrowserSessionControls(compiledProject, () => core!, replaceCore);
     renderer = mountRenderer(core);
-    loop = new BrowserLoop(frame.application, () => core!, () => renderer!);
+    loop = new BrowserLoop(
+      frame.application,
+      () => core!,
+      () => renderer!,
+      scheduleContinuation,
+    );
     await loop.start();
+    persistContinuation();
 
     let stopped = false;
     return Object.freeze({
@@ -167,6 +219,7 @@ export async function startGame(
       stop() {
         if (stopped) return;
         stopped = true;
+        persistContinuation();
         cleanup();
       },
     });
