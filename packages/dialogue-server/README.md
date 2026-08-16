@@ -34,9 +34,11 @@ Start only the Node.js server in a second terminal:
 npm run dev
 ```
 
-Start the browser Game Project from its own directory in a third terminal. The
-development command above loads `.env.local` inside Node and runs `src/main.ts`;
-it never starts, stops or inspects Docker Compose. Startup validates
+Start one or more browser Game Projects from their own directories in further
+terminals. Every Game Project points at the same Dialogue Server URL and sends
+its own Narrative Context; no registration or per-Game-Project Dialogue Server
+process is needed. The development command above loads `.env.local` inside Node and runs
+`src/main.ts`; it never starts, stops or inspects Docker Compose. Startup validates
 `DATABASE_URL` and reaches PostgreSQL before opening the HTTP port, so a missing
 or unavailable database fails on the server console.
 
@@ -61,6 +63,14 @@ Fictional setting is not deployment configuration. Each Game Project declares
 its own non-empty Narrative Context, and every dialogue request carries it to
 the shared model as presentation guidance only. Explicit language and locale
 configuration are outside the current Support Baseline.
+
+## Deployment boundary
+
+This package currently supports local development with multiple Game Projects.
+It is not a secure public multi-tenant service. Authentication, tenant registration and
+isolation, quotas, billing, hostile-client protection, distributed
+cancellation and production retention are deployment work outside the current
+Support Baseline. Multiple languages and localisation are also out of scope.
 
 ## Production startup
 

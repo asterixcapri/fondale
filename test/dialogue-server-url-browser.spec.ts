@@ -14,13 +14,24 @@ async function openFirstConversation(page: Page): Promise<Locator> {
   await page.goto("/test/fixtures/dialogue-server-url.html");
   await expect.poll(() => page.evaluate(() => window.__dialogueUrlSessions?.length)).toBe(2);
   const firstFrame = page.locator("[data-fondale-frame]").first();
-  const bounds = await firstFrame.locator("canvas").boundingBox();
+  await openConversation(firstFrame);
+  return firstFrame;
+}
+
+async function openConversation(frame: Locator): Promise<Locator> {
+  const bounds = await frame.locator("canvas").boundingBox();
   if (!bounds) throw new Error("Fondale canvas is not visible.");
-  await page.mouse.click(
+  await frame.page().mouse.click(
     bounds.x + (315 / 426) * bounds.width,
     bounds.y + (150 / 240) * bounds.height,
   );
-  return firstFrame;
+  return frame.locator("[data-fondale-conversation]");
+}
+
+async function askFirstCharacter(frame: Locator, question: string): Promise<void> {
+  const conversation = await openConversation(frame);
+  await conversation.locator("[data-fondale-dialogue-input]").fill(question);
+  await conversation.getByRole("button", { name: "Ask" }).click();
 }
 
 test("browser startup connects declared Dialogue Server URLs with isolated Game Sessions", async ({
@@ -43,6 +54,43 @@ test("browser startup connects declared Dialogue Server URLs with isolated Game 
     /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
   );
   expect(requests[1]!.sessionId).not.toBe(requests[0]!.sessionId);
+});
+
+test("one Dialogue Server URL serves two Game Projects with their own Narrative Context", async ({
+  page,
+}) => {
+  const requests: DialogueRequest[] = [];
+  await page.route("**/test-dialogue", async (route) => {
+    const request = route.request().postDataJSON() as DialogueRequest;
+    requests.push(request);
+    const value = request.operation === "interpret"
+      ? { factId: "harbour-chain-cut" }
+      : request.operation === "verbalize"
+        ? `Answer framed by: ${request.request?.narrativeContext}`
+        : undefined;
+    await route.fulfill({ json: value === undefined ? { ok: true } : { ok: true, value } });
+  });
+
+  await page.goto("/test/fixtures/dialogue-server-url.html");
+  await expect.poll(() => page.evaluate(() => window.__dialogueUrlSessions?.length)).toBe(2);
+  const frames = page.locator("[data-fondale-frame]");
+  await askFirstCharacter(frames.nth(0), "What happened here?");
+  await expect(frames.nth(0).locator('[data-fondale-line][data-fondale-speaker="antonio"]'))
+    .toContainText("Capri in 1535");
+  await askFirstCharacter(frames.nth(1), "What happened here?");
+  await expect(frames.nth(1).locator('[data-fondale-line][data-fondale-speaker="antonio"]'))
+    .toContainText("Mars in 2248");
+
+  const dialogueRequests = requests.filter(({ operation }) =>
+    operation === "interpret" || operation === "verbalize"
+  );
+  expect(dialogueRequests.map(({ request }) => request?.narrativeContext)).toEqual([
+    "A historical mystery in the harbour of Capri in 1535.",
+    "A historical mystery in the harbour of Capri in 1535.",
+    "A scientific mystery on Mars in 2248.",
+    "A scientific mystery on Mars in 2248.",
+  ]);
+  expect(new Set(dialogueRequests.map(({ sessionId }) => sessionId)).size).toBe(2);
 });
 
 test("browser startup distinguishes a rejected connection without exposing server details", async ({

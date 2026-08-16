@@ -6,6 +6,12 @@ import {
 } from "../../src/index";
 import { project } from "./knowledge-driven-dialogue";
 
+const secondProject = {
+  ...project,
+  identity: "dialogue-server-url-second-project",
+  narrativeContext: "A scientific mystery on Mars in 2248.",
+};
+
 declare global {
   interface Window {
     __dialogueUrlSessions?: readonly [GameSession, GameSession];
@@ -20,7 +26,7 @@ try {
       target: document.querySelector<HTMLElement>("#game-one")!,
       dialogueServerUrl: "/test-dialogue",
     }),
-    startGame(project, {
+    startGame(secondProject, {
       target: document.querySelector<HTMLElement>("#game-two")!,
       dialogueServerUrl: "/test-dialogue",
     }),

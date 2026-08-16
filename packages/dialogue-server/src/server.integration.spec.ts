@@ -100,6 +100,57 @@ test("a new Dialogue Server handler recovers a session's visible history", async
   }
 });
 
+test("one public Dialogue Server serves different Game Projects without sharing Character history", async () => {
+  const server = await createDialogueServer({
+    databaseUrl,
+    host: "127.0.0.1",
+    port: 0,
+    model: {
+      interpret: () => Promise.resolve({ factId: null, reason: "no-relevant-fact" }),
+      verbalize(request, history) {
+        return Promise.resolve(`${request.narrativeContext} [history:${history.length}]`);
+      },
+      reflect: () => Promise.resolve({ summary: "unused" }),
+    },
+  });
+  const capriSession = new HttpDialogueProvider({
+    endpoint: server.url,
+    sessionId: crypto.randomUUID(),
+  });
+  const marsSession = new HttpDialogueProvider({
+    endpoint: server.url,
+    sessionId: crypto.randomUUID(),
+  });
+
+  try {
+    assert.equal(await answer(
+      capriSession,
+      "antonio",
+      "What happened here?",
+      "capri-turn-1",
+      "A historical mystery in the harbour of Capri in 1535.",
+    ), "A historical mystery in the harbour of Capri in 1535. [history:0]");
+    assert.equal(await answer(
+      marsSession,
+      "antonio",
+      "What happened here?",
+      "mars-turn-1",
+      "A scientific mystery on Mars in 2248.",
+    ), "A scientific mystery on Mars in 2248. [history:0]");
+    assert.equal(await answer(
+      capriSession,
+      "antonio",
+      "What did I ask?",
+      "capri-turn-2",
+      "A historical mystery in the harbour of Capri in 1535.",
+    ), "A historical mystery in the harbour of Capri in 1535. [history:2]");
+  } finally {
+    await capriSession.reset();
+    await marsSession.reset();
+    await server.close();
+  }
+});
+
 test("the public Dialogue Server isolates sessions, Characters and dialogue modes", async () => {
   const server = await createDialogueServer({
     databaseUrl,
@@ -195,9 +246,10 @@ function answer(
   speaker: string,
   playerInput: string,
   turnId: string,
+  narrativeContext = "A historical mystery in the harbour of Capri in 1535.",
 ): Promise<string> {
   return provider.verbalize({
-    narrativeContext: "A historical mystery in the harbour of Capri in 1535.",
+    narrativeContext,
     playerInput,
     speaker,
     listener: "michele",
