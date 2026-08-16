@@ -64,10 +64,10 @@ morning through afternoon and golden hour to dusk, carrying the tone from
 workaday comedy into mystery.
 
 Michele alone demonstrates complete four-Facing Character presentation and
-directional movement. Raffaele and Brother Elia retain their current static
-artwork for simplicity and never perform movement that would expose an
-unsupported Facing. The new wounded sailor is a limited stationary Character
-with only the presentation needed by the final encounter. The Example uses
+directional movement. Every other Character uses exactly one static Runtime
+image with no Facing, movement, speaking or breathing variant. Raffaele and
+Brother Elia retain their current approved static image; the wounded sailor
+receives one newly produced static image for the final encounter. The Example uses
 authored dialogue for exact story and puzzle progress, Knowledge-Driven
 Dialogue for optional exploration, and Reflection for hints derived only from
 Michele's committed Character Knowledge.
@@ -190,14 +190,14 @@ Scenery and Objects are blocked around his actual near, middle and far
 silhouettes before finished art is generated.
 
 **Character production scope.** Michele retains his approved V3 visual design
-as the portrayal reference and receives production-ready four-Facing idle,
-walking, speaking, pick-up and mechanism-use Animations as required by the
-Sequences. Raffaele and Brother Elia retain their existing static artwork and
-remain stationary; no new directional or walking production is required for
-them. Their speaking presentation intentionally falls back to their Default
-Animation unless an existing speaking asset already passes. The wounded sailor
-is a new stationary Character with only the static or restrained breathing
-presentation required for the encounter.
+and the current approved V3 Runtime sprites; implementation must reuse those
+sprites without regenerating or creatively deriving replacements. They provide
+the production-ready four-Facing idle, walking, speaking, pick-up and
+mechanism-use Animations required by the Sequences. Every non-Michele Character
+remains stationary and has exactly one static Runtime image. Raffaele and
+Brother Elia retain their existing approved static image; the wounded sailor
+receives one new static image. None of them receives a separate Speaking Role,
+breathing Animation, directional presentation or walking production.
 
 **Daylight progression.** The harbour begins in clear morning light, the
 cloister uses early-afternoon light, the fortification moves into golden hour,
@@ -309,6 +309,14 @@ Runtime Assets, definition and exact-size diagnostic geometry artifact. Each
 Object or Character changed by this work ships its corresponding master,
 Runtime presentation, Visual Anchor and actual-size diagnostic. Art Masters are
 lossless; derived Runtime Assets never overwrite them.
+
+All production artwork for the prologue's Scenes and Backgrounds, Scenery and
+Objects is regenerated for this rebuild. Existing versions may be inspected as
+design or location reference, but are not reused as final production artwork.
+This regeneration rule does not override the explicit Character exceptions:
+Michele reuses his current approved V3 Runtime sprites, while every other
+Character is represented by exactly one static Runtime image; Raffaele and
+Brother Elia retain theirs and the wounded sailor's is newly produced.
 
 **Stateful artwork contract.** Every Appearance is designed in the full Scene
 composition before separation. Compatible states retain exact position,

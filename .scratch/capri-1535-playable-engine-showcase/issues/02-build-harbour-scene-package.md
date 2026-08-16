@@ -17,7 +17,7 @@ integrated.
 - [ ] Michele remains at native resolution at every reachable Perspective Scale and fits all routes and approaches.
 - [ ] Default-state Scenery is separated over complete clean plates with correct scale, Baselines, Visual Anchors, contact shadows and occlusion.
 - [ ] The winch visibly lacks its handle and the covering nets genuinely reserve the concealed-flask space.
-- [ ] Raffaele retains his current approved static presentation at a valid scale and placement.
+- [ ] Raffaele retains exactly one current approved static Runtime image at a valid scale and placement, with no presentation variants.
 - [ ] Every default-state Hotspot, approach, foreground overlap and Camera edge is valid and HUD-safe.
 - [ ] An isolated browser fixture renders and explores the whole Scene through the public packaged API.
 - [ ] The package builds without depending on the other three new Scene packages.

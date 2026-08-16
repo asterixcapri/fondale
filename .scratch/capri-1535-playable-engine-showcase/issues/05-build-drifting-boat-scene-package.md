@@ -14,7 +14,7 @@ before the canonical final encounter and bundle transfer are integrated.
 - [ ] The cramped vessel supports a clear connected route, valid approaches and native-resolution Michele without implausible deck scale.
 - [ ] Cut rigging, a forced chest, an abraded vessel name and blood form a readable environmental trail.
 - [ ] Every clue has a valid Hotspot and remains environmental storytelling rather than a blocking mechanical puzzle.
-- [ ] The wounded sailor is a stationary Character with scale-correct artwork and only the restrained presentation required by the encounter.
+- [ ] The wounded sailor is a stationary Character represented by exactly one newly produced scale-correct static Runtime image, with no presentation variants.
 - [ ] Foreground hull, rigging and shelter elements occlude Michele intentionally without navigation clipping.
 - [ ] The composition reserves the exact handoff position and framing required by the later bundle Sequence.
 - [ ] Dusk lighting remains part of the shared illustrated neo-retro language established by the other Scenes.

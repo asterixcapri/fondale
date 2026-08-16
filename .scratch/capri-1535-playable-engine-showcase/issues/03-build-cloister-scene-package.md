@@ -16,7 +16,7 @@ well at their correct scale before the letter and well puzzle are integrated.
 - [ ] Michele remains at native resolution throughout every reachable Perspective Scale.
 - [ ] The seized well's default Scenery is separated over a complete clean plate with stable scale, Baseline, Visual Anchor and contact.
 - [ ] The mounted handle and loaded rope visually explain why the handle cannot initially be removed.
-- [ ] Brother Elia retains his current approved static presentation at a valid scale and placement.
+- [ ] Brother Elia retains exactly one current approved static Runtime image at a valid scale and placement, with no presentation variants.
 - [ ] Every default-state Hotspot and approach is valid and the focal area remains readable beneath the HUD.
 - [ ] An isolated browser fixture renders and explores the whole Scene through the public packaged API.
 - [ ] The package builds without depending on the harbour, fortification or drifting-boat Scene packages.
