@@ -6,3 +6,4 @@ test/.artifacts
 .playwright-cli
 .release
 *-api-key.txt
+.env.local
