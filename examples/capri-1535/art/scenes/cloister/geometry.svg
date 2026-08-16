@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
+  <style>
+    text { font: 16px sans-serif; paint-order: stroke; stroke: #101522; stroke-width: 4px; fill: #fff; }
+    .minor { font-size: 13px; }
+    .point { fill: #fff; stroke: #101522; stroke-width: 3px; }
+  </style>
+  <image href="composition.png" width="1280" height="720" />
+
+  <polygon points="50,470 820,470 850,600 820,690 50,690"
+    fill="#2dd4bf" fill-opacity="0.24" stroke="#2dd4bf" stroke-width="4" />
+  <text x="305" y="665">Walkable Region</text>
+
+  <polygon points="0,0 150,0 150,440 260,440 310,560 260,610 0,610"
+    fill="#a78bfa" fill-opacity="0.2" stroke="#a78bfa" stroke-width="3" />
+  <line x1="0" y1="610" x2="310" y2="610" stroke="#a78bfa" stroke-width="3" />
+  <text x="16" y="218" class="minor">leftArcadeForeground · Baseline 610</text>
+
+  <rect x="875" y="270" width="295" height="360" fill="none" stroke="#ffb454" stroke-width="4" />
+  <polygon points="900,575 1145,575 1165,630 885,630" fill="#ffb454" fill-opacity="0.24"
+    stroke="#ffb454" stroke-width="3" />
+  <line x1="860" y1="630" x2="1185" y2="630" stroke="#ffb454" stroke-width="3" />
+  <circle cx="1022" cy="630" r="8" class="point" />
+  <text x="900" y="292">seizedWell visible bounds</text>
+  <text x="902" y="620" class="minor">footprint · Baseline 630 · position / anchor (1022,630)</text>
+
+  <rect x="752" y="394" width="75" height="226" fill="#8b5cf6" fill-opacity="0.2"
+    stroke="#8b5cf6" stroke-width="3" />
+  <text x="704" y="386">Brother Elia presented bounds · scale 0.918</text>
+
+  <rect x="875" y="270" width="295" height="360" fill="none" stroke="#ef4444"
+    stroke-width="3" stroke-dasharray="10 7" />
+  <rect x="750" y="394" width="78" height="228" fill="none" stroke="#ef4444"
+    stroke-width="3" stroke-dasharray="10 7" />
+  <text x="985" y="260">Hotspots</text>
+
+  <rect x="0" y="260" width="130" height="350" fill="#3b82f6" fill-opacity="0.2"
+    stroke="#3b82f6" stroke-width="4" />
+  <circle cx="145" cy="560" r="8" class="point" />
+  <text x="18" y="285">Passage</text>
+  <text x="18" y="305" class="minor">to harbour</text>
+  <text x="153" y="552" class="minor">approach (145,560)</text>
+
+  <circle cx="170" cy="610" r="10" fill="#60a5fa" stroke="#101522" stroke-width="3" />
+  <text x="180" y="607" class="minor">Entrances fromHarbour / fromTownSquare (170,610)</text>
+  <circle cx="680" cy="600" r="8" class="point" />
+  <text x="490" y="595" class="minor">Elia approach (680,600)</text>
+  <circle cx="850" cy="600" r="8" class="point" />
+  <text x="704" y="617" class="minor">well approach (850,600)</text>
+
+  <polyline points="170,610 420,480 620,570 790,675 850,600 680,600 145,560"
+    fill="none" stroke="#fff" stroke-width="3" stroke-dasharray="8 7" />
+
+  <g fill="#f8fafc" fill-opacity="0.25" stroke="#f8fafc" stroke-width="3">
+    <rect x="374" y="286" width="92" height="184" />
+    <rect x="574" y="350" width="92" height="220" />
+    <rect x="744" y="434" width="92" height="256" />
+  </g>
+  <text x="350" y="278" class="minor">Michele far · 0.72 · 184px cell</text>
+  <text x="535" y="342" class="minor">middle · 0.86 · 220px cell</text>
+  <text x="715" y="426" class="minor">near · 1.00 · 256px cell</text>
+
+  <rect x="0" y="0" width="1280" height="720" fill="none" stroke="#fff" stroke-width="4" />
+  <circle cx="40" cy="680" r="30" fill="none" stroke="#f472b6" stroke-width="3" stroke-dasharray="7 6" />
+  <circle cx="1240" cy="680" r="30" fill="none" stroke="#f472b6" stroke-width="3" stroke-dasharray="7 6" />
+  <text x="475" y="28">Cloister geometry · Scene Space 1280×720 · 1:1</text>
+  <text x="1010" y="705" class="minor">HUD-safe corner control</text>
+</svg>

@@ -5,15 +5,16 @@ import idleUrl from "./idle.png";
 
 export const brotherElia = ({
   initialScene: "cloister",
-  initialGroundPoint: { x: 405, y: 205 },
+  initialGroundPoint: { x: 790, y: 620 },
   initialFacing: "left",
   initialAppearance: "welcoming",
   appearances: {
     welcoming: {
       animations: {
-        idle: { sheets: { left: { image: idleUrl, frames: [{ x: 0, y: 0, width: 36, height: 82 }] }, right: { image: idleUrl, frames: [{ x: 0, y: 0, width: 36, height: 82 }] }, front: { image: idleUrl, frames: [{ x: 0, y: 0, width: 36, height: 82 }] }, back: { image: idleUrl, frames: [{ x: 0, y: 0, width: 36, height: 82 }] } }, timing: { framesPerSecond: 1, loop: true } },
+        idle: { sheets: { left: { image: idleUrl, frames: [{ x: 0, y: 0, width: 256, height: 256 }] }, right: { image: idleUrl, frames: [{ x: 0, y: 0, width: 256, height: 256 }] }, front: { image: idleUrl, frames: [{ x: 0, y: 0, width: 256, height: 256 }] }, back: { image: idleUrl, frames: [{ x: 0, y: 0, width: 256, height: 256 }] } }, timing: { framesPerSecond: 1, loop: true } },
       },
       roles: { default: "idle" },
+      visualAnchor: { x: 128, y: 252 },
     },
   },
   movementSpeed: 60,

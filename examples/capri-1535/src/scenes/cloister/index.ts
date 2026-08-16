@@ -2,57 +2,104 @@ import { type NounDefinition, type SceneDefinition } from "@asterixcapri/fondale
 
 import { rectangle } from "../../geometry";
 import backgroundUrl from "./background.png";
+import seizedWellUrl from "./well-seized.png";
 
+const seizedWellNoun = ({
+  labels: [{ text: "Pozzo del chiostro" }],
+  preferredVerbs: [{ verb: "look-at" }],
+  secondaryVerbs: [{ verb: "pull" }],
+  cases: [{
+    verb: "look-at",
+    response: {
+      text: "La corda è in tensione, il secchio pesa e la carrucola non gira. La manovella è ancora montata sull'asse.",
+    },
+  }, {
+    verb: "pull",
+    response: {
+      text: "La carrucola è troppo secca. Tirare più forte tenderebbe soltanto la corda.",
+    },
+  }],
+} satisfies NounDefinition);
+
+/** The fixed 1280×720 afternoon stage; it imports no neighbouring Scene package. */
 export const cloister = ({
   background: backgroundUrl,
-  size: { width: 640, height: 240 },
-  walkableRegion: rectangle(8, 158, 632, 230),
-  perspectiveScale: [{ y: 158, scale: 0.72 }, { y: 230, scale: 0.96 }],
+  size: { width: 1280, height: 720 },
+  walkableRegion: [
+    { x: 50, y: 470 },
+    { x: 820, y: 470 },
+    { x: 850, y: 600 },
+    { x: 820, y: 690 },
+    { x: 50, y: 690 },
+  ],
+  perspectiveScale: [
+    { y: 470, scale: 0.72 },
+    { y: 570, scale: 0.86 },
+    { y: 690, scale: 1 },
+  ],
+  scenery: {
+    seizedWell: {
+      baseline: 630,
+      position: { x: 1022, y: 630 },
+      initialAppearance: "seized",
+      appearances: {
+        seized: {
+          animations: {
+            idle: {
+              sheet: {
+                image: seizedWellUrl,
+                frames: [{ x: 0, y: 0, width: 295, height: 360 }],
+              },
+              timing: { framesPerSecond: 1, loop: true },
+            },
+          },
+          roles: { default: "idle" },
+          visualAnchor: { x: 147, y: 360 },
+        },
+      },
+      noun: seizedWellNoun,
+    },
+    leftArcadeForeground: {
+      baseline: 610,
+      initialAppearance: "default",
+      appearances: {
+        default: {
+          kind: "background-region",
+          area: [
+            { x: 0, y: 0 },
+            { x: 150, y: 0 },
+            { x: 150, y: 440 },
+            { x: 260, y: 440 },
+            { x: 310, y: 560 },
+            { x: 260, y: 610 },
+            { x: 0, y: 610 },
+          ],
+        },
+      },
+    },
+  },
   hotspots: [{
     target: { kind: "character", character: "brotherElia" },
-    area: rectangle(382, 148, 430, 224),
-    approach: { groundPoint: { x: 365, y: 208 }, facing: "right" },
+    area: rectangle(750, 394, 828, 622),
+    approach: { groundPoint: { x: 680, y: 600 }, facing: "right" },
   }, {
-    target: { kind: "object", object: "winchHandle" },
-    area: rectangle(548, 176, 598, 228),
-    approach: { groundPoint: { x: 530, y: 210 }, facing: "right" },
-  }, {
-    target: { kind: "background" },
-    area: rectangle(505, 118, 548, 230),
-    approach: { groundPoint: { x: 505, y: 210 }, facing: "right" },
-    noun: ({
-      labels: [{ text: "Pozzo del chiostro" }],
-      preferredVerbs: [{ verb: "look-at" }],
-      cases: [{
-        verb: "look-at",
-        when: { variable: "wellFreed", equals: true },
-        response: { text: "La carrucola gira di nuovo. Persino frate Elia sembra moderatamente soddisfatto." },
-      }, {
-        verb: "look-at",
-        response: { text: "La carrucola è secca e il secchio trattiene la manovella presa a Raffaele." },
-      }, {
-        verb: "use",
-        firstNoun: "oilFlask",
-        response: { text: "L'olio libera la carrucola. Il secchio risale e la manovella può essere tolta." },
-        operations: [
-          { type: "set-variable", variable: "wellFreed", value: true },
-          { type: "consume-selected-object" },
-        ],
-      }],
-    } satisfies NounDefinition),
+    target: { kind: "scenery", scenery: "seizedWell" },
+    area: rectangle(875, 270, 1170, 630),
+    approach: { groundPoint: { x: 850, y: 600 }, facing: "right" },
   }],
   entrances: {
-    fromTownSquare: { groundPoint: { x: 58, y: 208 }, facing: "right" },
+    fromHarbour: { groundPoint: { x: 170, y: 610 }, facing: "right" },
+    fromTownSquare: { groundPoint: { x: 170, y: 610 }, facing: "right" },
   },
   passages: [{
-    area: rectangle(0, 78, 180, 228),
-    approach: { groundPoint: { x: 160, y: 208 }, facing: "left" },
+    area: rectangle(0, 260, 130, 610),
+    approach: { groundPoint: { x: 145, y: 560 }, facing: "left" },
     noun: ({
-      labels: [{ text: "Uscita verso la piazza" }],
+      labels: [{ text: "Passaggio verso il porto" }],
       preferredVerbs: [{ verb: "walk-to" }],
       cases: [],
     } satisfies NounDefinition),
     direction: "left",
-    destination: { scene: "townSquare", entrance: "fromCloister" },
+    destination: { scene: "harbour", entrance: "fromCloister" },
   }],
 } satisfies SceneDefinition);

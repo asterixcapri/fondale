@@ -1,18 +1,8 @@
-import { test, type Page } from "@playwright/test";
+import { test } from "@playwright/test";
 
-import { expect, openGame, shoot } from "./harness";
+import { clickSceneSpace, expect, openGame, shoot } from "./harness";
 
 test.setTimeout(90_000);
-
-async function clickSceneSpace(page: Page, x: number, y: number): Promise<void> {
-  const canvas = page.locator("[data-fondale-frame] canvas");
-  const bounds = await canvas.boundingBox();
-  if (!bounds) throw new Error("Fondale canvas is not visible");
-  await page.mouse.click(
-    bounds.x + (x / 1280) * bounds.width,
-    bounds.y + (y / 720) * bounds.height,
-  );
-}
 
 test("Michele walks and turns through four authored Facings at the project Logical Resolution", async ({
   page,
@@ -52,7 +42,7 @@ test("Michele walks and turns through four authored Facings at the project Logic
     ["back", 200, 400],
     ["front", 310, 680],
   ] as const) {
-    await clickSceneSpace(page, x, y);
+    await clickSceneSpace(page, x, y, { width: 1280, height: 720 });
     await page.waitForTimeout(250);
     const presentation = await canvas.screenshot();
     expect(presentations.some((candidate) => candidate.equals(presentation))).toBe(false);

@@ -4,6 +4,11 @@ import { installDialogueServerStub } from "./dialogue-server-stub";
 
 export const SHOTS_DIR = "test/shots";
 
+interface SceneSpaceSize {
+  readonly width: number;
+  readonly height: number;
+}
+
 /**
  * Opens the game and waits for a drawn frame.
  *
@@ -34,20 +39,46 @@ export async function openGame(
   return { errors, dialogueRequests };
 }
 
-/** Clicks one logical Scene Space point through the visible canvas. */
-export async function clickWorld(page: Page, x: number, y: number): Promise<void> {
+/** Clicks one point through a canvas whose Scene Space matches the given Size. */
+export async function clickSceneSpace(
+  page: Page,
+  x: number,
+  y: number,
+  size: SceneSpaceSize,
+): Promise<void> {
   const canvas = page.locator("[data-fondale-frame] canvas");
   const box = await canvas.boundingBox();
   if (!box) throw new Error("Fondale canvas is not visible");
-  await page.mouse.click(box.x + (x / 426) * box.width, box.y + (y / 240) * box.height);
+  await page.mouse.click(
+    box.x + (x / size.width) * box.width,
+    box.y + (y / size.height) * box.height,
+  );
+}
+
+/** Hovers one point through a canvas whose Scene Space matches the given Size. */
+export async function hoverSceneSpace(
+  page: Page,
+  x: number,
+  y: number,
+  size: SceneSpaceSize,
+): Promise<void> {
+  const canvas = page.locator("[data-fondale-frame] canvas");
+  const box = await canvas.boundingBox();
+  if (!box) throw new Error("Fondale canvas is not visible");
+  await page.mouse.move(
+    box.x + (x / size.width) * box.width,
+    box.y + (y / size.height) * box.height,
+  );
+}
+
+/** Clicks one logical Scene Space point through the visible canvas. */
+export async function clickWorld(page: Page, x: number, y: number): Promise<void> {
+  await clickSceneSpace(page, x, y, { width: 426, height: 240 });
 }
 
 /** Hovers one logical Scene Space point through the visible canvas. */
 export async function hoverWorld(page: Page, x: number, y: number): Promise<void> {
-  const canvas = page.locator("[data-fondale-frame] canvas");
-  const box = await canvas.boundingBox();
-  if (!box) throw new Error("Fondale canvas is not visible");
-  await page.mouse.move(box.x + (x / 426) * box.width, box.y + (y / 240) * box.height);
+  await hoverSceneSpace(page, x, y, { width: 426, height: 240 });
 }
 
 /** Reloads the browser and continues the automatically persisted Game Session. */
