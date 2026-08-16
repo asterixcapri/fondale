@@ -4,11 +4,9 @@ import { michele } from "./characters/michele";
 import { raffaele } from "./characters/raffaele";
 import { capriHudTheme, italianCommandFallbacks, italianCommandLexicon } from "./hud";
 import { narrativeFacts } from "./narrative-facts";
-import { winchHandle } from "./objects/winch-handle";
 import { harbour } from "./scenes/harbour";
 import { raffaeleSmallTalk } from "./sequences/raffaele-small-talk";
 import { raffaeleConversation } from "./sequences/raffaele-conversation";
-import { winchInstallation } from "./sequences/winch-installation";
 import { variables } from "./variables";
 
 export const project = ({
@@ -22,11 +20,9 @@ export const project = ({
   characters: { michele, raffaele },
   playerCharacter: "michele",
   narrativeFacts,
-  objects: { winchHandle },
   sequences: {
     raffaeleConversation,
     raffaeleSmallTalk,
-    winchInstallation,
   },
   commandLexicon: italianCommandLexicon,
   commandFallbacks: italianCommandFallbacks,

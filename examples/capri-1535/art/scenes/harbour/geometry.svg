@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="720" viewBox="0 0 1920 720">
+  <style>
+    text { font: 15px sans-serif; paint-order: stroke; stroke: #101018; stroke-width: 3px; fill: #fff; }
+    .walk { fill: #43d17b44; stroke: #43d17b; stroke-width: 4; }
+    .hotspot { fill: #ffcc3340; stroke: #ffcc33; stroke-width: 3; }
+    .bounds { fill: none; stroke: #ff5aa5; stroke-width: 3; }
+    .footprint { fill: #ff5aa550; stroke: #ff5aa5; stroke-width: 3; }
+    .guide { stroke: #65cfff; stroke-width: 3; stroke-dasharray: 10 8; }
+    .approach { fill: #fff; stroke: #24243a; stroke-width: 3; }
+    .entrance { fill: #bd75ff; stroke: #fff; stroke-width: 3; }
+    .silhouette { fill: #8ee8ff55; stroke: #8ee8ff; stroke-width: 3; }
+  </style>
+  <image href="composition.png" width="1920" height="720" opacity="0.62"/>
+
+  <polygon class="walk" points="90,470 470,420 900,400 1330,410 1810,470 1810,540 1450,540 1370,570 1210,590 90,650"/>
+  <text x="780" y="635">Walkable Region</text>
+
+  <line class="guide" x1="0" y1="400" x2="1920" y2="400"/><text x="12" y="394">Perspective 0.58 · Michele ≈145 px</text>
+  <line class="guide" x1="0" y1="520" x2="1920" y2="520"/><text x="12" y="514">Perspective 0.80 · Michele ≈199 px</text>
+  <line class="guide" x1="0" y1="650" x2="1920" y2="650"/><text x="12" y="644">Perspective 1.00 · Michele ≈249 px</text>
+  <rect class="silhouette" x="770" y="255" width="92" height="145"/><text x="770" y="245">far reference</text>
+  <rect class="silhouette" x="885" y="321" width="128" height="199"/><text x="885" y="311">middle reference</text>
+  <rect class="silhouette" x="1030" y="401" width="160" height="249"/><text x="1030" y="391">near reference</text>
+
+  <rect class="bounds" x="200" y="170" width="500" height="292"/><rect class="footprint" x="365" y="450" width="170" height="12"/>
+  <line class="guide" x1="200" y1="462" x2="700" y2="462"/><circle class="approach" cx="450" cy="462" r="7"/><text x="215" y="190">gozzo · anchor/position 450,462 · baseline 462</text>
+  <rect class="hotspot" x="200" y="170" width="500" height="292"/><circle class="approach" cx="720" cy="470" r="9"/><text x="704" y="493">approach 720,470 ←</text>
+
+  <rect class="bounds" x="1450" y="330" width="384" height="255"/><rect class="footprint" x="1490" y="565" width="304" height="20"/>
+  <line class="guide" x1="1450" y1="585" x2="1834" y2="585"/><circle class="approach" cx="1642" cy="585" r="7"/><text x="1458" y="350">winch · anchor/position 1642,585 · baseline 585</text>
+  <rect class="hotspot" x="1450" y="330" width="384" height="255"/><circle class="approach" cx="1370" cy="570" r="9"/><text x="1305" y="559">approach 1370,570 →</text>
+
+  <rect class="bounds" x="1250" y="435" width="440" height="178"/><rect class="footprint" x="1280" y="594" width="380" height="19"/>
+  <line class="guide" x1="1250" y1="613" x2="1690" y2="613"/><circle class="approach" cx="1470" cy="613" r="7"/><text x="1258" y="455">nets covering · anchor/position 1470,613 · baseline 613</text>
+  <ellipse cx="1470" cy="575" rx="18" ry="28" fill="#ff744966" stroke="#ff7449" stroke-width="3"/><text x="1494" y="574">concealed oil-flask reserve · 1470,575</text>
+  <rect class="hotspot" x="1250" y="435" width="440" height="178"/><circle class="approach" cx="1210" cy="590" r="9"/><text x="1144" y="580">approach 1210,590 →</text>
+
+  <rect class="hotspot" x="1050" y="270" width="100" height="278"/><circle class="approach" cx="1000" cy="550" r="9"/><text x="1000" y="262">Raffaele static · ground 1100,548</text>
+  <rect class="hotspot" x="1180" y="350" width="210" height="150"/><circle class="approach" cx="1160" cy="510" r="9"/><text x="1180" y="342">work-area Hotspot</text>
+
+  <circle class="entrance" cx="150" cy="560" r="11"/><text x="165" y="555">initialQuay 150,560 →</text>
+  <circle class="entrance" cx="1760" cy="540" r="11"/><text x="1570" y="530">fromCloister 1760,540 ←</text>
+  <text x="18" y="700">Scene Space 1920×720 · origin 0,0 · Runtime Background and diagnostic are 1:1</text>
+</svg>

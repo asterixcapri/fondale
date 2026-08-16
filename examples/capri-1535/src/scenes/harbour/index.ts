@@ -1,113 +1,120 @@
-import { type NounDefinition, type SceneDefinition, uniformGrid } from "@asterixcapri/fondale";
+import { type NounDefinition, type SceneDefinition } from "@asterixcapri/fondale";
 
 import { rectangle } from "../../geometry";
 import backgroundUrl from "./background.png";
-import harbourBoatRockingUrl from "./harbour-boat-rocking.png";
-import winchWithHandleUrl from "./winch-with-handle.png";
-import winchWithoutHandleUrl from "./winch-without-handle.png";
+import gozzoUrl from "./gozzo.png";
+import netsCoveringUrl from "./nets-covering.png";
+import winchMissingHandleUrl from "./winch-missing-handle.png";
+
+const staticAnimation = (image: string, width: number, height: number) => ({
+  animations: {
+    idle: {
+      sheet: { image, frames: [{ x: 0, y: 0, width, height }] },
+      timing: { framesPerSecond: 1, loop: true },
+    },
+  },
+  roles: { default: "idle" },
+});
 
 export const harbour = ({
   background: backgroundUrl,
   size: { width: 1920, height: 720 },
   walkableRegion: [
-    { x: 24, y: 438 },
-    { x: 250, y: 402 },
-    { x: 500, y: 377 },
-    { x: 790, y: 392 },
-    { x: 1080, y: 407 },
-    { x: 1370, y: 390 },
-    { x: 1450, y: 420 },
-    { x: 1450, y: 690 },
-    { x: 30, y: 690 },
+    { x: 90, y: 470 },
+    { x: 470, y: 420 },
+    { x: 900, y: 400 },
+    { x: 1330, y: 410 },
+    { x: 1810, y: 470 },
+    { x: 1810, y: 540 },
+    { x: 1450, y: 540 },
+    { x: 1370, y: 570 },
+    { x: 1210, y: 590 },
+    { x: 90, y: 650 },
   ],
   perspectiveScale: [
-    { y: 410, scale: 0.7 },
-    { y: 535, scale: 1 },
-    { y: 645, scale: 1 },
+    { y: 400, scale: 0.58 },
+    { y: 520, scale: 0.8 },
+    { y: 650, scale: 1 },
   ],
   scenery: {
-    harbourBoat: {
-      baseline: 390,
-      position: { x: 480, y: 390 },
+    gozzo: {
+      baseline: 462,
+      position: { x: 450, y: 462 },
       initialAppearance: "moored",
       appearances: {
         moored: {
-          animations: {
-            idle: { sheet: { image: harbourBoatRockingUrl, frames: uniformGrid({ frameWidth: 520, frameHeight: 241, columns: 8, count: 8 }) }, timing: { framesPerSecond: 1.5, loop: true } },
-          },
-          roles: { default: "idle" },
-          visualAnchor: { x: 260, y: 238 },
+          ...staticAnimation(gozzoUrl, 500, 292),
+          visualAnchor: { x: 250, y: 292 },
         },
       },
       noun: ({
-        labels: [{ text: "Barca ormeggiata" }],
+        labels: [{ text: "Gozzo di Raffaele" }],
         preferredVerbs: [{ verb: "look-at" }],
         cases: [{
           verb: "look-at",
-          response: { text: "Una barca da lavoro, legata stretta al molo." },
+          response: { text: "Il gozzo di Raffaele è pronto per una mattina di lavoro." },
         }],
       } satisfies NounDefinition),
     },
     winch: {
-      baseline: 505,
-      position: { x: 1630, y: 505 },
-      initialAppearance: "withoutHandle",
+      baseline: 585,
+      position: { x: 1642, y: 585 },
+      initialAppearance: "missingHandle",
       appearances: {
-        withoutHandle: {
-          animations: {
-            idle: { sheet: { image: winchWithoutHandleUrl, frames: [{ x: 0, y: 0, width: 240, height: 164 }] }, timing: { framesPerSecond: 1, loop: true } },
-            engaging: { sheet: { image: winchWithoutHandleUrl, frames: [{ x: 0, y: 0, width: 240, height: 164 }] }, timing: { framesPerSecond: 1 } },
-          },
-          roles: { default: "idle" },
-          visualAnchor: { x: 120, y: 164 },
-        },
-        withHandle: {
-          animations: {
-            idle: { sheet: { image: winchWithHandleUrl, frames: [{ x: 0, y: 0, width: 240, height: 164 }] }, timing: { framesPerSecond: 1, loop: true } },
-            engaging: { sheet: { image: winchWithHandleUrl, frames: [{ x: 0, y: 0, width: 240, height: 164 }] }, timing: { framesPerSecond: 1 } },
-          },
-          roles: { default: "idle" },
-          visualAnchor: { x: 120, y: 164 },
+        missingHandle: {
+          ...staticAnimation(winchMissingHandleUrl, 384, 255),
+          visualAnchor: { x: 192, y: 255 },
         },
       },
       noun: ({
-        labels: [{ text: "Argano del porto" }],
+        labels: [{ text: "Argano senza manovella" }],
         preferredVerbs: [{ verb: "look-at" }],
         cases: [{
           verb: "look-at",
-          when: { variable: "boatReady", equals: true },
-          response: { text: "La manovella è al suo posto. L'argano può tornare a lavorare." },
-        }, {
+          response: { text: "Un argano robusto. Sul mozzo manca la manovella." },
+        }],
+      } satisfies NounDefinition),
+    },
+    fishingNets: {
+      baseline: 613,
+      position: { x: 1470, y: 613 },
+      initialAppearance: "covering",
+      appearances: {
+        covering: {
+          ...staticAnimation(netsCoveringUrl, 440, 178),
+          visualAnchor: { x: 220, y: 178 },
+        },
+      },
+      noun: ({
+        labels: [{ text: "Reti da pesca" }],
+        preferredVerbs: [{ verb: "look-at" }],
+        cases: [{
           verb: "look-at",
-          response: { text: "L'argano è robusto, ma senza manovella non può girare." },
-        }, {
-          verb: "use",
-          firstNoun: "winchHandle",
-          sequence: "winchInstallation",
+          response: { text: "Reti pesanti, ammucchiate davanti all'argano." },
         }],
       } satisfies NounDefinition),
     },
     leftForeground: {
-      baseline: 716,
+      baseline: 715,
       initialAppearance: "default",
       appearances: {
         default: {
           kind: "background-region",
-          area: [{ x: 0, y: 438 }, { x: 90, y: 426 }, { x: 210, y: 720 }, { x: 0, y: 720 }],
+          area: [{ x: 0, y: 560 }, { x: 110, y: 520 }, { x: 210, y: 720 }, { x: 0, y: 720 }],
         },
       },
     },
     rightForeground: {
-      baseline: 716,
+      baseline: 715,
       initialAppearance: "default",
       appearances: {
         default: {
           kind: "background-region",
           area: [
-            { x: 1800, y: 432 },
-            { x: 1920, y: 440 },
+            { x: 1810, y: 500 },
+            { x: 1920, y: 475 },
             { x: 1920, y: 720 },
-            { x: 1740, y: 720 },
+            { x: 1760, y: 720 },
           ],
         },
       },
@@ -115,19 +122,35 @@ export const harbour = ({
   },
   hotspots: [{
     target: { kind: "character", character: "raffaele" },
-    area: rectangle(1008, 240, 1112, 540),
-    approach: { groundPoint: { x: 1000, y: 535 }, facing: "right" },
+    area: rectangle(1050, 270, 1150, 548),
+    approach: { groundPoint: { x: 1000, y: 550 }, facing: "right" },
   }, {
-    target: { kind: "object", object: "winchHandle" },
-    area: rectangle(890, 540, 950, 610),
-    approach: { groundPoint: { x: 860, y: 585 }, facing: "right" },
-  }, {
-    target: { kind: "scenery", scenery: "harbourBoat" },
-    area: rectangle(220, 155, 740, 390),
-    approach: { groundPoint: { x: 720, y: 425 }, facing: "back" },
+    target: { kind: "scenery", scenery: "gozzo" },
+    area: rectangle(200, 170, 700, 462),
+    approach: { groundPoint: { x: 720, y: 470 }, facing: "left" },
   }, {
     target: { kind: "scenery", scenery: "winch" },
-    area: rectangle(1510, 341, 1750, 505),
-    approach: { groundPoint: { x: 1390, y: 525 }, facing: "right" },
+    area: rectangle(1450, 330, 1834, 585),
+    approach: { groundPoint: { x: 1370, y: 570 }, facing: "right" },
+  }, {
+    target: { kind: "scenery", scenery: "fishingNets" },
+    area: rectangle(1250, 435, 1690, 613),
+    approach: { groundPoint: { x: 1210, y: 590 }, facing: "right" },
+  }, {
+    target: { kind: "background" },
+    area: rectangle(1180, 350, 1390, 500),
+    approach: { groundPoint: { x: 1160, y: 510 }, facing: "right" },
+    noun: ({
+      labels: [{ text: "Zona di lavoro" }],
+      preferredVerbs: [{ verb: "look-at" }],
+      cases: [{
+        verb: "look-at",
+        response: { text: "Ceste, corde e attrezzi: il porto è già al lavoro." },
+      }],
+    } satisfies NounDefinition),
   }],
+  entrances: {
+    fromCloister: { groundPoint: { x: 1760, y: 540 }, facing: "left" },
+    initialQuay: { groundPoint: { x: 150, y: 560 }, facing: "right" },
+  },
 } satisfies SceneDefinition);
