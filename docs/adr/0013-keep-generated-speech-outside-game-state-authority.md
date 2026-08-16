@@ -12,8 +12,9 @@ Character Knowledge, Testimony, Relationship changes, and other narrative
 effects belong to Game State. Provider-owned transcripts, summaries, and
 context-window memory do not: they preserve conversational continuity without
 becoming canonical playthrough state or being duplicated in Save Snapshots.
-Loading a Save Snapshot resets every provider-owned Conversation instead of
-attempting to rewind or restore that non-canonical memory.
+The single automatic continuation state associates its latest Save Snapshot
+with the Dialogue Provider session identity, allowing a browser reload to
+recover that external memory without making it canonical.
 
 An Author may declare the Game Variable that learning a Narrative Fact sets.
 This extends the boundary rather than breaching it: the Engine, not generated

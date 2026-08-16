@@ -112,6 +112,11 @@ An Author-declared language profile governing how authorised content is phrased
 without changing what the Character communicates.
 _Avoid_: Personality, Dialogue Behavior, Response Strategy, Character Knowledge
 
+**Narrative Context**:
+A brief Author-written description of the Game Project's overall fictional
+setting that guides generated phrasing without authorising Narrative Facts.
+_Avoid_: Game State, Scene, Biography, prompt authority
+
 **Response Strategy**:
 The Engine-authorised conversational approach for one Dialogue Turn, such as
 answering, withholding part of an answer, evading, refusing, or expressing an
@@ -124,9 +129,10 @@ An Author-selected integration that interprets the Player's free-form language
 and verbalises an Engine-authorised response with enough Conversation context
 for continuity, without gaining authority over Narrative Facts or Game State.
 It owns non-canonical agent memory concerns such as transcripts, context-window
-management, and summaries, clears that memory when Fondale loads a Save
-Snapshot, and is ordinarily selected through a separately run Dialogue Server
-URL while tests and advanced hosts may supply a low-level implementation.
+management, and summaries; a Continuation State retains the identity needed to
+recover that external memory. It is ordinarily selected through a separately
+run Dialogue Server URL, while tests and advanced hosts may supply a low-level
+implementation.
 _Avoid_: LLM, OpenAI client, Engine service, narrative authority
 
 **Dialogue Turn**:
@@ -137,9 +143,9 @@ response uses the same Line presentation. The turn either completes atomically
 with Game Operations for only the Narrative Facts or Claims that the Engine
 selected for communication before verbalisation, or fails without changing
 Game State. While pending it blocks another turn but remains cancellable;
-leaving the Conversation, saving, loading, or stopping invalidates it and any
-late provider result is ignored. Player text is length-bounded untrusted speech
-and never a provider or Engine instruction.
+leaving the Conversation, starting a new game, or stopping invalidates it and
+any late provider result is ignored. Player text is length-bounded untrusted
+speech and never a provider or Engine instruction.
 _Avoid_: Prompt, request, Line, partial state update
 
 **Conversation**:
@@ -155,8 +161,8 @@ Activity and closes or resumes the Conversation when it completes; free-form
 input is not presented while it plays. An authored alternative may be consumed
 by the selection that asks it, and is then never offered again; which
 alternatives were consumed is canonical Game State. Its provider-owned
-transcript and context memory are not Game State and reset when a Save Snapshot
-is loaded.
+transcript and context memory are not Game State; a Continuation State retains
+their external identity across browser reloads.
 _Avoid_: Sequence, dialogue tree, arbitrary input prompt, Save Snapshot transcript
 
 **Reflection**:
@@ -276,10 +282,11 @@ A JSON-safe representation of one committed Game State, identified by its Game
 Project and compatibility versions and suitable for exact restoration.
 _Avoid_: Save slot, storage record, event log
 
-**Save Slot**:
-A Player-named browser record that owns one Save Snapshot together with the
-name, date, and Scene metadata needed to find, manage, and restore it.
-_Avoid_: Save Snapshot, checkpoint, autosave
+**Continuation State**:
+The single locally retained record that pairs a Game Project's latest Save
+Snapshot with the Dialogue Provider memory identity needed to continue after a
+browser reload; starting a new game replaces it.
+_Avoid_: Save Slot, manual save, checkpoint history
 
 **Command State**:
 The selected Verb and optional first Noun of a Command being constructed. It is
