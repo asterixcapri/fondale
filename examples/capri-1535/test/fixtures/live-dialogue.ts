@@ -1,4 +1,5 @@
 import {
+  HttpDialogueProvider,
   startGame,
   type CharacterDefinition,
   type GameProject,
@@ -10,7 +11,6 @@ import antonioUrl from "../../src/characters/raffaele/idle.png";
 import micheleUrl from "../../src/characters/brother-elia/idle.png";
 import backgroundUrl from "../../src/scenes/harbour/background.png";
 import { capriHudTheme, italianCommandFallbacks, italianCommandLexicon } from "../../src/hud";
-import { HttpDialogueProvider } from "../../src/http-dialogue-provider";
 import { logicalBackground } from "./logical-background";
 
 /**

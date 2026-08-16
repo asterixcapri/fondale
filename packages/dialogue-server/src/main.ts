@@ -1,9 +1,10 @@
-import { readAdapterConfiguration } from "./configuration";
-import { createDialogueAdapterServer } from "./http-server";
-import { createLiveDialogueModelFromEnvironment } from "./live-dialogue-model";
-import { createDialogueProvider } from "./dialogue-provider";
+#!/usr/bin/env node
 
-const { databaseUrl, host, port } = readAdapterConfiguration(process.env);
+import { readDialogueServerConfiguration } from "./configuration.js";
+import { createLiveDialogueModelFromEnvironment } from "./live-dialogue-model.js";
+import { createDialogueServer } from "./server.js";
+
+const { databaseUrl, host, port, allowedOrigins } = readDialogueServerConfiguration(process.env);
 
 // Technical observations stay on the server console: latency, model and token
 // cost never travel to the browser and never enter Game State.
@@ -14,12 +15,12 @@ const model = createLiveDialogueModelFromEnvironment(process.env, (diagnostic) =
       `${diagnostic.cost === undefined ? "" : `, cost ${diagnostic.cost}`})`,
   );
 });
-const server = await createDialogueAdapterServer({
+const server = await createDialogueServer({
+  databaseUrl,
   host,
   port,
-  createProvider(sessionId) {
-    return createDialogueProvider({ databaseUrl, sessionId, model });
-  },
+  model,
+  ...(allowedOrigins ? { allowedOrigins } : {}),
 });
 
 console.log(`Fondale local Dialogue Provider listening at ${server.url}`);

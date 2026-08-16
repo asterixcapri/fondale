@@ -1,0 +1,47 @@
+{
+  "name": "@asterixcapri/fondale-dialogue-server",
+  "version": "0.4.0",
+  "description": "The Node.js Dialogue Provider server for Fondale games.",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "bin": {
+    "fondale-dialogue-server": "./dist/main.js"
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md"
+  ],
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "build": "vite build --config vite.config.ts && tsc -p tsconfig.build.json",
+    "verify": "npm run verify:unit",
+    "verify:unit": "node --import tsx --test src/configuration.spec.ts src/http-transport.spec.ts src/live-dialogue-model.spec.ts",
+    "verify:integration": "node --import tsx --test src/dialogue-provider.integration.spec.ts src/server.integration.spec.ts",
+    "prepack": "npm run build"
+  },
+  "dependencies": {
+    "@hono/node-server": "^2.1.0",
+    "@mastra/core": "^1.58.0",
+    "@mastra/memory": "^1.26.1",
+    "@mastra/pg": "^1.20.0",
+    "hono": "^4.13.1",
+    "zod": "^4.4.3"
+  },
+  "peerDependencies": {
+    "@asterixcapri/fondale": "0.4.0"
+  },
+  "devDependencies": {
+    "@asterixcapri/fondale": "file:../..",
+    "@types/node": "^22.20.1",
+    "tsx": "^4.23.12",
+    "typescript": "^5.9.3",
+    "vite": "^6.4.3"
+  }
+}

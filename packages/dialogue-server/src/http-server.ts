@@ -3,12 +3,12 @@ import { Hono, type Context } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { cors } from "hono/cors";
 
-import type { DialogueProvider, DialogueTurnContext } from "@asterixcapri/fondale";
-
 import type {
-  DialogueRequest,
-  DialogueResponse,
-} from "../../src/dialogue-protocol";
+  DialogueHttpRequest,
+  DialogueHttpResponse,
+  DialogueProvider,
+  DialogueTurnContext,
+} from "@asterixcapri/fondale";
 
 interface ClosableDialogueProvider extends DialogueProvider {
   close?: () => Promise<void>;
@@ -123,7 +123,7 @@ export async function createDialogueAdapterServer(options: {
 
 async function execute(
   provider: DialogueProvider,
-  body: DialogueRequest,
+  body: DialogueHttpRequest,
   signal: AbortSignal,
 ): Promise<unknown> {
   if (body.operation === "reset") return provider.reset();
@@ -150,7 +150,7 @@ function abandoned(context: Context): Response {
 function json(
   context: Context,
   status: ContentfulStatusCode,
-  body: DialogueResponse,
+  body: DialogueHttpResponse,
 ): Response {
   return context.json(body, status);
 }
@@ -161,7 +161,7 @@ async function readJson(request: Request): Promise<unknown> {
   return JSON.parse(raw) as unknown;
 }
 
-function isDialogueRequest(value: unknown): value is DialogueRequest {
+function isDialogueRequest(value: unknown): value is DialogueHttpRequest {
   if (typeof value !== "object" || value === null) return false;
   const candidate = value as Record<string, unknown>;
   if (typeof candidate.sessionId !== "string" || !candidate.sessionId.trim() ||

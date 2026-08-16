@@ -2,9 +2,9 @@ import type {
   DialogueInterpretationRequest,
   DialogueVerbalizationRequest,
   ReflectionRequest,
-} from "@asterixcapri/fondale";
+} from "../capabilities/dialogue";
 
-export type DialogueRequest = {
+export type DialogueHttpRequest = {
   readonly sessionId: string;
 } & (
   | {
@@ -26,6 +26,6 @@ export type DialogueRequest = {
   | { readonly operation: "reset" }
 );
 
-export type DialogueResponse =
+export type DialogueHttpResponse =
   | { readonly ok: true; readonly value?: unknown }
   | { readonly ok: false; readonly error: string };

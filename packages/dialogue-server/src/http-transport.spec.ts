@@ -3,8 +3,8 @@ import { test } from "node:test";
 
 import type { DialogueProvider } from "@asterixcapri/fondale";
 
-import { HttpDialogueProvider } from "../../src/http-dialogue-provider";
-import { createDialogueAdapterServer } from "./http-server";
+import { HttpDialogueProvider } from "@asterixcapri/fondale";
+import { createDialogueAdapterServer } from "./http-server.js";
 
 test("the local transport forwards the Dialogue Provider contract to one Game Session", async () => {
   const calls: string[] = [];

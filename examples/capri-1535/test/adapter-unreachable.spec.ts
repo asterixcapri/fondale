@@ -19,7 +19,7 @@ test("the ordinary build explains an unreachable adapter without leaking configu
     timeout: 20_000,
   });
   await expect(error).toContainText("npm run dev:dialogue-adapter");
-  await expect(error).toContainText("compose.dialogue-adapter.yml");
+  await expect(error).toContainText("docker compose up -d");
 
   // Nothing is playable, and nothing of the server comes with the explanation.
   await expect(page.locator("[data-fondale-frame]")).toHaveCount(0);

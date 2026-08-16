@@ -6,9 +6,9 @@ import type {
   DialogueVerbalizationRequest,
   ReflectionRequest,
   ReflectionResponse,
-} from "@asterixcapri/fondale";
+} from "../capabilities/dialogue";
 
-import type { DialogueRequest, DialogueResponse } from "./dialogue-protocol";
+import type { DialogueHttpRequest, DialogueHttpResponse } from "./dialogue-http-protocol";
 
 export class HttpDialogueProvider implements DialogueProvider {
   private readonly endpoint: string;
@@ -59,7 +59,7 @@ export class HttpDialogueProvider implements DialogueProvider {
     return this.send({ operation: "reset", sessionId: this.sessionId });
   }
 
-  private async send<T>(body: DialogueRequest, signal?: AbortSignal): Promise<T> {
+  private async send<T>(body: DialogueHttpRequest, signal?: AbortSignal): Promise<T> {
     let response: Response;
     try {
       response = await fetch(this.endpoint, {
@@ -93,12 +93,12 @@ export class HttpDialogueProvider implements DialogueProvider {
         operation: "cancel",
         sessionId: this.sessionId,
         turnId,
-      } satisfies DialogueRequest),
+      } satisfies DialogueHttpRequest),
     }).catch(() => undefined);
   }
 }
 
-function isDialogueResponse(value: unknown): value is DialogueResponse {
+function isDialogueResponse(value: unknown): value is DialogueHttpResponse {
   if (typeof value !== "object" || value === null || !("ok" in value)) return false;
   if ((value as { readonly ok?: unknown }).ok === true) return true;
   return (value as { readonly ok?: unknown }).ok === false &&

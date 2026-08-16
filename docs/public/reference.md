@@ -168,6 +168,13 @@ adapter result. The fake's internal `resets` count is exposed through
 `resetCount()`, and `threadKeys()` exposes distinct Conversation and Reflection
 memory identities since the last reset.
 
+`HttpDialogueProvider` is the reusable browser adapter for a remote Dialogue
+Provider server. It sends one `DialogueHttpRequest` for
+interpretation, verbalisation, Reflection, cancellation, or reset and accepts
+only a `DialogueHttpResponse`; its `sessionId` isolates provider-owned memory
+and its request follows the Dialogue Turn's `AbortSignal`. Server credentials,
+model configuration and failure details never enter this adapter.
+
 The authored condition fields are `trustAtLeast`, `variable`, and `equals`.
 Conversation handoff fields are `handoffs` and `after`. Qualitative profile
 fields are `biography`, `personality`, `behavior`, `voice`,
@@ -333,6 +340,9 @@ identifies the capability or browser adapter responsible for the rule.
 | `ReflectionRelationship` | provider-visible directional Trust | `towards` Character and qualitative Trust | includes only the reflecting Character's outgoing Relationship | derived only from committed Relationship state | [Dialogue authoring](game-authoring.md) |
 | `Testimony` | canonical memory of a communicated Claim | speaker, listener and Claim ID | set-like and idempotent; stores no wording or truth | Save state validation | [Dialogue authoring](game-authoring.md) |
 | `DialogueProvider` | generated-dialogue adapter seam | interpret, verbalize, reflect, reset | supplied at startup; Engine creates no client; Load awaits reset | missing adapter is a startup diagnostic | [Dialogue authoring](game-authoring.md) |
+| `HttpDialogueProvider` | browser-to-server Dialogue Provider adapter | endpoint and Game Session identity | follows turn cancellation and sends no server credentials | malformed or failed HTTP responses reject the turn | [Dialogue authoring](game-authoring.md) |
+| `DialogueHttpRequest` | browser transport request | interpret, verbalize, reflect, cancel or reset | every turn operation carries session and transient turn identity | server rejects an invalid envelope | [Dialogue authoring](game-authoring.md) |
+| `DialogueHttpResponse` | browser transport response | success value or public failure message | server failure details remain private | malformed responses reject the turn | [Dialogue authoring](game-authoring.md) |
 | `FakeDialogueProvider` | deterministic Dialogue Provider adapter | interpretation, verbalization, reflection, pending/failure controls, thread keys and reset count | no external dependency, timing assumption or generated authority | missing configured mapping rejects the turn | [Dialogue authoring](game-authoring.md) |
 | `FakeDialoguePendingOutcome` | deterministic suspended fake response | pending discriminator, eventual value and optional cancellation behavior | released explicitly by transient turn ID | ordinary cancellation rejects unless the test requests a late result | [Dialogue authoring](game-authoring.md) |
 | `FakeDialogueFailureOutcome` | deterministic fake rejection | failure discriminator and message | rejects one configured provider phase | leaves canonical state unchanged | [Dialogue authoring](game-authoring.md) |

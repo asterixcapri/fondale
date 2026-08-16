@@ -9,8 +9,8 @@ import type {
   ReflectionResponse,
 } from "@asterixcapri/fondale";
 
-import { throwIfAborted } from "./cancellation";
-import type { DialogueModel, VisibleDialogueLine } from "./dialogue-model";
+import { throwIfAborted } from "./cancellation.js";
+import type { DialogueModel, VisibleDialogueLine } from "./dialogue-model.js";
 
 export interface AdapterDialogueProvider extends DialogueProvider {
   close(): Promise<void>;

@@ -17,6 +17,11 @@ previous alpha should start with the [0.4 migration guide](docs/public/migration
 Maintainers and new contributors can explore the complete capability-owned flow in
 the self-contained Italian [Engine architecture map](docs/engine-architecture.html).
 
+Games that route Knowledge-Driven Dialogue to a Node.js backend can install
+`@asterixcapri/fondale-dialogue-server`. It is developed in this repository but
+published separately so Mastra, PostgreSQL and HTTP-server dependencies never
+enter browser-only Fondale installations.
+
 ## Development
 
 ```sh
@@ -25,7 +30,14 @@ npm run build
 npm run verify
 ```
 
-`npm run build` produces and type-checks the package, then runs the
-documentation gate. `npm run verify` runs the deterministic and browser tests.
+`npm run build` produces and type-checks both packages, runs the Dialogue Server
+unit tests, then runs the documentation gate. `npm run verify` runs the
+deterministic and browser tests. PostgreSQL-backed server verification remains
+explicit:
+
+```sh
+DIALOGUE_ADAPTER_TEST_DATABASE_URL=postgresql://fondale:fondale@127.0.0.1:54329/fondale_dialogue \
+  npm run verify:dialogue-server:integration
+```
 
 Fondale is distributed under the [MIT License](LICENSE).

@@ -1,8 +1,8 @@
 import { Memory } from "@mastra/memory";
 import { PostgresStore } from "@mastra/pg";
 import { test, type Page } from "@playwright/test";
+import { dialogueResourceId } from "@asterixcapri/fondale-dialogue-server";
 
-import { dialogueResourceId } from "../server/dialogue-adapter/dialogue-provider";
 import { clickWorld, expect, openGame } from "./harness";
 
 /**

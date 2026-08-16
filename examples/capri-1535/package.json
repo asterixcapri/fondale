@@ -6,27 +6,24 @@
   "scripts": {
     "dev": "vite --force",
     "dev:acceptance": "vite --force --mode acceptance",
-    "dev:dialogue-adapter": "node --env-file-if-exists=.env.local --import tsx server/dialogue-adapter/main.ts",
+    "dev:dialogue-adapter": "node --env-file-if-exists=.env.local node_modules/@asterixcapri/fondale-dialogue-server/dist/main.js",
     "prototype:hud": "vite --force --mode prototype --port 5174",
     "typecheck": "tsc --noEmit",
     "verify:project": "node tools/verify-project.mjs",
     "build": "npm run typecheck && npm run verify:project && vite build",
     "preview": "vite preview",
     "verify": "playwright test",
-    "verify:dialogue-adapter": "node --import tsx --test \"server/dialogue-adapter/*.spec.ts\" \"src/*.spec.ts\"",
+    "verify:dialogue-adapter": "npm --prefix ../.. run verify:dialogue-server && npm --prefix ../.. run verify:dialogue-server:integration && node --import tsx --test \"src/*.spec.ts\"",
     "verify:dialogue-live": "playwright test --config playwright.live.config.ts"
   },
   "dependencies": {
     "@asterixcapri/fondale": "file:vendor/asterixcapri-fondale-0.4.0.tgz",
-    "@hono/node-server": "^2.1.0",
-    "@mastra/core": "^1.58.0",
-    "@mastra/memory": "^1.26.1",
-    "@mastra/pg": "^1.20.0",
-    "hono": "^4.13.1",
-    "zod": "^4.4.3"
+    "@asterixcapri/fondale-dialogue-server": "file:vendor/asterixcapri-fondale-dialogue-server-0.4.0.tgz"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",
+    "@mastra/memory": "^1.26.1",
+    "@mastra/pg": "^1.20.0",
     "@types/node": "^22.20.1",
     "tsx": "^4.23.12",
     "typescript": "^5.9.3",

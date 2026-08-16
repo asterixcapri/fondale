@@ -118,4 +118,9 @@ export {
   type GameSession,
   type StartGameOptions,
 } from "./browser/start-game";
+export { HttpDialogueProvider } from "./browser/http-dialogue-provider";
+export type {
+  DialogueHttpRequest,
+  DialogueHttpResponse,
+} from "./browser/dialogue-http-protocol";
 export { type SaveSnapshot } from "./capabilities/save";

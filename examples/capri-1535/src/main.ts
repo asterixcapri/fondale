@@ -1,7 +1,11 @@
-import { startGame, type DialogueProvider, type GameSession } from "@asterixcapri/fondale";
+import {
+  HttpDialogueProvider,
+  startGame,
+  type DialogueProvider,
+  type GameSession,
+} from "@asterixcapri/fondale";
 
 import { project } from "./game";
-import { HttpDialogueProvider } from "./http-dialogue-provider";
 
 const target = document.querySelector<HTMLElement>("#game")!;
 const restore = document.querySelector<HTMLButtonElement>("#restore")!;
@@ -11,7 +15,7 @@ const reflection = document.querySelector<HTMLButtonElement>("#reflection")!;
 const dialogueAdapterEndpoint = "http://127.0.0.1:4315/dialogue";
 const adapterUnreachableMessage = [
   `Il Dialogue Provider locale non risponde su ${dialogueAdapterEndpoint}.`,
-  "Avvia il database con `docker compose -f compose.dialogue-adapter.yml up -d`",
+  "Avvia il database con `docker compose up -d`",
   "e l'adattatore con `npm run dev:dialogue-adapter`, poi ricarica la pagina.",
 ].join(" ");
 

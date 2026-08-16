@@ -3,6 +3,7 @@ import { expect, test } from "@playwright/test";
 import * as Fondale from "../src/index";
 import {
   AuthoringError,
+  HttpDialogueProvider,
   startGame,
   uniformGrid,
   type AnimationDefinition,
@@ -18,6 +19,8 @@ import {
   type ClaimDefinition,
   type CommandLexicon,
   type DialogueProvider,
+  type DialogueHttpRequest,
+  type DialogueHttpResponse,
   type DialogueClaimCandidate,
   type DialogueBehaviorDefinition,
   type DialogueGameOperation,
@@ -86,6 +89,8 @@ const focusedTypes = {
   commandLexicon: null as unknown as CommandLexicon,
   direction: null as unknown as DirectionStep,
   dialogueProvider: null as unknown as DialogueProvider,
+  dialogueHttpRequest: null as unknown as DialogueHttpRequest,
+  dialogueHttpResponse: null as unknown as DialogueHttpResponse,
   dialogueClaim: null as unknown as DialogueClaimCandidate,
   dialogueBehavior: null as unknown as DialogueBehaviorDefinition,
   dialogueGameOperation: null as unknown as DialogueGameOperation,
@@ -139,6 +144,8 @@ test("the root API exposes declarative authoring types without legacy builders",
   expect(project.scenes.opening).toBe(scene);
   expect(uniformGrid({ frameWidth: 2, frameHeight: 3, columns: 1, count: 1 }))
     .toEqual([{ x: 0, y: 0, width: 2, height: 3 }]);
+  expect(new HttpDialogueProvider({ endpoint: "/dialogue", sessionId: "session" }))
+    .toBeInstanceOf(HttpDialogueProvider);
   for (const removed of [
     "defineGame",
     "defineCharacter",

@@ -11,7 +11,7 @@ first. From this directory:
 
 ```sh
 npm ci
-docker compose -f compose.dialogue-adapter.yml up -d
+docker compose up -d
 cp .env.local.example .env.local
 npm run dev:dialogue-adapter
 ```
@@ -39,6 +39,8 @@ artifact an external project consumes. To refresh it from the Fondale project:
 
 ```sh
 npm pack --pack-destination examples/capri-1535/vendor
+npm pack --workspace @asterixcapri/fondale-dialogue-server \
+  --pack-destination examples/capri-1535/vendor
 node examples/capri-1535/tools/sync-package-lock.mjs
 ```
 
@@ -72,15 +74,15 @@ question for Frate Elia.
 
 ## Local Dialogue Provider adapter
 
-The adapter runs as a separate Node.js TypeScript process and is part of what
-it takes to run the game. It implements Fondale's public `DialogueProvider`
-interface, uses Mastra Memory with `@mastra/pg`, and keeps PostgreSQL
-credentials outside the Vite bundle.
+The adapter runs as a separate Node.js process and is part of what it takes to
+run the game. The installable `@asterixcapri/fondale-dialogue-server` package
+implements Fondale's public `DialogueProvider` interface, uses Mastra Memory
+with `@mastra/pg`, and keeps PostgreSQL credentials outside the Vite bundle.
 
 Start a local PostgreSQL 16 instance (or supply any PostgreSQL 11+ database):
 
 ```sh
-docker compose -f compose.dialogue-adapter.yml up -d
+docker compose up -d
 cp .env.local.example .env.local
 npm run dev:dialogue-adapter
 ```
@@ -91,11 +93,10 @@ local Vite origins. `DATABASE_URL` and all other provider configuration are
 read only by Node; there are no `VITE_` credential variables and server
 failures are not returned verbatim to the browser.
 
-The default adapter has no model or network cost: it reads and speaks through
-the Example's own prologue tables in `src/prologue-knowledge.ts`, the same ones
-the acceptance build uses in the browser. It never returns a Narrative Fact
-outside the ones the Engine offered for that turn, and Reflection is composed
-from committed Character Knowledge over its PostgreSQL-backed visible history.
+The acceptance build still uses the Example's deterministic in-browser fake,
+so its standard verification has no model or network cost. The local server
+always uses its configured live model and stores only visible Conversation and
+Reflection history in PostgreSQL.
 
 Run the adapter verification independently from the standard suite:
 
@@ -112,21 +113,24 @@ configuration.
 Stop the local database while retaining its volume with:
 
 ```sh
-docker compose -f compose.dialogue-adapter.yml stop
+docker compose stop
 ```
 
 To discard only this adapter's local database volume as well, run
-`docker compose -f compose.dialogue-adapter.yml down --volumes`.
+`docker compose down --volumes`.
 
 ## Live model spike
 
 The adapter always answers through a real model, so it needs a
 `DIALOGUE_MODEL_API_KEY` in `.env.local`, which Git ignores. The initial model is `deepseek/deepseek-v4-flash-0731` reached through
 OpenRouter; a different compatible model needs only `DIALOGUE_MODEL_ID`, and a
-different vendor only `DIALOGUE_MODEL_PROVIDER_ID` and `DIALOGUE_MODEL_BASE_URL`
-on the server. Which vendor hosts the model is configuration, so changing it
-changes no code and no file name. The key is read by Node alone: it never
+different Mastra-supported vendor is selected by the vendor prefix in that
+same model identifier. Which vendor hosts the model is configuration, so
+changing it changes no code and no file name. The key is read by Node alone: it never
 reaches the browser, a diagnostic, an error message or the repository.
+`DIALOGUE_LANGUAGE` and `DIALOGUE_SETTING` provide the Game Project's
+presentation context without hardcoding Capri-specific material in the server
+package.
 
 Interpretation asks for a closed structured output restricted to the Narrative
 Facts the speaking Character actually knows, and Fondale independently rejects
@@ -143,7 +147,7 @@ The live verification is opt-in and stays outside `npm run build`,
 PostgreSQL, a model API key with credit, and the network:
 
 ```sh
-docker compose -f compose.dialogue-adapter.yml up -d
+docker compose up -d
 DIALOGUE_ADAPTER_TEST_DATABASE_URL=postgresql://fondale:fondale@127.0.0.1:54329/fondale_dialogue \
   npm run verify:dialogue-live
 ```

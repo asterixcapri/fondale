@@ -9,11 +9,11 @@ import type {
   ReflectionResponse,
 } from "@asterixcapri/fondale";
 
-import { throwIfAborted } from "./cancellation";
-import type { DialogueModel, VisibleDialogueLine } from "./dialogue-model";
+import { throwIfAborted } from "./cancellation.js";
+import type { DialogueModel, VisibleDialogueLine } from "./dialogue-model.js";
 import {
   createDialogueProvider,
-} from "./dialogue-provider";
+} from "./dialogue-provider.js";
 
 const databaseUrl = process.env.DIALOGUE_ADAPTER_TEST_DATABASE_URL;
 if (!databaseUrl) {
