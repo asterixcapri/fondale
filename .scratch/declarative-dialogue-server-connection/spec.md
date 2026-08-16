@@ -66,16 +66,16 @@ Character Knowledge, Disclosure and Game State remain in the game.
 owns authored content. No command silently crosses these ownership lines.
 
 **URL instead of Provider construction.** The high-level browser startup
-interface accepts a declaration shaped like `dialogueServer: { url }`. It owns
-construction of `HttpDialogueProvider`, a cryptographically random Game Session
-identity, the initial reset/reachability check and the provider passed to the
-existing Game Session implementation. A caller must not supply both a server
-URL and a low-level `dialogueProvider`; that is an environment diagnostic.
+interface accepts a Dialogue Server URL. It owns construction of the HTTP
+adapter, a cryptographically random Game Session identity, the initial
+reset/reachability check and the adapter passed to the existing Game Session
+implementation. A caller must not supply both a server URL and a low-level
+Dialogue Provider; that is an environment diagnostic.
 
-The low-level `dialogueProvider` option remains available for Engine tests,
-technical fixtures and custom hosts. `HttpDialogueProvider` may remain public
-as an advanced adapter, but ordinary Game Project startup and the Capri Example
-do not import it.
+The low-level Dialogue Provider injection remains available for Engine tests,
+technical fixtures and custom hosts. The HTTP adapter may remain public for
+advanced use, but ordinary Game Project startup and the Capri Example do not
+construct it.
 
 **The server does not load the game.** There is no project path, YAML loader,
 dynamic import or game registry in the Dialogue Server. Each Dialogue Turn
@@ -95,12 +95,12 @@ TypeScript entry point with server-side environment loading. Its production
 entry remains the built `fondale-dialogue-server` executable. Neither command
 invokes Docker Compose.
 
-**Test behavior belongs to tests.** Capri's local `FakeDialogueProvider` and
-scripted prologue interpretation/verbalisation move out of `src/`. The
-acceptance harness intercepts the Dialogue HTTP seam or starts a deterministic
-test-only transport. It answers the same protocol the real browser client
-uses, so the acceptance build exercises the production connection path without
-PostgreSQL or an LLM.
+**Test behavior belongs to tests.** Capri's local fake Dialogue Provider and
+scripted prologue interpretation/verbalisation move out of game runtime source.
+The acceptance harness intercepts the Dialogue HTTP seam or starts a
+deterministic test-only transport. It answers the same protocol the real
+browser client uses, so the acceptance build exercises the production
+connection path without PostgreSQL or an LLM.
 
 **No central multi-game tenancy yet.** A separately run server is not yet a
 multi-tenant hosted platform. Per-game authentication, quotas, registered
@@ -114,24 +114,26 @@ authorised turn material rather than the server loading a Game Project.
 
 ## Testing Decisions
 
-**Browser startup seam.** Add browser tests proving that a Game Project which
-requires generated dialogue starts from a declared server URL, reaches the
-HTTP protocol, uses an isolated session identity, follows cancellation and
+**Primary seam — browser startup.** Browser tests prove that a Game Project
+which requires generated dialogue starts from a declared server URL, reaches
+the HTTP protocol, uses an isolated session identity, follows cancellation and
 resets provider memory on restore. Supplying both a URL and a provider produces
 a precise environment diagnostic. A Game Project without a Dialogue Profile
-still starts without either.
+still starts without either. This is the highest seam that observes the
+Author-facing declaration, browser transport and Engine behavior together.
 
-**Dialogue Server package seam.** Existing unit and PostgreSQL integration
-tests continue to exercise the public `createDialogueServer` interface. Add a
-configuration/startup test where useful, but never make `npm run build` start
-Docker or require PostgreSQL. PostgreSQL-backed verification remains an
-explicit integration command.
+**Secondary seam — Dialogue Server package.** Existing unit and PostgreSQL
+integration tests continue to exercise the public server interface. Add a
+configuration/startup test where useful, but never make the standard build
+start Docker or require PostgreSQL. PostgreSQL-backed verification remains an
+explicit integration command. The existing public-server integration test is
+the prior art for this seam.
 
-**Example seam.** The separation gate proves that Capri `src/` contains no
-`DialogueProvider`, `HttpDialogueProvider`, server implementation, database
-client or model dependency. Standard Playwright acceptance intercepts HTTP and
-remains deterministic. The opt-in live suite continues to exercise the real
-server, PostgreSQL and model.
+**Separation seam — Capri Example.** The existing separation gate proves that
+Capri runtime source contains no Dialogue Provider, HTTP adapter, server
+implementation, database client or model dependency. Standard browser
+acceptance intercepts HTTP and remains deterministic. The opt-in live suite
+continues to exercise the real server, PostgreSQL and model.
 
 **Repository gates.** `npm run build`, isolated-port `npm run verify`, Dialogue
 Server unit tests, explicit PostgreSQL integration tests, Capri production
