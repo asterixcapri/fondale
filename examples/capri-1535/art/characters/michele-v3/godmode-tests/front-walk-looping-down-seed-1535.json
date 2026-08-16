@@ -1,0 +1,33 @@
+{
+  "provider": "GodmodeAI",
+  "requestId": "867b485b-5f50-4848-a780-1ee94f75aa22",
+  "actionId": "walking_looping",
+  "viewType": "isometric",
+  "direction": "Down",
+  "autoRepose": false,
+  "seed": 1535,
+  "input": "front-contact-input.webp",
+  "positivePrompt": "Front-view 2D adventure-game walk cycle. Michele walks in place directly toward the viewer, perfectly straight-on at camera elevation 0 degrees. Constant cadence and short even steps. Stable centered pelvis, restrained vertical motion and clear alternating foot plants. Preserve his exact face, proportions, clothes, pouch and coiled rope on his anatomical-left hip at image-right. Static level camera and seamless loop.",
+  "negativePrompt": "isometric camera, elevated camera, overhead view, camera tilt, three-quarter view, turning sideways, root translation, acceleration, deceleration, sliding feet, backward steps, running, marching, high knees, deep bounce, torso sway, equipment side swap, costume changes, extra limbs",
+  "video": {
+    "file": "front-walk-looping-down-seed-1535.mp4",
+    "width": 768,
+    "height": 448,
+    "fps": 16,
+    "frames": 28,
+    "durationSeconds": 1.75
+  },
+  "spriteSheet": {
+    "file": "front-walk-looping-down-seed-1535.png",
+    "width": 3072,
+    "height": 3136,
+    "columns": 4,
+    "frames": 28
+  },
+  "cycle": {
+    "method": "The complete 28-frame source is one cycle; no repeated prefix was removed.",
+    "fps": 16,
+    "frames": 28,
+    "durationSeconds": 1.75
+  }
+}

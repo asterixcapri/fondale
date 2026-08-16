@@ -1,0 +1,35 @@
+{
+  "provider": "GodmodeAI",
+  "requestId": "686e9329-8f26-4957-acde-6280cd57f886",
+  "actionId": "sidescrolling_walk_ffg",
+  "viewType": "side-scrolling",
+  "autoRepose": false,
+  "seed": 1535,
+  "input": "right-contact-input.webp",
+  "positivePrompt": "Side-view 2D game sprite walk cycle. Michele walks in place facing screen-right. Constant cadence and short even steps. Stable pelvis with restrained vertical motion. Feet plant cleanly without sliding. Natural arm swing close to the body. Preserve his exact face, proportions and clothes. Keep the pouch and coiled rope hidden on the far anatomical-left hip. Static camera and seamless loop.",
+  "negativePrompt": "turning, facing left, three-quarter view, camera motion, root translation, acceleration, deceleration, sliding feet, backward steps, running, marching, high knees, deep bounce, torso sway, visible pouch or rope on the near hip, costume changes, extra limbs",
+  "video": {
+    "file": "right-walk-v5-seed-1535.mp4",
+    "width": 768,
+    "height": 448,
+    "fps": 16,
+    "frames": 21,
+    "durationSeconds": 1.3125
+  },
+  "spriteSheet": {
+    "file": "right-walk-v5-seed-1535.png",
+    "width": 3072,
+    "height": 2688,
+    "columns": 4,
+    "frames": 21
+  },
+  "derivedCycle": {
+    "method": "Keep source frames 1 through 16; frames 17 through 21 repeat the beginning of the next cycle.",
+    "videoFile": "right-walk-v5-seed-1535-cycle16.mp4",
+    "spriteSheetFile": "right-walk-v5-seed-1535-cycle16.png",
+    "fps": 16,
+    "frames": 16,
+    "durationSeconds": 1,
+    "columns": 4
+  }
+}

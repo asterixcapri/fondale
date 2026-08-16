@@ -15,14 +15,6 @@ export const conversation = ({
               operations: [{ type: "set-variable", variable: "promiseMade", value: true }],
             },
             {
-              type: "direction",
-              directions: [{
-                type: "animation",
-                subject: { kind: "character", character: "michele" },
-                animation: "resolve",
-              }],
-            },
-            {
               type: "line",
               character: "michele",
               text: "La chiave dev'essere qui vicino.",
