@@ -8,7 +8,7 @@ fragment.
 
 **Blocked by:** 05 — Build the drifting-boat Scene package; 09 — Integrate the boat sighting.
 
-**Status:** ready-for-agent
+**Status:** claimed
 
 - [ ] The final Passage becomes available only after the boat-sighting outcome is committed.
 - [ ] Every environmental clue is inspectable and builds tension without blocking the sailor encounter.

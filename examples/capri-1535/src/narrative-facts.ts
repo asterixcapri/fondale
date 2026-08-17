@@ -34,4 +34,17 @@ export const narrativeFacts = ({
       "Dal belvedere, Michele ha visto una barca alla deriva avvicinarsi agli scogli.",
     setsVariable: "driftingBoatSeen",
   },
+  "sailor-sailed-with-micheles-father": {
+    proposition:
+      "Il marinaio ferito ha navigato con il padre di Michele e lo riconosce dal viso.",
+  },
+  "oilskin-bundle-received": {
+    proposition:
+      "Il marinaio ha affidato a Michele un fagotto di tela cerata prima di svenire.",
+  },
+  "bundle-holds-broken-seal": {
+    proposition:
+      "Nel fagotto ci sono il sigillo spezzato di una nave e un frammento di registro.",
+    setsVariable: "prologueComplete",
+  },
 } satisfies Readonly<Record<string, NarrativeFactDefinition>>);

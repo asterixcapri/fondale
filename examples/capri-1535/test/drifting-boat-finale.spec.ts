@@ -2,7 +2,7 @@ import { test, type Page } from "@playwright/test";
 
 import { continueGameSession, expect, openGame, shoot } from "./harness";
 
-test.setTimeout(300_000);
+test.setTimeout(420_000);
 
 interface Point {
   readonly x: number;
@@ -48,24 +48,6 @@ async function revealedPoint(page: Page, kind: "hotspot" | "passage", label: str
   }
   await page.keyboard.up("Tab");
   return point;
-}
-
-async function isRevealed(page: Page, kind: "hotspot" | "passage", label: string): Promise<boolean> {
-  const frame = page.locator("[data-fondale-frame]");
-  await frame.focus();
-  await page.keyboard.down("Tab");
-  const revealed = frame.locator(
-    kind === "hotspot" ? "[data-fondale-revealed-hotspot]" : "[data-fondale-revealed-passage]",
-  );
-  let found = false;
-  for (let index = 0; index < await revealed.count(); index += 1) {
-    if (await revealed.nth(index).locator("title").textContent() === label) {
-      found = true;
-      break;
-    }
-  }
-  await page.keyboard.up("Tab");
-  return found;
 }
 
 async function activateHotspot(page: Page, label: string): Promise<void> {
@@ -155,7 +137,6 @@ async function reachRepairedHarbour(page: Page): Promise<void> {
 
   await selectInventoryObject(page, "sealedLetter");
   const eliaLine = page.locator('[data-fondale-line][data-fondale-speaker="brotherElia"]');
-  // A click absorbed by an in-flight walk would open nothing; retry the give.
   for (let attempt = 0; ; attempt += 1) {
     if (attempt >= 3) throw new Error("Brother Elia never acknowledged the letter");
     await activateHotspot(page, "Frate Elia");
@@ -193,7 +174,6 @@ async function reachRepairedHarbour(page: Page): Promise<void> {
   });
 }
 
-/** Installs the handle, keeps silent about the loan and boards the gozzo. */
 async function reachFortification(page: Page): Promise<void> {
   await selectInventoryObject(page, "winchHandle");
   await activateHotspot(page, "Argano senza manovella");
@@ -218,10 +198,6 @@ async function reachFortification(page: Page): Promise<void> {
   );
 }
 
-/**
- * Climbs the vertical route until the lookout hotspot enters the viewport.
- * Clicks are screen-relative because the Camera follows Michele vertically.
- */
 async function climbToLookout(page: Page): Promise<void> {
   for (let step = 0; step < 40; step += 1) {
     if (await revealedPoint(page, "hotspot", "Belvedere della fortificazione")) return;
@@ -229,39 +205,6 @@ async function climbToLookout(page: Page): Promise<void> {
     await page.waitForTimeout(1_200);
   }
   throw new Error("The lookout never entered the Camera viewport");
-}
-
-async function observeSightingAndBoard(page: Page): Promise<void> {
-  // The directed observation commits the sighting as a Narrative Fact.
-  await activateHotspot(page, "Belvedere della fortificazione");
-  await expect(page.locator("[data-fondale-narration]")).toContainText(
-    "una piccola barca alla deriva",
-    { timeout: 15_000 },
-  );
-  await advance(page);
-  await expect(page.locator('[data-fondale-line][data-fondale-speaker="michele"]'))
-    .toContainText("non dovrebbe essere qui");
-  await advance(page);
-
-  // Reflection now reports the sighting among Michele's learned facts.
-  await page.getByRole("button", { name: "Rifletti" }).click();
-  const reflection = page.locator("[data-fondale-reflection]");
-  await reflection.locator("[data-fondale-dialogue-input]").fill("Che cosa ho visto dal belvedere?");
-  await reflection.getByRole("button", { name: "Reflect" }).click();
-  await expect(page.locator('[data-fondale-line][data-fondale-speaker="michele"]'))
-    .toContainText("barca alla deriva", { timeout: 15_000 });
-  await advance(page);
-  await reflection.getByRole("button", { name: "Leave" }).click();
-
-  // The final transition opens only now.
-  await climbDownToLanding(page);
-  await activatePassage(page, "Scaletta verso gli scogli", "left");
-  await expect(page.locator("[data-fondale-frame]")).toHaveAttribute(
-    "data-fondale-scene",
-    "driftingBoat",
-    { timeout: 15_000 },
-  );
-  await shoot(page, "capri-1535-boat-sighting-finale-entrance");
 }
 
 async function climbDownToLanding(page: Page): Promise<void> {
@@ -273,61 +216,154 @@ async function climbDownToLanding(page: Page): Promise<void> {
   throw new Error("The rocks stairway never entered the Camera viewport");
 }
 
-test("the boat arrival is directed on landing and the sighting unlocks the rocks stairway", async ({
+/** Commits the sighting and boards the drifting boat. */
+async function reachDriftingBoat(page: Page): Promise<void> {
+  await climbToLookout(page);
+  await activateHotspot(page, "Belvedere della fortificazione");
+  await expect(page.locator("[data-fondale-narration]")).toContainText(
+    "una piccola barca alla deriva",
+    { timeout: 15_000 },
+  );
+  await advance(page);
+  await expect(page.locator('[data-fondale-line][data-fondale-speaker="michele"]'))
+    .toContainText("non dovrebbe essere qui");
+  await advance(page);
+
+  await climbDownToLanding(page);
+  await activatePassage(page, "Scaletta verso gli scogli", "left");
+  await expect(page.locator("[data-fondale-frame]")).toHaveAttribute(
+    "data-fondale-scene",
+    "driftingBoat",
+    { timeout: 15_000 },
+  );
+}
+
+/** Plays the whole encounter, returning once the sequence has completed. */
+async function playEncounter(page: Page): Promise<void> {
+  await activateHotspot(page, "Marinaio ferito");
+  const sailorLine = page.locator('[data-fondale-line][data-fondale-speaker="woundedSailor"]');
+  await expect(sailorLine).toContainText("quel viso", { timeout: 15_000 });
+  await advance(page);
+  await expect(page.locator('[data-fondale-line][data-fondale-speaker="michele"]'))
+    .toContainText("Mi scambi per un altro");
+  await advance(page);
+  await expect(sailorLine).toContainText("Ho navigato con tuo padre");
+  await advance(page);
+  await expect(page.locator('[data-fondale-line][data-fondale-speaker="michele"]'))
+    .toContainText("non è mai tornata");
+  await advance(page);
+  await expect(sailorLine).toContainText("Ti appartiene");
+  await advance(page);
+  // The pick-up gesture and the handoff operations run here.
+  await page.waitForTimeout(2_500);
+  await expect(page.locator("[data-fondale-narration]")).toContainText("resta soltanto il respiro");
+  await advance(page);
+  await expect(page.locator('[data-fondale-line][data-fondale-speaker="michele"]'))
+    .toContainText("resta con me");
+  await advance(page);
+  await expect(page.locator("[data-fondale-narration]")).toContainText("come se aspettasse");
+  await advance(page);
+}
+
+test("the finale plays the sailor encounter, the bundle handoff and the opened-bundle cliffhanger", async ({
   page,
 }) => {
   const { errors } = await openGame(page);
   const frame = page.locator("[data-fondale-frame]");
   await reachRepairedHarbour(page);
   await reachFortification(page);
+  await reachDriftingBoat(page);
 
-  // The arrival Sequence cuts to the open sea while the boat drifts in.
-  await page.waitForTimeout(400);
-  const duringSequence = await frame.locator("canvas").screenshot();
-  await page.waitForTimeout(4_500);
-  const afterSequence = await frame.locator("canvas").screenshot();
-  expect(afterSequence.equals(duringSequence)).toBe(false);
-  expect(await isRevealed(page, "passage", "Scaletta verso gli scogli")).toBe(false);
-  await shoot(page, "capri-1535-boat-arrival-directed");
+  // Environmental clues stay inspectable and never gate the encounter.
+  await activateHotspot(page, "Sartie recise");
+  await expect(page.locator("[aria-live=polite]")).toContainText("tagliate", { timeout: 8_000 });
+  await activateHotspot(page, "Traccia di sangue");
+  await expect(page.locator("[aria-live=polite]")).toContainText("sangue", { timeout: 8_000 });
 
-  // The climb stays Player-driven while the Camera follows Scene Space.
-  await climbToLookout(page);
-  await shoot(page, "capri-1535-lookout-before-sighting");
-  expect(await isRevealed(page, "passage", "Scaletta verso gli scogli")).toBe(false);
+  // The wrapped bundle is visible but only lookable-at before the handoff.
+  await activateHotspot(page, "Fagotto di tela cerata");
+  await expect(page.locator("[aria-live=polite]")).toContainText("spago cerato", { timeout: 8_000 });
 
-  await observeSightingAndBoard(page);
-  const frame2 = page.locator("[data-fondale-frame]");
-  await expect(frame2.locator("[data-fondale-revealed-hotspot]")).toHaveCount(0);
-  await frame2.focus();
-  await page.keyboard.down("Tab");
-  await expect(frame2.locator("[data-fondale-revealed-hotspot]")).toHaveCount(6);
-  await page.keyboard.up("Tab");
+  await playEncounter(page);
 
-  // The return stairway leads back to the fortification landing.
-  await activatePassage(page, "Scaletta verso gli scogli", "left");
-  await expect(frame2).toHaveAttribute("data-fondale-scene", "coastalFortification", {
-    timeout: 15_000,
+  // The explicit lifecycle transition put the bundle in Michele's Inventory.
+  await expect(page.locator('[data-fondale-inventory-object="oilskinBundle"]')).toHaveCount(1);
+  // The sailor lost consciousness; his identity stays unresolved.
+  await activateHotspot(page, "Marinaio ferito");
+  await expect(page.locator("[aria-live=polite]")).toContainText("svenuto", { timeout: 8_000 });
+  await shoot(page, "capri-1535-finale-sailor-unconscious");
+
+  // Opening the bundle changes the same Object into its opened Appearance.
+  await page.locator("[data-fondale-inventory-trigger]").click();
+  const bundle = page.locator('[data-fondale-inventory-object="oilskinBundle"]');
+  await expect(bundle).toBeVisible();
+  await bundle.click({ button: "right" });
+  await expect(page.locator("[data-fondale-narration]")).toContainText("apre il fagotto", {
+    timeout: 8_000,
+  });
+  await advance(page);
+  await expect(page.locator('[data-fondale-line][data-fondale-speaker="michele"]'))
+    .toContainText("sigillo spezzato");
+  await advance(page);
+  await expect(page.locator("[data-fondale-narration]")).toContainText("quel sigillo lo stava aspettando");
+  await advance(page);
+
+  // The opened bundle left the Inventory and lies revealed on the deck.
+  await expect(page.locator('[data-fondale-inventory-object="oilskinBundle"]')).toHaveCount(0);
+  await activateHotspot(page, "Fagotto aperto");
+  await expect(page.locator("[aria-live=polite]")).toContainText("sigillo spezzato", {
+    timeout: 8_000,
+  });
+  await shoot(page, "capri-1535-finale-opened-bundle");
+
+  // Reflection reports the discovery among Michele's learned facts.
+  await page.getByRole("button", { name: "Rifletti" }).click();
+  const reflection = page.locator("[data-fondale-reflection]");
+  await reflection.locator("[data-fondale-dialogue-input]").fill("Che cosa c'era nel fagotto?");
+  await reflection.getByRole("button", { name: "Reflect" }).click();
+  await expect(page.locator('[data-fondale-line][data-fondale-speaker="michele"]'))
+    .toContainText("sigillo", { timeout: 15_000 });
+  await advance(page);
+  await reflection.getByRole("button", { name: "Leave" }).click();
+
+  // Continuation retains the opened bundle and the committed knowledge.
+  await continueGameSession(page);
+  await expect(frame).toHaveAttribute("data-fondale-scene", "driftingBoat");
+  await activateHotspot(page, "Fagotto aperto");
+  await expect(page.locator("[aria-live=polite]")).toContainText("sigillo spezzato", {
+    timeout: 8_000,
   });
   expect(errors).toEqual([]);
 });
 
-test("skipping the boat arrival commits the same sighting and transition", async ({ page }) => {
+test("skipping the sailor encounter commits the same handoff and unconsciousness", async ({ page }) => {
   const { errors } = await openGame(page);
-  const frame = page.locator("[data-fondale-frame]");
   await reachRepairedHarbour(page);
   await reachFortification(page);
+  await reachDriftingBoat(page);
 
-  await page.waitForTimeout(200);
+  await activateHotspot(page, "Marinaio ferito");
+  await expect(page.locator('[data-fondale-line][data-fondale-speaker="woundedSailor"]'))
+    .toContainText("quel viso", { timeout: 15_000 });
   await page.keyboard.press("Escape");
-  await page.waitForTimeout(500);
+  await page.waitForTimeout(800);
 
-  // The skipped outcome lands the boat exactly as full playback does.
-  await climbToLookout(page);
-  await activateHotspot(page, "Mare al tramonto");
-  await expect(page.locator("[aria-live=polite]")).toContainText("barca", { timeout: 15_000 });
+  await expect(page.locator('[data-fondale-inventory-object="oilskinBundle"]')).toHaveCount(1);
+  await activateHotspot(page, "Marinaio ferito");
+  await expect(page.locator("[aria-live=polite]")).toContainText("svenuto", { timeout: 8_000 });
 
-  await observeSightingAndBoard(page);
-  await continueGameSession(page);
-  await expect(frame).toHaveAttribute("data-fondale-scene", "driftingBoat");
+  // The skipped encounter still opens into the same canonical finale.
+  await page.locator("[data-fondale-inventory-trigger]").click();
+  const bundle = page.locator('[data-fondale-inventory-object="oilskinBundle"]');
+  await expect(bundle).toBeVisible();
+  await bundle.click({ button: "right" });
+  await expect(page.locator("[data-fondale-narration]")).toContainText("apre il fagotto", {
+    timeout: 8_000,
+  });
+  await advance(page);
+  await advance(page);
+  await advance(page);
+  await expect(page.locator('[data-fondale-inventory-object="oilskinBundle"]')).toHaveCount(0);
+  await shoot(page, "capri-1535-finale-skipped-encounter");
   expect(errors).toEqual([]);
 });

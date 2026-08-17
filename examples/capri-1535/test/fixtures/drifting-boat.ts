@@ -9,6 +9,7 @@ import { michele } from "../../src/characters/michele";
 import { woundedSailor } from "../../src/characters/wounded-sailor";
 import { italianCommandFallbacks, italianCommandLexicon } from "../../src/hud";
 import { rectangle } from "../../src/geometry";
+import { oilskinBundle } from "../../src/objects/oilskin-bundle";
 import { driftingBoat } from "../../src/scenes/drifting-boat";
 
 const fortificationStub = ({
@@ -46,6 +47,7 @@ const isolatedProject = ({
     woundedSailor,
   },
   playerCharacter: "michele",
+  objects: { oilskinBundle },
   commandLexicon: italianCommandLexicon,
   commandFallbacks: italianCommandFallbacks,
   initialScene: "coastalFortification",
