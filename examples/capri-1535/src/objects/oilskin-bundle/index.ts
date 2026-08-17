@@ -1,0 +1,80 @@
+import { type NounDefinition, type ObjectDefinition } from "@asterixcapri/fondale";
+
+import inventoryUrl from "./inventory.png";
+import openedUrl from "./scene-opened.png";
+import wrappedUrl from "./scene.png";
+
+/**
+ * The sailor's parting Object. It lies clutched near his hand until the
+ * encounter hands it to Michele; opening it changes the same Object into its
+ * opened Appearance, revealing the broken seal and registry fragment.
+ */
+export const oilskinBundle = ({
+  initialScene: "driftingBoat",
+  initialGroundPoint: { x: 950, y: 596 },
+  initialAppearance: "wrapped",
+  appearances: {
+    wrapped: {
+      animations: {
+        idle: {
+          sheet: { image: wrappedUrl, frames: [{ x: 0, y: 0, width: 56, height: 36 }] },
+          timing: { framesPerSecond: 1, loop: true },
+        },
+      },
+      roles: { default: "idle" },
+      visualAnchor: { x: 28, y: 36 },
+    },
+    opened: {
+      animations: {
+        idle: {
+          sheet: { image: openedUrl, frames: [{ x: 0, y: 0, width: 72, height: 44 }] },
+          timing: { framesPerSecond: 1, loop: true },
+        },
+      },
+      roles: { default: "idle" },
+      visualAnchor: { x: 36, y: 44 },
+    },
+  },
+  inventoryAppearance: inventoryUrl,
+  noun: ({
+    labels: [
+      { text: "Fagotto di tela cerata", when: { variable: "prologueComplete", equals: false } },
+      { text: "Fagotto aperto" },
+    ],
+    preferredVerbs: [{ verb: "look-at" }],
+    secondaryVerbs: [
+      { verb: "open", when: { variable: "prologueComplete", equals: false } },
+      { verb: "look-at" },
+    ],
+    cases: [
+      {
+        verb: "open",
+        when: { variable: "prologueComplete", equals: false },
+        sequence: "bundleOpening",
+      },
+      {
+        verb: "open",
+        response: {
+          text: "Il sigillo spezzato e il frammento di registro restano dove li ho posati.",
+        },
+      },
+      {
+        verb: "look-at",
+        when: { variable: "prologueComplete", equals: false },
+        response: {
+          text: "È legato con spago cerato. Il marinaio lo stringeva come un debito.",
+        },
+      },
+      {
+        verb: "look-at",
+        response: {
+          text: "Un sigillo spezzato e un frammento di registro: una nave che non è mai tornata.",
+        },
+      },
+    ],
+    fallbacks: {
+      use: { response: { text: "Non c'è altro da aprire né da usare." } },
+      give: { response: { text: "Questo fagotto non si cede: appartiene alla storia di mio padre." } },
+    },
+  } satisfies NounDefinition),
+} satisfies ObjectDefinition);

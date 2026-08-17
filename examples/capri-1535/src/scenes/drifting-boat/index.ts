@@ -118,6 +118,12 @@ export const driftingBoat = ({
       "Il sangue, ormai scuro, attraversa il ponte e termina sotto il riparo di poppa.",
     ),
   }, {
+    // The bundle lies clutched near the sailor's hand from the start; it can
+    // only be looked at until the encounter hands it to Michele.
+    target: { kind: "object", object: "oilskinBundle" },
+    area: rectangle(912, 552, 978, 600),
+    approach: sailorHandoff.michele,
+  }, {
     target: { kind: "character", character: "woundedSailor" },
     area: rectangle(980, 340, 1250, 605),
     approach: sailorHandoff.michele,

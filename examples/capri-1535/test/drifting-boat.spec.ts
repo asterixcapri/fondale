@@ -60,7 +60,7 @@ test("the isolated drifting-boat package boards, explores every clue and reaches
   }
 
   await page.keyboard.down("Tab");
-  await expect(page.locator("[data-fondale-revealed-hotspot]")).toHaveCount(5);
+  await expect(page.locator("[data-fondale-revealed-hotspot]")).toHaveCount(6);
   await expect(page.locator("[data-fondale-revealed-passage]")).toHaveCount(1);
   await page.keyboard.up("Tab");
 

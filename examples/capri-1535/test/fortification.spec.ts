@@ -109,7 +109,9 @@ test("the isolated fortification climbs through every vertical Camera band", asy
   await expect(frame.locator("[data-fondale-revealed-hotspot]")).toHaveCount(3);
   await page.keyboard.up("Tab");
 
-  expect([...requestedPackages]).toEqual([
+  // The Scene package is the contract; request order is a network race and
+  // shifts as soon as the Project declares more content.
+  expect([...requestedPackages].sort()).toEqual([
     expect.stringContaining("/src/scenes/coastal-fortification/background.png"),
     expect.stringContaining("/src/scenes/coastal-fortification/boat-rocking.png"),
     expect.stringContaining("/src/scenes/coastal-fortification/left-foreground.png"),

@@ -28,6 +28,24 @@ export const woundedSailor = ({
       roles: { default: "idle" },
       visualAnchor: { x: 128, y: 252 },
     },
+    // The encounter ends with the sailor losing consciousness. The deliberate
+    // static presentation keeps the same Runtime image; only the authored
+    // responses change.
+    unconscious: {
+      animations: {
+        idle: {
+          sheets: {
+            left: { image: staticUrl, frames: staticFrame },
+            right: { image: staticUrl, frames: staticFrame },
+            front: { image: staticUrl, frames: staticFrame },
+            back: { image: staticUrl, frames: staticFrame },
+          },
+          timing: { framesPerSecond: 1, loop: true },
+        },
+      },
+      roles: { default: "idle" },
+      visualAnchor: { x: 128, y: 252 },
+    },
   },
   movementSpeed: 60,
   noun: ({
@@ -36,13 +54,25 @@ export const woundedSailor = ({
     secondaryVerbs: [{ verb: "talk-to" }],
     cases: [{
       verb: "look-at",
+      when: { variable: "sailorEncountered", equals: false },
       response: {
         text: "Respira appena. Tiene una mano sulle bende, come se anche quel piccolo gesto gli costasse fatica.",
       },
     }, {
+      verb: "look-at",
+      response: {
+        text: "È svenuto. Le bende si muovono appena con il respiro: vivo, ma lontano.",
+      },
+    }, {
+      // The first talk-to opens the canonical encounter; afterwards the
+      // sailor can no longer answer.
+      verb: "talk-to",
+      when: { variable: "sailorEncountered", equals: false },
+      sequence: "sailorEncounter",
+    }, {
       verb: "talk-to",
       response: {
-        text: "Il marinaio non apre gli occhi, ma il respiro cambia quando Michele gli parla.",
+        text: "Il marinaio non risponde più. Quello che sapeva, lo ha affidato al fagotto.",
       },
     }],
   } satisfies NounDefinition),
