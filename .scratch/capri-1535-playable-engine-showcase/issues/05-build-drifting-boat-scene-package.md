@@ -7,7 +7,7 @@ before the canonical final encounter and bundle transfer are integrated.
 
 **Blocked by:** 01 — Lock the project scale and reference Michele.
 
-**Status:** ready-for-human
+**Status:** resolved
 
 - [x] The drifting boat has an accepted dusk Composition Art Master, clean Background Art Master, Runtime Background and exact-size geometry diagnostic.
 - [x] The intended Scene Size is `1280×720` and changes only if final blocking proves another exact size necessary.
@@ -45,3 +45,7 @@ before the canonical final encounter and bundle transfer are integrated.
   requires an out-of-scope correction to that test or its Engine timing seam,
   so the completed Scene package is handed to a human rather than represented
   as fully verified.
+- 2026-08-17 — Human override confirmed the complete root gate on an isolated
+  port: `FONDALE_TEST_PORT=5373 npm run verify -- --workers=4` passed `311/311`
+  in `50.0s`, including the full multi-row Animation suite. Earlier failures
+  reused a Capri dev server occupying port `5173` instead of the root fixtures.
