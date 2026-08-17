@@ -23,3 +23,12 @@ verification from the cleaned tree.
 - [ ] The final inventory is materially smaller and contains no unexplained production duplicates.
 - [ ] The package build and full browser verification pass again after all deletions.
 - [ ] The handoff distinguishes Git-recoverable removals from permanently deleted untracked files.
+
+## Comments
+
+- 2026-08-17, during ticket 09: the obsolete `test/acceptance.spec.ts`
+  (town-square route and Aiano/Boffe text presentations) and any fixture it
+  owns are confirmed legacy test artifacts with no current owner; remove or
+  replace them together with the ticket 11 rewrite. The unregistered
+  town-square, alley, grotto, monte-solaro and tavern Scene packages remain
+  deletion candidates already listed above.

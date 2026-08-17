@@ -20,3 +20,12 @@ fragment.
 - [ ] The sailor's identity, survival and further history remain unresolved.
 - [ ] The final state marks the prologue complete and retains the opened bundle and committed knowledge in continuation.
 - [ ] Browser acceptance proves travel, clue exploration, encounter, transfer, opening and cliffhanger.
+
+## Comments
+
+- 2026-08-17, policy agreed with the user during ticket 09: do not run the
+  obsolete test files (`test/acceptance.spec.ts`, `test/michele.spec.ts`,
+  `test/harbour.spec.ts`) ticket by ticket; they are rebuilt or removed by
+  tickets 11/12. Per-ticket verification runs the current specs only:
+  cloister, fortification, drifting-boat, harbour-opening, boat-sighting,
+  dialogue-server-unreachable, plus the ticket's own new spec.
