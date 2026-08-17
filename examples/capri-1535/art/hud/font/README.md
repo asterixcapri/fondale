@@ -8,5 +8,6 @@ Runtime Asset is `src/hud/alegreya-sans-medium.ttf`; its license is preserved in
 The font is bundled with the Example so its conversational, humanist character
 and Italian glyph coverage remain consistent on every machine and offline.
 
-`build.py` and `src/hud/capri-pixel.ttf` preserve the earlier original 5×7 font
-experiment, but it is no longer used by the production HUD.
+The earlier original 5×7 pixel font experiment and its build script were
+removed with the rest of the superseded Example artwork: the production HUD
+never used them, and their history remains in Git.

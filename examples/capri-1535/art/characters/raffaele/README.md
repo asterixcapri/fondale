@@ -21,10 +21,24 @@ Anchor is the bottom-centre Ground Point. Every Animation frame uses the same
 cell dimensions and anchor so that changing performance does not move the
 Character in Scene Space.
 
-The `working` Appearance is stationary and owns explicit looping `idle` and
-`speaking` Animations. Raffaele has no Walking Animation Role because no current
-Motion moves him.
+The `working` Appearance is stationary and owns one looping `idle` Animation,
+which every Facing references and which Speaking falls back to. Raffaele has no
+Walking Animation Role because no current Motion moves him.
 
-The Engine presents the canonical right-facing `side` Runtime strip unmirrored
-for `right` and mirrors it for `left`. Runtime export applies no compensating
-horizontal flip.
+## Retained files
+
+The shipped Runtime Asset is the single `96×288`
+`src/characters/raffaele/idle.png` approved before this package was assembled;
+nothing here supersedes it, and the prologue verified in ticket 11 presents
+that image alone.
+
+- `idle.png` and `static-imagegen-art-master.png` with `idle.prompt.md` and
+  `static-imagegen.prompt.md`: the two full-size static Art Masters generated
+  for Raffaele, kept as the construction record of the stable portrayal above.
+- `idle-strip.png`, `idle-strip-alpha.png`, `speaking-strip.png` and
+  `speaking-strip-alpha.png`: the animated strip masters explored for a moving
+  Raffaele. They are the only record of that exploration and no Runtime Asset
+  derives from them.
+- `construction-draft.png`: the construction reference for the portrayal.
+- `engine-scale-check.png`: the actual-size Engine diagnostic named by
+  `scale.md`.

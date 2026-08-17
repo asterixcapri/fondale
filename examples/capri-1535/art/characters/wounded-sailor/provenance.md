@@ -17,3 +17,8 @@ grade: brightness `76%`, saturation `68%`, a `12%` indigo dusk tint and a
 image lives at `src/characters/wounded-sailor/static.png`; its stable Visual
 Anchor is `(128, 252)`. Every authored Facing references that same single image
 and one-frame presentation; there are no visual variants.
+
+`actual-size-diagnostic.png` presents that `256×256` Runtime cell at 1:1 inside
+the `1280×720` Logical Resolution, with its cell bounds and Visual Anchor drawn.
+It is the record of the size review this package passed, and the only
+diagnostic it keeps.
