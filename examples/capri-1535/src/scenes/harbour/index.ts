@@ -19,6 +19,11 @@ const staticAnimation = (image: string, width: number, height: number) => ({
   roles: { default: "idle" },
 });
 
+const installedWinchSheet = {
+  image: winchInstalledUrl,
+  frames: [{ x: 0, y: 0, width: 384, height: 255 }],
+};
+
 export const harbour = ({
   background: backgroundUrl,
   size: { width: 1920, height: 720 },
@@ -68,10 +73,7 @@ export const harbour = ({
           animations: {
             ...staticAnimation(winchMissingHandleUrl, 384, 255).animations,
             engaging: {
-              sheet: {
-                image: winchInstalledUrl,
-                frames: [{ x: 0, y: 0, width: 384, height: 255 }],
-              },
+              sheet: installedWinchSheet,
               timing: { framesPerSecond: 1 },
             },
           },
@@ -82,16 +84,13 @@ export const harbour = ({
           animations: {
             idle: {
               sheet: {
-                image: winchInstalledUrl,
+                image: winchMissingHandleUrl,
                 frames: [{ x: 0, y: 0, width: 384, height: 255 }],
               },
               timing: { framesPerSecond: 1, loop: true },
             },
             engaging: {
-              sheet: {
-                image: winchInstalledUrl,
-                frames: [{ x: 0, y: 0, width: 384, height: 255 }],
-              },
+              sheet: installedWinchSheet,
               timing: { framesPerSecond: 1 },
             },
           },
@@ -101,7 +100,7 @@ export const harbour = ({
       },
       noun: ({
         labels: [
-          { text: "Argano riparato", when: { variable: "boatReady", equals: true } },
+          { text: "Argano riparato", when: { variable: "winchRepaired", equals: true } },
           { text: "Argano senza manovella" },
         ],
         preferredVerbs: [{ verb: "look-at" }],
@@ -109,11 +108,11 @@ export const harbour = ({
         cases: [{
           verb: "use",
           firstNoun: "winchHandle",
-          when: { variable: "boatReady", equals: false },
+          when: { variable: "winchRepaired", equals: false },
           sequence: "winchInstallation",
         }, {
           verb: "look-at",
-          when: { variable: "boatReady", equals: true },
+          when: { variable: "winchRepaired", equals: true },
           response: { text: "La manovella è montata saldamente. L'argano è tornato al lavoro." },
         }, {
           verb: "look-at",

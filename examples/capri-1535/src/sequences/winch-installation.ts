@@ -1,7 +1,7 @@
 import { type SequenceDefinition, type GameOperation } from "@asterixcapri/fondale";
 
 const outcome: readonly GameOperation[] = [
-  { type: "set-variable", variable: "boatReady", value: true },
+  { type: "set-variable", variable: "winchRepaired", value: true },
   { type: "set-variable", variable: "raffaeleConfrontationReady", value: true },
   {
     type: "set-appearance",
@@ -12,7 +12,7 @@ const outcome: readonly GameOperation[] = [
     type: "place-object",
     object: "winchHandle",
     scene: "harbour",
-    groundPoint: { x: 1758, y: 585 },
+    groundPoint: { x: 1642, y: 650 },
     appearance: "installed",
   },
 ];

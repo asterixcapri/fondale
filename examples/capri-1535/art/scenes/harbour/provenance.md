@@ -50,13 +50,13 @@ sheet pairs the covering and moved Runtime images for the Cue-driven reveal.
 
 ## Installed winch Appearance
 
-Ticket 08 used the built-in OpenAI image editing workflow with the accepted
-missing-handle winch as the edit target and the winch-handle Object master as
-the identity and material reference. The prompt required changing only the
-empty right hub by seating one wrought-iron L-shaped crank with a worn walnut
-grip, while preserving the winch's camera, scale, geometry, rope, lighting,
-padding and silhouette on a flat `#ff00ff` chroma field. The retained chroma
-source is `generated/winch-installed-chroma.png`; the installed helper removed
-the field with border sampling, soft matte, thresholds `12/220` and despill to
-produce `winch-installed-master.png`. The `384×255` Runtime derivative matches
-the missing-handle Appearance's exact cell size and `192,255` Visual Anchor.
+Ticket 08 recomposes the accepted missing-handle Art Master with the isolated
+installed Appearance from the persistent winch-handle Object. The handle was
+produced through the built-in OpenAI image editing workflow documented in its
+Object package, then fitted at `192×208` master pixels at offset `1224,360`.
+The same deterministic composition uses the `48×52` Runtime handle at offset
+`306,90`. This produces `winch-installed-master.png` and its `384×255` Runtime
+derivative without changing any missing-state winch pixel. Both winch states
+therefore share the exact cell size, position and `192,255` Visual Anchor; the
+persistent installed rendering separates the unchanged winch Scenery from the
+single Object-owned handle at those coordinates.

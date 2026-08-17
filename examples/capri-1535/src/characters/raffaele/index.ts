@@ -121,6 +121,8 @@ export const raffaele = ({
       response:
         "Prestito, furto: la manovella era là e ora è qui. Non serve girarci intorno, vedo che hai capito.",
       operations: [{ type: "set-variable", variable: "raffaeleConfrontationReady", value: false }, {
+        type: "set-variable", variable: "boatReady", value: true,
+      }, {
         type: "set-trust", character: "raffaele", towards: "michele", trust: "low",
       }, {
         type: "set-dialogue-state", character: "raffaele", state: "angry",
@@ -130,6 +132,8 @@ export const raffaele = ({
       when: { variable: "raffaeleConfrontationReady", equals: true },
       response: "La discrezione tiene insieme più corde di un buon nodo. Sali alla torre.",
       operations: [{ type: "set-variable", variable: "raffaeleConfrontationReady", value: false }, {
+        type: "set-variable", variable: "boatReady", value: true,
+      }, {
         type: "set-trust", character: "raffaele", towards: "michele", trust: "high",
       }, {
         type: "set-dialogue-state", character: "raffaele", state: "calm",
@@ -139,6 +143,8 @@ export const raffaele = ({
       when: { variable: "raffaeleConfrontationReady", equals: true },
       response: "Una moneta in più per la manovella, una in meno per l'insolenza. Facciamo una in più.",
       operations: [{ type: "set-variable", variable: "raffaeleConfrontationReady", value: false }, {
+        type: "set-variable", variable: "boatReady", value: true,
+      }, {
         type: "set-trust", character: "raffaele", towards: "michele", trust: "medium",
       }, {
         type: "set-dialogue-state", character: "raffaele", state: "calm",

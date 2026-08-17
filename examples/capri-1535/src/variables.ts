@@ -6,6 +6,7 @@ export const variables = ({
   pulleyTroubleKnown: false,
   wellLubricated: false,
   wellFreed: false,
+  winchRepaired: false,
   boatReady: false,
   raffaeleConfrontationReady: false,
   driftingBoatSeen: false,

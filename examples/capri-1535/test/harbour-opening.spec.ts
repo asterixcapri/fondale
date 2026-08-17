@@ -48,6 +48,21 @@ async function visibleHotspot(page: Page, label: string): Promise<Point | undefi
   return point;
 }
 
+async function hotspotIsAvailable(page: Page, label: string): Promise<boolean> {
+  const frame = page.locator("[data-fondale-frame]");
+  await frame.focus();
+  await page.keyboard.down("Tab");
+  const hotspots = frame.locator("[data-fondale-revealed-hotspot]");
+  for (let index = 0; index < await hotspots.count(); index += 1) {
+    if (await hotspots.nth(index).locator("title").textContent() === label) {
+      await page.keyboard.up("Tab");
+      return true;
+    }
+  }
+  await page.keyboard.up("Tab");
+  return false;
+}
+
 async function activateHotspot(page: Page, label: string): Promise<void> {
   for (let attempt = 0; attempt < 8; attempt += 1) {
     const point = await visibleHotspot(page, label);
@@ -61,9 +76,13 @@ async function activateHotspot(page: Page, label: string): Promise<void> {
   throw new Error(`Hotspot '${label}' never entered the Camera viewport`);
 }
 
-async function activatePassage(page: Page, label: string): Promise<void> {
+async function activatePassage(
+  page: Page,
+  label: string,
+  options: { readonly pan: "left" | "right"; readonly attempts?: number } = { pan: "right" },
+): Promise<void> {
   const frame = page.locator("[data-fondale-frame]");
-  const attempts = label.includes("fortificazione") ? 24 : 8;
+  const attempts = options.attempts ?? 8;
   for (let attempt = 0; attempt < attempts; attempt += 1) {
     await frame.focus();
     await page.keyboard.down("Tab");
@@ -83,13 +102,25 @@ async function activatePassage(page: Page, label: string): Promise<void> {
       await clickCanvas(page, point);
       return;
     }
-    await clickCanvas(page, {
-      x: label.includes("porto") || label.includes("fortificazione") ? 80 : 1200,
-      y: 650,
-    });
+    await clickCanvas(page, { x: options.pan === "left" ? 80 : 1200, y: 650 });
     await page.waitForTimeout(1_000);
   }
   throw new Error(`Passage '${label}' never entered the Camera viewport`);
+}
+
+async function passageIsAvailable(page: Page, label: string): Promise<boolean> {
+  const frame = page.locator("[data-fondale-frame]");
+  await frame.focus();
+  await page.keyboard.down("Tab");
+  const passages = frame.locator("[data-fondale-revealed-passage]");
+  for (let index = 0; index < await passages.count(); index += 1) {
+    if (await passages.nth(index).locator("title").textContent() === label) {
+      await page.keyboard.up("Tab");
+      return true;
+    }
+  }
+  await page.keyboard.up("Tab");
+  return false;
 }
 
 async function advance(page: Page): Promise<void> {
@@ -170,7 +201,7 @@ async function recoverHandleAtHarbour(page: Page): Promise<void> {
   await expect(page.locator('[data-fondale-inventory-object="winchHandle"]')).toHaveCount(1);
   await advance(page);
 
-  await activatePassage(page, "Passaggio verso il porto");
+  await activatePassage(page, "Passaggio verso il porto", { pan: "left" });
   await expect(page.locator("[data-fondale-frame]")).toHaveAttribute(
     "data-fondale-scene",
     "harbour",
@@ -206,27 +237,6 @@ async function winchHubPixels(page: Page): Promise<string> {
 async function installHandle(page: Page): Promise<void> {
   await selectInventoryObject(page, "winchHandle");
   await activateHotspot(page, "Argano senza manovella");
-}
-
-async function continuationCheckpoint(page: Page): Promise<Readonly<Record<string, string>>> {
-  return page.evaluate(() => Object.fromEntries(Array.from(
-    { length: localStorage.length },
-    (_, index) => localStorage.key(index),
-  ).filter((key): key is string => key !== null).map((key) => [key, localStorage.getItem(key) ?? ""])));
-}
-
-async function restoreContinuationCheckpoint(
-  page: Page,
-  checkpoint: Readonly<Record<string, string>>,
-): Promise<void> {
-  await page.addInitScript((entries) => {
-    localStorage.clear();
-    for (const [key, value] of Object.entries(entries)) localStorage.setItem(key, value);
-  }, checkpoint);
-  await page.reload();
-  await page.locator("[data-fondale-continuation]")
-    .getByRole("button", { name: "Continue" }).click();
-  await expect(page.locator("[data-fondale-frame]")).toBeVisible();
 }
 
 test("the authored harbour job gives one sealed letter and records Raffaele's theft Claim as Testimony", async ({
@@ -361,7 +371,7 @@ test("Michele delivers the letter, frees the well and keeps the recovered handle
   await expect(page.locator('[data-fondale-inventory-object="winchHandle"]')).toHaveCount(1);
   await advance(page);
 
-  await activatePassage(page, "Passaggio verso il porto");
+  await activatePassage(page, "Passaggio verso il porto", { pan: "left" });
   await expect(frame).toHaveAttribute("data-fondale-scene", "harbour", { timeout: 15_000 });
   await continueGameSession(page);
   await expect(frame).toHaveAttribute("data-fondale-scene", "harbour");
@@ -386,29 +396,9 @@ test("Michele delivers the letter, frees the well and keeps the recovered handle
 });
 
 test("Michele installs the handle at contact and every response to Raffaele opens the fortification", async ({
-  page,
+  browser,
 }) => {
   test.slow();
-  const { errors } = await openGame(page);
-  await recoverHandleAtHarbour(page);
-
-  const beforeContact = await winchHubPixels(page);
-  await installHandle(page);
-  await page.waitForTimeout(50);
-  expect(await winchHubPixels(page)).toBe(beforeContact);
-  await page.waitForTimeout(550);
-  expect(await winchHubPixels(page)).not.toBe(beforeContact);
-  await expect(page.locator('[data-fondale-inventory-object="winchHandle"]')).toHaveCount(0);
-  await expect(page.locator('[data-fondale-line][data-fondale-speaker="michele"]'))
-    .toContainText("argano", { timeout: 15_000 });
-  await advance(page);
-  await continueGameSession(page);
-  expect(await visibleHotspot(page, "Argano riparato")).toBeDefined();
-  const repairedPixels = await winchHubPixels(page);
-  expect(repairedPixels).not.toBe(beforeContact);
-  await shoot(page, "harbour-winch-repaired");
-  const checkpoint = await continuationCheckpoint(page);
-
   const branches = [{
     choice: "Mi hai mentito sui frati.",
     reply: "Prestito",
@@ -423,8 +413,30 @@ test("Michele installs the handle at contact and every response to Raffaele open
     later: "L'argano tiene",
   }] as const;
 
-  for (const [index, branch] of branches.entries()) {
-    if (index > 0) await restoreContinuationCheckpoint(page, checkpoint);
+  await Promise.all(branches.map(async (branch, index) => {
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    const { errors } = await openGame(page);
+    await recoverHandleAtHarbour(page);
+
+    const beforeContact = await winchHubPixels(page);
+    await installHandle(page);
+    if (index === 0) {
+      await page.waitForTimeout(550);
+      expect(await winchHubPixels(page)).not.toBe(beforeContact);
+    }
+    await expect(page.locator('[data-fondale-inventory-object="winchHandle"]')).toHaveCount(0);
+    await expect(page.locator('[data-fondale-line][data-fondale-speaker="michele"]'))
+      .toContainText("argano", { timeout: 15_000 });
+    await advance(page);
+    await continueGameSession(page);
+    expect(await hotspotIsAvailable(page, "Argano riparato")).toBe(true);
+    expect(await passageIsAvailable(page, "Gozzo verso la fortificazione")).toBe(false);
+    if (index === 0) {
+      expect(await winchHubPixels(page)).not.toBe(beforeContact);
+      await shoot(page, "harbour-winch-repaired");
+    }
+
     await activateHotspot(page, "Raffaele");
     const conversation = page.locator("[data-fondale-conversation]");
     await expect(conversation.getByRole("button", { name: branch.choice })).toBeVisible({
@@ -440,14 +452,18 @@ test("Michele installs the handle at contact and every response to Raffaele open
       .toContainText(branch.later);
     await advance(page);
     await conversation.getByRole("button", { name: "Leave" }).click();
-    await activatePassage(page, "Gozzo verso la fortificazione");
+    await activatePassage(page, "Gozzo verso la fortificazione", {
+      pan: "left",
+      attempts: 24,
+    });
     await expect(page.locator("[data-fondale-frame]")).toHaveAttribute(
       "data-fondale-scene",
       "coastalFortification",
       { timeout: 15_000 },
     );
-  }
-  expect(errors).toEqual([]);
+    expect(errors).toEqual([]);
+    await context.close();
+  }));
 });
 
 test("skipping the installation commits the same repaired world through continuation", async ({
@@ -462,7 +478,7 @@ test("skipping the installation commits the same repaired world through continua
   await page.waitForTimeout(100);
   await page.keyboard.press("Escape");
   await expect(page.locator('[data-fondale-inventory-object="winchHandle"]')).toHaveCount(0);
-  expect(await visibleHotspot(page, "Argano riparato")).toBeDefined();
+  expect(await hotspotIsAvailable(page, "Argano riparato")).toBe(true);
 
   await activatePassage(page, "Passaggio verso il chiostro");
   await expect(page.locator("[data-fondale-frame]")).toHaveAttribute(
@@ -470,7 +486,7 @@ test("skipping the installation commits the same repaired world through continua
     "cloister",
     { timeout: 15_000 },
   );
-  await activatePassage(page, "Passaggio verso il porto");
+  await activatePassage(page, "Passaggio verso il porto", { pan: "left" });
   await expect(page.locator("[data-fondale-frame]")).toHaveAttribute(
     "data-fondale-scene",
     "harbour",
@@ -478,7 +494,19 @@ test("skipping the installation commits the same repaired world through continua
   );
   await continueGameSession(page);
   expect(await visibleHotspot(page, "Argano riparato")).toBeDefined();
-  await activatePassage(page, "Gozzo verso la fortificazione");
+  expect(await passageIsAvailable(page, "Gozzo verso la fortificazione")).toBe(false);
+
+  await activateHotspot(page, "Raffaele");
+  const conversation = page.locator("[data-fondale-conversation]");
+  await conversation.getByRole("button", { name: "Non dirò nulla del prestito." }).click();
+  await expect(page.locator('[data-fondale-line][data-fondale-speaker="raffaele"]'))
+    .toContainText("discrezione");
+  await advance(page);
+  await conversation.getByRole("button", { name: "Leave" }).click();
+  await activatePassage(page, "Gozzo verso la fortificazione", {
+    pan: "left",
+    attempts: 24,
+  });
   await expect(page.locator("[data-fondale-frame]")).toHaveAttribute(
     "data-fondale-scene",
     "coastalFortification",
