@@ -7,7 +7,7 @@ export const raffaeleConversation = ({
     {
       type: "operations",
       operations: [{ type: "set-variable", variable: "jobAccepted", value: true }, {
-        type: "give-object",
+        type: "give-object-to-player",
         object: "sealedLetter",
       }, {
         type: "record-testimony",

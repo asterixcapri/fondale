@@ -3,6 +3,7 @@ import type {
   DialogueHttpRequest,
   DialogueInterpretation,
   DialogueVerbalizationRequest,
+  ReflectionTestimony,
   ResponseStrategy,
 } from "@asterixcapri/fondale";
 import type { Page } from "@playwright/test";
@@ -66,7 +67,12 @@ function executeDialogueOperation(request: DialogueHttpRequest): unknown {
     case "verbalize":
       return speakPrologueResponse(request.request);
     case "reflect":
-      return { summary: composePrologueReflection(request.request.facts) };
+      return {
+        summary: composePrologueReflection(
+          request.request.facts,
+          request.request.testimonies,
+        ),
+      };
     case "cancel":
     case "ready":
     case "reset":
@@ -93,7 +99,17 @@ function speakPrologueResponse(request: DialogueVerbalizationRequest): string {
 
 function composePrologueReflection(
   facts: readonly DialogueFactCandidate[],
+  testimonies: readonly ReflectionTestimony[],
 ): string {
-  if (facts.length === 0) return "Non ho ancora scoperto niente che valga la pena ripensare.";
-  return `Quello che so: ${facts.map(({ proposition }) => proposition).join(" ")}`;
+  if (facts.length === 0 && testimonies.length === 0) {
+    return "Non ho ancora scoperto niente che valga la pena ripensare.";
+  }
+  return [
+    facts.length > 0
+      ? `Quello che so: ${facts.map(({ proposition }) => proposition).join(" ")}`
+      : "",
+    testimonies.length > 0
+      ? `Quello che mi è stato detto: ${testimonies.map(({ claim }) => claim.proposition).join(" ")}`
+      : "",
+  ].filter(Boolean).join(" ");
 }

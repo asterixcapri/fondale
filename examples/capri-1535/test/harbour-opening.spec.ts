@@ -96,17 +96,17 @@ async function pullNetsAndCollectOil(page: Page): Promise<void> {
   await advance(page);
 }
 
-async function continuationState(page: Page): Promise<Record<string, unknown>> {
-  await expect.poll(() => page.evaluate(() => Array.from(
-    { length: localStorage.length },
-    (_, index) => localStorage.key(index),
-  ).some((key) => key?.startsWith("fondale.continuation.")))).toBe(true);
-  return page.evaluate(() => {
-    const key = Array.from({ length: localStorage.length }, (_, index) => localStorage.key(index))
-      .find((candidate) => candidate?.startsWith("fondale.continuation."));
-    if (!key) throw new Error("Continuation State is absent");
-    return JSON.parse(localStorage.getItem(key)!).snapshot.state as Record<string, unknown>;
-  });
+async function selectInventoryObject(page: Page, object: string): Promise<void> {
+  await page.locator("[data-fondale-inventory-trigger]").click();
+  const item = page.locator(`[data-fondale-inventory-object="${object}"]`);
+  await expect(item).toBeVisible();
+  if (await item.getAttribute("aria-pressed") === "true") {
+    await page.locator("[data-fondale-inventory-close]").click();
+  } else {
+    await item.click();
+  }
+  await expect(page.locator("[data-fondale-inventory-panel]")).toBeHidden();
+  await expect(item).toHaveAttribute("aria-pressed", "true");
 }
 
 test("the authored harbour job gives one sealed letter and records Raffaele's theft Claim as Testimony", async ({
@@ -124,24 +124,23 @@ test("the authored harbour job gives one sealed letter and records Raffaele's th
   await expect(page.locator('[data-fondale-inventory-object="sealedLetter"]')).toHaveCount(1);
   await page.locator("[data-fondale-inventory-close]").click();
 
-  const state = await continuationState(page) as {
-    variables: { jobAccepted: boolean };
-    inventory: { objects: string[] };
-    characterKnowledge: Record<string, string[]>;
-    testimonies: Array<{ speaker: string; listener: string; claimId: string }>;
-  };
-  expect(state.variables.jobAccepted).toBe(true);
-  expect(state.inventory.objects.filter((object) => object === "sealedLetter")).toHaveLength(1);
-  expect(state.characterKnowledge.michele).not.toContain("raffaele-lent-the-handle");
-  expect(state.testimonies).toContainEqual({
-    speaker: "raffaele",
-    listener: "michele",
-    claimId: "friars-stole-the-handle",
-  });
-
   await continueGameSession(page);
   await page.locator("[data-fondale-inventory-trigger]").click();
   await expect(page.locator('[data-fondale-inventory-object="sealedLetter"]')).toHaveCount(1);
+  await page.locator("[data-fondale-inventory-close]").click();
+
+  await activateHotspot(page, "Raffaele");
+  await expect(page.locator("[data-fondale-conversation]")
+    .getByRole("button", { name: "Cerchi qualcuno per un lavoro?" })).toHaveCount(0);
+  await page.locator("[data-fondale-conversation]").getByRole("button", { name: "Leave" }).click();
+
+  await page.getByRole("button", { name: "Rifletti" }).click();
+  const reflection = page.locator("[data-fondale-reflection]");
+  await reflection.locator("[data-fondale-dialogue-input]").fill("Che cosa mi ha detto Raffaele?");
+  await reflection.getByRole("button", { name: "Reflect" }).click();
+  const reflected = page.locator('[data-fondale-line][data-fondale-speaker="michele"]');
+  await expect(reflected).toContainText("rubato");
+  await expect(reflected).not.toContainText("prestato volontariamente");
   expect(errors).toEqual([]);
 });
 
@@ -162,23 +161,34 @@ for (const order of ["before", "after"] as const) {
     await pullNetsAndCollectOil(page);
 
     if (order === "before") {
-      await activateHotspot(page, "Raffaele");
+      await acceptHarbourJob(page);
       const conversation = page.locator("[data-fondale-conversation]");
-      await expect(conversation)
-        .toContainText("Cerchi qualcuno per un lavoro?");
+      await conversation.getByRole("button", { name: "Dove trovo l'ampolla?" }).click();
+      await expect(page.locator('[data-fondale-line][data-fondale-speaker="raffaele"]'))
+        .toContainText("reti");
+      await advance(page);
       await conversation.getByRole("button", { name: "Leave" }).click();
     }
 
-    const state = await continuationState(page) as {
-      scenery: { harbour: { fishingNets: string } };
-      objects: { oilFlask: { location: { kind: string } } };
-    };
-    expect(state.scenery.harbour.fishingNets).toBe("moved");
-    expect(state.objects.oilFlask.location.kind).toBe("inventory");
+    await selectInventoryObject(page, "oilFlask");
+    await activateHotspot(page, "Raffaele");
+    await expect(page.locator("[aria-live=polite]")).toContainText("Non credo che lo vorrebbe", {
+      timeout: 15_000,
+    });
+    await expect(page.locator('[data-fondale-inventory-object="oilFlask"]')).toHaveCount(1);
+    await selectInventoryObject(page, "oilFlask");
+    await activateHotspot(page, "Reti da pesca spostate");
+    await expect(page.locator("[aria-live=polite]")).toContainText("Non funzionerebbe così", {
+      timeout: 15_000,
+    });
+    await expect(page.locator('[data-fondale-inventory-object="oilFlask"]')).toHaveCount(1);
 
     await continueGameSession(page);
+    expect(await visibleHotspot(page, "Reti da pesca spostate")).toBeDefined();
+    expect(await visibleHotspot(page, "Ampolla d'olio")).toBeUndefined();
     await page.locator("[data-fondale-inventory-trigger]").click();
     await expect(page.locator('[data-fondale-inventory-object="oilFlask"]')).toHaveCount(1);
+    if (order === "after") await shoot(page, "harbour-object-actual-size");
     expect(errors).toEqual([]);
   });
 }

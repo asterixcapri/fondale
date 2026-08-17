@@ -42,7 +42,7 @@ export type InteractionCondition =
 /** Authored consequences that change Inventory membership or Object lifecycle. */
 export type InventoryOperation =
   | { readonly type: "collect-target-object" }
-  | { readonly type: "give-object"; readonly object: string }
+  | { readonly type: "give-object-to-player"; readonly object: string }
   | {
       readonly type: "place-selected-object";
       readonly groundPoint: Point;
@@ -601,7 +601,7 @@ export interface InventoryOperationValidationAuthorities {
 /** Reports whether a Game Operation belongs to the Inventory lifecycle. */
 export function isInventoryOperation(operation: GameOperation): operation is InventoryOperation {
   return operation.type === "collect-target-object" ||
-    operation.type === "give-object" ||
+    operation.type === "give-object-to-player" ||
     operation.type === "place-selected-object" ||
     operation.type === "place-object" ||
     operation.type === "consume-selected-object";
@@ -627,7 +627,7 @@ export function validateInventoryOperation(
     }
     return diagnostics;
   }
-  if (operation.type === "give-object") {
+  if (operation.type === "give-object-to-player") {
     if (!authorities.objects.has(operation.object)) {
       diagnostics.push(interactionReference(
         "reference.object",
@@ -1063,7 +1063,7 @@ export function createInteraction(
         }
         object.location = { kind: "inventory" };
         next.inventory.objects.push(context.target.object);
-      } else if (operation.type === "give-object") {
+      } else if (operation.type === "give-object-to-player") {
         const object = next.objects[operation.object];
         if (!object || object.location.kind !== "scene" || object.location.scene !== state.currentScene) {
           return {

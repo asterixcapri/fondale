@@ -25,7 +25,7 @@ mirrors it.
 
 ## Runtime contract
 
-The approved source Runtime Assets live beside the Character definition under
+The approved source sheets live beside the Character definition under
 `src/characters/michele/`. Ticket 06 derives lossless production adapters with
 `256×292` RGBA cells and the stable Visual Anchor `(128, 288)`: the existing
 `256×256` cells receive transparent top padding, while the `192×288` action

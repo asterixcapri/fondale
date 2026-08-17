@@ -195,7 +195,7 @@ test("giving a named Object moves the present Scene Object into Inventory exactl
   };
 
   const result = interaction.applyInventoryOperation(
-    { type: "give-object", object: "letter" },
+    { type: "give-object-to-player", object: "letter" },
     state,
     { target: { kind: "character", character: "raffaele" } },
   );
@@ -208,7 +208,7 @@ test("giving a named Object moves the present Scene Object into Inventory exactl
     },
   });
   expect(result.status === "applied" && interaction.applyInventoryOperation(
-    { type: "give-object", object: "letter" },
+    { type: "give-object-to-player", object: "letter" },
     { currentScene: "courtyard", ...result.state },
     { target: { kind: "character", character: "raffaele" } },
   )).toEqual({ status: "invalid", message: "The given Object is not present in the current Scene." });

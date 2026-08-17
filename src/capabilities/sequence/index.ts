@@ -532,7 +532,7 @@ export function validateSequenceReferences(
           if (operation.type === "place-object") {
             if (operation.scene === scene) objectsInScene.add(operation.object);
             else objectsInScene.delete(operation.object);
-          } else if (operation.type === "give-object") {
+          } else if (operation.type === "give-object-to-player") {
             objectsInScene.delete(operation.object);
           }
         }
