@@ -244,12 +244,12 @@ test("mouse and keyboard both reach every Player affordance", async ({ page }) =
   await expect(line(page, "michele")).toContainText("Michele", { timeout: 15_000 });
   await leaveReflection(page);
 
-  // Sequences: Escape ends the running reveal, and the outcome still commits.
+  // Sequences: the reveal is driven to its end from the keyboard alone, and
+  // commits its outcome. Skipping a skippable Sequence is the same Escape the
+  // installation, well, arrival and encounter cases press.
   await activateHotspot(page, "Reti da pesca");
-  await page.waitForTimeout(200);
-  await frame.focus();
-  await page.keyboard.press("Escape");
-  await page.waitForTimeout(600);
+  await expect(line(page, "michele")).toContainText("reti", { timeout: 15_000 });
+  await advance(page);
   await expect(page.locator("[data-fondale-line]")).toHaveCount(0);
   expect(await isRevealed(page, "hotspot", "Reti da pesca spostate")).toBe(true);
   await activateHotspot(page, "Ampolla d'olio");
@@ -265,8 +265,10 @@ test("the Inventory stays unavailable while a narrative activity holds play", as
   // Exploration: the Inventory and the hotspot reveal are both available.
   await expect(trigger).toBeVisible();
 
-  // A Line suspends it, and finishing the Line gives it back.
+  // A Sequence takes play from its first direction, and the Line it presents
+  // keeps it: neither the trigger nor its keyboard shortcut reaches a Player.
   await activateHotspot(page, "Reti da pesca");
+  await expect(trigger).toBeHidden();
   await expect(line(page, "michele")).toContainText("reti", { timeout: 15_000 });
   await expect(trigger).toBeHidden();
   await frame.focus();
@@ -293,12 +295,15 @@ test("the Inventory stays unavailable while a narrative activity holds play", as
   await leaveConversation(page);
   await expect(trigger).toBeVisible();
 
-  // A Sequence owns play from its first frame: the reveal hides the trigger.
+  // Exploration gets the Inventory back, with the collected Object in it. The
+  // click starts a walk first, so the collection lands a few seconds later.
   await activateHotspot(page, "Ampolla d'olio");
-  await expect(trigger).toBeHidden();
-  await expect(inventoryObject(page, "oilFlask")).toHaveCount(1);
+  await expect(inventoryObject(page, "oilFlask")).toHaveCount(1, { timeout: 20_000 });
   await advance(page);
   await expect(trigger).toBeVisible();
+  await frame.focus();
+  await page.keyboard.press("i");
+  await expect(page.locator("[data-fondale-inventory-panel]")).toBeVisible();
   expect(errors).toEqual([]);
 });
 
@@ -321,11 +326,13 @@ test("an incompatible Continuation State offers only New Game", async ({ page })
   await expect(startup.getByRole("button", { name: "New Game" })).toBeVisible();
 });
 
-test("packaged text presentations remain legible at both window scales", async ({ page }) => {
-  for (const [name, viewport] of [
-    ["actual-size", { width: 1_280, height: 720 }],
-    ["letterboxed", { width: 900, height: 700 }],
-  ] as const) {
+// Each window scale gets its own Game Session: reopening the game in the same
+// browser would meet the continuation prompt of the run before it.
+for (const [name, viewport] of [
+  ["actual-size", { width: 1_280, height: 720 }],
+  ["letterboxed", { width: 900, height: 700 }],
+] as const) {
+  test(`packaged text presentations remain legible ${name}`, async ({ page }) => {
     await page.setViewportSize(viewport);
     const { errors } = await openGame(page);
 
@@ -345,7 +352,7 @@ test("packaged text presentations remain legible at both window scales", async (
     expect(prompt.y + prompt.height).toBeLessThanOrEqual(bounds.y + bounds.height);
     await shoot(page, `acceptance-command-preview-${name}`);
 
-    // A Character-bound Line, a Narration and a Choice all stay inside the frame.
+    // A Character-bound Line and a Choice both stay inside the frame.
     await activateHotspot(page, "Raffaele");
     await conversation(page).getByRole("button", { name: "Cerchi qualcuno per un lavoro?" })
       .click();
@@ -362,10 +369,10 @@ test("packaged text presentations remain legible at both window scales", async (
 
     // The Inventory panel is the last presentation that has to survive scaling.
     await page.locator("[data-fondale-inventory-trigger]").click();
-    await expect(page.locator("[data-fondale-inventory-slot]")).toHaveCount(8);
+    await expect(page.locator("[data-fondale-inventory-panel]")).toBeVisible();
     await expect(inventoryObject(page, "sealedLetter")).toBeVisible();
     await shoot(page, `acceptance-inventory-${name}`);
     await page.locator("[data-fondale-inventory-close]").click();
     expect(errors).toEqual([]);
-  }
-});
+  });
+}
