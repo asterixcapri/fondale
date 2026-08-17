@@ -29,4 +29,9 @@ export const narrativeFacts = ({
     proposition:
       "Dalla torre della fortificazione costiera si tiene d'occhio il mare aperto.",
   },
+  "drifting-boat-sighting": {
+    proposition:
+      "Dal belvedere, Michele ha visto una barca alla deriva avvicinarsi agli scogli.",
+    setsVariable: "driftingBoatSeen",
+  },
 } satisfies Readonly<Record<string, NarrativeFactDefinition>>);

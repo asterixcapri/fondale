@@ -10,6 +10,10 @@ export const prologueConclusion = ({
     text: "Quella barca non dovrebbe essere qui.",
   }, {
     type: "operations",
-    operations: [{ type: "set-variable", variable: "driftingBoatSeen", value: true }],
+    operations: [{
+      type: "learn-narrative-fact",
+      character: "michele",
+      factId: "drifting-boat-sighting",
+    }],
   }],
 } satisfies SequenceDefinition);

@@ -89,8 +89,14 @@ test("the isolated harbour package exposes and exercises its panoramic default s
   await expect(page.locator("[data-fondale-conversation]")).toBeVisible({ timeout: 15_000 });
   await page.locator("[data-fondale-conversation]").getByRole("button", { name: "Leave" }).click();
 
+  // Since the harbour opening, pulling is the nets' primary verb: the click
+  // plays the reveal Sequence instead of a look-at response.
   await clickHotspot(page, "Reti da pesca");
-  await expectResponse(page, "Reti pesanti");
+  await expect(page.locator('[data-fondale-line][data-fondale-speaker="michele"]'))
+    .toContainText("reti", { timeout: 15_000 });
+  await page.locator("[data-fondale-frame]").focus();
+  await page.keyboard.press(".");
+  await page.waitForTimeout(3_000);
 
   await clickHotspot(page, "Argano senza manovella", "top");
   await expectResponse(page, "Sul mozzo manca la manovella");

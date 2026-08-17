@@ -13,6 +13,18 @@ async function waitForFixture(page: import("@playwright/test").Page): Promise<vo
 }
 
 async function waitForIdle(page: import("@playwright/test").Page): Promise<void> {
+  // Clicks that land on the lookout hotspot play authored Lines or the
+  // sighting Sequence; drain their presentations before expecting idle.
+  for (let step = 0; step < 8; step += 1) {
+    const activity = await page.evaluate(() =>
+      window.__fortificationTest!.session.createSaveSnapshot().state.activity,
+    );
+    if (activity === null) return;
+    const frame = page.locator("[data-fondale-frame]");
+    await frame.focus();
+    await page.keyboard.press(".");
+    await page.waitForTimeout(300);
+  }
   await expect.poll(() => page.evaluate(() =>
     window.__fortificationTest!.session.createSaveSnapshot().state.activity,
   )).toBeNull();
@@ -48,7 +60,9 @@ test("the isolated fortification climbs through every vertical Camera band", asy
   const requestedPackages = new Set<string>();
   page.on("requestfinished", (request) => {
     const path = new URL(request.url()).pathname;
-    if (path.includes("/src/scenes/") && path.endsWith(".png")) requestedPackages.add(path);
+    if (path.includes("/src/scenes/coastal-fortification/") && path.endsWith(".png")) {
+      requestedPackages.add(path);
+    }
   });
 
   const { errors } = await openGame(page, "/test/fixtures/fortification.html");
@@ -97,6 +111,7 @@ test("the isolated fortification climbs through every vertical Camera band", asy
 
   expect([...requestedPackages]).toEqual([
     expect.stringContaining("/src/scenes/coastal-fortification/background.png"),
+    expect.stringContaining("/src/scenes/coastal-fortification/boat-rocking.png"),
     expect.stringContaining("/src/scenes/coastal-fortification/left-foreground.png"),
     expect.stringContaining("/src/scenes/coastal-fortification/right-foreground.png"),
   ]);

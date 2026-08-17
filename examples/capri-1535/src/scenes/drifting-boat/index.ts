@@ -134,6 +134,6 @@ export const driftingBoat = ({
       cases: [],
     } satisfies NounDefinition),
     direction: "left",
-    destination: { scene: "fortification", entrance: "fromDriftingBoat" },
+    destination: { scene: "coastalFortification", entrance: "fromDriftingBoat" },
   }],
 } satisfies SceneDefinition);

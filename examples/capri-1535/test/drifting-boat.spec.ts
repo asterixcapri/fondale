@@ -30,7 +30,7 @@ test("the isolated drifting-boat package boards, explores every clue and reaches
   const frame = page.locator("[data-fondale-frame]");
   const canvas = frame.locator("canvas");
 
-  await expect(frame).toHaveAttribute("data-fondale-scene", "fortification");
+  await expect(frame).toHaveAttribute("data-fondale-scene", "coastalFortification");
   await clickSceneSpace(page, 1180, 540, sceneSize);
   await expect(frame).toHaveAttribute("data-fondale-scene", "driftingBoat", { timeout: 12_000 });
   expect(await canvas.evaluate((element) => ({

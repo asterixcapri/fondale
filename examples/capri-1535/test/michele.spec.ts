@@ -10,7 +10,7 @@ test("Michele walks and turns through four authored Facings at the project Logic
   const runtimeAssets = new Set<string>();
   page.on("requestfinished", (request) => {
     const fileName = new URL(request.url()).pathname.split("/").at(-1);
-    if (fileName?.startsWith("v3-workwear-")) runtimeAssets.add(fileName);
+    if (fileName?.startsWith("runtime-workwear-")) runtimeAssets.add(fileName);
   });
 
   const { errors } = await openGame(page);
@@ -21,18 +21,26 @@ test("Michele walks and turns through four authored Facings at the project Logic
   }))).toEqual({ width: 1280, height: 720 });
 
   await expect.poll(() => [...runtimeAssets].sort()).toEqual([
-    "v3-workwear-idle-back.png",
-    "v3-workwear-idle-front.png",
-    "v3-workwear-idle-left.png",
-    "v3-workwear-idle-right.png",
-    "v3-workwear-speaking-back.png",
-    "v3-workwear-speaking-front.png",
-    "v3-workwear-speaking-left.png",
-    "v3-workwear-speaking-right.png",
-    "v3-workwear-walking-back.png",
-    "v3-workwear-walking-front.png",
-    "v3-workwear-walking-left.png",
-    "v3-workwear-walking-right.png",
+    "runtime-workwear-idle-back.png",
+    "runtime-workwear-idle-front.png",
+    "runtime-workwear-idle-left.png",
+    "runtime-workwear-idle-right.png",
+    "runtime-workwear-mechanism-use-back.png",
+    "runtime-workwear-mechanism-use-front.png",
+    "runtime-workwear-mechanism-use-left.png",
+    "runtime-workwear-mechanism-use-right.png",
+    "runtime-workwear-pick-up-back.png",
+    "runtime-workwear-pick-up-front.png",
+    "runtime-workwear-pick-up-left.png",
+    "runtime-workwear-pick-up-right.png",
+    "runtime-workwear-speaking-back.png",
+    "runtime-workwear-speaking-front.png",
+    "runtime-workwear-speaking-left.png",
+    "runtime-workwear-speaking-right.png",
+    "runtime-workwear-walking-back.png",
+    "runtime-workwear-walking-front.png",
+    "runtime-workwear-walking-left.png",
+    "runtime-workwear-walking-right.png",
   ]);
 
   const presentations: Buffer[] = [];

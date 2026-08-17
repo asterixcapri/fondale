@@ -35,11 +35,11 @@ const isolatedProject = ({
   identity: "org.asterixcapri.capri-1535-drifting-boat-fixture",
   version: "1",
   logicalResolution: { width: 1280, height: 720 },
-  scenes: { fortification: fortificationStub, driftingBoat },
+  scenes: { coastalFortification: fortificationStub, driftingBoat },
   characters: {
     michele: {
       ...michele,
-      initialScene: "fortification",
+      initialScene: "coastalFortification",
       initialGroundPoint: { x: 1000, y: 570 },
       dialogue: undefined,
     },
@@ -48,7 +48,7 @@ const isolatedProject = ({
   playerCharacter: "michele",
   commandLexicon: italianCommandLexicon,
   commandFallbacks: italianCommandFallbacks,
-  initialScene: "fortification",
+  initialScene: "coastalFortification",
 } satisfies GameProject);
 
 await startGame(isolatedProject, {
