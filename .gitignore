@@ -7,3 +7,5 @@ test/.artifacts
 .release
 *-api-key.txt
 .env.local
+output/
+tmp/
