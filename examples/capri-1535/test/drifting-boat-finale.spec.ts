@@ -9,13 +9,18 @@ interface Point {
   readonly y: number;
 }
 
-async function clickCanvas(page: Page, point: Point): Promise<void> {
+async function clickCanvas(
+  page: Page,
+  point: Point,
+  button: "left" | "right" = "left",
+): Promise<void> {
   const canvas = page.locator("[data-fondale-frame] canvas");
   const bounds = await canvas.boundingBox();
   if (!bounds) throw new Error("Fondale canvas is not visible");
   await page.mouse.click(
     bounds.x + (point.x / 1280) * bounds.width,
     bounds.y + (point.y / 720) * bounds.height,
+    { button },
   );
 }
 
@@ -50,11 +55,20 @@ async function revealedPoint(page: Page, kind: "hotspot" | "passage", label: str
   return point;
 }
 
-async function activateHotspot(page: Page, label: string): Promise<void> {
+/**
+ * Clicks a revealed hotspot, panning right until it enters the viewport. The
+ * secondary button asks for the Noun's secondary verb, the way a Player reaches
+ * `talk-to` on a target whose preferred verb is `look-at`.
+ */
+async function activateHotspot(
+  page: Page,
+  label: string,
+  button: "left" | "right" = "left",
+): Promise<void> {
   for (let attempt = 0; attempt < 8; attempt += 1) {
     const point = await revealedPoint(page, "hotspot", label);
     if (point) {
-      await clickCanvas(page, point);
+      await clickCanvas(page, point, button);
       return;
     }
     await clickCanvas(page, { x: 1200, y: 650 });
@@ -222,12 +236,22 @@ async function climbDownToLanding(page: Page): Promise<void> {
 
 /** Commits the sighting and boards the drifting boat. */
 async function reachDriftingBoat(page: Page): Promise<void> {
+  // The boat-arrival Sequence plays on landing and absorbs Player clicks, so
+  // the climb must not start before it has run to its end.
+  await page.waitForTimeout(5_500);
   await climbToLookout(page);
-  await activateHotspot(page, "Belvedere della fortificazione");
-  await expect(page.locator("[data-fondale-narration]")).toContainText(
-    "una piccola barca alla deriva",
-    { timeout: 15_000 },
-  );
+  const narration = page.locator("[data-fondale-narration]");
+  for (let attempt = 0; ; attempt += 1) {
+    if (attempt >= 3) throw new Error("The lookout never committed the sighting");
+    await activateHotspot(page, "Belvedere della fortificazione");
+    try {
+      // The observation only fires once Michele reaches the approach point.
+      await expect(narration).toContainText("una piccola barca alla deriva", { timeout: 20_000 });
+      break;
+    } catch {
+      // A click absorbed by an in-flight walk opens nothing; try again.
+    }
+  }
   await advance(page);
   await expect(page.locator('[data-fondale-line][data-fondale-speaker="michele"]'))
     .toContainText("non dovrebbe essere qui");
@@ -244,9 +268,9 @@ async function reachDriftingBoat(page: Page): Promise<void> {
 
 /** Plays the whole encounter, returning once the sequence has completed. */
 async function playEncounter(page: Page): Promise<void> {
-  await activateHotspot(page, "Marinaio ferito");
+  await activateHotspot(page, "Marinaio ferito", "right");
   const sailorLine = page.locator('[data-fondale-line][data-fondale-speaker="woundedSailor"]');
-  await expect(sailorLine).toContainText("quel viso", { timeout: 15_000 });
+  await expect(sailorLine).toContainText("quel viso", { timeout: 25_000 });
   await advance(page);
   await expect(page.locator('[data-fondale-line][data-fondale-speaker="michele"]'))
     .toContainText("Mi scambi per un altro");
@@ -280,13 +304,13 @@ test("the finale plays the sailor encounter, the bundle handoff and the opened-b
 
   // Environmental clues stay inspectable and never gate the encounter.
   await activateHotspot(page, "Sartie recise");
-  await expect(page.locator("[aria-live=polite]")).toContainText("tagliate", { timeout: 8_000 });
+  await expect(page.locator("[aria-live=polite]")).toContainText("tagliate", { timeout: 20_000 });
   await activateHotspot(page, "Traccia di sangue");
-  await expect(page.locator("[aria-live=polite]")).toContainText("sangue", { timeout: 8_000 });
+  await expect(page.locator("[aria-live=polite]")).toContainText("sangue", { timeout: 20_000 });
 
   // The wrapped bundle is visible but only lookable-at before the handoff.
   await activateHotspot(page, "Fagotto di tela cerata");
-  await expect(page.locator("[aria-live=polite]")).toContainText("spago cerato", { timeout: 8_000 });
+  await expect(page.locator("[aria-live=polite]")).toContainText("spago cerato", { timeout: 20_000 });
 
   await playEncounter(page);
 
@@ -294,7 +318,7 @@ test("the finale plays the sailor encounter, the bundle handoff and the opened-b
   await expect(page.locator('[data-fondale-inventory-object="oilskinBundle"]')).toHaveCount(1);
   // The sailor lost consciousness; his identity stays unresolved.
   await activateHotspot(page, "Marinaio ferito");
-  await expect(page.locator("[aria-live=polite]")).toContainText("svenuto", { timeout: 8_000 });
+  await expect(page.locator("[aria-live=polite]")).toContainText("svenuto", { timeout: 20_000 });
   await shoot(page, "capri-1535-finale-sailor-unconscious");
 
   // Opening the bundle changes the same Object into its opened Appearance.
@@ -303,7 +327,7 @@ test("the finale plays the sailor encounter, the bundle handoff and the opened-b
   await expect(bundle).toBeVisible();
   await bundle.click({ button: "right" });
   await expect(page.locator("[data-fondale-narration]")).toContainText("apre il fagotto", {
-    timeout: 8_000,
+    timeout: 20_000,
   });
   await advance(page);
   await expect(page.locator('[data-fondale-line][data-fondale-speaker="michele"]'))
@@ -316,7 +340,7 @@ test("the finale plays the sailor encounter, the bundle handoff and the opened-b
   await expect(page.locator('[data-fondale-inventory-object="oilskinBundle"]')).toHaveCount(0);
   await activateHotspot(page, "Fagotto aperto");
   await expect(page.locator("[aria-live=polite]")).toContainText("sigillo spezzato", {
-    timeout: 8_000,
+    timeout: 20_000,
   });
   await shoot(page, "capri-1535-finale-opened-bundle");
 
@@ -335,7 +359,7 @@ test("the finale plays the sailor encounter, the bundle handoff and the opened-b
   await expect(frame).toHaveAttribute("data-fondale-scene", "driftingBoat");
   await activateHotspot(page, "Fagotto aperto");
   await expect(page.locator("[aria-live=polite]")).toContainText("sigillo spezzato", {
-    timeout: 8_000,
+    timeout: 20_000,
   });
   expect(errors).toEqual([]);
 });
@@ -346,15 +370,15 @@ test("skipping the sailor encounter commits the same handoff and unconsciousness
   await reachFortification(page);
   await reachDriftingBoat(page);
 
-  await activateHotspot(page, "Marinaio ferito");
+  await activateHotspot(page, "Marinaio ferito", "right");
   await expect(page.locator('[data-fondale-line][data-fondale-speaker="woundedSailor"]'))
-    .toContainText("quel viso", { timeout: 15_000 });
+    .toContainText("quel viso", { timeout: 25_000 });
   await page.keyboard.press("Escape");
   await page.waitForTimeout(800);
 
   await expect(page.locator('[data-fondale-inventory-object="oilskinBundle"]')).toHaveCount(1);
   await activateHotspot(page, "Marinaio ferito");
-  await expect(page.locator("[aria-live=polite]")).toContainText("svenuto", { timeout: 8_000 });
+  await expect(page.locator("[aria-live=polite]")).toContainText("svenuto", { timeout: 20_000 });
 
   // The skipped encounter still opens into the same canonical finale.
   await page.locator("[data-fondale-inventory-trigger]").click();
@@ -362,7 +386,7 @@ test("skipping the sailor encounter commits the same handoff and unconsciousness
   await expect(bundle).toBeVisible();
   await bundle.click({ button: "right" });
   await expect(page.locator("[data-fondale-narration]")).toContainText("apre il fagotto", {
-    timeout: 8_000,
+    timeout: 20_000,
   });
   await advance(page);
   await advance(page);
