@@ -10,6 +10,7 @@ import {
   leaveConversation,
   line,
   logicalResolution,
+  type Point,
   response,
   scene,
 } from "./prologue";
@@ -20,17 +21,18 @@ import {
  * The Player Character is the one Appearance on screen in every Scene, so his
  * walk cycle and his directed Animations are the demo's most visible artwork.
  * This spec drives him the way a Player does and reads back only the drawn
- * canvas: it proves that each required Facing is portrayed differently, that
- * the cycles genuinely animate rather than freezing on one frame, and that
- * Perspective Scale changes the portrayal with depth.
+ * canvas: it proves that each required Facing is drawn from its own sheet and
+ * that the cycles genuinely animate rather than freezing on one frame.
  *
- * What a machine cannot judge — whether the motion looks right — is what the
- * named screenshots under `test/shots/` are for. Every assertion here exists so
- * that a broken sheet, a missing Facing or a stalled cycle fails the run
- * instead of quietly waiting for somebody to notice it in a shot.
+ * What a machine cannot judge — whether the motion looks right, and how large
+ * a Perspective Scale band draws him — is what the named screenshots under
+ * `test/shots/` are for; the Engine renders through WebGL, so the suite can
+ * compare rendered frames but never measure a sprite. Every assertion here
+ * exists so that a broken sheet, a missing Facing or a stalled cycle fails the
+ * run instead of quietly waiting for somebody to notice it in a shot.
  */
 
-test.setTimeout(120_000);
+test.setTimeout(240_000);
 
 /** Every sheet the workwear Appearance has to load to be portrayed at all. */
 const workwearSheets = [
@@ -72,10 +74,33 @@ async function expectMoving(canvas: Locator, samples = 6): Promise<void> {
   throw new Error("The presentation never changed: no Animation is running");
 }
 
-/** Walks Michele to a Scene Space point and lets him arrive. */
-async function walkTo(page: Page, x: number, y: number): Promise<void> {
-  await clickCanvas(page, { x, y });
+/** Walks Michele to a Logical Resolution point and lets him arrive. */
+async function walkTo(page: Page, point: Point): Promise<void> {
+  await clickCanvas(page, point);
   await page.waitForTimeout(3_600);
+}
+
+/**
+ * Collects the frames of one whole looping cycle.
+ *
+ * Michele's idle runs 16 frames at 8 per second, so sampling for rather more
+ * than two seconds sees every frame the loop has. Two cycles drawn from the
+ * same sheet, at the same place, over the same Background therefore encode to
+ * some byte-identical frame in common; two cycles drawn from different sheets
+ * cannot. Comparing whole cycles is what makes that a real test — a single
+ * screenshot each would differ merely because the loop had moved on.
+ */
+async function sampleCycle(canvas: Locator, samples = 20): Promise<readonly Buffer[]> {
+  const frames: Buffer[] = [];
+  for (let sample = 0; sample < samples; sample += 1) {
+    frames.push(await canvas.screenshot());
+    await canvas.page().waitForTimeout(130);
+  }
+  return frames;
+}
+
+function sharesAFrame(one: readonly Buffer[], other: readonly Buffer[]): boolean {
+  return one.some((frame) => other.some((candidate) => candidate.equals(frame)));
 }
 
 test("Michele walks and turns through the four authored Facings", async ({ page }) => {
@@ -97,36 +122,49 @@ test("Michele walks and turns through the four authored Facings", async ({ page 
 
   await expect.poll(() => [...runtimeAssets].sort()).toEqual(workwearSheets);
 
-  // Each Facing is portrayed by its own artwork, and each walk cycle runs. The
-  // destinations are chained so that one axis dominates every leg — Michele
-  // opens at (330, 625) — and all four stay on open quay, clear of every
-  // Hotspot: a click that lands on one walks to its approach point and answers
-  // with a Command instead of the plain walk this case is reviewing.
-  const presentations: Buffer[] = [];
-  for (const [facing, x, y] of [
-    ["right", 600, 615],
-    ["back", 615, 480],
-    ["front", 630, 615],
-    ["left", 150, 645],
+  // Every Facing is reviewed at the same spot on the quay. Michele walks out to
+  // a waypoint and back, so he arrives at `meetingPoint` from a different side
+  // each time and comes to rest facing that way. Comparing the four arrivals is
+  // then a comparison of the artwork alone: he is drawn at the same place, at
+  // the same Perspective Scale, over the same pixels of Background. Walking to
+  // four *different* places would have compared four different pictures, and a
+  // build that drew one sheet for all four Facings would have passed.
+  //
+  // Every point stays left of the viewport centre, so the Camera never scrolls,
+  // and clear of every Hotspot, so a click is a plain walk rather than a
+  // Command.
+  const meetingPoint = { x: 400, y: 560 } as const;
+  await walkTo(page, meetingPoint);
+
+  const cycles = new Map<string, readonly Buffer[]>();
+  for (const [facing, waypoint] of [
+    ["left", { x: 640, y: 560 }],
+    ["right", { x: 160, y: 600 }],
+    ["front", { x: 400, y: 510 }],
+    ["back", { x: 400, y: 630 }],
   ] as const) {
-    await clickCanvas(page, { x, y });
+    await walkTo(page, waypoint);
+
+    // The walk back is where the walk cycle itself is reviewed: it has to be
+    // moving, and nothing but the walk may be on screen while it is.
+    await clickCanvas(page, meetingPoint);
     await expectMoving(canvas);
-    // Nothing but the walk is on screen, so the frames that just changed are
-    // the walk cycle and not a Command's answer arriving over it.
     await expect(response(page)).toBeEmpty();
     await expect(page.locator("[data-fondale-line]")).toHaveCount(0);
-    const presentation = await canvas.screenshot();
-    expect(presentations.some((candidate) => candidate.equals(presentation))).toBe(false);
-    presentations.push(presentation);
     await shoot(page, `michele-${facing}-walking`);
     await page.waitForTimeout(3_600);
-  }
 
-  // Arrival hands the presentation back to the idle role, which keeps breathing.
-  const arrived = await canvas.screenshot();
-  expect(presentations.some((candidate) => candidate.equals(arrived))).toBe(false);
-  await expectMoving(canvas);
-  await shoot(page, "michele-front-idle");
+    // Arrival hands the presentation back to the idle role, facing the way he
+    // came. This whole cycle is what the four Facings are compared on.
+    const cycle = await sampleCycle(canvas);
+    expect(cycle.some((frame) => !frame.equals(cycle[0]!))).toBe(true);
+    for (const [other, drawn] of cycles) {
+      expect(sharesAFrame(cycle, drawn),
+        `${facing} and ${other} are drawn from the same sheet`).toBe(false);
+    }
+    cycles.set(facing, cycle);
+    await shoot(page, `michele-${facing}-idle`);
+  }
 
   expect(errors).toEqual([]);
 });
@@ -136,13 +174,19 @@ test("Perspective Scale portrays Michele differently at every walkable depth", a
   const canvas = scene(page).locator("canvas");
 
   // The harbour declares three Perspective Scale bands between y 400 and y 650.
-  // Michele stands in each in turn, on the same stretch of quay, so the only
-  // thing that changes between the shots is how large he is drawn. The column
-  // is chosen so that the Camera never scrolls: at x 600 Michele stays left of
-  // the viewport centre, and every band is dry quay there.
+  // Michele stands in each in turn, in the same column of quay, and the shots
+  // are the review: how large he is drawn is a measurement of his sprite, and
+  // the Engine renders through WebGL, so the suite cannot read those pixels
+  // back. What is asserted here is the weaker, honest thing — the three
+  // presentations are not the same picture — and `michele-far-band-idle` beside
+  // `michele-near-band-idle` is what a person compares.
+  //
+  // The far band doubles as the review of the walkable region's far edge: it is
+  // the highest point of quay Michele can stand on in this column, so a region
+  // that reached back into the water would put him in the sea in that shot.
   const presentations: Buffer[] = [];
   for (const [band, y] of [["far", 475], ["middle", 545], ["near", 620]] as const) {
-    await walkTo(page, 600, y);
+    await walkTo(page, { x: 600, y });
     const presentation = await canvas.screenshot();
     expect(presentations.some((candidate) => candidate.equals(presentation))).toBe(false);
     presentations.push(presentation);

@@ -1,4 +1,4 @@
-import { test } from "@playwright/test";
+import { test, type Page } from "@playwright/test";
 
 import { expect, openGame } from "./harness";
 import {
@@ -27,7 +27,7 @@ import {
 test.setTimeout(180_000);
 
 /** The Conversation's own status line, which is where feedback is shown. */
-function dialogueStatus(page: Parameters<typeof conversation>[0]) {
+function dialogueStatus(page: Page) {
   return page.locator("[data-fondale-dialogue] [role=status]");
 }
 

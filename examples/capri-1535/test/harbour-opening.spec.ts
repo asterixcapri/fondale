@@ -21,7 +21,6 @@ import {
   recoverHandle,
   reflect,
   response,
-  revealedPoint,
   scene,
   selectInventoryObject,
   travelToCloister,
@@ -130,8 +129,10 @@ for (const order of ["before", "after"] as const) {
       await leaveConversation(page);
     }
 
-    // The flask is genuinely behind the nets: it is not reachable until they move.
-    expect(await revealedPoint(page, "hotspot", "Ampolla d'olio")).toBeUndefined();
+    // The flask is genuinely behind the nets: it is not reachable until they
+    // move. `isRevealed` is the honest question — `revealedPoint` is also
+    // `undefined` for anything the Camera merely does not happen to show.
+    expect(await isRevealed(page, "hotspot", "Ampolla d'olio")).toBe(false);
     await pullNetsAndCollectOil(page);
 
     if (order === "before") {
@@ -153,8 +154,8 @@ for (const order of ["before", "after"] as const) {
     await expect(inventoryObject(page, "oilFlask")).toHaveCount(1);
 
     await continueGameSession(page);
-    expect(await revealedPoint(page, "hotspot", "Reti da pesca spostate")).toBeDefined();
-    expect(await revealedPoint(page, "hotspot", "Ampolla d'olio")).toBeUndefined();
+    expect(await isRevealed(page, "hotspot", "Reti da pesca spostate")).toBe(true);
+    expect(await isRevealed(page, "hotspot", "Ampolla d'olio")).toBe(false);
     await page.locator("[data-fondale-inventory-trigger]").click();
     await expect(inventoryObject(page, "oilFlask")).toHaveCount(1);
     if (order === "after") await shoot(page, "harbour-object-actual-size");
@@ -210,8 +211,8 @@ test("Michele delivers the letter, frees the well and keeps the recovered handle
 
   // The freed well is still freed when Michele walks back into the cloister.
   await travelToCloister(page);
-  expect(await revealedPoint(page, "hotspot", "Pozzo liberato")).toBeDefined();
-  expect(await revealedPoint(page, "hotspot", "Manovella liberata")).toBeUndefined();
+  expect(await isRevealed(page, "hotspot", "Pozzo liberato")).toBe(true);
+  expect(await isRevealed(page, "hotspot", "Manovella liberata")).toBe(false);
 
   await reflect(page, "Che cosa so della manovella?");
   const reflected = line(page, "michele");
@@ -315,7 +316,7 @@ test("skipping the installation commits the same repaired world through continua
   await travelToCloister(page);
   await travelToHarbour(page);
   await continueGameSession(page);
-  expect(await revealedPoint(page, "hotspot", "Argano riparato")).toBeDefined();
+  expect(await isRevealed(page, "hotspot", "Argano riparato")).toBe(true);
   expect(await isRevealed(page, "passage", "Gozzo verso la fortificazione")).toBe(false);
 
   await answerRaffaele(page);

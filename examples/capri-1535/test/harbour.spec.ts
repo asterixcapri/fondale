@@ -10,9 +10,10 @@ import {
   isRevealed,
   line,
   logicalResolution,
+  panPoints,
   type Point,
   response,
-  revealedLabels,
+  revealedNounLabels,
   revealedPoint,
   scene,
   type TargetKind,
@@ -46,14 +47,14 @@ test.setTimeout(180_000);
 async function walkToEdge(
   page: Page,
   pan: "left" | "right",
-  reference: { readonly kind: TargetKind; readonly label: string },
+  reference: { readonly kind: TargetKind; readonly nounLabel: string },
 ): Promise<Point> {
-  const step = pan === "right" ? { x: 1_200, y: 650 } : { x: 80, y: 650 };
+  const step = panPoints[pan];
   let previous: Point | undefined;
   for (let attempt = 0; attempt < 12; attempt += 1) {
     await clickCanvas(page, step);
     await page.waitForTimeout(3_500);
-    const current = await revealedPoint(page, reference.kind, reference.label);
+    const current = await revealedPoint(page, reference.kind, reference.nounLabel);
     if (current && previous && current.x === previous.x && current.y === previous.y) return current;
     previous = current;
   }
@@ -96,7 +97,7 @@ test("the harbour package exposes its panoramic default state at actual size", a
 
   // Every target the opening Scene offers, and only those: the flask is still
   // under the nets, so its Hotspot is not reachable yet.
-  expect([...await revealedLabels(page, "hotspot")].sort()).toEqual([
+  expect([...await revealedNounLabels(page, "hotspot")].sort()).toEqual([
     "Argano senza manovella",
     "Gozzo di Raffaele",
     "Raffaele",
@@ -106,7 +107,7 @@ test("the harbour package exposes its panoramic default state at actual size", a
   expect(await isRevealed(page, "hotspot", "Ampolla d'olio")).toBe(false);
   // Only the cloister is reachable on foot; the gozzo Passage waits on the
   // repaired winch.
-  expect([...await revealedLabels(page, "passage")]).toEqual([
+  expect([...await revealedNounLabels(page, "passage")]).toEqual([
     "Passaggio verso il chiostro",
   ]);
 
@@ -128,7 +129,7 @@ test("both Camera edges are reachable and clamp to the Scene", async ({ page }) 
   // and the gozzo, 1200 points behind it, has left.
   const rightEdge = await walkToEdge(page, "right", {
     kind: "passage",
-    label: "Passaggio verso il chiostro",
+    nounLabel: "Passaggio verso il chiostro",
   });
   expect(await revealedPoint(page, "hotspot", "Argano senza manovella")).toBeDefined();
   expect(await revealedPoint(page, "hotspot", "Gozzo di Raffaele")).toBeUndefined();
@@ -138,7 +139,7 @@ test("both Camera edges are reachable and clamp to the Scene", async ({ page }) 
   // picture entirely: the winch is gone and the gozzo is back.
   const leftEdgePoint = await walkToEdge(page, "left", {
     kind: "hotspot",
-    label: "Gozzo di Raffaele",
+    nounLabel: "Gozzo di Raffaele",
   });
   expect(await revealedPoint(page, "hotspot", "Argano senza manovella")).toBeUndefined();
   expect(await revealedPoint(page, "hotspot", "Gozzo di Raffaele")).toEqual(leftEdgePoint);

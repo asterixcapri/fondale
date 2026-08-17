@@ -1,6 +1,6 @@
 import { test } from "@playwright/test";
 
-import { continueGameSession, expect, openGame, shoot } from "./harness";
+import { continuationState, continueGameSession, expect, openGame, shoot } from "./harness";
 import {
   acceptHarbourJob,
   activateHotspot,
@@ -134,7 +134,7 @@ test("finding the oil first converges on the same canonical outcome", async ({ p
 
   // The second valid discovery order: the nets are searched out of curiosity,
   // before anybody explains what the oil is for.
-  expect(await revealedPoint(page, "hotspot", "Ampolla d'olio")).toBeUndefined();
+  expect(await isRevealed(page, "hotspot", "Ampolla d'olio")).toBe(false);
   await pullNetsAndCollectOil(page);
   expect(await carriedObjects(page)).toEqual(["oilFlask"]);
 
@@ -179,6 +179,16 @@ test("finding the oil first converges on the same canonical outcome", async ({ p
   await installHandle(page);
   expect(await isRevealed(page, "hotspot", "Argano riparato")).toBe(true);
   await answerRaffaele(page, "Mi hai mentito sui frati.", "Prestito");
+
+  // Relationship: calling Raffaele a liar cost Michele his trust and left him
+  // angry, and both survive leaving the browser. Neither has a Player-visible
+  // consequence in this prologue — no Disclosure here is gated on Trust — so
+  // the persisted Continuation State is the only place they can be read.
+  await continueGameSession(page);
+  const restored = await continuationState(page);
+  expect(restored.relationships["raffaele"]?.["michele"]).toEqual({ trust: "low" });
+  expect(restored.dialogueStates["raffaele"]).toBe("angry");
+
   await boardGozzo(page);
   await expect(frame).toHaveAttribute("data-fondale-scene", "coastalFortification");
   expect(errors).toEqual([]);
@@ -224,16 +234,29 @@ test("mouse and keyboard both reach every Player affordance", async ({ page }) =
   await advance(page);
   await leaveConversation(page);
 
-  // Inventory: `i` opens it, arrow-free focus selects, Escape closes it.
+  // Inventory: `i` opens it, focus and Enter select the Object the same way a
+  // click does, and Escape closes the panel.
   await frame.focus();
   await page.keyboard.press("i");
   const panel = page.locator("[data-fondale-inventory-panel]");
   await expect(panel).toBeVisible();
-  await inventoryObject(page, "sealedLetter").focus();
+  const letter = inventoryObject(page, "sealedLetter");
+  await expect(letter).toHaveAttribute("aria-pressed", "false");
+  await letter.focus();
+  await page.keyboard.press("Enter");
+  await expect(panel).toBeHidden();
+  await expect(letter).toHaveAttribute("aria-pressed", "true");
+  // Selecting is a Command in progress, so pressing it again puts it back.
+  await page.keyboard.press("i");
+  await expect(panel).toBeVisible();
+  await letter.focus();
+  await page.keyboard.press("Enter");
+  await expect(letter).toHaveAttribute("aria-pressed", "false");
   await page.keyboard.press("Escape");
   await expect(panel).toBeHidden();
 
-  // Reflection: reached from the keyboard, answered, and left again.
+  // Reflection: reached from the keyboard, answered with what Michele actually
+  // knows at the opening, and left again.
   const reflectionControl = page.getByRole("button", { name: "Rifletti" });
   await reflectionControl.focus();
   await page.keyboard.press("Enter");
@@ -241,7 +264,7 @@ test("mouse and keyboard both reach every Player affordance", async ({ page }) =
   await expect(reflection).toBeVisible();
   await reflection.locator("[data-fondale-dialogue-input]").fill("Che cosa so?");
   await reflection.getByRole("button", { name: "Reflect" }).click();
-  await expect(line(page, "michele")).toContainText("Michele", { timeout: 15_000 });
+  await expect(line(page, "michele")).toContainText("lavoro onesto", { timeout: 15_000 });
   await leaveReflection(page);
 
   // Sequences: the reveal is driven to its end from the keyboard alone, and

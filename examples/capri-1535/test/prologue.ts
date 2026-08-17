@@ -98,54 +98,69 @@ function revealedSelector(kind: TargetKind): string {
     : "[data-fondale-revealed-passage]";
 }
 
+interface RevealedTarget {
+  /** The Noun Label the overlay advertises for it. */
+  readonly nounLabel: string;
+  /** Its centre, in Logical Resolution points of the current viewport. */
+  readonly centre: Point;
+}
+
+/** Everything of that kind the reveal overlay currently advertises. */
+async function revealedTargets(
+  page: Page,
+  kind: TargetKind,
+): Promise<readonly RevealedTarget[]> {
+  return whileRevealed(page, async (frame) => {
+    const revealed = frame.locator(revealedSelector(kind));
+    const targets: RevealedTarget[] = [];
+    for (let index = 0; index < await revealed.count(); index += 1) {
+      const element = revealed.nth(index);
+      targets.push({
+        nounLabel: await element.locator("title").textContent() ?? "",
+        centre: polygonCenter(await element.getAttribute("points") ?? ""),
+      });
+    }
+    return targets;
+  });
+}
+
 /** The centre of a revealed target, or `undefined` while it is off-Camera. */
 export async function revealedPoint(
   page: Page,
   kind: TargetKind,
-  label: string,
+  nounLabel: string,
 ): Promise<Point | undefined> {
-  return whileRevealed(page, async (frame) => {
-    const revealed = frame.locator(revealedSelector(kind));
-    for (let index = 0; index < await revealed.count(); index += 1) {
-      const element = revealed.nth(index);
-      if (await element.locator("title").textContent() !== label) continue;
-      const candidate = polygonCenter(await element.getAttribute("points") ?? "");
-      const inViewport = candidate.x >= 16 && candidate.x <= logicalResolution.width - 16 &&
-        candidate.y >= 16 && candidate.y <= logicalResolution.height - 16;
-      return inViewport ? candidate : undefined;
-    }
-    return undefined;
-  });
+  const found = (await revealedTargets(page, kind))
+    .find((target) => target.nounLabel === nounLabel);
+  if (!found) return undefined;
+  const { centre } = found;
+  const inViewport = centre.x >= 16 && centre.x <= logicalResolution.width - 16 &&
+    centre.y >= 16 && centre.y <= logicalResolution.height - 16;
+  return inViewport ? centre : undefined;
 }
 
-/** Whether the target is reachable at all, wherever the Camera happens to be. */
+/**
+ * Whether the target is reachable at all, wherever the Camera happens to be.
+ *
+ * This is the honest way to ask whether something exists: `revealedPoint` also
+ * returns `undefined` for a target that is merely off-Camera, so a spec that
+ * reads it to prove absence can pass without proving anything.
+ */
 export async function isRevealed(
   page: Page,
   kind: TargetKind,
-  label: string,
+  nounLabel: string,
 ): Promise<boolean> {
-  return whileRevealed(page, async (frame) => {
-    const revealed = frame.locator(revealedSelector(kind));
-    for (let index = 0; index < await revealed.count(); index += 1) {
-      if (await revealed.nth(index).locator("title").textContent() === label) return true;
-    }
-    return false;
-  });
+  return (await revealedTargets(page, kind))
+    .some((target) => target.nounLabel === nounLabel);
 }
 
-/** Every revealed target label in the current Scene. */
-export async function revealedLabels(
+/** Every revealed Noun Label of that kind in the current Scene. */
+export async function revealedNounLabels(
   page: Page,
   kind: TargetKind,
 ): Promise<readonly string[]> {
-  return whileRevealed(page, async (frame) => {
-    const revealed = frame.locator(revealedSelector(kind));
-    const labels: string[] = [];
-    for (let index = 0; index < await revealed.count(); index += 1) {
-      labels.push(await revealed.nth(index).locator("title").textContent() ?? "");
-    }
-    return labels;
-  });
+  return (await revealedTargets(page, kind)).map(({ nounLabel }) => nounLabel);
 }
 
 interface ActivationOptions {
@@ -156,7 +171,7 @@ interface ActivationOptions {
   readonly button?: "left" | "right";
 }
 
-const panPoints: Readonly<Record<"left" | "right" | "up" | "down", Point>> = {
+export const panPoints: Readonly<Record<"left" | "right" | "up" | "down", Point>> = {
   left: { x: 80, y: 650 },
   right: { x: 1_200, y: 650 },
   up: { x: 560, y: 120 },
@@ -173,12 +188,12 @@ const panPoints: Readonly<Record<"left" | "right" | "up" | "down", Point>> = {
 export async function activate(
   page: Page,
   kind: TargetKind,
-  label: string,
+  nounLabel: string,
   options: ActivationOptions = {},
 ): Promise<void> {
   const { pan = "right", attempts = kind === "passage" ? 24 : 8, button = "left" } = options;
   for (let attempt = 0; attempt < attempts; attempt += 1) {
-    const point = await revealedPoint(page, kind, label);
+    const point = await revealedPoint(page, kind, nounLabel);
     if (point) {
       await clickCanvas(page, point, button);
       return;
@@ -186,39 +201,39 @@ export async function activate(
     await clickCanvas(page, panPoints[pan]);
     await page.waitForTimeout(1_000);
   }
-  throw new Error(`${kind} '${label}' never entered the Camera viewport`);
+  throw new Error(`${kind} '${nounLabel}' never entered the Camera viewport`);
 }
 
 export async function activateHotspot(
   page: Page,
-  label: string,
+  nounLabel: string,
   options: ActivationOptions = {},
 ): Promise<void> {
-  await activate(page, "hotspot", label, options);
+  await activate(page, "hotspot", nounLabel, options);
 }
 
 export async function activatePassage(
   page: Page,
-  label: string,
+  nounLabel: string,
   options: ActivationOptions = {},
 ): Promise<void> {
-  await activate(page, "passage", label, options);
+  await activate(page, "passage", nounLabel, options);
 }
 
 /** Walks in one direction until the named target comes into view. */
 export async function walkTowards(
   page: Page,
   kind: TargetKind,
-  label: string,
+  nounLabel: string,
   pan: "left" | "right" | "up" | "down",
   steps = 40,
 ): Promise<void> {
   for (let step = 0; step < steps; step += 1) {
-    if (await revealedPoint(page, kind, label)) return;
+    if (await revealedPoint(page, kind, nounLabel)) return;
     await clickCanvas(page, panPoints[pan]);
     await page.waitForTimeout(1_200);
   }
-  throw new Error(`${kind} '${label}' never entered the Camera viewport`);
+  throw new Error(`${kind} '${nounLabel}' never entered the Camera viewport`);
 }
 
 /** Advances the current narrative activity the way the keyboard does. */
@@ -255,6 +270,13 @@ export function inventoryObject(page: Page, object: string): Locator {
   return page.locator(`[data-fondale-inventory-object="${object}"]`);
 }
 
+/**
+ * The Frame the presented Scene is drawn in.
+ *
+ * It is named for the Scene because that is what a spec is reaching for: the
+ * Frame is one element that carries `data-fondale-scene`, owns the canvas and
+ * takes the keyboard, and the specs never need to distinguish the three.
+ */
 export function scene(page: Page): Locator {
   return page.locator("[data-fondale-frame]");
 }

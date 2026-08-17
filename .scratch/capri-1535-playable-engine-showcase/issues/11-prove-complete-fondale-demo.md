@@ -61,3 +61,15 @@ documentation.
   `workers: 1`. Every case in this suite drives a real-time simulation and
   reads it back by screenshotting a canvas, so it cannot share a machine with
   copies of itself. The full serial run takes about 32 minutes.
+- 2026-08-17, review follow-up: Trust and Dialogue State have no Player-visible
+  consequence in this prologue — no Disclosure here is gated on Trust — so the
+  continuation case reads them from the persisted Continuation State through
+  `continuationState` in the harness. That is the one place the suite reads
+  Game State rather than the screen, and it is deliberate: the alternative was
+  authoring a trust-gated Disclosure, which is content this ticket does not own.
+- 2026-08-17, review follow-up: the Engine renders through WebGL, so the suite
+  can compare rendered frames but can never read a pixel or measure a sprite.
+  Perspective Scale bands, occlusion and depth sorting are therefore reviewed
+  in named screenshots under `test/shots/`, not asserted. Facings are asserted:
+  Michele returns to one point from four sides and whole idle cycles are
+  compared, so two Facings drawn from the same sheet would share a frame.
