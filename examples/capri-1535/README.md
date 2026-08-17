@@ -51,26 +51,68 @@ modules. The `art/` directory contains only source masters and their prompt or
 provenance notes; tools write processed game assets directly beside their owning
 modules under `src/`.
 
-The prologue uses exactly four panoramic Scenes:
-`town square ↔ cloister` and `town square ↔ harbour ↔ coastal fortification`.
-Michele accepts one ordinary paid job, retrieves the harbour winch handle from
-the cloister well, and climbs to the lookout. The drifting boat seen from the
-tower is the inciting incident; the larger mystery remains outside the demo.
+## The prologue route
+
+The prologue uses exactly four Scenes:
+`cloister ↔ harbour ↔ coastal fortification ↔ drifting boat`. The harbour is
+the opening Scene and the hub; the cloister and the fortification hang off it
+in opposite directions, and the drifting boat is reached from the
+fortification's rocks stairway.
+
+Michele accepts one ordinary paid job at the harbour, where the winch has lost
+its handle. Raffaele pays him to carry a sealed letter to the cloister and
+mentions an oil flask hidden under the fishing nets. Brother Elia reads the
+letter, tells Michele that the handle was lent rather than stolen, and the
+oiled pulley frees the well that holds it. Back at the harbour the handle goes
+onto the winch, Michele answers Raffaele about what he now knows, and the
+repaired winch launches the gozzo to the coastal fortification. From the
+lookout he sights a small boat adrift, climbs down to it, and finds a wounded
+sailor who mistakes him for his father and hands him an oilskin bundle. Opening
+that bundle is the cliffhanger; the larger mystery remains outside the demo.
 
 The route exercises horizontal and vertical Camera scrolling, target-owned
 Nouns, Commands, directional Passages, persistent puzzle state, Character-bound
-Lines, explicit Narrations, and mouse- and keyboard-selected Choices through
-the packaged public API.
+Lines, explicit Narrations, skippable directed Sequences, collectible Objects,
+Reflection, and mouse- and keyboard-selected Choices through the packaged
+public API. The whole prologue is completable through the authored Conversation
+alternatives alone, without ever typing a free-form question.
 
 Raffaele and Frate Elia carry a Dialogue Profile as well. Talking to either one
 opens a Conversation that presents the authored questions and the free-form
 field together, from the first click: the authored half carries the prologue in
 its exact wording, its branching and its Game Operations, while the free-form
-half answers only from the Narrative Facts that Character actually knows. The
-prologue is completable end to end through the authored questions alone. What
+half answers only from the Narrative Facts that Character actually knows. What
 Michele learns either way reaches Reflection, and learning that the cloister
 pulley is jammed sets a Game Variable, which is what opens one further authored
 question for Frate Elia.
+
+Raffaele's account of the handle is a Cover Story. Michele remembers it as that
+Character's Testimony and never as canonical Character Knowledge, so believing
+Raffaele and hearing Brother Elia's contradiction can both be true of the same
+Game State.
+
+## Verification
+
+Two flows, and they never overlap. The standard suite is what proves the demo;
+the live flow is an opt-in look at the real model.
+
+```sh
+npm run verify                 # standard: deterministic, no database, model or network
+npm run verify:dialogue-live   # opt-in: the separately run Dialogue Server and a real model
+```
+
+`npm run verify` drives Google Chrome through Playwright and answers the
+production Dialogue HTTP seam from test-owned deterministic support, so it needs
+no Dialogue Server, no PostgreSQL, no model key and no network. It covers the
+whole prologue end to end, the alternative discovery order, Knowledge-Driven
+Dialogue and Disclosure, Reflection, provider failure and cancellation, browser
+continuation, mouse and keyboard parity, the HUD contract, every skippable
+Sequence, and an actual-size inspection of each Scene package. Screenshots land
+under `test/shots/` for visual review.
+
+`npm run verify:dialogue-live` is described under
+[Live model spike](#live-model-spike). It needs the Dialogue Server, PostgreSQL,
+a model key and the network, and it stays outside `npm run build`.
 
 ## Local Dialogue Server
 

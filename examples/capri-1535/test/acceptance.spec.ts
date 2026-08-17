@@ -1,503 +1,336 @@
-import { test, type Page } from "@playwright/test";
+import { test } from "@playwright/test";
 
-import { clickWorld, continueGameSession, expect, hoverWorld, openGame, shoot } from "./harness";
+import { continuationState, continueGameSession, expect, openGame, shoot } from "./harness";
+import {
+  acceptHarbourJob,
+  activateHotspot,
+  advance,
+  answerRaffaele,
+  boardGozzo,
+  carriedObjects,
+  clickCanvas,
+  conversation,
+  deliverLetter,
+  freeWellAndCollectHandle,
+  hoverCanvas,
+  installHandle,
+  inventoryObject,
+  isRevealed,
+  leaveConversation,
+  leaveReflection,
+  line,
+  narration,
+  playSailorEncounter,
+  pullNetsAndCollectOil,
+  reachDriftingBoat,
+  reflect,
+  response,
+  revealedPoint,
+  scene,
+  travelToCloister,
+  travelToHarbour,
+} from "./prologue";
 
-test.setTimeout(90_000);
+/**
+ * The product demonstration.
+ *
+ * This is the one seam that claims the whole prologue works. It drives the
+ * packaged Example exactly as a Player does — canvas clicks, HUD controls and
+ * the keyboard — and reads back only what a Player can see: the presented
+ * Scene, Lines, Narrations, Inventory contents and revealed targets.
+ *
+ * Focused proofs of individual capabilities live in the sibling specs
+ * (`harbour-opening`, `boat-sighting`, `drifting-boat-finale`,
+ * `knowledge-dialogue`, `dialogue-resilience`). This file answers one question:
+ * can somebody sit down and finish the demo?
+ */
 
-type Verb = "pick-up" | "look-at" | "talk-to" | "use";
+test.setTimeout(420_000);
 
-async function command(page: Page, verb: Verb, x: number, y: number): Promise<void> {
-  const labels: Record<Verb, string> = {
-    "pick-up": "Raccogli",
-    "look-at": "Guarda",
-    "talk-to": "Parla con",
-    use: "Usa",
-  };
-  await hoverWorld(page, x, y);
-  await expect(page.locator("[data-fondale-primary-action] [data-fondale-action-text]"))
-    .toContainText(labels[verb]);
-  await clickWorld(page, x, y);
-}
+test("the whole prologue completes through authored Conversation alternatives alone", async ({
+  page,
+}) => {
+  const { errors, dialogueRequests } = await openGame(page);
+  const frame = scene(page);
 
-async function selectInventoryObject(page: Page, object: string): Promise<void> {
+  // 1 — Harbour, morning: the winch is visibly broken and Raffaele pays.
+  await expect(frame).toHaveAttribute("data-fondale-scene", "harbour");
+  await shoot(page, "acceptance-1-harbour-morning");
+  await acceptHarbourJob(page);
+  await leaveConversation(page);
+  expect(await carriedObjects(page)).toEqual(["sealedLetter"]);
+  await pullNetsAndCollectOil(page);
+  await shoot(page, "acceptance-2-harbour-nets-moved");
+
+  // 2 — Cloister, early afternoon: the letter buys the truth and the handle.
+  await travelToCloister(page);
+  await shoot(page, "acceptance-3-cloister-afternoon");
+  await deliverLetter(page);
+  await freeWellAndCollectHandle(page);
+  expect(await carriedObjects(page)).toEqual(["winchHandle"]);
+
+  // 3 — Harbour again: the handle goes onto the winch and stays there.
+  await travelToHarbour(page);
+  await activateHotspot(page, "Argano senza manovella");
+  await expect(response(page)).toContainText("manca la manovella", { timeout: 15_000 });
+  await installHandle(page);
+  expect(await carriedObjects(page)).toEqual([]);
+  expect(await isRevealed(page, "hotspot", "Argano riparato")).toBe(true);
+  await shoot(page, "acceptance-4-harbour-winch-repaired");
+  await answerRaffaele(page);
+
+  // 4 — Fortification, golden hour: the climb and the sighting.
+  await boardGozzo(page);
+  await shoot(page, "acceptance-5-fortification-golden-hour");
+  await reachDriftingBoat(page);
+
+  // 5 — Drifting boat, dusk: clues, the sailor and the cliffhanger.
+  await shoot(page, "acceptance-6-drifting-boat-dusk");
+  await activateHotspot(page, "Sartie recise");
+  await expect(response(page)).toContainText("tagliate", { timeout: 20_000 });
+  await activateHotspot(page, "Traccia di sangue");
+  await expect(response(page)).toContainText("sangue", { timeout: 20_000 });
+  await activateHotspot(page, "Fagotto di tela cerata");
+  await expect(response(page)).toContainText("spago cerato", { timeout: 20_000 });
+
+  await playSailorEncounter(page);
+  expect(await carriedObjects(page)).toEqual(["oilskinBundle"]);
+  await activateHotspot(page, "Marinaio ferito");
+  await expect(response(page)).toContainText("svenuto", { timeout: 20_000 });
+
+  // The HUD contract holds for Narration too: the opening Narration owns play,
+  // so the Inventory trigger is suspended until the Player dismisses it.
   await page.locator("[data-fondale-inventory-trigger]").click();
-  const item = page.locator(`[data-fondale-inventory-object="${object}"]`);
-  await expect(item).toBeVisible();
-  if (await item.getAttribute("aria-pressed") === "true") {
-    await page.locator("[data-fondale-inventory-close]").click();
-  } else {
-    await item.click();
-  }
-  await expect(page.locator("[data-fondale-inventory-panel]")).toBeHidden();
-  await expect(item).toHaveAttribute("aria-pressed", "true");
-}
-
-async function advance(page: Page): Promise<void> {
-  await page.locator("[data-fondale-frame]").focus();
-  await page.keyboard.press(".");
-}
-
-async function waitForWalk(page: Page, milliseconds = 3_000): Promise<void> {
-  await page.waitForTimeout(milliseconds);
-}
-
-/** Asks one free-form question inside the open Conversation and reads the answer out. */
-async function ask(page: Page, question: string): Promise<void> {
-  const conversation = page.locator("[data-fondale-conversation]");
-  await conversation.locator("[data-fondale-dialogue-input]").fill(question);
-  await conversation.getByRole("button", { name: "Ask" }).click();
-  await expect(page.locator('[data-fondale-line][data-fondale-speaker="michele"]'))
-    .toContainText(question, { timeout: 8_000 });
+  await inventoryObject(page, "oilskinBundle").click({ button: "right" });
+  await expect(narration(page)).toContainText("apre il fagotto", { timeout: 20_000 });
+  await expect(page.locator("[data-fondale-inventory-trigger]")).toBeHidden();
   await advance(page);
-}
+  await expect(line(page, "michele")).toContainText("sigillo spezzato");
+  await advance(page);
+  await expect(narration(page)).toContainText("quel sigillo lo stava aspettando");
+  await advance(page);
+  await expect(inventoryObject(page, "oilskinBundle")).toHaveCount(0);
+  await activateHotspot(page, "Fagotto aperto");
+  await expect(response(page)).toContainText("sigillo spezzato", { timeout: 20_000 });
+  await shoot(page, "acceptance-7-prologue-cliffhanger");
 
-/** Opens Michele's Reflection and waits for the composed answer. */
-async function reflect(page: Page, question: string): Promise<void> {
-  await page.getByRole("button", { name: "Rifletti" }).click();
+  // The demo is finishable without ever typing at a Character: the deterministic
+  // support saw no interpretation request, so nothing above depended on a model
+  // reading free-form Italian. `reset` and `ready` are session lifecycle.
+  expect(dialogueRequests.filter(({ operation }) => operation === "interpret")).toEqual([]);
+  expect(dialogueRequests.filter(({ operation }) => operation === "verbalize")).toEqual([]);
+
+  // The finished prologue survives leaving the browser.
+  await continueGameSession(page);
+  await expect(frame).toHaveAttribute("data-fondale-scene", "driftingBoat");
+  await activateHotspot(page, "Fagotto aperto");
+  await expect(response(page)).toContainText("sigillo spezzato", { timeout: 20_000 });
+  expect(errors).toEqual([]);
+});
+
+test("finding the oil first converges on the same canonical outcome", async ({ page }) => {
+  const { errors } = await openGame(page);
+  const frame = scene(page);
+
+  // The second valid discovery order: the nets are searched out of curiosity,
+  // before anybody explains what the oil is for.
+  expect(await isRevealed(page, "hotspot", "Ampolla d'olio")).toBe(false);
+  await pullNetsAndCollectOil(page);
+  expect(await carriedObjects(page)).toEqual(["oilFlask"]);
+
+  await acceptHarbourJob(page);
+  // Raffaele's hint still identifies the nets; it never becomes a second puzzle.
+  await conversation(page).getByRole("button", { name: "Dove trovo l'ampolla?" }).click();
+  await expect(line(page, "raffaele")).toContainText("reti");
+  await advance(page);
+  await leaveConversation(page);
+
+  await travelToCloister(page);
+  await deliverLetter(page);
+  await freeWellAndCollectHandle(page);
+  await travelToHarbour(page);
+
+  // Continuation mid-route restores every representative kind of Game State.
+  await continueGameSession(page);
+  await expect(frame).toHaveAttribute("data-fondale-scene", "harbour");
+  // Objects: the recovered handle is still carried, the consumed flask is gone.
+  expect(await carriedObjects(page)).toEqual(["winchHandle"]);
+  // Scenery: the nets stay moved and the flask they hid is not back.
+  expect(await isRevealed(page, "hotspot", "Reti da pesca spostate")).toBe(true);
+  expect(await isRevealed(page, "hotspot", "Ampolla d'olio")).toBe(false);
+  // Consumed alternatives: the engagement question is not offered a second time.
+  await activateHotspot(page, "Raffaele");
+  await expect(conversation(page).locator("[data-fondale-dialogue-input]"))
+    .toBeVisible({ timeout: 15_000 });
+  await expect(conversation(page).getByRole("button", { name: "Cerchi qualcuno per un lavoro?" }))
+    .toHaveCount(0);
+  await leaveConversation(page);
+  // Knowledge: what Michele learned from Brother Elia survived the reload.
+  const reflection = await reflect(page, "Che cosa so della manovella?");
+  await expect(line(page, "michele")).toContainText("prestato volontariamente", {
+    timeout: 15_000,
+  });
+  await advance(page);
+  await reflection.getByRole("button", { name: "Leave" }).click();
+
+  // Convergence: the same install, the same repaired world, the same unlock.
+  await activateHotspot(page, "Argano senza manovella");
+  await expect(response(page)).toContainText("manca la manovella", { timeout: 15_000 });
+  await installHandle(page);
+  expect(await isRevealed(page, "hotspot", "Argano riparato")).toBe(true);
+  await answerRaffaele(page, "Mi hai mentito sui frati.", "Prestito");
+
+  // Relationship: calling Raffaele a liar cost Michele his trust and left him
+  // angry, and both survive leaving the browser. Neither has a Player-visible
+  // consequence in this prologue — no Disclosure here is gated on Trust — so
+  // the persisted Continuation State is the only place they can be read.
+  await continueGameSession(page);
+  const restored = await continuationState(page);
+  expect(restored.relationships["raffaele"]?.["michele"]).toEqual({ trust: "low" });
+  expect(restored.dialogueStates["raffaele"]).toBe("angry");
+
+  await boardGozzo(page);
+  await expect(frame).toHaveAttribute("data-fondale-scene", "coastalFortification");
+  expect(errors).toEqual([]);
+});
+
+test("mouse and keyboard both reach every Player affordance", async ({ page }) => {
+  const { errors } = await openGame(page);
+  const frame = scene(page);
+
+  // Hotspots and Passages are revealed from the keyboard and walked to with the
+  // mouse: the reveal overlay is presentation, so it never takes pointer input.
+  await frame.focus();
+  await page.keyboard.down("Tab");
+  await expect(frame.locator("[data-fondale-revealed-hotspot]")).not.toHaveCount(0);
+  await expect(frame.locator("[data-fondale-revealed-hotspots]"))
+    .toHaveCSS("pointer-events", "none");
+  await page.keyboard.up("Tab");
+  await expect(frame.locator("[data-fondale-revealed-hotspot]")).toHaveCount(0);
+
+  // The mouse names the command before committing to it.
+  const raffaele = await revealedPoint(page, "hotspot", "Raffaele");
+  if (!raffaele) throw new Error("Raffaele is not on Camera at the opening");
+  await hoverCanvas(page, raffaele);
+  await expect(page.locator("[data-fondale-primary-action] [data-fondale-action-text]"))
+    .toContainText("Parla con");
+
+  // Conversations: the alternative is chosen with the keyboard alone.
+  await clickCanvas(page, raffaele);
+  const open = conversation(page);
+  const engagement = open.getByRole("button", { name: "Cerchi qualcuno per un lavoro?" });
+  await expect(engagement).toBeVisible({ timeout: 15_000 });
+  await engagement.focus();
+  await page.keyboard.press("Enter");
+  await expect(line(page, "raffaele")).toContainText("monete", { timeout: 15_000 });
+
+  // Lines advance with `.`, and a Choice answers to its number key.
+  await advance(page);
+  await expect(page.locator("[data-fondale-choice] button")).toHaveCount(2);
+  await frame.focus();
+  await page.keyboard.press("1");
+  await expect(line(page, "raffaele")).toContainText("rubato", { timeout: 15_000 });
+  await advance(page);
+  await advance(page);
+  await leaveConversation(page);
+
+  // Inventory: `i` opens it, focus and Enter select the Object the same way a
+  // click does, and Escape closes the panel.
+  await frame.focus();
+  await page.keyboard.press("i");
+  const panel = page.locator("[data-fondale-inventory-panel]");
+  await expect(panel).toBeVisible();
+  const letter = inventoryObject(page, "sealedLetter");
+  await expect(letter).toHaveAttribute("aria-pressed", "false");
+  await letter.focus();
+  await page.keyboard.press("Enter");
+  await expect(panel).toBeHidden();
+  await expect(letter).toHaveAttribute("aria-pressed", "true");
+  // Selecting is a Command in progress, so pressing it again puts it back.
+  await page.keyboard.press("i");
+  await expect(panel).toBeVisible();
+  await letter.focus();
+  await page.keyboard.press("Enter");
+  await expect(letter).toHaveAttribute("aria-pressed", "false");
+  await page.keyboard.press("Escape");
+  await expect(panel).toBeHidden();
+
+  // Reflection: reached from the keyboard, answered with what Michele actually
+  // knows at the opening, and left again.
+  const reflectionControl = page.getByRole("button", { name: "Rifletti" });
+  await reflectionControl.focus();
+  await page.keyboard.press("Enter");
   const reflection = page.locator("[data-fondale-reflection]");
   await expect(reflection).toBeVisible();
-  await reflection.locator("[data-fondale-dialogue-input]").fill(question);
+  await reflection.locator("[data-fondale-dialogue-input]").fill("Che cosa so?");
   await reflection.getByRole("button", { name: "Reflect" }).click();
-}
+  await expect(line(page, "michele")).toContainText("lavoro onesto", { timeout: 15_000 });
+  await leaveReflection(page);
 
-function polygonBounds(points: string): {
-  minimumX: number;
-  maximumX: number;
-  minimumY: number;
-  maximumY: number;
-} {
-  const coordinates = points.split(" ").map((pair) => {
-    const [x, y] = pair.split(",").map(Number);
-    return { x: x ?? 0, y: y ?? 0 };
-  });
-  const xs = coordinates.map(({ x }) => x);
-  const ys = coordinates.map(({ y }) => y);
-  return {
-    minimumX: Math.min(...xs),
-    maximumX: Math.max(...xs),
-    minimumY: Math.min(...ys),
-    maximumY: Math.max(...ys),
-  };
-}
-
-async function clickVisibleEdgePassage(page: Page, edge: "left" | "right"): Promise<boolean> {
-  const frame = page.locator("[data-fondale-frame]");
-  await frame.focus();
-  await page.keyboard.down("Tab");
-  const passages = page.locator("[data-fondale-revealed-passage]");
-  await expect(passages).not.toHaveCount(0);
-  const candidates: Array<{ x: number; y: number }> = [];
-  for (let index = 0; index < await passages.count(); index += 1) {
-    const bounds = polygonBounds(await passages.nth(index).getAttribute("points") ?? "");
-    if (bounds.maximumX < 0 || bounds.minimumX > 426) continue;
-    if (edge === "left" && (bounds.minimumX > 80 || bounds.maximumX < 48)) continue;
-    if (edge === "right" && bounds.maximumX < 346) continue;
-    candidates.push({
-      x: edge === "left"
-        ? Math.max(40, Math.min(100, bounds.maximumX - 8))
-        : Math.min(418, bounds.maximumX - Math.min(24, bounds.maximumX - bounds.minimumX)),
-      y: Math.max(8, Math.min(232, (bounds.minimumY + bounds.maximumY) / 2)),
-    });
-  }
-  const point = candidates.sort((a, b) => edge === "left" ? a.x - b.x : b.x - a.x)[0];
-  await page.keyboard.up("Tab");
-  if (!point) return false;
-  await clickWorld(page, point.x, point.y);
-  return true;
-}
-
-async function visibleHotspotPoint(page: Page, label: string): Promise<{ x: number; y: number } | undefined> {
-  const frame = page.locator("[data-fondale-frame]");
-  await frame.focus();
-  await page.keyboard.down("Tab");
-  const hotspots = page.locator("[data-fondale-revealed-hotspot]");
-  let point: { x: number; y: number } | undefined;
-  for (let index = 0; index < await hotspots.count(); index += 1) {
-    const hotspot = hotspots.nth(index);
-    if (await hotspot.locator("title").textContent() !== label) continue;
-    const bounds = polygonBounds(await hotspot.getAttribute("points") ?? "");
-    if (
-      bounds.maximumX >= 0 && bounds.minimumX <= 426 &&
-      bounds.maximumY >= 0 && bounds.minimumY <= 240
-    ) {
-      point = {
-        x: Math.max(40, Math.min(418, (bounds.minimumX + bounds.maximumX) / 2)),
-        y: Math.max(8, Math.min(232, (bounds.minimumY + bounds.maximumY) / 2)),
-      };
-    }
-    break;
-  }
-  await page.keyboard.up("Tab");
-  return point;
-}
-
-async function enterRightEdgePassage(page: Page): Promise<void> {
-  for (let attempt = 0; attempt < 4; attempt += 1) {
-    if (await clickVisibleEdgePassage(page, "right")) return;
-    await clickWorld(page, 400, 228);
-    await waitForWalk(page);
-  }
-  throw new Error("No visible right Passage after panning");
-}
-
-async function enterLeftEdgePassage(page: Page): Promise<void> {
-  for (let attempt = 0; attempt < 4; attempt += 1) {
-    if (await clickVisibleEdgePassage(page, "left")) return;
-    await clickWorld(page, 100, 228);
-    await waitForWalk(page);
-  }
-  throw new Error("No visible left Passage after panning");
-}
-
-test("the packaged Example opens in the new panoramic town square and reaches the cloister", async ({
-  page,
-}) => {
-  const { errors } = await openGame(page);
-  const frame = page.locator("[data-fondale-frame]");
-  const canvas = page.locator("[data-fondale-frame] canvas");
-  const opening = await canvas.screenshot();
-
-  await expect(frame).toHaveAttribute("data-fondale-scene", "townSquare");
-  await command(page, "look-at", 390, 110);
-  await expect(page.locator("[aria-live=polite]")).toContainText(
-    "campanile divide la piazza dal mare",
-  );
-  await clickWorld(page, 180, 142);
-  await expect(frame).toHaveAttribute("data-fondale-scene", "cloister", {
-    timeout: 8_000,
-  });
-  expect((await canvas.screenshot()).equals(opening)).toBe(false);
-  await shoot(page, "capri-1535-cloister");
+  // Sequences: the reveal is driven to its end from the keyboard alone, and
+  // commits its outcome. Skipping a skippable Sequence is the same Escape the
+  // installation, well, arrival and encounter cases press.
+  await activateHotspot(page, "Reti da pesca");
+  await expect(line(page, "michele")).toContainText("reti", { timeout: 15_000 });
+  await advance(page);
+  await expect(page.locator("[data-fondale-line]")).toHaveCount(0);
+  expect(await isRevealed(page, "hotspot", "Reti da pesca spostate")).toBe(true);
+  await activateHotspot(page, "Ampolla d'olio");
+  await expect(inventoryObject(page, "oilFlask")).toHaveCount(1);
   expect(errors).toEqual([]);
 });
 
-test("the Example exposes Rifletti as Player Character Reflection", async ({ page }) => {
-  const { errors, dialogueRequests } = await openGame(page);
-  await expect(page.locator("[data-fondale-overlay]")).toHaveCSS(
-    "font-family",
-    /Alegreya Sans/,
-  );
-  await expect.poll(() => page.evaluate(() => document.fonts.check(
-    '12px "Alegreya Sans"',
-  ))).toBe(true);
-  const reflectionControl = page.getByRole("button", { name: "Rifletti" });
-  const reflectionBounds = await reflectionControl.boundingBox();
-  const frameBounds = await page.locator("[data-fondale-frame]").boundingBox();
-  const inventoryControl = page.locator("[data-fondale-inventory-trigger]");
-  const inventoryBounds = await inventoryControl.boundingBox();
-  if (!reflectionBounds || !frameBounds || !inventoryBounds) {
-    throw new Error("HUD corner controls are unavailable");
-  }
-  expect(Math.abs(reflectionBounds.width - reflectionBounds.height)).toBeLessThanOrEqual(1);
-  expect(frameBounds.x + frameBounds.width - reflectionBounds.x - reflectionBounds.width)
-    .toBeLessThanOrEqual(20);
-  expect(frameBounds.y + frameBounds.height - reflectionBounds.y - reflectionBounds.height)
-    .toBeLessThanOrEqual(20);
-  expect(reflectionBounds.width).toBeCloseTo(inventoryBounds.width, 0);
-  const [reflectionStyle, inventoryStyle] = await Promise.all([
-    reflectionControl.evaluate((element) => {
-      const style = getComputedStyle(element);
-      return { background: style.backgroundColor, radius: style.borderRadius, shadow: style.boxShadow };
-    }),
-    inventoryControl.evaluate((element) => {
-      const style = getComputedStyle(element);
-      return { background: style.backgroundColor, radius: style.borderRadius, shadow: style.boxShadow };
-    }),
-  ]);
-  expect(reflectionStyle).toEqual(inventoryStyle);
-  await expect(reflectionControl.locator("[data-capri-reflection-icon]")).toBeVisible();
-
-  const interactionStyle = async (control: typeof reflectionControl) => control.evaluate((element) => {
-    const style = getComputedStyle(element);
-    return {
-      cursor: style.cursor,
-      filter: style.filter,
-      outlineColor: style.outlineColor,
-      outlineOffset: style.outlineOffset,
-      outlineWidth: style.outlineWidth,
-    };
-  });
-  await inventoryControl.hover();
-  const inventoryHoverStyle = await interactionStyle(inventoryControl);
-  await reflectionControl.hover();
-  const reflectionHoverStyle = await interactionStyle(reflectionControl);
-  expect(inventoryHoverStyle).toEqual(reflectionHoverStyle);
-  expect(reflectionHoverStyle).toMatchObject({ cursor: "pointer", filter: "brightness(1.3)" });
-
-  await inventoryControl.focus();
-  const inventoryFocusStyle = await interactionStyle(inventoryControl);
-  await reflectionControl.focus();
-  const reflectionFocusStyle = await interactionStyle(reflectionControl);
-  expect(inventoryFocusStyle).toEqual(reflectionFocusStyle);
-
-  expect(dialogueRequests).toHaveLength(1);
-  expect(dialogueRequests[0]?.operation).toBe("reset");
-  expect(dialogueRequests[0]?.sessionId).toMatch(
-    /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
-  );
-
-  await reflect(page, "Che cosa so?");
-
-  await expect(page.locator('[data-fondale-line][data-fondale-speaker="michele"]'))
-    .toContainText("Michele è arrivato a Capri in cerca di un lavoro onesto");
-  expect(dialogueRequests.some(({ operation }) => operation === "reflect")).toBe(true);
-  await advance(page);
-  await page.locator("[data-fondale-reflection]").getByRole("button", { name: "Leave" }).click();
-
-  await continueGameSession(page);
-
-  const sessionId = dialogueRequests[0]!.sessionId;
-  expect(dialogueRequests.filter(({ operation, sessionId: candidate }) =>
-    operation === "reset" && candidate === sessionId
-  )).toHaveLength(1);
-  expect(dialogueRequests.filter(({ operation, sessionId: candidate }) =>
-    operation === "ready" && candidate === sessionId
-  )).toHaveLength(1);
-  expect(errors).toEqual([]);
-});
-
-test("authored questions and the free-form field share one Conversation with Frate Elia", async ({
-  page,
-}) => {
+test("the Inventory stays unavailable while a narrative activity holds play", async ({ page }) => {
   const { errors } = await openGame(page);
-  const frame = page.locator("[data-fondale-frame]");
-  // The cloister opens from the middle of the panoramic square, which needs the
-  // Camera panned as far as the campanile before the Passage is in frame.
-  await command(page, "look-at", 390, 110);
-  await expect(page.locator("[aria-live=polite]")).toContainText("campanile");
-  await clickWorld(page, 180, 142);
-  await expect(frame).toHaveAttribute("data-fondale-scene", "cloister", { timeout: 8_000 });
+  const frame = scene(page);
+  const trigger = page.locator("[data-fondale-inventory-trigger]");
 
-  let elia = await visibleHotspotPoint(page, "Frate Elia");
-  if (!elia) {
-    await clickWorld(page, 400, 228);
-    await waitForWalk(page);
-    elia = await visibleHotspotPoint(page, "Frate Elia");
-  }
-  if (!elia) throw new Error("Frate Elia did not enter the Camera viewport");
-  await command(page, "talk-to", elia.x, elia.y);
+  // Exploration: the Inventory and the hotspot reveal are both available.
+  await expect(trigger).toBeVisible();
 
-  const conversation = page.locator("[data-fondale-conversation]");
-  const input = conversation.locator("[data-fondale-dialogue-input]");
-  const alternatives = conversation.locator("[data-fondale-conversation-alternative]");
-  const line = page.locator("[data-fondale-line]");
-  const eliaLine = page.locator('[data-fondale-line][data-fondale-speaker="brotherElia"]');
-
-  // Both ways of talking are offered from the first click, with no unlock.
-  await expect(input).toBeVisible({ timeout: 8_000 });
-  await expect(alternatives).toHaveCount(1);
-  await expect(alternatives.first()).toContainText("Sono qui per la manovella dell'argano.");
-
-  // A typed question is answered only from what Frate Elia actually knows.
-  await ask(page, "Perché la carrucola è bloccata?");
-  await expect(eliaLine).toContainText("La carrucola del pozzo è bloccata");
+  // A Sequence takes play from its first direction, and the Line it presents
+  // keeps it: neither the trigger nor its keyboard shortcut reaches a Player.
+  await activateHotspot(page, "Reti da pesca");
+  await expect(trigger).toBeHidden();
+  await expect(line(page, "michele")).toContainText("reti", { timeout: 15_000 });
+  await expect(trigger).toBeHidden();
+  await frame.focus();
+  await page.keyboard.press("i");
+  await expect(page.locator("[data-fondale-inventory-panel]")).toBeHidden();
   await advance(page);
+  await expect(trigger).toBeVisible();
 
-  // Learning that Fact set its declared Game Variable, which opens one more
-  // authored question: the two paths feed each other inside one Conversation.
-  await expect(input).toBeVisible();
-  await expect(alternatives).toHaveCount(2);
-  await alternatives.nth(1).click();
-  await expect(eliaLine).toContainText("Per il ferro preferisco l'olio");
-  await advance(page);
-  await expect(input).toBeVisible();
-  await expect(alternatives).toHaveCount(2);
+  // A Conversation suspends it while it owns the screen.
+  await activateHotspot(page, "Raffaele");
+  await expect(conversation(page)).toBeVisible({ timeout: 15_000 });
+  await expect(trigger).toBeHidden();
 
-  // An authored question may direct a Sequence: the field steps aside while it
-  // plays and comes back when it ends, and the question is consumed by asking.
-  await alternatives.first().click();
-  await expect(input).toBeHidden();
-  await expect(eliaLine).toContainText("Raffaele rivuole la sua manovella");
+  // A Choice inside that Conversation suspends it as well.
+  await conversation(page).getByRole("button", { name: "Cerchi qualcuno per un lavoro?" }).click();
+  await expect(line(page, "raffaele")).toContainText("monete", { timeout: 15_000 });
   await advance(page);
   await expect(page.locator("[data-fondale-choice] button")).toHaveCount(2);
-  await page.getByRole("button", { name: "Posso riprendermela?" }).click();
-  await expect(line).toContainText("Posso riprendermela?");
-  await advance(page);
-  await expect(eliaLine).toContainText("Appena la carrucola gira");
-  await advance(page);
-  await expect(input).toBeVisible();
-  await expect(alternatives).toHaveCount(1);
-  await expect(alternatives.first()).toContainText("Che cosa serve alla carrucola?");
-
-  // Reflection reports what Michele learned, by either path.
-  await conversation.getByRole("button", { name: "Leave" }).click();
-  await reflect(page, "Che cosa so?");
-  const reflected = page.locator('[data-fondale-line][data-fondale-speaker="michele"]');
-  await expect(reflected).toContainText("La carrucola del pozzo del chiostro è bloccata");
-  await expect(reflected).toContainText("I frati hanno preso la manovella dell'argano");
-  expect(errors).toEqual([]);
-});
-
-test("Michele completes one ordinary job before the drifting boat begins the adventure", async ({
-  page,
-}) => {
-  const { errors } = await openGame(page);
-  const frame = page.locator("[data-fondale-frame]");
-
-  await enterRightEdgePassage(page);
-  await expect(frame).toHaveAttribute("data-fondale-scene", "harbour", { timeout: 8_000 });
-  await command(page, "talk-to", 216, 180);
-  const conversation = page.locator("[data-fondale-conversation]");
-  const line = page.locator("[data-fondale-line]");
-  await expect(conversation.locator("[data-fondale-dialogue-input]")).toBeVisible();
-  await conversation.getByRole("button", { name: "Cerchi qualcuno per un lavoro?" }).click();
-  await expect(line).toContainText("monete", { timeout: 8_000 });
-  await advance(page);
-  await expect(page.locator("[data-fondale-choice] button")).toHaveCount(2);
-  await page.getByRole("button", { name: "Quanto vale il lavoro?" }).click();
-  await expect(line).toContainText("Quanto vale il lavoro?");
-  await advance(page);
-  await expect(line).toContainText("manovella");
-  await advance(page);
-  await expect(line).toContainText("ampolla");
-  await advance(page);
-  await expect(conversation.locator("[data-fondale-dialogue-input]")).toBeVisible();
-  await conversation.getByRole("button", { name: "Leave" }).click();
-  await expect(line).toHaveCount(0);
-
-  await waitForWalk(page, 1_000);
-  const flask = await visibleHotspotPoint(page, "Ampolla d'olio");
-  if (!flask) throw new Error("The oil flask did not enter the Camera viewport");
-  await command(page, "pick-up", flask.x, flask.y);
-  await expect(page.locator('[data-fondale-inventory-object="oilFlask"]')).toHaveCount(1);
-
-  await clickWorld(page, 400, 120);
-  await expect(frame).toHaveAttribute("data-fondale-scene", "townSquare", { timeout: 8_000 });
-  await clickWorld(page, 88, 132);
-  await expect(frame).toHaveAttribute("data-fondale-scene", "cloister", { timeout: 8_000 });
-
-  await clickWorld(page, 400, 228);
-  await waitForWalk(page);
-  await selectInventoryObject(page, "oilFlask");
-  await command(page, "use", 390, 188);
-  await expect(page.locator("[aria-live=polite]")).toContainText("carrucola");
-  await command(page, "pick-up", 365, 198);
-  await expect(page.locator('[data-fondale-inventory-object="winchHandle"]')).toHaveCount(1);
-
-  await enterLeftEdgePassage(page);
-  await expect(frame).toHaveAttribute("data-fondale-scene", "townSquare", { timeout: 8_000 });
-  await enterRightEdgePassage(page);
-  await expect(frame).toHaveAttribute("data-fondale-scene", "harbour", { timeout: 8_000 });
-
-  await clickWorld(page, 480, 210);
-  await waitForWalk(page, 1_500);
-  await selectInventoryObject(page, "winchHandle");
-  const winchStart = await frame.locator("canvas").screenshot();
-  await command(page, "use", 326, 190);
-  await page.waitForTimeout(300);
-  expect((await frame.locator("canvas").screenshot()).equals(winchStart)).toBe(false);
-  await expect(page.locator('[data-fondale-inventory-object="winchHandle"]')).toHaveCount(0);
-  await expect(line).toContainText("può salpare", { timeout: 8_000 });
-  await advance(page);
-  await expect(line).toHaveCount(0);
-
-  await enterLeftEdgePassage(page);
-  await expect(frame).toHaveAttribute("data-fondale-scene", "coastalFortification", {
-    timeout: 8_000,
-  });
-  const arrivalStart = await frame.locator("canvas").screenshot();
-  await page.waitForTimeout(400);
-  expect((await frame.locator("canvas").screenshot()).equals(arrivalStart)).toBe(false);
-  await page.waitForTimeout(3_500);
-  await shoot(page, "capri-1535-fortification-lower-path");
-
-  let lookout: { x: number; y: number } | undefined;
-  for (let step = 0; step < 14; step += 1) {
-    lookout = await visibleHotspotPoint(page, "Mare dalla torre");
-    if (lookout) break;
-    await clickWorld(page, 330, 24);
-    await waitForWalk(page, 1_000);
-    if (step === 6) await shoot(page, "capri-1535-fortification-ascent");
-  }
-  if (!lookout) throw new Error("The tower lookout did not enter the Camera viewport");
-  await command(page, "look-at", lookout.x, lookout.y);
-  await expect(page.locator("[data-fondale-narration]")).toContainText(
-    "una piccola barca alla deriva",
-    { timeout: 8_000 },
-  );
-  await advance(page);
-  await expect(line).toContainText("non dovrebbe essere qui");
-  await shoot(page, "capri-1535-prologue-ending");
-  expect(errors).toEqual([]);
-});
-
-test("pixel scaling and the Engine overlay remain usable in a smaller letterboxed window", async ({
-  page,
-}) => {
-  await page.setViewportSize({ width: 900, height: 700 });
-  const { errors } = await openGame(page);
-  const frame = page.locator("[data-fondale-frame]");
-  await expect(frame).toHaveCSS("width", "852px");
-  await expect(frame).toHaveCSS("height", "480px");
-  await expect(frame.locator("[data-fondale-verb]")).toHaveCount(0);
-  await expect(frame.locator("[data-fondale-inventory-trigger]")).toBeVisible();
-  await expect(frame.locator("[data-fondale-inventory-panel]")).toBeHidden();
-  await frame.locator("[data-fondale-inventory-trigger]").click();
-  await expect(frame.locator("[data-fondale-inventory-slot]")).toHaveCount(8);
-  await frame.locator("[data-fondale-inventory-close]").click();
-
+  await expect(trigger).toBeHidden();
   await frame.focus();
-  await page.keyboard.down("Tab");
-  await expect(frame.locator("[data-fondale-revealed-hotspot]")).toHaveCount(1);
-  await expect(frame.locator("[data-fondale-revealed-passage]")).toHaveCount(2);
-  await page.keyboard.up("Tab");
-  await shoot(page, "capri-1535-letterbox-contextual-overlay");
+  await page.keyboard.press("1");
+  await advance(page);
+  await advance(page);
+  await leaveConversation(page);
+  await expect(trigger).toBeVisible();
+
+  // Exploration gets the Inventory back, with the collected Object in it. The
+  // click starts a walk first, so the collection lands a few seconds later.
+  await activateHotspot(page, "Ampolla d'olio");
+  await expect(inventoryObject(page, "oilFlask")).toHaveCount(1, { timeout: 20_000 });
+  await advance(page);
+  await expect(trigger).toBeVisible();
+  await frame.focus();
+  await page.keyboard.press("i");
+  await expect(page.locator("[data-fondale-inventory-panel]")).toBeVisible();
   expect(errors).toEqual([]);
 });
 
-test("the contextual overlay preserves the full Scene and keeps prompts in frame", async ({ page }) => {
-  await page.setViewportSize({ width: 900, height: 700 });
-  await openGame(page);
-  const frame = page.locator("[data-fondale-frame]");
-  const canvas = frame.locator("canvas");
-  const canvasBounds = await canvas.boundingBox();
-  await hoverWorld(page, 390, 110);
-  const promptBounds = await frame.locator("[data-fondale-command-preview]").boundingBox();
-  const triggerBounds = await frame.locator("[data-fondale-inventory-trigger]").boundingBox();
-  if (!canvasBounds || !promptBounds || !triggerBounds) throw new Error("Overlay geometry is unavailable");
-  const scale = canvasBounds.width / 426;
-  const overlayBackground = await frame.locator("[data-fondale-overlay]").evaluate(
-    (element) => (element as HTMLElement).style.background,
-  );
-
-  expect.soft(overlayBackground).toBe("");
-  expect.soft(triggerBounds.width).toBeLessThanOrEqual(24 * scale);
-  expect.soft(promptBounds.x).toBeGreaterThanOrEqual(canvasBounds.x);
-  expect.soft(promptBounds.y).toBeGreaterThanOrEqual(canvasBounds.y);
-  expect.soft(promptBounds.x + promptBounds.width).toBeLessThanOrEqual(canvasBounds.x + canvasBounds.width);
-  expect.soft(promptBounds.y + promptBounds.height).toBeLessThanOrEqual(canvasBounds.y + canvasBounds.height);
-});
-
-test("packaged text presentations remain legible across Aiano and Boffe", async ({ page }) => {
-  for (const [scene, viewport] of [
-    ["aiano", { width: 1280, height: 720 }],
-    ["boffe", { width: 900, height: 700 }],
-  ] as const) {
-    await page.setViewportSize(viewport);
-    const { errors } = await openGame(page, `/test/fixtures/adventure-text.html?scene=${scene}`);
-
-    await command(page, "look-at", 70, 110);
-    await expect(page.locator("[aria-live=polite]")).toContainText("La luce cambia");
-    await shoot(page, `capri-1535-${scene}-command-response`);
-    await advance(page);
-
-    await command(page, "talk-to", 334, 135);
-    await expect(page.locator("[data-fondale-line]")).toContainText("sopra chi la pronuncia");
-    await shoot(page, `capri-1535-${scene}-character-line`);
-    await advance(page);
-    await expect(page.locator("[data-fondale-line]")).toHaveCount(0);
-
-    await command(page, "look-at", 210, 110);
-    await expect(page.locator("[data-fondale-narration]")).toContainText("Il vento porta il sale");
-    await shoot(page, `capri-1535-${scene}-narration`);
-    await advance(page);
-    await expect(page.locator("[data-fondale-choice] button")).toHaveCount(2);
-    await shoot(page, `capri-1535-${scene}-choice`);
-    expect(errors).toEqual([]);
-  }
-});
-
-test("an incompatible Capri Continuation State offers only New Game", async ({ page }) => {
+test("an incompatible Continuation State offers only New Game", async ({ page }) => {
   await openGame(page);
   await expect.poll(() => page.evaluate(() => {
     const key = Array.from({ length: localStorage.length }, (_, index) => localStorage.key(index))
@@ -515,3 +348,54 @@ test("an incompatible Capri Continuation State offers only New Game", async ({ p
   await expect(startup.getByRole("button", { name: "Continue" })).toHaveCount(0);
   await expect(startup.getByRole("button", { name: "New Game" })).toBeVisible();
 });
+
+// Each window scale gets its own Game Session: reopening the game in the same
+// browser would meet the continuation prompt of the run before it.
+for (const [name, viewport] of [
+  ["actual-size", { width: 1_280, height: 720 }],
+  ["letterboxed", { width: 900, height: 700 }],
+] as const) {
+  test(`packaged text presentations remain legible ${name}`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    const { errors } = await openGame(page);
+
+    // The Engine overlay never paints over the Scene and keeps prompts in frame.
+    const bounds = await page.locator("[data-fondale-frame] canvas").boundingBox();
+    const raffaele = await revealedPoint(page, "hotspot", "Raffaele");
+    if (!bounds || !raffaele) throw new Error("Harbour geometry is unavailable");
+    await hoverCanvas(page, raffaele);
+    const prompt = await page.locator("[data-fondale-command-preview]").boundingBox();
+    if (!prompt) throw new Error("The command preview is unavailable");
+    expect(await page.locator("[data-fondale-overlay]").evaluate(
+      (element) => (element as HTMLElement).style.background,
+    )).toBe("");
+    expect(prompt.x).toBeGreaterThanOrEqual(bounds.x);
+    expect(prompt.y).toBeGreaterThanOrEqual(bounds.y);
+    expect(prompt.x + prompt.width).toBeLessThanOrEqual(bounds.x + bounds.width);
+    expect(prompt.y + prompt.height).toBeLessThanOrEqual(bounds.y + bounds.height);
+    await shoot(page, `acceptance-command-preview-${name}`);
+
+    // A Character-bound Line and a Choice both stay inside the frame.
+    await activateHotspot(page, "Raffaele");
+    await conversation(page).getByRole("button", { name: "Cerchi qualcuno per un lavoro?" })
+      .click();
+    await expect(line(page, "raffaele")).toContainText("monete", { timeout: 15_000 });
+    await shoot(page, `acceptance-line-${name}`);
+    await advance(page);
+    await expect(page.locator("[data-fondale-choice] button")).toHaveCount(2);
+    await shoot(page, `acceptance-choice-${name}`);
+    await page.locator("[data-fondale-frame]").focus();
+    await page.keyboard.press("1");
+    await advance(page);
+    await advance(page);
+    await leaveConversation(page);
+
+    // The Inventory panel is the last presentation that has to survive scaling.
+    await page.locator("[data-fondale-inventory-trigger]").click();
+    await expect(page.locator("[data-fondale-inventory-panel]")).toBeVisible();
+    await expect(inventoryObject(page, "sealedLetter")).toBeVisible();
+    await shoot(page, `acceptance-inventory-${name}`);
+    await page.locator("[data-fondale-inventory-close]").click();
+    expect(errors).toEqual([]);
+  });
+}
