@@ -201,6 +201,12 @@
       "skillPath": "skills/productivity/to-questionnaire/SKILL.md",
       "computedHash": "d8938509f3400d9977343e11e876fc6e1982b0b9c133a2f2e9d3d730a67a103e"
     },
+    "to-skills": {
+      "source": "asterixcapri/skills",
+      "sourceType": "github",
+      "skillPath": "skills/to-skills/SKILL.md",
+      "computedHash": "2a38b9ff2b8e0fb0953a33b314db549aebbb97885eb8c1734ae9113754cb9bf6"
+    },
     "to-spec": {
       "source": "mattpocock/skills",
       "sourceType": "github",
