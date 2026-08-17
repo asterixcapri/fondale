@@ -50,6 +50,7 @@ export const raffaele = ({
     voice: { verbosity: "short", tone: "dry", vocabulary: "simple" },
     behavior: { withholding: "evade" },
     state: "calm",
+    relationships: { michele: { trust: "medium" } },
     knowledge: [
       { factId: "winch-lacks-its-handle", disclosure: { level: "open" } },
       { factId: "cloister-pulley-is-jammed", disclosure: { level: "open" } },
@@ -108,11 +109,46 @@ export const raffaele = ({
       response: "L'argano tiene. Sali alla torre e controlla il segnale: al ritorno ti pago.",
       operations: micheleLearns("the-tower-watches-the-sea"),
     }, {
-      // Appended last on purpose: consumed alternatives are canonical Game State
-      // recorded by index, so inserting one earlier would misread old Saves.
+      // Keep this established alternative at its original index: consumed
+      // alternatives are canonical Game State recorded by index.
       text: "Due parole, se hai tempo.",
+      when: { variable: "raffaeleConfrontationReady", equals: false },
       sequence: "raffaeleSmallTalk",
       after: "resume",
+    }, {
+      text: "Mi hai mentito sui frati.",
+      when: { variable: "raffaeleConfrontationReady", equals: true },
+      response:
+        "Prestito, furto: la manovella era là e ora è qui. Non serve girarci intorno, vedo che hai capito.",
+      operations: [{ type: "set-variable", variable: "raffaeleConfrontationReady", value: false }, {
+        type: "set-variable", variable: "boatReady", value: true,
+      }, {
+        type: "set-trust", character: "raffaele", towards: "michele", trust: "low",
+      }, {
+        type: "set-dialogue-state", character: "raffaele", state: "angry",
+      }],
+    }, {
+      text: "Non dirò nulla del prestito.",
+      when: { variable: "raffaeleConfrontationReady", equals: true },
+      response: "La discrezione tiene insieme più corde di un buon nodo. Sali alla torre.",
+      operations: [{ type: "set-variable", variable: "raffaeleConfrontationReady", value: false }, {
+        type: "set-variable", variable: "boatReady", value: true,
+      }, {
+        type: "set-trust", character: "raffaele", towards: "michele", trust: "high",
+      }, {
+        type: "set-dialogue-state", character: "raffaele", state: "calm",
+      }],
+    }, {
+      text: "Il prezzo del lavoro è appena salito.",
+      when: { variable: "raffaeleConfrontationReady", equals: true },
+      response: "Una moneta in più per la manovella, una in meno per l'insolenza. Facciamo una in più.",
+      operations: [{ type: "set-variable", variable: "raffaeleConfrontationReady", value: false }, {
+        type: "set-variable", variable: "boatReady", value: true,
+      }, {
+        type: "set-trust", character: "raffaele", towards: "michele", trust: "medium",
+      }, {
+        type: "set-dialogue-state", character: "raffaele", state: "calm",
+      }],
     }],
   },
 } satisfies CharacterDefinition);

@@ -47,3 +47,16 @@ border sampling, soft matte, thresholds `12/220`, and despill to create
 `nets-moved-master.png`. The `440×178` Runtime derivative keeps the covering
 Appearance's bounds, Baseline, position and Visual Anchor. A lossless two-frame
 sheet pairs the covering and moved Runtime images for the Cue-driven reveal.
+
+## Installed winch Appearance
+
+Ticket 08 recomposes the accepted missing-handle Art Master with the isolated
+installed Appearance from the persistent winch-handle Object. The handle was
+produced through the built-in OpenAI image editing workflow documented in its
+Object package, then fitted at `192×208` master pixels at offset `1224,360`.
+The same deterministic composition uses the `48×52` Runtime handle at offset
+`306,90`. This produces `winch-installed-master.png` and its `384×255` Runtime
+derivative without changing any missing-state winch pixel. Both winch states
+therefore share the exact cell size, position and `192,255` Visual Anchor; the
+persistent installed rendering separates the unchanged winch Scenery from the
+single Object-owned handle at those coordinates.
