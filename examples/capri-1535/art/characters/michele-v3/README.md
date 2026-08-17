@@ -19,14 +19,21 @@ and stable-portrayal authority:
 `front-autosprite-source.png` and `back-autosprite-source.png`.
 `turnaround.png` presents them together. The Player's explicit approval of the
 left-hand option in the animated side-by-side comparison makes its four-Facing
-Runtime sheets, rather than an experimental candidate directory, the
-production motion authority. The Engine selects each Facing directly and never
-mirrors it.
+Runtime sheets the production motion authority; the rejected AutoSprite,
+Godmode and Luma candidates that lost that comparison were removed from this
+package and remain in Git history alone. The Engine selects each Facing
+directly and never mirrors it.
 
 ## Runtime contract
 
 The approved source sheets live beside the Character definition under
-`src/characters/michele/`. Ticket 06 derives lossless production adapters with
+`src/characters/michele/`, named `v3-workwear-<animation>-<facing>.png`. Only
+the five the prologue presents are kept — `idle`, `walking`, `speaking`,
+`pick-up` and `use-winch` — because every retained `runtime-workwear-` adapter
+derives from one of them; the `resolve` sheets no Appearance referenced were
+removed with the rest of the superseded artwork.
+
+Ticket 06 derives lossless production adapters with
 `256×292` RGBA cells and the stable Visual Anchor `(128, 288)`: the existing
 `256×256` cells receive transparent top padding, while the `192×288` action
 cells receive transparent side and bottom padding. No source pixel, frame or
@@ -39,8 +46,9 @@ The single `workwear` Appearance provides looping Default, Walking and Speaking
 roles plus the finite directed `pick-up` Animation used to pull the harbour
 nets and the finite directed `mechanism-use` Animation used to pull the
 cloister rope. Frames are not mirrored, redrawn, reordered, cropped, rescaled
-or retouched. The source files were previously staged with a
-`-godmode-preview` suffix; the active adapters retain their exact pixels.
+or retouched. The source sheets were previously staged twice, once with a
+`-godmode-preview` suffix; only the byte-identical unsuffixed copies survive,
+and the active adapters retain their exact pixels.
 
 The existing eight-frame `192×288` `use-winch` source sheets remain unchanged.
 Ticket 07 integrates them through transparent-padding-only 256×292 Runtime
@@ -52,9 +60,9 @@ action without changing its pixels.
 ## Production provenance
 
 The selected left-hand option in the side-by-side comparison comprised all four
-Facing presentations. The following SHA-256 values identify both each
-production file and its byte-identical source named with the former
-`-godmode-preview` suffix:
+Facing presentations. The following SHA-256 values identify each retained
+production file under `src/characters/michele/`, and identified equally the
+byte-identical duplicate that carried the former `-godmode-preview` suffix:
 
 | Animation | Left | Right | Front | Back |
 | --- | --- | --- | --- | --- |

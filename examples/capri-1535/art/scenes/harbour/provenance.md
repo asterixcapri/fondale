@@ -60,3 +60,21 @@ derivative without changing any missing-state winch pixel. Both winch states
 therefore share the exact cell size, position and `192,255` Visual Anchor; the
 persistent installed rendering separates the unchanged winch Scenery from the
 single Object-owned handle at those coordinates.
+
+## Retained files
+
+Ticket 12 removed the abandoned exploration and diagnostic outputs that had
+accumulated beside this package: an alternate quay composition and its clean
+plate, the pre-rebuild boat and winch subjects, the superseded blocking
+diagram, raster copies of the geometry overlay, and stale Engine screenshots.
+Every file that remains is production art or its record:
+
+- `background-master.png`: the lossless `2048×768` clean Background Art Master.
+  `src/scenes/harbour/background.png` is its `1920×720` Runtime derivative.
+- `gozzo-master.png`, `nets-covering-master.png`, `nets-moved-master.png`,
+  `winch-missing-handle-master.png` and `winch-installed-master.png`: the
+  separated Scenery Art Masters described above, each with a fitted Runtime
+  derivative under `src/scenes/harbour/`.
+- `composition.png`: the approved `1920×720` recomposition of the Background
+  and those Runtime Assets at their authored Scene Space positions.
+- `geometry.svg`: the lossless Scene Space overlay drawn over `composition.png`.
