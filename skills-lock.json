@@ -61,7 +61,7 @@
       "source": "asterixcapri/skills",
       "sourceType": "github",
       "skillPath": "skills/execute-ticket-graph/SKILL.md",
-      "computedHash": "407efd38beda508f3cf0f1e3eca585e01f30b2c0362b249d9fb163290ffa4654"
+      "computedHash": "220ea607a9fe1196d9c8b98d42af9af935058cdd2cfd6cfacfab7c5c02c10746"
     },
     "git-guardrails-claude-code": {
       "source": "mattpocock/skills",
@@ -165,6 +165,12 @@
       "skillPath": "skills/in-progress/setup-ts-deep-modules/SKILL.md",
       "computedHash": "19dabd17a305fd99857b3eaad12b044fb951bdf58152d515630d1585f80d24fa"
     },
+    "show-me": {
+      "source": "humanlayer/skills",
+      "sourceType": "github",
+      "skillPath": "plugins/show-me/skills/show-me/SKILL.md",
+      "computedHash": "de32a72f802801f08a84641b467f2c6306d35a58ce5e59ea607ac3a993a18c91"
+    },
     "tdd": {
       "source": "mattpocock/skills",
       "sourceType": "github",
@@ -181,7 +187,7 @@
       "source": "asterixcapri/skills",
       "sourceType": "github",
       "skillPath": "skills/to-docs/SKILL.md",
-      "computedHash": "958f135926ed990090468650194d63b00df3fc5a913eba644faac3a40d822945"
+      "computedHash": "8bf8e7d6bb1990f98c74dfe97a4d797490d87e2b4b8bdf76016a7afba9ae270d"
     },
     "to-questionnaire": {
       "source": "mattpocock/skills",
