@@ -398,7 +398,7 @@ test("Michele delivers the letter, frees the well and keeps the recovered handle
 test("Michele installs the handle at contact and every response to Raffaele opens the fortification", async ({
   browser,
 }) => {
-  test.slow();
+  test.setTimeout(600_000);
   const branches = [{
     choice: "Mi hai mentito sui frati.",
     reply: "Prestito",
@@ -413,7 +413,7 @@ test("Michele installs the handle at contact and every response to Raffaele open
     later: "L'argano tiene",
   }] as const;
 
-  await Promise.all(branches.map(async (branch, index) => {
+  for (const [index, branch] of branches.entries()) {
     const context = await browser.newContext();
     const page = await context.newPage();
     const { errors } = await openGame(page);
@@ -422,6 +422,8 @@ test("Michele installs the handle at contact and every response to Raffaele open
     const beforeContact = await winchHubPixels(page);
     await installHandle(page);
     if (index === 0) {
+      await page.waitForTimeout(50);
+      expect(await winchHubPixels(page)).toBe(beforeContact);
       await page.waitForTimeout(550);
       expect(await winchHubPixels(page)).not.toBe(beforeContact);
     }
@@ -463,7 +465,7 @@ test("Michele installs the handle at contact and every response to Raffaele open
     );
     expect(errors).toEqual([]);
     await context.close();
-  }));
+  }
 });
 
 test("skipping the installation commits the same repaired world through continuation", async ({
