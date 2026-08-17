@@ -14,12 +14,12 @@ composition once the sailor is corrected.
 
 **Blocked by:** None — can start immediately.
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] The wounded sailor's Runtime image is refitted to `0.65` of its current size from the approved Art Master, without regenerating or creatively deriving the artwork.
-- [ ] His Visual Anchor, Ground Point, frame declaration and Hotspot follow the new size, and he keeps contact with the deck.
-- [ ] At the authored handoff positions the seated sailor renders around 154 px against Michele's 217 px, and reads as a seated man beside a standing one.
-- [ ] He remains a stationary Character with exactly one static Runtime image and no presentation variants.
+- [x] The wounded sailor's Runtime image is refitted to `0.65` of its current size from the approved Art Master, without regenerating or creatively deriving the artwork.
+- [x] His Visual Anchor, Ground Point, frame declaration and Hotspot follow the new size, and he keeps contact with the deck.
+- [x] At the authored handoff positions the seated sailor renders around 154 px against Michele's 217 px, and reads as a seated man beside a standing one.
+- [x] He remains a stationary Character with exactly one static Runtime image and no presentation variants.
 - [ ] The handoff framing, approach and Facings still compose, and the encounter Sequence plays unchanged.
 - [ ] The refit is recorded in the sailor's provenance, together with the audit finding that the Background needed no repaint.
 - [ ] An actual-size browser capture shows both figures together in composition.
@@ -35,3 +35,7 @@ composition once the sailor is corrected.
   the painted props are coherent with one another. The repaint was dropped in
   favour of correcting the single figure that was actually wrong. The vessel is
   therefore larger than a gozzo; treat that as the accepted fiction.
+- 2026-08-17: refitted to `0.65` and approved by eye in composition; the
+  Author confirmed the proportions in the running Example. The provenance
+  note, the actual-size capture and the full verification run were
+  deliberately skipped at the Author's request and remain unticked.
