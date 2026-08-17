@@ -57,12 +57,6 @@
       "skillPath": "skills/engineering/domain-modeling/SKILL.md",
       "computedHash": "683744795bdc9fbfb6c0c2122c4b8119c950e2fe5bcbbf44237dd28aaea34b67"
     },
-    "execute-ticket-graph": {
-      "source": "asterixcapri/skills",
-      "sourceType": "github",
-      "skillPath": "skills/execute-ticket-graph/SKILL.md",
-      "computedHash": "220ea607a9fe1196d9c8b98d42af9af935058cdd2cfd6cfacfab7c5c02c10746"
-    },
     "git-guardrails-claude-code": {
       "source": "mattpocock/skills",
       "sourceType": "github",
@@ -104,6 +98,12 @@
       "sourceType": "github",
       "skillPath": "skills/engineering/implement/SKILL.md",
       "computedHash": "2139cfedf24791adbc839aaab6019cff158af1e28bfead020ec6e0ce01b3e74d"
+    },
+    "implement-ticket-graph": {
+      "source": "asterixcapri/skills",
+      "sourceType": "github",
+      "skillPath": "skills/implement-ticket-graph/SKILL.md",
+      "computedHash": "5469ef7065ab3763e0211f9b0c4f25e967df9bcdc5f0ec60f32e69b463833dea"
     },
     "improve-codebase-architecture": {
       "source": "mattpocock/skills",
@@ -193,7 +193,7 @@
       "source": "asterixcapri/skills",
       "sourceType": "github",
       "skillPath": "skills/to-docs/SKILL.md",
-      "computedHash": "8bf8e7d6bb1990f98c74dfe97a4d797490d87e2b4b8bdf76016a7afba9ae270d"
+      "computedHash": "2d69dee70f2833ab40eb38ce35160142027c7ef4ce8d0963b5f94ca0209c83c8"
     },
     "to-questionnaire": {
       "source": "mattpocock/skills",
