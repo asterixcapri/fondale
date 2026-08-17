@@ -8,7 +8,7 @@ documentation.
 
 **Blocked by:** 10 — Play the drifting-boat finale.
 
-**Status:** ready-for-agent
+**Status:** claimed
 
 - [ ] One browser acceptance path completes the entire prologue through only authored Conversation alternatives.
 - [ ] A second path proves early oil discovery and convergence on the same canonical outcome.

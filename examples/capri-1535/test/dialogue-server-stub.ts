@@ -40,24 +40,87 @@ const strategyWording: Readonly<Record<ResponseStrategy, string>> = {
   "cover-story": "Le cose sono andate diversamente.",
 };
 
-export async function installDialogueServerStub(
-  page: Page,
-): Promise<DialogueHttpRequest[]> {
+/**
+ * The deterministic stand-in for the separately run Dialogue Server.
+ *
+ * It intercepts the same production HTTP seam a Player's browser uses, so the
+ * standard suite proves the shipped adapter, protocol and turn lifecycle while
+ * needing no model, database or network. Beyond answering, it can be told to
+ * fail or to hold a turn open, which is how the suite reaches the provider
+ * failure, cancellation and late-completion behavior a Player can hit for real.
+ */
+export interface DialogueServerStub {
+  /** Every request the game made, in order. */
+  readonly requests: DialogueHttpRequest[];
+  /** Answers the next matching request with a provider-level failure. */
+  failNext(operation: DialogueHttpRequest["operation"], message: string): void;
+  /**
+   * Holds the next matching request open and resolves once it has arrived.
+   * The returned function answers it, which is how a late completion is staged.
+   */
+  holdNext(operation: DialogueHttpRequest["operation"]): Promise<() => void>;
+}
+
+export async function installDialogueServerStub(page: Page): Promise<DialogueServerStub> {
   const requests: DialogueHttpRequest[] = [];
+  const failures = new Map<DialogueHttpRequest["operation"], string>();
+  const holds = new Map<DialogueHttpRequest["operation"], (release: () => void) => void>();
+
   await page.route(dialogueServerUrl, async (route) => {
     const request = route.request().postDataJSON() as DialogueHttpRequest;
     requests.push(request);
-    const responseValue = executeDialogueOperation(request);
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({
-        ok: true,
-        ...(responseValue === undefined ? {} : { value: responseValue }),
-      }),
+
+    const failure = failures.get(request.operation);
+    if (failure !== undefined) {
+      failures.delete(request.operation);
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ ok: false, error: failure }),
+      });
+      return;
+    }
+
+    const answer = async () => {
+      const responseValue = executeDialogueOperation(request);
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          ok: true,
+          ...(responseValue === undefined ? {} : { value: responseValue }),
+        }),
+      }).catch(() => {
+        // A cancelled Dialogue Turn aborts the browser request. Answering it
+        // afterwards is exactly the late completion under test, and Playwright
+        // reports the vanished request rather than the game misbehaving.
+      });
+    };
+
+    const arrived = holds.get(request.operation);
+    if (!arrived) {
+      await answer();
+      return;
+    }
+    holds.delete(request.operation);
+    await new Promise<void>((resolve) => {
+      arrived(() => {
+        void answer().then(resolve);
+      });
     });
   });
-  return requests;
+
+  return {
+    requests,
+    failNext(operation, message) {
+      failures.set(operation, message);
+    },
+    holdNext(operation) {
+      return new Promise<() => void>((resolveArrival) => {
+        holds.set(operation, resolveArrival);
+      });
+    },
+  };
 }
 
 function executeDialogueOperation(request: DialogueHttpRequest): unknown {

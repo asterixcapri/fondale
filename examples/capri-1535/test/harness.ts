@@ -1,6 +1,7 @@
+import type { DialogueHttpRequest } from "@asterixcapri/fondale";
 import { expect, type Page } from "@playwright/test";
 
-import { installDialogueServerStub } from "./dialogue-server-stub";
+import { type DialogueServerStub, installDialogueServerStub } from "./dialogue-server-stub";
 
 export const SHOTS_DIR = "test/shots";
 
@@ -20,10 +21,14 @@ export async function openGame(
   page: Page,
   url = "/",
   options: { readonly stubDialogueServer?: boolean } = {},
-): Promise<{ errors: string[]; dialogueRequests: Awaited<ReturnType<typeof installDialogueServerStub>> }> {
+): Promise<{
+  errors: string[];
+  dialogueRequests: readonly DialogueHttpRequest[];
+  dialogueServer: DialogueServerStub;
+}> {
   const errors: string[] = [];
-  const dialogueRequests = options.stubDialogueServer === false
-    ? []
+  const dialogueServer = options.stubDialogueServer === false
+    ? unstubbedDialogueServer()
     : await installDialogueServerStub(page);
   page.on("console", (message) => {
     if (message.type() === "error") {
@@ -36,7 +41,20 @@ export async function openGame(
   await page.goto(url);
   await page.locator("[data-fondale-frame]").waitFor({ timeout: 20_000 });
 
-  return { errors, dialogueRequests };
+  return { errors, dialogueRequests: dialogueServer.requests, dialogueServer };
+}
+
+/** The empty stand-in used when a spec deliberately leaves the seam unstubbed. */
+function unstubbedDialogueServer(): DialogueServerStub {
+  return {
+    requests: [],
+    failNext() {
+      throw new Error("The Dialogue Server seam is not stubbed in this test");
+    },
+    holdNext() {
+      throw new Error("The Dialogue Server seam is not stubbed in this test");
+    },
+  };
 }
 
 /** Clicks one point through a canvas whose Scene Space matches the given Size. */
