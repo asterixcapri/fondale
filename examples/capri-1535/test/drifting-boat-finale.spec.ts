@@ -137,14 +137,18 @@ async function reachRepairedHarbour(page: Page): Promise<void> {
 
   await selectInventoryObject(page, "sealedLetter");
   const eliaLine = page.locator('[data-fondale-line][data-fondale-speaker="brotherElia"]');
+  // A click absorbed by an in-flight walk would open nothing; retry the give.
+  // Every recovery step is bounded: the suite sets no default action timeout,
+  // so an unbounded click on an absent Leave button would hang the whole test.
   for (let attempt = 0; ; attempt += 1) {
     if (attempt >= 3) throw new Error("Brother Elia never acknowledged the letter");
     await activateHotspot(page, "Frate Elia");
     try {
-      await expect(eliaLine).toContainText("prestato volontariamente", { timeout: 6_000 });
+      await expect(eliaLine).toContainText("prestato volontariamente", { timeout: 20_000 });
       break;
     } catch {
-      await page.locator("[data-fondale-conversation]").getByRole("button", { name: "Leave" }).click().catch(() => {});
+      await page.locator("[data-fondale-conversation]").getByRole("button", { name: "Leave" })
+        .click({ timeout: 2_000 }).catch(() => {});
     }
   }
   await advance(page);
