@@ -25,25 +25,26 @@ mirrors it.
 
 ## Runtime contract
 
-The approved Runtime Assets live beside the Character definition under
-`src/characters/michele/`. Each production sheet has 16 ordered `256×256` RGBA
-cells and uses the stable Visual Anchor `(128, 252)`. Idle and Speaking retain
+The approved source Runtime Assets live beside the Character definition under
+`src/characters/michele/`. Ticket 06 derives lossless production adapters with
+`256×292` RGBA cells and the stable Visual Anchor `(128, 288)`: the existing
+`256×256` cells receive transparent top padding, while the `192×288` action
+cells receive transparent side and bottom padding. No source pixel, frame or
+order changes. Idle and Speaking retain
 their selected 8 FPS playback; Walking retains its selected 16 FPS playback.
 At the configured movement speed of 80 Scene Space units per second, one
 one-second Walking cycle advances Michele by 80 units.
 
 The single `workwear` Appearance provides looping Default, Walking and Speaking
-roles. The current approved sheets are integrated as-is: frames are not
-mirrored, redrawn, reordered, cropped, rescaled or retouched. The source files
-were previously staged with a `-godmode-preview` suffix; production copies omit
-that experimental label and are byte-identical to the selected sources.
+roles plus the finite directed `pick-up` Animation used to pull the harbour
+nets. Frames are not mirrored, redrawn, reordered, cropped, rescaled or
+retouched. The source files were previously staged with a
+`-godmode-preview` suffix; the active adapters retain their exact pixels.
 
-The existing `192×288` `pick-up` and `use-winch` sheets remain unchanged beside
-the definition for later action integration. They are deliberately dormant:
-Fondale requires every Animation in one Appearance to share a Runtime cell
-size, and padding, cropping or rescaling them would alter artwork the Player did
-not select. Until compatible action sheets are approved, the winch Sequence
-directs its Scenery response without a Character Animation.
+The existing `192×288` `use-winch` source sheets remain unchanged and dormant
+for later action integration. The `pick-up` sheets are now integrated through
+transparent-padding-only Runtime adapters because the playable harbour reveal
+requires that approved action without changing its pixels.
 
 ## Production provenance
 

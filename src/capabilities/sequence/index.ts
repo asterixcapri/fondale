@@ -529,9 +529,12 @@ export function validateSequenceReferences(
       } else if (step.type === "operations") {
         validateOperations(step.operations, `${base}.operations`);
         for (const operation of step.operations) {
-          if (operation.type !== "place-object") continue;
-          if (operation.scene === scene) objectsInScene.add(operation.object);
-          else objectsInScene.delete(operation.object);
+          if (operation.type === "place-object") {
+            if (operation.scene === scene) objectsInScene.add(operation.object);
+            else objectsInScene.delete(operation.object);
+          } else if (operation.type === "give-object") {
+            objectsInScene.delete(operation.object);
+          }
         }
       } else if (step.type === "direction") {
         const nextStep = steps[index + 1];

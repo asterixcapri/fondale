@@ -7,7 +7,7 @@ oil flask before or after learning why it matters.
 
 **Blocked by:** 02 — Build the harbour Scene package.
 
-**Status:** ready-for-agent
+**Status:** claimed
 
 - [ ] Talking to Raffaele opens a Conversation with authored alternatives and optional free-form input.
 - [ ] Accepting the work gives Michele exactly one sealed-letter Object through an explicit Game Operation.

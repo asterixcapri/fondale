@@ -1,5 +1,7 @@
 export const variables = ({
   jobAccepted: false,
+  netsMoved: false,
+  raffaeleTruthUnlocked: false,
   pulleyTroubleKnown: false,
   wellFreed: false,
   boatReady: false,

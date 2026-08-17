@@ -242,6 +242,7 @@ target remains the distinct `reference.hotspot.target` failure.
 
 `InteractionCondition` reads a boolean Variable or held Object. `GameOperation`
 can set a Variable or Appearance, start a Sequence, collect the target Object,
+give a named Object that is present in the current Scene to the Player,
 place the selected first Object, place a named Object, or consume the selected
 Object. It also includes `LearnNarrativeFactOperation`, whose
 `learn-narrative-fact` discriminator, Character identity and `factId` add
@@ -256,7 +257,8 @@ earlier writes and either commit together or fail without a partial commit.
 Conditions always read the latest committed Game State.
 
 `InventoryOperation` is the Interaction-owned subset of `GameOperation`: it
-collects the target Object, places the selected first Object at a Ground Point,
+collects the target Object, gives a named current-Scene Object to the Player,
+places the selected first Object at a Ground Point,
 places a named Object in a Scene, or consumes the selected Object. Optional
 placement Appearance changes are validated by Animation, while World validates
 the destination in Scene Space.
@@ -365,8 +367,8 @@ identifies the capability or browser adapter responsible for the rule.
 | `FakeDialogueFailureOutcome` | deterministic fake rejection | failure discriminator and message | rejects one configured provider phase | leaves canonical state unchanged | [Dialogue authoring](game-authoring.md) |
 | `ObjectDefinition` | persistent Object | initial values, appearances, Inventory PNG, noun | begins in one Scene | Object/asset diagnostics | [Inventory](recipes/inventory.ts) |
 | `InteractionCondition` | state predicate | variable equality or held Object | omission is unconditional | missing-reference diagnostics | [Command](recipes/command-case.ts) |
-| `InventoryOperation` | Inventory and Object lifecycle change | collect target, place selected, place named, consume selected | World owns placement validity; Animation owns Appearance validity | Interaction/World/Animation diagnostics | [Inventory](recipes/inventory.ts) |
-| `GameOperation` | atomic state change | eleven declared operation variants | order matters; group atomic | operation/reference diagnostics | [Inventory](recipes/inventory.ts) |
+| `InventoryOperation` | Inventory and Object lifecycle change | collect target, give named, place selected, place named, consume selected | World owns placement validity; Animation owns Appearance validity | Interaction/World/Animation diagnostics | [Inventory](recipes/inventory.ts) |
+| `GameOperation` | atomic state change | declared operation variants | order matters; group atomic | operation/reference diagnostics | [Inventory](recipes/inventory.ts) |
 | `HotspotTarget` | interaction subject | Background, Character, Object, Scenery | target is required | target reference diagnostic | [Interaction](recipes/interaction.ts) |
 | `ApproachPoint` | interaction destination | groundPoint and facing | must be walkable and HUD-safe | approach diagnostics | [Interaction](recipes/interaction.ts) |
 | `HotspotDefinition` | Scene interaction surface | target, area, approach, condition; local noun only for Background | target kind discriminates Noun ownership; later overlap wins hit-test | geometry, target and owner-Noun diagnostics | [Interaction](recipes/interaction.ts) |

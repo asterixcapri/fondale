@@ -12,7 +12,7 @@ export const dialogueServerUrl = "http://127.0.0.1:4315/dialogue";
 const factKeywords: Readonly<Record<string, readonly string[]>> = {
   "michele-arrived-in-capri": ["chi sei", "da dove", "lavoro onesto"],
   "winch-lacks-its-handle": ["argano"],
-  "friars-took-the-handle": ["frati", "manovella"],
+  "raffaele-lent-the-handle": ["frati", "manovella", "rubato", "rubata"],
   "cloister-pulley-is-jammed": ["carrucola", "pozzo"],
   "oil-frees-the-pulley": ["olio", "sbloccare", "liberare"],
   "oil-flask-lies-by-the-nets": ["ampolla", "reti"],
@@ -22,7 +22,8 @@ const factKeywords: Readonly<Record<string, readonly string[]>> = {
 const factWording: Readonly<Record<string, string>> = {
   "michele-arrived-in-capri": "Sono arrivato a Capri in cerca di un lavoro onesto.",
   "winch-lacks-its-handle": "L'argano è fermo: gli manca la manovella.",
-  "friars-took-the-handle": "La manovella se la sono presa i frati, per il pozzo del chiostro.",
+  "raffaele-lent-the-handle":
+    "Raffaele ha prestato volontariamente la manovella ai frati in cambio dell'acqua.",
   "cloister-pulley-is-jammed": "La carrucola del pozzo è bloccata e il secchio non risale.",
   "oil-frees-the-pulley": "Con un po' d'olio quella carrucola tornerebbe a girare.",
   "oil-flask-lies-by-the-nets": "L'ampolla dell'olio è là, accanto alle reti.",

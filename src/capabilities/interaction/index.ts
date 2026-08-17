@@ -42,6 +42,7 @@ export type InteractionCondition =
 /** Authored consequences that change Inventory membership or Object lifecycle. */
 export type InventoryOperation =
   | { readonly type: "collect-target-object" }
+  | { readonly type: "give-object"; readonly object: string }
   | {
       readonly type: "place-selected-object";
       readonly groundPoint: Point;
@@ -600,6 +601,7 @@ export interface InventoryOperationValidationAuthorities {
 /** Reports whether a Game Operation belongs to the Inventory lifecycle. */
 export function isInventoryOperation(operation: GameOperation): operation is InventoryOperation {
   return operation.type === "collect-target-object" ||
+    operation.type === "give-object" ||
     operation.type === "place-selected-object" ||
     operation.type === "place-object" ||
     operation.type === "consume-selected-object";
@@ -622,6 +624,16 @@ export function validateInventoryOperation(
         path,
         message: "collect-target-object requires an Object Hotspot target.",
       });
+    }
+    return diagnostics;
+  }
+  if (operation.type === "give-object") {
+    if (!authorities.objects.has(operation.object)) {
+      diagnostics.push(interactionReference(
+        "reference.object",
+        `${path}.object`,
+        `Object '${operation.object}' does not exist.`,
+      ));
     }
     return diagnostics;
   }
@@ -1051,6 +1063,16 @@ export function createInteraction(
         }
         object.location = { kind: "inventory" };
         next.inventory.objects.push(context.target.object);
+      } else if (operation.type === "give-object") {
+        const object = next.objects[operation.object];
+        if (!object || object.location.kind !== "scene" || object.location.scene !== state.currentScene) {
+          return {
+            status: "invalid",
+            message: "The given Object is not present in the current Scene.",
+          };
+        }
+        object.location = { kind: "inventory" };
+        next.inventory.objects.push(operation.object);
       } else if (operation.type === "consume-selected-object") {
         const selected = context.firstNounObject;
         if (!selected || !next.inventory.objects.includes(selected)) {

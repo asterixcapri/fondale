@@ -10,9 +10,9 @@ export const narrativeFacts = ({
   "winch-lacks-its-handle": {
     proposition: "L'argano del porto è fermo perché gli manca la manovella.",
   },
-  "friars-took-the-handle": {
+  "raffaele-lent-the-handle": {
     proposition:
-      "I frati hanno preso la manovella dell'argano per tirare l'acqua dal pozzo del chiostro.",
+      "Raffaele ha prestato volontariamente la manovella ai frati in cambio dell'acqua del pozzo.",
   },
   "cloister-pulley-is-jammed": {
     proposition:

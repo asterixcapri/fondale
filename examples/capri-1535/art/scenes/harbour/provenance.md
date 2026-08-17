@@ -36,3 +36,14 @@ Targeted edits changed only those backgrounds to uniform magenta. The installed
 imagegen chroma-removal helper then produced the final RGBA Art Masters using
 border sampling, soft matte, thresholds `12/220`, and despill. Runtime Assets
 are trimmed and downscaled derivatives; Art Masters remain lossless PNGs.
+
+## Moved nets Appearance
+
+Ticket 06 edited only the approved covering-net subject into a lower compact
+heap concentrated on the right, preserving its material identity, viewing
+angle, scale, warm morning illumination and canvas. The built-in image workflow
+produced a flat `#ff00ff` source; the installed chroma-removal helper used
+border sampling, soft matte, thresholds `12/220`, and despill to create
+`nets-moved-master.png`. The `440×178` Runtime derivative keeps the covering
+Appearance's bounds, Baseline, position and Visual Anchor. A lossless two-frame
+sheet pairs the covering and moved Runtime images for the Cue-driven reveal.

@@ -5,10 +5,19 @@ import sceneUrl from "./scene.png";
 
 export const oilFlask = ({
   initialScene: "harbour",
-  initialGroundPoint: { x: 500, y: 211 },
+  initialGroundPoint: { x: 1470, y: 595 },
   initialAppearance: "full",
   appearances: {
-    full: { animations: { idle: { sheet: { image: sceneUrl, frames: [{ x: 0, y: 0, width: 17, height: 22 }] }, timing: { framesPerSecond: 1, loop: true } } }, roles: { default: "idle" } },
+    full: {
+      animations: {
+        idle: {
+          sheet: { image: sceneUrl, frames: [{ x: 0, y: 0, width: 17, height: 22 }] },
+          timing: { framesPerSecond: 1, loop: true },
+        },
+      },
+      roles: { default: "idle" },
+      visualAnchor: { x: 8, y: 22 },
+    },
   },
   inventoryAppearance: inventoryUrl,
   noun: ({
@@ -18,7 +27,7 @@ export const oilFlask = ({
     cases: [
       {
         verb: "pick-up",
-        response: { text: "Prendo l'ampolla d'olio che Raffaele ha indicato." },
+        response: { text: "Prendo l'ampolla d'olio nascosta sotto le reti." },
         operations: [{ type: "collect-target-object" }],
       },
       {
@@ -26,5 +35,9 @@ export const oilFlask = ({
         response: { text: "Poco olio, ma abbastanza per una carrucola ostinata." },
       },
     ],
+    fallbacks: {
+      use: { response: { text: "Non spreco l'olio senza un meccanismo che ne abbia bisogno." } },
+      give: { response: { text: "L'ampolla mi servirà ancora; non la cedo a caso." } },
+    },
   } satisfies NounDefinition),
 } satisfies ObjectDefinition);

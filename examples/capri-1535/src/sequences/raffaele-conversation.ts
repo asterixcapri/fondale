@@ -6,7 +6,16 @@ export const raffaeleConversation = ({
   steps: [
     {
       type: "operations",
-      operations: [{ type: "set-variable", variable: "jobAccepted", value: true }],
+      operations: [{ type: "set-variable", variable: "jobAccepted", value: true }, {
+        type: "give-object",
+        object: "sealedLetter",
+      }, {
+        type: "record-testimony",
+        speaker: "raffaele",
+        listener: "michele",
+        concealsFactId: "raffaele-lent-the-handle",
+        claimId: "friars-stole-the-handle",
+      }],
     },
     {
       type: "line",
@@ -31,12 +40,13 @@ export const raffaeleConversation = ({
       type: "line",
       character: "raffaele",
       text:
-        "I frati hanno preso la manovella dell'argano per il pozzo. Ora la loro carrucola è bloccata.",
+        "I frati hanno rubato la manovella dell'argano per il pozzo. Ora la loro carrucola è bloccata.",
     },
     {
       type: "line",
       character: "raffaele",
-      text: "Prendi l'ampolla accanto alle reti, libera il pozzo e riportami la manovella. Poi salirai alla torre.",
+      text:
+        "Porta questa lettera sigillata a Frate Elia. Poi cerca l'olio vicino alle reti, libera il pozzo e riportami la manovella.",
     },
     {
       // Michele leaves the engagement knowing what Raffaele just told him, so
@@ -44,7 +54,6 @@ export const raffaeleConversation = ({
       type: "operations",
       operations: micheleLearns(
         "winch-lacks-its-handle",
-        "friars-took-the-handle",
         "cloister-pulley-is-jammed",
         "oil-flask-lies-by-the-nets",
       ),

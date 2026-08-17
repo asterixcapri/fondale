@@ -176,6 +176,44 @@ test("collecting a present Object appends it to the Inventory in acquisition ord
   });
 });
 
+test("giving a named Object moves the present Scene Object into Inventory exactly once", () => {
+  const interaction = createInteraction({ objects: { letter: {} }, commandFallbacks: {} });
+  const state = {
+    currentScene: "courtyard",
+    objects: {
+      letter: {
+        appearance: "sealed",
+        location: {
+          kind: "scene" as const,
+          scene: "courtyard",
+          groundPoint: { x: 12, y: 18 },
+        },
+      },
+    },
+    inventory: { objects: [] as string[] },
+    command: { verb: "walk-to" as const, firstNoun: null },
+  };
+
+  const result = interaction.applyInventoryOperation(
+    { type: "give-object", object: "letter" },
+    state,
+    { target: { kind: "character", character: "raffaele" } },
+  );
+  expect(result).toEqual({
+    status: "applied",
+    state: {
+      objects: { letter: { appearance: "sealed", location: { kind: "inventory" } } },
+      inventory: { objects: ["letter"] },
+      command: { verb: "walk-to", firstNoun: null },
+    },
+  });
+  expect(result.status === "applied" && interaction.applyInventoryOperation(
+    { type: "give-object", object: "letter" },
+    { currentScene: "courtyard", ...result.state },
+    { target: { kind: "character", character: "raffaele" } },
+  )).toEqual({ status: "invalid", message: "The given Object is not present in the current Scene." });
+});
+
 test("consuming the selected Object clears its invalid Command selection atomically", () => {
   const interaction = createInteraction({ objects: { key: {} } });
 

@@ -4,6 +4,8 @@ import { rectangle } from "../../geometry";
 import backgroundUrl from "./background.png";
 import gozzoUrl from "./gozzo.png";
 import netsCoveringUrl from "./nets-covering.png";
+import netsMovedUrl from "./nets-moved.png";
+import netsMovingUrl from "./nets-moving.png";
 import winchMissingHandleUrl from "./winch-missing-handle.png";
 
 const staticAnimation = (image: string, width: number, height: number) => ({
@@ -81,17 +83,70 @@ export const harbour = ({
       initialAppearance: "covering",
       appearances: {
         covering: {
-          ...staticAnimation(netsCoveringUrl, 440, 178),
+          animations: {
+            idle: {
+              sheet: {
+                image: netsCoveringUrl,
+                frames: [{ x: 0, y: 0, width: 440, height: 178 }],
+              },
+              timing: { framesPerSecond: 1, loop: true },
+            },
+            moveAside: {
+              sheet: {
+                image: netsMovingUrl,
+                frames: [
+                  { x: 0, y: 0, width: 440, height: 178 },
+                  { x: 440, y: 0, width: 440, height: 178 },
+                ],
+              },
+              timing: { framesPerSecond: 2 },
+            },
+          },
+          roles: { default: "idle" },
+          visualAnchor: { x: 220, y: 178 },
+        },
+        moved: {
+          animations: {
+            idle: {
+              sheet: { image: netsMovedUrl, frames: [{ x: 0, y: 0, width: 440, height: 178 }] },
+              timing: { framesPerSecond: 1, loop: true },
+            },
+            // Sequence references are validated across persistent Appearances;
+            // the moved state keeps a harmless finite alias for restoration.
+            moveAside: {
+              sheet: { image: netsMovedUrl, frames: [{ x: 0, y: 0, width: 440, height: 178 }] },
+              timing: { framesPerSecond: 1 },
+            },
+          },
+          roles: { default: "idle" },
           visualAnchor: { x: 220, y: 178 },
         },
       },
       noun: ({
-        labels: [{ text: "Reti da pesca" }],
-        preferredVerbs: [{ verb: "look-at" }],
+        labels: [
+          { text: "Reti da pesca spostate", when: { variable: "netsMoved", equals: true } },
+          { text: "Reti da pesca" },
+        ],
+        preferredVerbs: [
+          { verb: "pull", when: { variable: "netsMoved", equals: false } },
+          { verb: "look-at" },
+        ],
+        secondaryVerbs: [{ verb: "look-at" }],
         cases: [{
+          verb: "pull",
+          when: { variable: "netsMoved", equals: false },
+          sequence: "revealOilFlask",
+        }, {
           verb: "look-at",
-          response: { text: "Reti pesanti, ammucchiate davanti all'argano." },
+          when: { variable: "netsMoved", equals: false },
+          response: { text: "Reti pesanti. Un piccolo rigonfiamento tradisce qualcosa sotto." },
+        }, {
+          verb: "look-at",
+          response: { text: "Le reti sono ammucchiate di lato; sotto non nascondono più nulla." },
         }],
+        fallbacks: {
+          pull: { response: { text: "Le reti sono già state tirate da parte." } },
+        },
       } satisfies NounDefinition),
     },
     leftForeground: {
@@ -136,6 +191,11 @@ export const harbour = ({
     target: { kind: "scenery", scenery: "fishingNets" },
     area: rectangle(1250, 435, 1690, 613),
     approach: { groundPoint: { x: 1210, y: 590 }, facing: "right" },
+  }, {
+    target: { kind: "object", object: "oilFlask" },
+    area: rectangle(1435, 545, 1505, 610),
+    approach: { groundPoint: { x: 1370, y: 570 }, facing: "right" },
+    when: { variable: "netsMoved", equals: true },
   }, {
     target: { kind: "background" },
     area: rectangle(1180, 350, 1390, 500),

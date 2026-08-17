@@ -1,23 +1,34 @@
 import { type CharacterDefinition, uniformGrid } from "@asterixcapri/fondale";
 
-import idleBackUrl from "./v3-workwear-idle-back.png";
-import idleFrontUrl from "./v3-workwear-idle-front.png";
-import idleLeftUrl from "./v3-workwear-idle-left.png";
-import idleRightUrl from "./v3-workwear-idle-right.png";
-import speakingBackUrl from "./v3-workwear-speaking-back.png";
-import speakingFrontUrl from "./v3-workwear-speaking-front.png";
-import speakingLeftUrl from "./v3-workwear-speaking-left.png";
-import speakingRightUrl from "./v3-workwear-speaking-right.png";
-import walkingBackUrl from "./v3-workwear-walking-back.png";
-import walkingFrontUrl from "./v3-workwear-walking-front.png";
-import walkingLeftUrl from "./v3-workwear-walking-left.png";
-import walkingRightUrl from "./v3-workwear-walking-right.png";
+import idleBackUrl from "./runtime-workwear-idle-back.png";
+import idleFrontUrl from "./runtime-workwear-idle-front.png";
+import idleLeftUrl from "./runtime-workwear-idle-left.png";
+import idleRightUrl from "./runtime-workwear-idle-right.png";
+import pickUpBackUrl from "./runtime-workwear-pick-up-back.png";
+import pickUpFrontUrl from "./runtime-workwear-pick-up-front.png";
+import pickUpLeftUrl from "./runtime-workwear-pick-up-left.png";
+import pickUpRightUrl from "./runtime-workwear-pick-up-right.png";
+import speakingBackUrl from "./runtime-workwear-speaking-back.png";
+import speakingFrontUrl from "./runtime-workwear-speaking-front.png";
+import speakingLeftUrl from "./runtime-workwear-speaking-left.png";
+import speakingRightUrl from "./runtime-workwear-speaking-right.png";
+import walkingBackUrl from "./runtime-workwear-walking-back.png";
+import walkingFrontUrl from "./runtime-workwear-walking-front.png";
+import walkingLeftUrl from "./runtime-workwear-walking-left.png";
+import walkingRightUrl from "./runtime-workwear-walking-right.png";
 
 const frames = uniformGrid({
   frameWidth: 256,
-  frameHeight: 256,
+  frameHeight: 292,
   columns: 16,
   count: 16,
+});
+
+const pickUpFrames = uniformGrid({
+  frameWidth: 256,
+  frameHeight: 292,
+  columns: 25,
+  count: 25,
 });
 
 export const michele = ({
@@ -31,9 +42,18 @@ export const michele = ({
         idle: { sheets: { left: { image: idleLeftUrl, frames }, right: { image: idleRightUrl, frames }, front: { image: idleFrontUrl, frames }, back: { image: idleBackUrl, frames } }, timing: { framesPerSecond: 8, loop: true } },
         walking: { sheets: { left: { image: walkingLeftUrl, frames }, right: { image: walkingRightUrl, frames }, front: { image: walkingFrontUrl, frames }, back: { image: walkingBackUrl, frames } }, timing: { framesPerSecond: 16, loop: true } },
         speaking: { sheets: { left: { image: speakingLeftUrl, frames }, right: { image: speakingRightUrl, frames }, front: { image: speakingFrontUrl, frames }, back: { image: speakingBackUrl, frames } }, timing: { framesPerSecond: 8, loop: true } },
+        "pick-up": {
+          sheets: {
+            left: { image: pickUpLeftUrl, frames: pickUpFrames },
+            right: { image: pickUpRightUrl, frames: pickUpFrames },
+            front: { image: pickUpFrontUrl, frames: pickUpFrames },
+            back: { image: pickUpBackUrl, frames: pickUpFrames },
+          },
+          timing: { framesPerSecond: 25, cues: { contact: 0.48 } },
+        },
       },
       roles: { default: "idle", walking: "walking", speaking: "speaking" },
-      visualAnchor: { x: 128, y: 252 },
+      visualAnchor: { x: 128, y: 288 },
     },
   },
   movementSpeed: 80,

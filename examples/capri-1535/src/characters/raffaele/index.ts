@@ -52,8 +52,14 @@ export const raffaele = ({
     state: "calm",
     knowledge: [
       { factId: "winch-lacks-its-handle", disclosure: { level: "open" } },
-      { factId: "friars-took-the-handle", disclosure: { level: "open" } },
       { factId: "cloister-pulley-is-jammed", disclosure: { level: "open" } },
+      {
+        factId: "raffaele-lent-the-handle",
+        disclosure: {
+          level: "secret",
+          when: { variable: "raffaeleTruthUnlocked", equals: true },
+        },
+      },
       {
         // He does not send a stranger to his own oil before the stranger works for him.
         factId: "oil-flask-lies-by-the-nets",
@@ -64,6 +70,10 @@ export const raffaele = ({
         disclosure: { level: "secret", when: { variable: "boatReady", equals: true } },
       },
     ],
+    coverStories: [{
+      concealsFactId: "raffaele-lent-the-handle",
+      claimId: "friars-stole-the-handle",
+    }],
     alternatives: [{
       // The engagement keeps its own Sequence: its exact wording, its branching
       // and the Game Operations that open the prologue are untouched.
@@ -73,17 +83,25 @@ export const raffaele = ({
       after: "resume",
     }, {
       text: "Perché l'argano non gira?",
-      response: "I frati si sono presi la manovella per il loro pozzo, e il pozzo se la tiene.",
-      operations: micheleLearns(
+      response: "I frati hanno rubato la manovella per il loro pozzo, e il pozzo se la tiene.",
+      operations: [
+        ...micheleLearns(
         "winch-lacks-its-handle",
-        "friars-took-the-handle",
         "cloister-pulley-is-jammed",
-      ),
+        ),
+        {
+          type: "record-testimony",
+          speaker: "raffaele",
+          listener: "michele",
+          concealsFactId: "raffaele-lent-the-handle",
+          claimId: "friars-stole-the-handle",
+        },
+      ],
     }, {
       text: "Dove trovo l'ampolla?",
       when: { variable: "jobAccepted", equals: true },
       response: "L'ampolla è accanto alle reti. La manovella è ancora nel chiostro.",
-      operations: micheleLearns("oil-flask-lies-by-the-nets", "friars-took-the-handle"),
+      operations: micheleLearns("oil-flask-lies-by-the-nets"),
     }, {
       text: "L'argano è a posto?",
       when: { variable: "boatReady", equals: true },
