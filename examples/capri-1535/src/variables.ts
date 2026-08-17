@@ -7,6 +7,7 @@ export const variables = ({
   wellLubricated: false,
   wellFreed: false,
   boatReady: false,
+  raffaeleConfrontationReady: false,
   driftingBoatSeen: false,
   boatLanded: false,
 } satisfies Readonly<Record<string, boolean>>);

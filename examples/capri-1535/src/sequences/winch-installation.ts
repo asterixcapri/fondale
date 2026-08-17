@@ -2,6 +2,7 @@ import { type SequenceDefinition, type GameOperation } from "@asterixcapri/fonda
 
 const outcome: readonly GameOperation[] = [
   { type: "set-variable", variable: "boatReady", value: true },
+  { type: "set-variable", variable: "raffaeleConfrontationReady", value: true },
   {
     type: "set-appearance",
     target: { kind: "scenery", scene: "harbour", scenery: "winch" },
@@ -11,7 +12,7 @@ const outcome: readonly GameOperation[] = [
     type: "place-object",
     object: "winchHandle",
     scene: "harbour",
-    groundPoint: { x: 1630, y: 505 },
+    groundPoint: { x: 1758, y: 585 },
     appearance: "installed",
   },
 ];
@@ -26,12 +27,22 @@ export const winchInstallation = ({
       directions: [
         {
           type: "animation",
+          subject: { kind: "character", character: "michele" },
+          animation: "mechanism-use",
+        },
+        {
+          type: "animation",
           subject: { kind: "scenery", scenery: "winch" },
           animation: "engaging",
+          startAfter: { direction: 0, cue: "contact" },
         },
       ],
     },
     { type: "operations", operations: outcome },
-    { type: "line", character: "michele", text: "La manovella gira. Il gozzo per la torre può salpare." },
+    {
+      type: "line",
+      character: "michele",
+      text: "La manovella è al suo posto. L'argano gira e il gozzo per la torre può salpare.",
+    },
   ],
 } satisfies SequenceDefinition);

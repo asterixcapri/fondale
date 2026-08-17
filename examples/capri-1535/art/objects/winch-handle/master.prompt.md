@@ -32,3 +32,16 @@ extra objects
 
 Avoid: modern machinery, polished chrome, plastic, steering wheel, fantasy
 ornament, photorealism
+
+## Installed Appearance
+
+Generated on 2026-08-17 with the built-in OpenAI image editing workflow. The
+accepted installed-winch edit supplied the mounted orientation; this Object's
+existing master supplied identity and materials. The prompt requested only one
+complete installed L-shaped crank, isolated and uncropped on a perfectly flat
+`#ff00ff` chroma field, with no winch, hub, cast shadow, extra parts, text or
+watermark. The retained source is `generated/installed-chroma.png`; the
+installed helper used border sampling, soft matte, thresholds `12/220` and
+despill to produce `installed-master.png`. Its fitted Runtime Appearance keeps
+transparent lower padding so its Ground Point can share the winch Baseline
+while the socket remains aligned with the visible hub.

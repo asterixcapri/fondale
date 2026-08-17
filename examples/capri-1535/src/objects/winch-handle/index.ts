@@ -22,12 +22,12 @@ export const winchHandle = ({
     installed: {
       animations: {
         idle: {
-          sheet: { image: installedUrl, frames: [{ x: 0, y: 0, width: 1, height: 1 }] },
+          sheet: { image: installedUrl, frames: [{ x: 0, y: 0, width: 62, height: 170 }] },
           timing: { framesPerSecond: 1, loop: true },
         },
       },
       roles: { default: "idle" },
-      visualAnchor: { x: 0, y: 1 },
+      visualAnchor: { x: 6, y: 170 },
     },
   },
   inventoryAppearance: inventoryUrl,

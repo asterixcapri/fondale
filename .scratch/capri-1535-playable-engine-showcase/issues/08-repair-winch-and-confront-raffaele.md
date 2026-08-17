@@ -7,7 +7,7 @@ respond to Raffaele's lie without risking the route forward.
 
 **Blocked by:** 06 — Play the harbour job and oil reveal; 07 — Deliver the letter and free the well.
 
-**Status:** ready-for-agent
+**Status:** claimed
 
 - [ ] The winch has missing-handle and installed-handle Art Masters and Runtime Appearances that recompose at one scale and position.
 - [ ] Using the selected handle on the winch starts the installation Sequence from a valid approach and Facing.

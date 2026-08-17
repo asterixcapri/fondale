@@ -63,7 +63,8 @@ async function activateHotspot(page: Page, label: string): Promise<void> {
 
 async function activatePassage(page: Page, label: string): Promise<void> {
   const frame = page.locator("[data-fondale-frame]");
-  for (let attempt = 0; attempt < 8; attempt += 1) {
+  const attempts = label.includes("fortificazione") ? 24 : 8;
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
     await frame.focus();
     await page.keyboard.down("Tab");
     const passages = frame.locator("[data-fondale-revealed-passage]");
@@ -71,7 +72,10 @@ async function activatePassage(page: Page, label: string): Promise<void> {
     for (let index = 0; index < await passages.count(); index += 1) {
       const passage = passages.nth(index);
       if (await passage.locator("title").textContent() !== label) continue;
-      point = polygonCenter(await passage.getAttribute("points") ?? "");
+      const candidate = polygonCenter(await passage.getAttribute("points") ?? "");
+      if (candidate.x >= 16 && candidate.x <= 1264 && candidate.y >= 16 && candidate.y <= 704) {
+        point = candidate;
+      }
       break;
     }
     await page.keyboard.up("Tab");
@@ -79,7 +83,10 @@ async function activatePassage(page: Page, label: string): Promise<void> {
       await clickCanvas(page, point);
       return;
     }
-    await clickCanvas(page, { x: label.includes("porto") ? 80 : 1200, y: 650 });
+    await clickCanvas(page, {
+      x: label.includes("porto") || label.includes("fortificazione") ? 80 : 1200,
+      y: 650,
+    });
     await page.waitForTimeout(1_000);
   }
   throw new Error(`Passage '${label}' never entered the Camera viewport`);
@@ -131,6 +138,95 @@ async function selectInventoryObject(page: Page, object: string): Promise<void> 
   }
   await expect(page.locator("[data-fondale-inventory-panel]")).toBeHidden();
   await expect(item).toHaveAttribute("aria-pressed", "true");
+}
+
+async function recoverHandleAtHarbour(page: Page): Promise<void> {
+  await acceptHarbourJob(page);
+  await page.locator("[data-fondale-conversation]").getByRole("button", { name: "Leave" }).click();
+  await pullNetsAndCollectOil(page);
+  await activatePassage(page, "Passaggio verso il chiostro");
+  await expect(page.locator("[data-fondale-frame]")).toHaveAttribute(
+    "data-fondale-scene",
+    "cloister",
+    { timeout: 15_000 },
+  );
+
+  await selectInventoryObject(page, "sealedLetter");
+  await activateHotspot(page, "Frate Elia");
+  const eliaLine = page.locator('[data-fondale-line][data-fondale-speaker="brotherElia"]');
+  await expect(eliaLine).toContainText("prestato volontariamente", { timeout: 15_000 });
+  await advance(page);
+  await advance(page);
+
+  await selectInventoryObject(page, "oilFlask");
+  await activateHotspot(page, "Supporto della carrucola");
+  await expect(page.locator("[aria-live=polite]")).toContainText("supporto della carrucola", {
+    timeout: 15_000,
+  });
+  await activateHotspot(page, "Pozzo lubrificato");
+  await expect(eliaLine).toContainText("secchio è risalito", { timeout: 15_000 });
+  await advance(page);
+  await activateHotspot(page, "Manovella liberata");
+  await expect(page.locator('[data-fondale-inventory-object="winchHandle"]')).toHaveCount(1);
+  await advance(page);
+
+  await activatePassage(page, "Passaggio verso il porto");
+  await expect(page.locator("[data-fondale-frame]")).toHaveAttribute(
+    "data-fondale-scene",
+    "harbour",
+    { timeout: 15_000 },
+  );
+  await activateHotspot(page, "Argano senza manovella");
+  await expect(page.locator("[aria-live=polite]")).toContainText("manca la manovella", {
+    timeout: 15_000,
+  });
+}
+
+async function winchHubPixels(page: Page): Promise<string> {
+  const bounds = await page.locator("[data-fondale-frame] canvas").boundingBox();
+  if (!bounds) throw new Error("Fondale canvas is not visible");
+  const scaleX = bounds.width / 1280;
+  const scaleY = bounds.height / 720;
+  const pixels = await page.screenshot({
+    clip: {
+      x: bounds.x + 1_045 * scaleX,
+      y: bounds.y + 370 * scaleY,
+      width: 220 * scaleX,
+      height: 190 * scaleY,
+    },
+  });
+  let hash = 2_166_136_261;
+  for (const value of pixels) {
+    hash ^= value;
+    hash = Math.imul(hash, 16_777_619);
+  }
+  return String(hash >>> 0);
+}
+
+async function installHandle(page: Page): Promise<void> {
+  await selectInventoryObject(page, "winchHandle");
+  await activateHotspot(page, "Argano senza manovella");
+}
+
+async function continuationCheckpoint(page: Page): Promise<Readonly<Record<string, string>>> {
+  return page.evaluate(() => Object.fromEntries(Array.from(
+    { length: localStorage.length },
+    (_, index) => localStorage.key(index),
+  ).filter((key): key is string => key !== null).map((key) => [key, localStorage.getItem(key) ?? ""])));
+}
+
+async function restoreContinuationCheckpoint(
+  page: Page,
+  checkpoint: Readonly<Record<string, string>>,
+): Promise<void> {
+  await page.addInitScript((entries) => {
+    localStorage.clear();
+    for (const [key, value] of Object.entries(entries)) localStorage.setItem(key, value);
+  }, checkpoint);
+  await page.reload();
+  await page.locator("[data-fondale-continuation]")
+    .getByRole("button", { name: "Continue" }).click();
+  await expect(page.locator("[data-fondale-frame]")).toBeVisible();
 }
 
 test("the authored harbour job gives one sealed letter and records Raffaele's theft Claim as Testimony", async ({
@@ -286,5 +382,107 @@ test("Michele delivers the letter, frees the well and keeps the recovered handle
   await expect(reflected).toContainText("prestato volontariamente");
   await expect(reflected).toContainText("rubato");
   await expect(reflected).not.toContainText("torre della fortificazione");
+  expect(errors).toEqual([]);
+});
+
+test("Michele installs the handle at contact and every response to Raffaele opens the fortification", async ({
+  page,
+}) => {
+  test.slow();
+  const { errors } = await openGame(page);
+  await recoverHandleAtHarbour(page);
+
+  const beforeContact = await winchHubPixels(page);
+  await installHandle(page);
+  await page.waitForTimeout(50);
+  expect(await winchHubPixels(page)).toBe(beforeContact);
+  await page.waitForTimeout(550);
+  expect(await winchHubPixels(page)).not.toBe(beforeContact);
+  await expect(page.locator('[data-fondale-inventory-object="winchHandle"]')).toHaveCount(0);
+  await expect(page.locator('[data-fondale-line][data-fondale-speaker="michele"]'))
+    .toContainText("argano", { timeout: 15_000 });
+  await advance(page);
+  await continueGameSession(page);
+  expect(await visibleHotspot(page, "Argano riparato")).toBeDefined();
+  const repairedPixels = await winchHubPixels(page);
+  expect(repairedPixels).not.toBe(beforeContact);
+  await shoot(page, "harbour-winch-repaired");
+  const checkpoint = await continuationCheckpoint(page);
+
+  const branches = [{
+    choice: "Mi hai mentito sui frati.",
+    reply: "Prestito",
+    later: "L'argano tiene",
+  }, {
+    choice: "Non dirò nulla del prestito.",
+    reply: "discrezione",
+    later: "L'argano tiene",
+  }, {
+    choice: "Il prezzo del lavoro è appena salito.",
+    reply: "moneta",
+    later: "L'argano tiene",
+  }] as const;
+
+  for (const [index, branch] of branches.entries()) {
+    if (index > 0) await restoreContinuationCheckpoint(page, checkpoint);
+    await activateHotspot(page, "Raffaele");
+    const conversation = page.locator("[data-fondale-conversation]");
+    await expect(conversation.getByRole("button", { name: branch.choice })).toBeVisible({
+      timeout: 15_000,
+    });
+    await conversation.getByRole("button", { name: branch.choice }).click();
+    await expect(page.locator('[data-fondale-line][data-fondale-speaker="raffaele"]'))
+      .toContainText(branch.reply);
+    await advance(page);
+    await expect(conversation.getByRole("button", { name: branch.choice })).toHaveCount(0);
+    await conversation.getByRole("button", { name: "L'argano è a posto?" }).click();
+    await expect(page.locator('[data-fondale-line][data-fondale-speaker="raffaele"]'))
+      .toContainText(branch.later);
+    await advance(page);
+    await conversation.getByRole("button", { name: "Leave" }).click();
+    await activatePassage(page, "Gozzo verso la fortificazione");
+    await expect(page.locator("[data-fondale-frame]")).toHaveAttribute(
+      "data-fondale-scene",
+      "coastalFortification",
+      { timeout: 15_000 },
+    );
+  }
+  expect(errors).toEqual([]);
+});
+
+test("skipping the installation commits the same repaired world through continuation", async ({
+  page,
+}) => {
+  test.slow();
+  const { errors } = await openGame(page);
+  await recoverHandleAtHarbour(page);
+
+  await selectInventoryObject(page, "winchHandle");
+  await activateHotspot(page, "Argano senza manovella");
+  await page.waitForTimeout(100);
+  await page.keyboard.press("Escape");
+  await expect(page.locator('[data-fondale-inventory-object="winchHandle"]')).toHaveCount(0);
+  expect(await visibleHotspot(page, "Argano riparato")).toBeDefined();
+
+  await activatePassage(page, "Passaggio verso il chiostro");
+  await expect(page.locator("[data-fondale-frame]")).toHaveAttribute(
+    "data-fondale-scene",
+    "cloister",
+    { timeout: 15_000 },
+  );
+  await activatePassage(page, "Passaggio verso il porto");
+  await expect(page.locator("[data-fondale-frame]")).toHaveAttribute(
+    "data-fondale-scene",
+    "harbour",
+    { timeout: 15_000 },
+  );
+  await continueGameSession(page);
+  expect(await visibleHotspot(page, "Argano riparato")).toBeDefined();
+  await activatePassage(page, "Gozzo verso la fortificazione");
+  await expect(page.locator("[data-fondale-frame]")).toHaveAttribute(
+    "data-fondale-scene",
+    "coastalFortification",
+    { timeout: 15_000 },
+  );
   expect(errors).toEqual([]);
 });

@@ -47,3 +47,16 @@ border sampling, soft matte, thresholds `12/220`, and despill to create
 `nets-moved-master.png`. The `440×178` Runtime derivative keeps the covering
 Appearance's bounds, Baseline, position and Visual Anchor. A lossless two-frame
 sheet pairs the covering and moved Runtime images for the Cue-driven reveal.
+
+## Installed winch Appearance
+
+Ticket 08 used the built-in OpenAI image editing workflow with the accepted
+missing-handle winch as the edit target and the winch-handle Object master as
+the identity and material reference. The prompt required changing only the
+empty right hub by seating one wrought-iron L-shaped crank with a worn walnut
+grip, while preserving the winch's camera, scale, geometry, rope, lighting,
+padding and silhouette on a flat `#ff00ff` chroma field. The retained chroma
+source is `generated/winch-installed-chroma.png`; the installed helper removed
+the field with border sampling, soft matte, thresholds `12/220` and despill to
+produce `winch-installed-master.png`. The `384×255` Runtime derivative matches
+the missing-handle Appearance's exact cell size and `192,255` Visual Anchor.

@@ -6,6 +6,7 @@ import gozzoUrl from "./gozzo.png";
 import netsCoveringUrl from "./nets-covering.png";
 import netsMovedUrl from "./nets-moved.png";
 import netsMovingUrl from "./nets-moving.png";
+import winchInstalledUrl from "./winch-installed.png";
 import winchMissingHandleUrl from "./winch-missing-handle.png";
 
 const staticAnimation = (image: string, width: number, height: number) => ({
@@ -64,17 +65,63 @@ export const harbour = ({
       initialAppearance: "missingHandle",
       appearances: {
         missingHandle: {
-          ...staticAnimation(winchMissingHandleUrl, 384, 255),
+          animations: {
+            ...staticAnimation(winchMissingHandleUrl, 384, 255).animations,
+            engaging: {
+              sheet: {
+                image: winchInstalledUrl,
+                frames: [{ x: 0, y: 0, width: 384, height: 255 }],
+              },
+              timing: { framesPerSecond: 1 },
+            },
+          },
+          roles: { default: "idle" },
+          visualAnchor: { x: 192, y: 255 },
+        },
+        withHandle: {
+          animations: {
+            idle: {
+              sheet: {
+                image: winchInstalledUrl,
+                frames: [{ x: 0, y: 0, width: 384, height: 255 }],
+              },
+              timing: { framesPerSecond: 1, loop: true },
+            },
+            engaging: {
+              sheet: {
+                image: winchInstalledUrl,
+                frames: [{ x: 0, y: 0, width: 384, height: 255 }],
+              },
+              timing: { framesPerSecond: 1 },
+            },
+          },
+          roles: { default: "idle" },
           visualAnchor: { x: 192, y: 255 },
         },
       },
       noun: ({
-        labels: [{ text: "Argano senza manovella" }],
+        labels: [
+          { text: "Argano riparato", when: { variable: "boatReady", equals: true } },
+          { text: "Argano senza manovella" },
+        ],
         preferredVerbs: [{ verb: "look-at" }],
+        objectVerbs: [{ verb: "use" }],
         cases: [{
+          verb: "use",
+          firstNoun: "winchHandle",
+          when: { variable: "boatReady", equals: false },
+          sequence: "winchInstallation",
+        }, {
+          verb: "look-at",
+          when: { variable: "boatReady", equals: true },
+          response: { text: "La manovella è montata saldamente. L'argano è tornato al lavoro." },
+        }, {
           verb: "look-at",
           response: { text: "Un argano robusto. Sul mozzo manca la manovella." },
         }],
+        fallbacks: {
+          use: { response: { text: "Qui serve proprio la manovella recuperata dal pozzo." } },
+        },
       } satisfies NounDefinition),
     },
     fishingNets: {
@@ -185,7 +232,8 @@ export const harbour = ({
     approach: { groundPoint: { x: 720, y: 470 }, facing: "left" },
   }, {
     target: { kind: "scenery", scenery: "winch" },
-    area: rectangle(1450, 330, 1834, 585),
+    // Keep the actionable hub clear of the net heap's adjacent Hotspot.
+    area: rectangle(1692, 330, 1834, 585),
     approach: { groundPoint: { x: 1370, y: 570 }, facing: "right" },
   }, {
     target: { kind: "scenery", scenery: "fishingNets" },
@@ -214,6 +262,17 @@ export const harbour = ({
     initialQuay: { groundPoint: { x: 150, y: 560 }, facing: "right" },
   },
   passages: [{
+    area: rectangle(0, 300, 85, 620),
+    approach: { groundPoint: { x: 90, y: 560 }, facing: "left" },
+    when: { variable: "boatReady", equals: true },
+    noun: ({
+      labels: [{ text: "Gozzo verso la fortificazione" }],
+      preferredVerbs: [{ verb: "walk-to" }],
+      cases: [],
+    } satisfies NounDefinition),
+    direction: "left",
+    destination: { scene: "coastalFortification", entrance: "fromHarbour" },
+  }, {
     area: rectangle(1835, 300, 1920, 620),
     approach: { groundPoint: { x: 1810, y: 540 }, facing: "right" },
     noun: ({
