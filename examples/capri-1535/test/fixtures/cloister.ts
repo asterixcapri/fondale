@@ -8,7 +8,10 @@ import {
 import { brotherElia } from "../../src/characters/brother-elia";
 import { michele } from "../../src/characters/michele";
 import { italianCommandFallbacks, italianCommandLexicon } from "../../src/hud";
+import { oilFlask } from "../../src/objects/oil-flask";
+import { winchHandle } from "../../src/objects/winch-handle";
 import { cloister } from "../../src/scenes/cloister";
+import { freeWell } from "../../src/sequences/free-well";
 
 const harbourStub = ({
   background: cloister.background,
@@ -52,8 +55,18 @@ const isolatedProject = ({
       initialGroundPoint: { x: 1050, y: 620 },
       dialogue: undefined,
     },
-    brotherElia: { ...brotherElia, dialogue: undefined },
+    brotherElia: {
+      ...brotherElia,
+      noun: { ...brotherElia.noun, cases: [], fallbacks: undefined },
+      dialogue: undefined,
+    },
   },
+  objects: {
+    oilFlask: { ...oilFlask, initialGroundPoint: { x: 1000, y: 620 } },
+    winchHandle,
+  },
+  sequences: { freeWell },
+  variables: { letterDelivered: false, wellFreed: false, wellLubricated: false },
   playerCharacter: "michele",
   commandLexicon: italianCommandLexicon,
   commandFallbacks: italianCommandFallbacks,

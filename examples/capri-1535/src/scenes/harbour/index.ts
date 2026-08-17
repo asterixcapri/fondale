@@ -213,4 +213,15 @@ export const harbour = ({
     fromCloister: { groundPoint: { x: 1760, y: 540 }, facing: "left" },
     initialQuay: { groundPoint: { x: 150, y: 560 }, facing: "right" },
   },
+  passages: [{
+    area: rectangle(1835, 300, 1920, 620),
+    approach: { groundPoint: { x: 1810, y: 540 }, facing: "right" },
+    noun: ({
+      labels: [{ text: "Passaggio verso il chiostro" }],
+      preferredVerbs: [{ verb: "walk-to" }],
+      cases: [],
+    } satisfies NounDefinition),
+    direction: "right",
+    destination: { scene: "cloister", entrance: "fromHarbour" },
+  }],
 } satisfies SceneDefinition);

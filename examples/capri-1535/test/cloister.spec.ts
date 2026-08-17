@@ -40,6 +40,9 @@ test("the isolated cloister package exercises its entrance, stage, targets and p
   await expect.poll(() => [...runtimeAssets].sort()).toEqual([
     "background.png",
     "idle.png",
+    "well-freed.png",
+    "well-freeing.png",
+    "well-lubricated.png",
     "well-seized.png",
   ]);
 

@@ -59,3 +59,36 @@ The keyed source was converted with the image-generation skill's standard soft
 matte and despill helper, then trimmed and fitted to a 295×360 Runtime Asset.
 The 1280×720 masters were exported as full-colour lossless PNGs; no colour
 quantisation or pixel-art treatment was applied.
+
+## Well-state extension
+
+Ticket 07 extended the approved seized master on 2026-08-17 with the built-in
+OpenAI image-generation edit flow. Both state edits used `well-seized.png` as
+their edit target and a flat green key. The keyed outputs were converted with
+the same soft-matte/despill helper. The generated lubricated bearing patch was
+composited over the unchanged seized master; unrelated pixels from that edit
+were discarded after alpha inspection. The freed state was retained as a full
+aligned master. Both were cropped through the seized master's fixed
+`935×1142+174+42` bounds and fitted to 295×360, preserving the Runtime Visual
+Anchor. `well-freeing.png` joins those two Runtime frames without repainting.
+
+### Lubricated-state edit prompt
+
+> Depict the approved seized well after Michele has applied lamp oil but before
+> anyone pulls the rope. Keep the bucket low, rope taut, handle mounted, drum
+> position and entire mechanism unchanged. Add clearly readable fresh amber
+> oil only at the right iron axle bearing: a warm golden wet sheen around the
+> circular bearing, two short oil trails on the iron collar, and three small
+> amber drops on the wooden upright beneath it. Preserve style, lighting,
+> scale, perspective, framing and all other details. Use a perfectly flat
+> `#00ff00` chroma-key background; no text or watermark.
+
+### Freed-state edit prompt
+
+> Depict the approved well immediately after the mechanism has been freed.
+> Remove only the detachable crank handle from the right axle socket. Raise the
+> turquoise bucket so it rests visibly just above the front stone rim, with the
+> rope wound onto the drum and no longer taut. Keep the wooden frame, roof,
+> drum, axle, iron fittings, stone well, perspective, lighting, palette,
+> brushwork, framing, scale and all other details unchanged. Use a perfectly
+> flat `#00ff00` chroma-key background; no extra objects, text or watermark.

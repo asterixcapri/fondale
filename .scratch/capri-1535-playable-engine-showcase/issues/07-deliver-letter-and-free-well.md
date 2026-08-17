@@ -7,7 +7,7 @@ freed winch handle without any dead-end order of operations.
 
 **Blocked by:** 03 — Build the cloister Scene package; 06 — Play the harbour job and oil reveal.
 
-**Status:** ready-for-agent
+**Status:** claimed
 
 - [ ] Bidirectional Passages connect harbour and cloister through valid entrances and coherent arrival Facings.
 - [ ] Brother Elia prevents Michele from operating the well before receiving the letter.

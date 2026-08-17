@@ -23,8 +23,26 @@ export const brotherElia = ({
     preferredVerbs: [{ verb: "talk-to" }],
     secondaryVerbs: [{ verb: "look-at" }],
     objectVerbs: [{ verb: "give" }],
-    // Talking to Frate Elia opens his Conversation; his authored questions live there.
-    cases: [],
+    cases: [{
+      verb: "give",
+      firstNoun: "sealedLetter",
+      when: { variable: "letterDelivered", equals: false },
+      sequence: "deliverLetter",
+      operations: [
+        { type: "consume-selected-object" },
+        { type: "set-variable", variable: "letterDelivered", value: true },
+        { type: "set-variable", variable: "raffaeleTruthUnlocked", value: true },
+        { type: "set-trust", character: "brotherElia", towards: "michele", trust: "medium" },
+        ...micheleLearns(
+          "raffaele-lent-the-handle",
+          "cloister-pulley-is-jammed",
+          "oil-frees-the-pulley",
+        ),
+      ],
+    }],
+    fallbacks: {
+      give: { response: { text: "Frate Elia non ha chiesto questo oggetto." } },
+    },
   } satisfies NounDefinition),
   dialogue: {
     biography:
@@ -39,8 +57,15 @@ export const brotherElia = ({
     voice: { verbosity: "medium", tone: "warm", vocabulary: "formal" },
     behavior: { withholding: "withhold" },
     state: "calm",
+    relationships: { michele: { trust: "low" } },
     knowledge: [
-      { factId: "friars-took-the-handle", disclosure: { level: "open" } },
+      {
+        factId: "raffaele-lent-the-handle",
+        disclosure: {
+          level: "secret",
+          when: { variable: "letterDelivered", equals: true },
+        },
+      },
       { factId: "cloister-pulley-is-jammed", disclosure: { level: "open" } },
       {
         // The remedy is the puzzle: he gives it once the trouble is out in the open.
@@ -49,12 +74,11 @@ export const brotherElia = ({
       },
     ],
     alternatives: [{
-      // The well conversation keeps its own Sequence, with its branching intact.
-      text: "Sono qui per la manovella dell'argano.",
-      once: true,
-      sequence: "brotherEliaConversation",
-      after: "resume",
-      operations: micheleLearns("friars-took-the-handle", "cloister-pulley-is-jammed"),
+      text: "Perché Raffaele ha mentito sulla manovella?",
+      when: { variable: "letterDelivered", equals: true },
+      response:
+        "Per non ammettere che l'ha prestata volontariamente in cambio dell'acqua. La vanità pesa più del secchio.",
+      operations: micheleLearns("raffaele-lent-the-handle"),
     }, {
       text: "Che cosa serve alla carrucola?",
       when: { variable: "pulleyTroubleKnown", equals: true },

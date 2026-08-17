@@ -5,22 +5,43 @@ import inventoryUrl from "./inventory.png";
 import sceneUrl from "./scene.png";
 
 export const winchHandle = ({
-  initialScene: "harbour",
-  initialGroundPoint: { x: 920, y: 585 },
-  initialAppearance: "loose",
+  initialScene: "cloister",
+  initialGroundPoint: { x: 1125, y: 520 },
+  initialAppearance: "installed",
   appearances: {
-    loose: { animations: { idle: { sheet: { image: sceneUrl, frames: [{ x: 0, y: 0, width: 28, height: 30 }] }, timing: { framesPerSecond: 1, loop: true } } }, roles: { default: "idle" } },
-    installed: { animations: { idle: { sheet: { image: installedUrl, frames: [{ x: 0, y: 0, width: 1, height: 1 }] }, timing: { framesPerSecond: 1, loop: true } } }, roles: { default: "idle" } },
+    loose: {
+      animations: {
+        idle: {
+          sheet: { image: sceneUrl, frames: [{ x: 0, y: 0, width: 28, height: 30 }] },
+          timing: { framesPerSecond: 1, loop: true },
+        },
+      },
+      roles: { default: "idle" },
+      visualAnchor: { x: 14, y: 30 },
+    },
+    installed: {
+      animations: {
+        idle: {
+          sheet: { image: installedUrl, frames: [{ x: 0, y: 0, width: 1, height: 1 }] },
+          timing: { framesPerSecond: 1, loop: true },
+        },
+      },
+      roles: { default: "idle" },
+      visualAnchor: { x: 0, y: 1 },
+    },
   },
   inventoryAppearance: inventoryUrl,
   noun: ({
-    labels: [{ text: "Manovella" }],
+    labels: [
+      { text: "Manovella liberata", when: { variable: "wellFreed", equals: true } },
+      { text: "Manovella" },
+    ],
     preferredVerbs: [{ verb: "pick-up" }],
     secondaryVerbs: [{ verb: "look-at" }],
     cases: [
       {
         verb: "pick-up",
-        response: { text: "Prendo la manovella. L'argano è qui accanto." },
+        response: { text: "Prendo la manovella liberata dal pozzo. Ora può tornare all'argano." },
         operations: [{ type: "collect-target-object" }],
       },
       {
