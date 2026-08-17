@@ -1,8 +1,23 @@
+import { execFileSync } from "node:child_process";
+
 import { defineConfig } from "@playwright/test";
 
-const testPort = (globalThis as {
-  process?: { env: Record<string, string | undefined> };
-}).process?.env.FONDALE_TEST_PORT ?? "5173";
+/**
+ * Asks the OS for a currently free port. The suite binds to an ephemeral port
+ * by default so that a run in any checkout or worktree can never silently
+ * reuse a dev server started from another checkout and test the wrong code.
+ */
+function freePort(): number {
+  const probe =
+    "const s=require('node:net').createServer();" +
+    "s.listen(0,'127.0.0.1',()=>{process.stdout.write(String(s.address().port));s.close();});";
+  return Number(execFileSync(process.execPath, ["-e", probe], { encoding: "utf8" }).trim());
+}
+
+const testPort = process.env.FONDALE_TEST_PORT ?? String(freePort());
+// Expose the resolved port to the workers, so anything reading
+// FONDALE_TEST_PORT observes the value the suite actually bound to.
+process.env.FONDALE_TEST_PORT = testPort;
 
 /**
  * The harness that makes the agent's work verifiable without a human.
@@ -32,7 +47,9 @@ export default defineConfig({
   webServer: {
     command: `npm run dev -- --port ${testPort}`,
     url: `http://localhost:${testPort}`,
-    reuseExistingServer: true,
+    // Never reuse a server somebody else started: it might belong to another
+    // checkout or worktree, and testing that code silently invalidates the run.
+    reuseExistingServer: false,
     timeout: 60_000,
   },
 });
