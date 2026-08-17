@@ -7,36 +7,28 @@ import wellFreeingUrl from "./well-freeing.png";
 import lubricatedWellUrl from "./well-lubricated.png";
 import seizedWellUrl from "./well-seized.png";
 
-const wellNoun = ({
-  labels: [
-    { text: "Pozzo liberato", when: { variable: "wellFreed", equals: true } },
-    { text: "Pozzo lubrificato", when: { variable: "wellLubricated", equals: true } },
-    { text: "Pozzo del chiostro" },
-  ],
-  preferredVerbs: [
-    { verb: "look-at", when: { variable: "letterDelivered", equals: false } },
-    { verb: "pull", when: { variable: "wellFreed", equals: false } },
-    { verb: "look-at" },
-  ],
-  secondaryVerbs: [{ verb: "pull" }],
+const freeingAnimation = {
+  sheet: {
+    image: wellFreeingUrl,
+    frames: [
+      { x: 0, y: 0, width: 295, height: 360 },
+      { x: 295, y: 0, width: 295, height: 360 },
+    ],
+  },
+  timing: { framesPerSecond: 2 },
+};
+
+const pulleySupportNoun = ({
+  labels: [{ text: "Supporto della carrucola" }],
+  preferredVerbs: [{ verb: "look-at" }],
   objectVerbs: [{ verb: "use" }],
   cases: [{
     verb: "look-at",
-    when: { variable: "wellFreed", equals: true },
-    response: {
-      text: "Il secchio è risalito, la corda è allentata e il mozzo ha lasciato libera la manovella.",
-    },
-  }, {
-    verb: "look-at",
     when: { variable: "wellLubricated", equals: true },
-    response: {
-      text: "L'olio luccica sul supporto della carrucola. Ora resta da tirare la corda.",
-    },
+    response: { text: "L'olio fresco luccica sul supporto di ferro." },
   }, {
     verb: "look-at",
-    response: {
-      text: "La corda è in tensione, il secchio pesa e la carrucola non gira. La manovella è ancora montata sull'asse.",
-    },
+    response: { text: "Il supporto della carrucola è secco e coperto di polvere." },
   }, {
     verb: "use",
     firstNoun: "oilFlask",
@@ -68,6 +60,38 @@ const wellNoun = ({
       target: { kind: "scenery", scene: "cloister", scenery: "well" },
       appearance: "lubricated",
     }],
+  }],
+} satisfies NounDefinition);
+
+const wellNoun = ({
+  labels: [
+    { text: "Pozzo liberato", when: { variable: "wellFreed", equals: true } },
+    { text: "Pozzo lubrificato", when: { variable: "wellLubricated", equals: true } },
+    { text: "Pozzo del chiostro" },
+  ],
+  preferredVerbs: [
+    { verb: "look-at", when: { variable: "letterDelivered", equals: false } },
+    { verb: "pull", when: { variable: "wellFreed", equals: false } },
+    { verb: "look-at" },
+  ],
+  secondaryVerbs: [{ verb: "pull" }],
+  cases: [{
+    verb: "look-at",
+    when: { variable: "wellFreed", equals: true },
+    response: {
+      text: "Il secchio è risalito, la corda è allentata e il mozzo ha lasciato libera la manovella.",
+    },
+  }, {
+    verb: "look-at",
+    when: { variable: "wellLubricated", equals: true },
+    response: {
+      text: "L'olio luccica sul supporto della carrucola. Ora resta da tirare la corda.",
+    },
+  }, {
+    verb: "look-at",
+    response: {
+      text: "La corda è in tensione, il secchio pesa e la carrucola non gira. La manovella è ancora montata sull'asse.",
+    },
   }, {
     verb: "pull",
     when: { variable: "letterDelivered", equals: false },
@@ -122,16 +146,7 @@ export const cloister = ({
               },
               timing: { framesPerSecond: 1, loop: true },
             },
-            freeing: {
-              sheet: {
-                image: wellFreeingUrl,
-                frames: [
-                  { x: 0, y: 0, width: 295, height: 360 },
-                  { x: 295, y: 0, width: 295, height: 360 },
-                ],
-              },
-              timing: { framesPerSecond: 2 },
-            },
+            freeing: freeingAnimation,
           },
           roles: { default: "idle" },
           visualAnchor: { x: 147, y: 360 },
@@ -145,16 +160,7 @@ export const cloister = ({
               },
               timing: { framesPerSecond: 1, loop: true },
             },
-            freeing: {
-              sheet: {
-                image: wellFreeingUrl,
-                frames: [
-                  { x: 0, y: 0, width: 295, height: 360 },
-                  { x: 295, y: 0, width: 295, height: 360 },
-                ],
-              },
-              timing: { framesPerSecond: 2 },
-            },
+            freeing: freeingAnimation,
           },
           roles: { default: "idle" },
           visualAnchor: { x: 147, y: 360 },
@@ -214,6 +220,11 @@ export const cloister = ({
     area: rectangle(825, 570, 890, 635),
     approach: { groundPoint: { x: 790, y: 620 }, facing: "right" },
     when: { variable: "wellFreed", equals: true },
+  }, {
+    target: { kind: "background" },
+    area: rectangle(1080, 345, 1170, 480),
+    approach: { groundPoint: { x: 850, y: 600 }, facing: "right" },
+    noun: pulleySupportNoun,
   }],
   entrances: {
     fromHarbour: { groundPoint: { x: 170, y: 610 }, facing: "right" },

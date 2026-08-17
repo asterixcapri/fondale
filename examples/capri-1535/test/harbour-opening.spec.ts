@@ -230,7 +230,7 @@ test("Michele delivers the letter, frees the well and keeps the recovered handle
   await expect(frame).toHaveAttribute("data-fondale-scene", "cloister", { timeout: 15_000 });
 
   await selectInventoryObject(page, "oilFlask");
-  await activateHotspot(page, "Pozzo del chiostro");
+  await activateHotspot(page, "Supporto della carrucola");
   await expect(page.locator('[data-fondale-line][data-fondale-speaker="brotherElia"]'))
     .toContainText("Prima la lettera", { timeout: 15_000 });
   await expect(page.locator('[data-fondale-inventory-object="oilFlask"]')).toHaveCount(1);
@@ -250,7 +250,7 @@ test("Michele delivers the letter, frees the well and keeps the recovered handle
     timeout: 15_000,
   });
   await selectInventoryObject(page, "oilFlask");
-  await activateHotspot(page, "Pozzo del chiostro");
+  await activateHotspot(page, "Supporto della carrucola");
   await expect(page.locator("[aria-live=polite]")).toContainText("supporto della carrucola", {
     timeout: 15_000,
   });

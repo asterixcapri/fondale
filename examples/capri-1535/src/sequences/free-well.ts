@@ -29,7 +29,7 @@ export const freeWell = ({
     directions: [{
       type: "animation",
       subject: { kind: "character", character: "michele" },
-      animation: "pick-up",
+      animation: "mechanism-use",
     }, {
       type: "animation",
       subject: { kind: "scenery", scenery: "well" },

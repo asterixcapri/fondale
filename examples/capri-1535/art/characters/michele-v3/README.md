@@ -37,14 +37,17 @@ one-second Walking cycle advances Michele by 80 units.
 
 The single `workwear` Appearance provides looping Default, Walking and Speaking
 roles plus the finite directed `pick-up` Animation used to pull the harbour
-nets. Frames are not mirrored, redrawn, reordered, cropped, rescaled or
-retouched. The source files were previously staged with a
+nets and the finite directed `mechanism-use` Animation used to pull the
+cloister rope. Frames are not mirrored, redrawn, reordered, cropped, rescaled
+or retouched. The source files were previously staged with a
 `-godmode-preview` suffix; the active adapters retain their exact pixels.
 
-The existing `192×288` `use-winch` source sheets remain unchanged and dormant
-for later action integration. The `pick-up` sheets are now integrated through
-transparent-padding-only Runtime adapters because the playable harbour reveal
-requires that approved action without changing its pixels.
+The existing eight-frame `192×288` `use-winch` source sheets remain unchanged.
+Ticket 07 integrates them through transparent-padding-only 256×292 Runtime
+adapters as `mechanism-use`, retaining source order and pixels while aligning
+their Visual Anchor to `(128, 288)`. The `pick-up` sheets use the same
+padding-only policy because the playable harbour reveal requires that approved
+action without changing its pixels.
 
 ## Production provenance
 

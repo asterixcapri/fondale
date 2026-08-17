@@ -4,6 +4,10 @@ import idleBackUrl from "./runtime-workwear-idle-back.png";
 import idleFrontUrl from "./runtime-workwear-idle-front.png";
 import idleLeftUrl from "./runtime-workwear-idle-left.png";
 import idleRightUrl from "./runtime-workwear-idle-right.png";
+import mechanismUseBackUrl from "./runtime-workwear-mechanism-use-back.png";
+import mechanismUseFrontUrl from "./runtime-workwear-mechanism-use-front.png";
+import mechanismUseLeftUrl from "./runtime-workwear-mechanism-use-left.png";
+import mechanismUseRightUrl from "./runtime-workwear-mechanism-use-right.png";
 import pickUpBackUrl from "./runtime-workwear-pick-up-back.png";
 import pickUpFrontUrl from "./runtime-workwear-pick-up-front.png";
 import pickUpLeftUrl from "./runtime-workwear-pick-up-left.png";
@@ -31,6 +35,13 @@ const pickUpFrames = uniformGrid({
   count: 25,
 });
 
+const mechanismUseFrames = uniformGrid({
+  frameWidth: 256,
+  frameHeight: 292,
+  columns: 8,
+  count: 8,
+});
+
 export const michele = ({
   initialScene: "harbour",
   initialGroundPoint: { x: 330, y: 625 },
@@ -42,6 +53,15 @@ export const michele = ({
         idle: { sheets: { left: { image: idleLeftUrl, frames }, right: { image: idleRightUrl, frames }, front: { image: idleFrontUrl, frames }, back: { image: idleBackUrl, frames } }, timing: { framesPerSecond: 8, loop: true } },
         walking: { sheets: { left: { image: walkingLeftUrl, frames }, right: { image: walkingRightUrl, frames }, front: { image: walkingFrontUrl, frames }, back: { image: walkingBackUrl, frames } }, timing: { framesPerSecond: 16, loop: true } },
         speaking: { sheets: { left: { image: speakingLeftUrl, frames }, right: { image: speakingRightUrl, frames }, front: { image: speakingFrontUrl, frames }, back: { image: speakingBackUrl, frames } }, timing: { framesPerSecond: 8, loop: true } },
+        "mechanism-use": {
+          sheets: {
+            left: { image: mechanismUseLeftUrl, frames: mechanismUseFrames },
+            right: { image: mechanismUseRightUrl, frames: mechanismUseFrames },
+            front: { image: mechanismUseFrontUrl, frames: mechanismUseFrames },
+            back: { image: mechanismUseBackUrl, frames: mechanismUseFrames },
+          },
+          timing: { framesPerSecond: 8, cues: { contact: 0.5 } },
+        },
         "pick-up": {
           sheets: {
             left: { image: pickUpLeftUrl, frames: pickUpFrames },

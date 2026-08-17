@@ -61,7 +61,7 @@ test("the isolated cloister package exercises its entrance, stage, targets and p
   }
 
   await page.keyboard.down("Tab");
-  await expect(page.locator("[data-fondale-revealed-hotspot]")).toHaveCount(2);
+  await expect(page.locator("[data-fondale-revealed-hotspot]")).toHaveCount(3);
   await expect(page.locator("[data-fondale-revealed-passage]")).toHaveCount(1);
   await page.keyboard.up("Tab");
 

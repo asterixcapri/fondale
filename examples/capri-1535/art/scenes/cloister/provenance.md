@@ -71,6 +71,12 @@ were discarded after alpha inspection. The freed state was retained as a full
 aligned master. Both were cropped through the seized master's fixed
 `935×1142+174+42` bounds and fitted to 295×360, preserving the Runtime Visual
 Anchor. `well-freeing.png` joins those two Runtime frames without repainting.
+`composition-lubricated.png` and `composition-freed.png` are the inspected
+1280×720 recompositions over the clean Background with Brother Elia; the freed
+composition also places the loose handle Object at its authored Ground Point.
+They retain the approved scale, illumination, contact and surrounding
+occlusion and are the durable full-composition approval artifacts for the two
+new states.
 
 ### Lubricated-state edit prompt
 
