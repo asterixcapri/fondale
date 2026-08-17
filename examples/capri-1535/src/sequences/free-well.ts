@@ -34,6 +34,7 @@ export const freeWell = ({
       type: "animation",
       subject: { kind: "scenery", scenery: "well" },
       animation: "freeing",
+      startAfter: { direction: 0, cue: "contact" },
     }],
   }, {
     type: "operations",

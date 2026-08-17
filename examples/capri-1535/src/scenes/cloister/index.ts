@@ -132,6 +132,17 @@ export const cloister = ({
     { y: 690, scale: 1 },
   ],
   scenery: {
+    pulleySupport: {
+      baseline: 269,
+      initialAppearance: "default",
+      appearances: {
+        default: {
+          kind: "background-region",
+          area: rectangle(1080, 345, 1170, 480),
+        },
+      },
+      noun: pulleySupportNoun,
+    },
     well: {
       baseline: 630,
       position: { x: 1022, y: 630 },
@@ -221,10 +232,9 @@ export const cloister = ({
     approach: { groundPoint: { x: 790, y: 620 }, facing: "right" },
     when: { variable: "wellFreed", equals: true },
   }, {
-    target: { kind: "background" },
+    target: { kind: "scenery", scenery: "pulleySupport" },
     area: rectangle(1080, 345, 1170, 480),
     approach: { groundPoint: { x: 850, y: 600 }, facing: "right" },
-    noun: pulleySupportNoun,
   }],
   entrances: {
     fromHarbour: { groundPoint: { x: 170, y: 610 }, facing: "right" },
