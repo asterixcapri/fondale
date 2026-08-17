@@ -2,7 +2,7 @@ import { type CharacterDefinition, type NounDefinition } from "@asterixcapri/fon
 
 import staticUrl from "./static.png";
 
-const staticFrame = [{ x: 0, y: 0, width: 256, height: 256 }];
+const staticFrame = [{ x: 0, y: 0, width: 166, height: 166 }];
 
 export const woundedSailorGroundPoint = { x: 1098, y: 602 } as const;
 
@@ -26,7 +26,7 @@ export const woundedSailor = ({
         },
       },
       roles: { default: "idle" },
-      visualAnchor: { x: 128, y: 252 },
+      visualAnchor: { x: 83, y: 164 },
     },
     // The encounter ends with the sailor losing consciousness. The deliberate
     // static presentation keeps the same Runtime image; only the authored
@@ -44,7 +44,7 @@ export const woundedSailor = ({
         },
       },
       roles: { default: "idle" },
-      visualAnchor: { x: 128, y: 252 },
+      visualAnchor: { x: 83, y: 164 },
     },
   },
   movementSpeed: 60,
