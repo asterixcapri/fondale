@@ -27,10 +27,17 @@ const installedWinchSheet = {
 export const harbour = ({
   background: backgroundUrl,
   size: { width: 1920, height: 720 },
+  // The far edge follows the quay's waterline, sampled from the Background:
+  // water reaches y 527 at x 100, 515 at x 300, 479 at x 500, 440 at x 700 and
+  // 408 at x 900, and the quay is dry from x 1100 on. The earlier straight run
+  // from (90, 470) to (900, 400) cut across up to 75 points of open water, and
+  // Michele could stand in it.
   walkableRegion: [
-    { x: 90, y: 470 },
-    { x: 470, y: 420 },
-    { x: 900, y: 400 },
+    { x: 90, y: 537 },
+    { x: 300, y: 525 },
+    { x: 500, y: 489 },
+    { x: 700, y: 450 },
+    { x: 900, y: 418 },
     { x: 1330, y: 410 },
     { x: 1810, y: 470 },
     { x: 1810, y: 540 },
