@@ -30,6 +30,13 @@ export default defineConfig({
   testIgnore: ["live-dialogue.spec.ts"],
   outputDir: "./test/.artifacts",
   fullyParallel: false,
+  // One worker, deliberately. Every case here drives a real-time simulation:
+  // walks that take seconds, Animation Cues, Sequences and Camera scrolling,
+  // all read back by screenshotting a canvas. Playwright's default of one
+  // worker per two cores ran a dozen Chrome instances against the same CPU and
+  // turned those waits into a lottery — the suite failed ten cases under load
+  // that every one of them passed alone. Serial is slower and true.
+  workers: 1,
   reporter: [["list"]],
   use: {
     baseURL: `http://localhost:${acceptancePort}`,
