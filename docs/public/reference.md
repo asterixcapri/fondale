@@ -68,9 +68,15 @@ a time, so presenting another replaces it rather than stacking. While one is
 presented the Engine draws it instead of the Scene and draws no Character, its
 Hotspots advertise their phrases exactly as Scene Hotspots do, a Command
 against one resolves immediately with no movement stage, and the Inventory
-remains reachable. The presented Detail View is committed Game State recorded
-as `detailView` in the Save Snapshot; the Player Character keeps its Scene,
-Ground Point and Facing throughout, and dismissal returns the world unchanged.
+remains reachable. A Detail View Hotspot carries an ordinary Noun Definition,
+so its Command Cases answer with a Line or a Command Response, run Game
+Operations, start a Sequence, and accept a selected Inventory Object with the
+same first-Noun semantics a Scene Hotspot uses; `when` withdraws a Hotspot
+whose condition stops holding, and an unsupported combination answers authored
+feedback and commits nothing. The presented Detail View is committed Game
+State recorded as `detailView` in the Save Snapshot; the Player Character
+keeps its Scene, Ground Point and Facing throughout, and dismissal returns the
+world unchanged.
 
 `CharacterDefinition` describes a persistent Character with initial Scene, Ground
 Point, Facing, Appearance, positive `movementSpeed`, optional Noun, optional

@@ -2,8 +2,10 @@ import { expect, test } from "@playwright/test";
 
 import { createTestSession } from "./support";
 import { AuthoringError } from "../src/capabilities/game-project";
+import { type CoreEffect } from "../src/capabilities/game-session";
 import {
   type CharacterDefinition,
+  type CommandCase,
   type CommandLexicon,
   type DetailViewDefinition,
   type GameProject,
@@ -30,6 +32,24 @@ const lowerRight = [
   { x: 100, y: 60 },
   { x: 100, y: 100 },
   { x: 60, y: 100 },
+];
+const upperRight = [
+  { x: 60, y: 0 },
+  { x: 100, y: 0 },
+  { x: 100, y: 40 },
+  { x: 60, y: 40 },
+];
+const lowerLeft = [
+  { x: 0, y: 60 },
+  { x: 40, y: 60 },
+  { x: 40, y: 100 },
+  { x: 0, y: 100 },
+];
+const centre = [
+  { x: 45, y: 45 },
+  { x: 55, y: 45 },
+  { x: 55, y: 55 },
+  { x: 45, y: 55 },
 ];
 
 const commandLexicon = {
@@ -80,6 +100,51 @@ const knife = {
     }],
   } satisfies NounDefinition,
 } satisfies ObjectDefinition;
+
+const coin = {
+  initialScene: "boat",
+  initialGroundPoint: { x: 90, y: 10 },
+  initialAppearance: "new",
+  appearances: {
+    new: {
+      animations: {
+        idle: { sheet: { image: "coin.png", frames: [{ x: 0, y: 0, width: 1, height: 1 }] }, timing: { framesPerSecond: 1, loop: true } },
+      },
+      roles: { default: "idle" },
+    },
+  },
+  inventoryAppearance: "coin-inventory.png",
+  noun: {
+    labels: [{ text: "Coin" }],
+    preferredVerbs: [{ verb: "look-at" }],
+    cases: [{ verb: "look-at", response: { text: "A worn coin." } }],
+  } satisfies NounDefinition,
+} satisfies ObjectDefinition;
+
+const sailor = {
+  initialScene: "boat",
+  initialGroundPoint: { x: 90, y: 90 },
+  initialFacing: "front",
+  initialAppearance: "normal",
+  appearances: {
+    normal: {
+      animations: {
+        idle: { sheets: { left: { image: "sailor.png", frames: [{ x: 0, y: 0, width: 1, height: 1 }] }, right: { image: "sailor.png", frames: [{ x: 0, y: 0, width: 1, height: 1 }] }, front: { image: "sailor.png", frames: [{ x: 0, y: 0, width: 1, height: 1 }] }, back: { image: "sailor.png", frames: [{ x: 0, y: 0, width: 1, height: 1 }] } }, timing: { framesPerSecond: 1, loop: true } },
+      },
+      roles: { default: "idle", walking: "idle" },
+    },
+  },
+  movementSpeed: 600,
+  noun: {
+    labels: [{ text: "Sailor" }],
+    preferredVerbs: [{ verb: "talk-to" }],
+    cases: [{ verb: "talk-to", line: { character: "sailor", text: "Speak, then." } }],
+  } satisfies NounDefinition,
+  dialogue: {
+    knowledge: [],
+    alternatives: [{ text: "What was in the bundle?", response: "A name I will not say." }],
+  },
+} satisfies CharacterDefinition;
 
 const bundle = {
   labels: [{ text: "Bundle" }],
@@ -139,6 +204,100 @@ const registry = {
   }],
 } satisfies DetailViewDefinition;
 
+/**
+ * The one Command Case authored identically on a Scene Hotspot and on a Detail
+ * View area, so both routes can be compared against each other.
+ */
+const unlockWithTheKnife = {
+  verb: "use",
+  firstNoun: "knife",
+  response: { text: "The blade turns the lock." },
+  operations: [{ type: "set-variable", variable: "mechanismOpen", value: true }],
+} satisfies CommandCase;
+
+const mechanism = {
+  image: "mechanism.png",
+  hotspots: [
+    {
+      area: upperLeft,
+      noun: {
+        labels: [{ text: "Lock" }],
+        preferredVerbs: [{ verb: "look-at" }],
+        cases: [{ verb: "look-at", response: { text: "A brass lock." } }, unlockWithTheKnife],
+      } satisfies NounDefinition,
+    },
+    {
+      area: upperRight,
+      when: { variable: "mechanismOpen", equals: false },
+      noun: {
+        labels: [{ text: "Plate" }],
+        preferredVerbs: [{ verb: "look-at" }],
+        cases: [{ verb: "look-at", response: { text: "A plate covers the hollow." } }],
+      } satisfies NounDefinition,
+    },
+    {
+      area: lowerRight,
+      when: { variable: "mechanismOpen", equals: true },
+      noun: {
+        labels: [{ text: "Hollow" }],
+        preferredVerbs: [{ verb: "look-at" }],
+        cases: [
+          {
+            verb: "look-at",
+            when: { variable: "coinTaken", equals: false },
+            response: { text: "I pocket the coin." },
+            operations: [
+              { type: "give-object-to-player", object: "coin" },
+              { type: "set-variable", variable: "coinTaken", value: true },
+            ],
+          },
+          { verb: "look-at", response: { text: "The hollow is empty." } },
+        ],
+      } satisfies NounDefinition,
+    },
+    {
+      area: lowerLeft,
+      noun: {
+        labels: [{ text: "Cord" }],
+        preferredVerbs: [{ verb: "look-at" }],
+        cases: [
+          { verb: "look-at", line: { character: "player", text: "Waxed cord, cut clean." } },
+          { verb: "pull", sequence: "confide" },
+        ],
+      } satisfies NounDefinition,
+    },
+    {
+      area: centre,
+      noun: {
+        labels: [{ text: "Ring" }],
+        preferredVerbs: [{ verb: "look-at" }],
+        cases: [{ verb: "look-at", sequence: "callTheSailor" }],
+      } satisfies NounDefinition,
+    },
+  ],
+} satisfies DetailViewDefinition;
+
+/** Presents a second Detail View at its end, and again through its Skip Outcome. */
+const confide = {
+  skippable: true,
+  skipOutcome: [
+    { type: "set-variable", variable: "confided", value: true },
+    { type: "present-detail-view", detailView: "registry" },
+  ],
+  steps: [
+    { type: "operations", operations: [{ type: "set-variable", variable: "confided", value: true }] },
+    { type: "narration", text: "The cord unwinds." },
+    { type: "operations", operations: [{ type: "present-detail-view", detailView: "registry" }] },
+  ],
+} satisfies SequenceDefinition;
+
+const callTheSailor = {
+  steps: [
+    { type: "narration", text: "A shadow falls across the page." },
+    { type: "operations", operations: [{ type: "dismiss-detail-view" }] },
+  ],
+} satisfies SequenceDefinition;
+
 const examine = {
   steps: [
     { type: "operations", operations: [{ type: "present-detail-view", detailView: "seal" }] },
@@ -153,6 +312,18 @@ const hatch = {
   cases: [{ verb: "look-at", sequence: "examine" }],
 } satisfies NounDefinition;
 
+const mechanismHotspotNoun = {
+  labels: [{ text: "Mechanism" }],
+  preferredVerbs: [{ verb: "look-at" }],
+  cases: [
+    {
+      verb: "look-at",
+      operations: [{ type: "present-detail-view", detailView: "mechanism" }],
+    },
+    unlockWithTheKnife,
+  ],
+} satisfies NounDefinition;
+
 const boat = {
   background: "boat.png",
   walkableRegion: square,
@@ -160,6 +331,8 @@ const boat = {
     { target: { kind: "background" }, area: square, approach: { groundPoint: { x: 50, y: 50 }, facing: "back" }, noun: bundle },
     { target: { kind: "object", object: "knife" }, area: upperLeft, approach: { groundPoint: { x: 30, y: 30 }, facing: "front" } },
     { target: { kind: "background" }, area: lowerRight, approach: { groundPoint: { x: 80, y: 80 }, facing: "front" }, noun: hatch },
+    { target: { kind: "background" }, area: upperRight, approach: { groundPoint: { x: 70, y: 20 }, facing: "front" }, noun: mechanismHotspotNoun },
+    { target: { kind: "character", character: "sailor" }, area: lowerLeft, approach: { groundPoint: { x: 20, y: 80 }, facing: "front" } },
   ],
 } satisfies SceneDefinition;
 
@@ -167,13 +340,14 @@ const project = {
   identity: "test.detail-view",
   version: "1",
   logicalResolution: { width: 100, height: 100 },
+  narrativeContext: "A wounded sailor's bundle, opened aboard a boat off Capri in 1535.",
   scenes: { boat },
-  characters: { player },
+  characters: { player, sailor },
   playerCharacter: "player",
-  objects: { knife },
-  detailViews: { seal, registry },
-  sequences: { examine },
-  variables: { sealRead: false },
+  objects: { knife, coin },
+  detailViews: { seal, registry, mechanism },
+  sequences: { examine, confide, callTheSailor },
+  variables: { sealRead: false, mechanismOpen: false, coinTaken: false, confided: false },
   initialScene: "boat",
   commandLexicon,
   commandFallbacks: { "look-at": { text: "Nothing to see." }, open: { text: "It does not open." }, "pick-up": { text: "I cannot take it." }, push: { text: "It will not move." }, close: { text: "It is not open." }, pull: { text: "It will not budge." }, give: { text: "Nobody wants it." }, "talk-to": { text: "It says nothing." }, use: { text: "That does nothing." } },
@@ -193,6 +367,38 @@ function examineDetail(
 ) {
   session.input({ type: "contextual-hotspot", hotspot, action: "primary" });
   session.steps();
+}
+
+/** The authored order of the Scene Hotspots of `boat`. */
+const sceneHotspot = { bundle: 0, knife: 1, hatch: 2, mechanism: 3, sailor: 4 } as const;
+
+/** The authored order of the Hotspots of the `mechanism` Detail View. */
+const area = { lock: 0, plate: 1, hollow: 2, cord: 3, ring: 4 } as const;
+
+/** Walks to the Scene Hotspot whose Command Case presents the mechanism close-up. */
+function presentTheMechanism(session: ReturnType<typeof createTestSession>) {
+  session.input({ type: "select-verb", verb: "look-at" });
+  session.input({ type: "activate-hotspot", hotspot: sceneHotspot.mechanism });
+  session.steps(20);
+}
+
+/** Collects the knife from the Scene, so it can be used on what is examined. */
+function pickUpTheKnife(session: ReturnType<typeof createTestSession>) {
+  session.input({ type: "select-verb", verb: "pick-up" });
+  session.input({ type: "activate-hotspot", hotspot: sceneHotspot.knife });
+  session.steps(20);
+}
+
+/** Every Command Response the Session answered with since the last reading. */
+function responses(effects: readonly CoreEffect[]): readonly string[] {
+  return effects.flatMap((effect) =>
+    effect.type === "interaction-response" ? [effect.text] : []);
+}
+
+/** The committed Game State, without the tick two routes cannot share. */
+function committed(session: ReturnType<typeof createTestSession>) {
+  const { tick: _tick, ...rest } = session.snapshot();
+  return rest;
 }
 
 test("a Command Case presents a Detail View, which replaces the world without moving anyone", () => {
@@ -278,7 +484,7 @@ test("a Sequence keeps running while a Detail View is presented and dismisses it
   expect(session.snapshot().detailView).toBeUndefined();
   expect(session.detailView()).toBeNull();
   expect(session.snapshot().characters.player).toEqual(presented.characters.player);
-  expect(session.hud().nouns.map(({ label }) => label)).toEqual(["Bundle", "Knife", "Hatch"]);
+  expect(session.hud().nouns.map(({ label }) => label)).toEqual(["Bundle", "Knife", "Hatch", "Mechanism", "Sailor"]);
 });
 
 test("a restored Save Snapshot resumes on the presented Detail View", () => {
@@ -313,6 +519,8 @@ test("startup rejects a malformed Detail View and names the offending path", () 
             { target: { kind: "background" }, area: square, approach: { groundPoint: { x: 50, y: 50 }, facing: "back" }, noun: { ...bundle, cases: [{ verb: "look-at", operations: [{ type: "present-detail-view", detailView: "missing" }] }] } },
             boat.hotspots[1]!,
             boat.hotspots[2]!,
+            boat.hotspots[3]!,
+            boat.hotspots[4]!,
           ],
         },
       },
@@ -325,4 +533,204 @@ test("startup rejects a malformed Detail View and names the offending path", () 
       path: "scenes.boat.hotspots[0].noun.cases[0].operations[0]",
     }));
   }
+});
+
+test("a Detail View Hotspot answers with a Line, without a movement stage", () => {
+  const session = createTestSession(project);
+  presentTheMechanism(session);
+  session.takeEffects();
+
+  examineDetail(session, area.cord);
+
+  expect(session.snapshot().activity).toMatchObject({
+    type: "line",
+    line: { character: "player", text: "Waxed cord, cut clean." },
+  });
+  expect(session.snapshot().detailView).toBe("mechanism");
+  expect(session.takeEffects().some(({ type }) => type === "movement-started")).toBe(false);
+
+  session.input({ type: "advance-line" });
+  session.steps();
+  expect(session.snapshot().activity).toBeNull();
+});
+
+test("a Detail View Hotspot runs its Game Operations, and they commit exactly once", () => {
+  const session = createTestSession(project);
+  pickUpTheKnife(session);
+  presentTheMechanism(session);
+  session.input({ type: "select-object", object: "knife" });
+  session.steps();
+  session.input({ type: "activate-hotspot", hotspot: area.lock });
+  session.steps();
+  session.takeEffects();
+
+  examineDetail(session, area.hollow);
+
+  // Committing these operations twice would either duplicate the coin in the
+  // Inventory or fail the Session, the Object no longer being in the Scene.
+  expect(responses(session.takeEffects())).toEqual(["I pocket the coin."]);
+  expect(session.snapshot().inventory.objects).toEqual(["knife", "coin"]);
+  expect(session.snapshot().objects.coin!.location).toEqual({ kind: "inventory" });
+  expect(session.snapshot().variables.coinTaken).toBe(true);
+  expect(session.lifecycle()).toBe("running");
+
+  examineDetail(session, area.hollow);
+
+  expect(responses(session.takeEffects())).toEqual(["The hollow is empty."]);
+  expect(session.snapshot().inventory.objects).toEqual(["knife", "coin"]);
+  expect(session.lifecycle()).toBe("running");
+});
+
+test("a Detail View Hotspot starts a Sequence, which returns a world that still talks", () => {
+  const session = createTestSession(project);
+  presentTheMechanism(session);
+
+  examineDetail(session, area.ring);
+
+  expect(session.sequence()).toMatchObject({
+    kind: "narration",
+    text: "A shadow falls across the page.",
+  });
+  expect(session.snapshot().detailView).toBe("mechanism");
+
+  session.input({ type: "advance-sequence" });
+  session.steps();
+  expect(session.snapshot().detailView).toBeUndefined();
+  expect(session.snapshot().activity).toBeNull();
+
+  session.input({ type: "select-verb", verb: "talk-to" });
+  session.input({ type: "activate-hotspot", hotspot: sceneHotspot.sailor });
+  session.steps(20);
+
+  expect(session.snapshot().activity).toMatchObject({ type: "conversation", character: "sailor" });
+  expect(session.conversation()?.alternatives.map(({ text }) => text))
+    .toEqual(["What was in the bundle?"]);
+});
+
+test("a Detail View Hotspot withdraws when Game State stops matching its condition", () => {
+  const session = createTestSession(project);
+  pickUpTheKnife(session);
+  presentTheMechanism(session);
+  expect(session.hud().nouns.map(({ label }) => label))
+    .toEqual(["Lock", "Plate", "Cord", "Ring"]);
+  expect(session.hitTest({ x: 80, y: 20 })).toEqual({ kind: "detail-hotspot", index: area.plate });
+
+  session.input({ type: "select-object", object: "knife" });
+  session.steps();
+  session.input({ type: "activate-hotspot", hotspot: area.lock });
+  session.steps();
+
+  expect(session.snapshot().variables.mechanismOpen).toBe(true);
+  expect(session.hud().nouns.map(({ label }) => label))
+    .toEqual(["Lock", "Hollow", "Cord", "Ring"]);
+  expect(session.hitTest({ x: 80, y: 20 })).toBeNull();
+  expect(session.hitTest({ x: 80, y: 80 })).toEqual({ kind: "detail-hotspot", index: area.hollow });
+});
+
+test("a selected Inventory Object resolves on a Detail View Hotspot as on a Scene Hotspot", () => {
+  const inTheWorld = createTestSession(project);
+  pickUpTheKnife(inTheWorld);
+  inTheWorld.input({ type: "select-object", object: "knife" });
+  inTheWorld.steps();
+  inTheWorld.takeEffects();
+  inTheWorld.input({ type: "activate-hotspot", hotspot: sceneHotspot.mechanism });
+  inTheWorld.steps(20);
+  const worldEffects = inTheWorld.takeEffects();
+
+  const inTheDetailView = createTestSession(project);
+  pickUpTheKnife(inTheDetailView);
+  presentTheMechanism(inTheDetailView);
+  inTheDetailView.input({ type: "select-object", object: "knife" });
+  inTheDetailView.steps();
+  inTheDetailView.takeEffects();
+  const advertised = inTheDetailView.hud().nouns[0]!.primary.text;
+  inTheDetailView.input({ type: "activate-hotspot", hotspot: area.lock });
+  inTheDetailView.steps();
+  const detailEffects = inTheDetailView.takeEffects();
+
+  expect(advertised).toBe("Use Knife with Lock");
+  expect(responses(detailEffects)).toEqual(["The blade turns the lock."]);
+  expect(responses(detailEffects)).toEqual(responses(worldEffects));
+  expect(detailEffects.some(({ type }) => type === "movement-started")).toBe(false);
+  expect(worldEffects.some(({ type }) => type === "movement-started")).toBe(true);
+  expect(inTheDetailView.snapshot().command).toEqual(inTheWorld.snapshot().command);
+  expect(inTheDetailView.snapshot().variables).toEqual(inTheWorld.snapshot().variables);
+  expect(inTheDetailView.snapshot().inventory).toEqual(inTheWorld.snapshot().inventory);
+});
+
+test("an unsupported combination answers authored feedback and mutates no Game State", () => {
+  const session = createTestSession(project);
+  pickUpTheKnife(session);
+  presentTheMechanism(session);
+  session.takeEffects();
+  const before = committed(session);
+
+  session.input({ type: "select-verb", verb: "push" });
+  session.input({ type: "activate-hotspot", hotspot: area.lock });
+  session.steps();
+
+  expect(responses(session.takeEffects())).toEqual(["It will not move."]);
+  expect(committed(session)).toEqual({
+    ...before,
+    command: { verb: "walk-to", firstNoun: null },
+  });
+
+  session.input({ type: "select-object", object: "knife" });
+  session.steps();
+  const selected = committed(session);
+  session.input({ type: "activate-hotspot", hotspot: area.cord });
+  session.steps();
+
+  expect(responses(session.takeEffects())).toEqual(["That does nothing."]);
+  expect(committed(session)).toEqual({
+    ...selected,
+    command: { verb: "walk-to", firstNoun: null },
+  });
+});
+
+test("a Command Case in the world presents a Detail View after its Approach Point walk", () => {
+  const session = createTestSession(project);
+  session.input({ type: "select-verb", verb: "look-at" });
+  session.input({ type: "activate-hotspot", hotspot: sceneHotspot.mechanism });
+  session.steps();
+
+  expect(session.takeEffects()).toContainEqual(expect.objectContaining({
+    type: "movement-started",
+    destination: { x: 70, y: 20 },
+  }));
+  expect(session.snapshot().detailView).toBeUndefined();
+
+  session.steps(20);
+
+  expect(session.takeEffects()).toContainEqual(expect.objectContaining({
+    type: "movement-finished",
+    destination: { x: 70, y: 20 },
+  }));
+  expect(session.snapshot().detailView).toBe("mechanism");
+  expect(session.snapshot().characters.player!.facing).toBe("front");
+});
+
+test("a Skip Outcome presents a Detail View and commits what ordinary playback commits", () => {
+  const pullTheCord = (session: ReturnType<typeof createTestSession>) => {
+    presentTheMechanism(session);
+    session.input({ type: "select-verb", verb: "pull" });
+    session.input({ type: "activate-hotspot", hotspot: area.cord });
+    session.steps();
+  };
+
+  const played = createTestSession(project);
+  pullTheCord(played);
+  expect(played.sequence()).toMatchObject({ kind: "narration", text: "The cord unwinds." });
+  played.input({ type: "advance-sequence" });
+  played.steps();
+
+  const skipped = createTestSession(project);
+  pullTheCord(skipped);
+  skipped.input({ type: "skip-sequence" });
+  skipped.steps();
+
+  expect(skipped.snapshot().detailView).toBe("registry");
+  expect(skipped.snapshot().variables.confided).toBe(true);
+  expect(skipped.snapshot().activity).toBeNull();
+  expect(committed(skipped)).toEqual(committed(played));
 });
