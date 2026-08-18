@@ -32,3 +32,8 @@ A Hotspot is no longer Scene-local: it belongs to whatever presents it. Detail
 Views deliberately ship without travel — a Hotspot that carries the Player to
 another Scene would reintroduce the presented-Scene divergence we rejected — so
 a map that moves the Player waits for a later decision.
+
+Only one Detail View is presented at a time: nesting one inside another would
+add a stack to save and restore for a case no game has yet needed. A Sequence
+runs unimpeded while one is presented, directing a world the Player cannot
+currently see, and closes the Detail View when the world must be watched again.

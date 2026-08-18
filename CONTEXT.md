@@ -495,7 +495,8 @@ A single presented image with its own Hotspots, shown in place of the world so
 the Player may examine one subject closely. It has no Scene Space, no Walkable
 Region and no presented Character, so its Commands never approach before they
 execute, and it represents something the world already contains rather than
-being a place within it.
+being a place within it. At most one is presented at a time, and the Inventory
+remains available while it is.
 _Avoid_: Scene, screen, overlay, popup, close-up
 
 **Object**:
