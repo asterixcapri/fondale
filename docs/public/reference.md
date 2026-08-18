@@ -76,7 +76,10 @@ whose condition stops holding, and an unsupported combination answers authored
 feedback and commits nothing. The presented Detail View is committed Game
 State recorded as `detailView` in the Save Snapshot; the Player Character
 keeps its Scene, Ground Point and Facing throughout, and dismissal returns the
-world unchanged.
+world unchanged. The Continuation State carries it too, so a reload returns to
+the same close-up. Restoring into a presented Detail View is not an arrival
+and starts no arrival Sequence. A stored Detail View the Game Project no
+longer declares is refused during validation with `save.state.detail-view`.
 
 `CharacterDefinition` describes a persistent Character with initial Scene, Ground
 Point, Facing, Appearance, positive `movementSpeed`, optional Noun, optional
@@ -573,7 +576,8 @@ Knowledge-Driven Dialogue definition and operation codes include
 Runtime, save, asset and environment codes: `state.operation.invalid`,
 `save.shape`, `save.fields.unexpected`, `save.format.version`,
 `save.project.identity`, `save.project.version`, `save.state.command`,
-`save.state.command-noun`, `save.state.intent-command`,
+`save.state.command-noun`, `save.state.detail-view`,
+`save.state.intent-command`,
 `save.state.intent-command-noun`, `save.state.invalid`,
 `save.validation.project`, `save.validation.required`, `asset.load.failed`,
 `asset.audio.load.failed`,

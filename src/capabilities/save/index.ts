@@ -144,6 +144,7 @@ function validateSnapshot(
     if (!validStateShape(value.state, context)) {
       diagnostics.push(
         invalidCommandStateDiagnostic(value.state) ??
+        invalidDetailViewDiagnostic(value.state, context) ??
         saveDiagnostic("save.state.invalid", "Save Snapshot contains an invalid Game State."),
       );
     }
@@ -408,6 +409,30 @@ function invalidIntentCommandDiagnostic(
       "save.state.intent-command-noun",
       "Save Snapshot refers to a pending first Noun that is not available in the Inventory.",
       "Save Snapshot.state.activity.intent.command.firstNoun",
+    );
+  }
+  return undefined;
+}
+
+/** Names the presented Detail View a stored Game State can no longer resume. */
+function invalidDetailViewDiagnostic(
+  value: unknown,
+  context: Pick<SaveValidationContext, "detailViews">,
+): AuthoringDiagnostic | undefined {
+  if (!isRecord(value) || value.detailView === undefined) return undefined;
+  const path = "Save Snapshot.state.detailView";
+  if (typeof value.detailView !== "string") {
+    return saveDiagnostic(
+      "save.state.detail-view",
+      "Save Snapshot contains a malformed presented Detail View.",
+      path,
+    );
+  }
+  if (!context.detailViews.has(value.detailView)) {
+    return saveDiagnostic(
+      "save.state.detail-view",
+      "Save Snapshot refers to a Detail View that is not in this Game Project.",
+      path,
     );
   }
   return undefined;
