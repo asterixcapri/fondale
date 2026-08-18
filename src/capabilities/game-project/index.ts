@@ -49,6 +49,13 @@ export type {
   OpenDisclosure,
 } from "../dialogue";
 import {
+  validateDetailViewDefinition,
+  validateDetailViewProject,
+  type DetailViewDefinition,
+  type DetailViewProjectView,
+} from "../detail-view";
+export type { DetailViewDefinition, DetailViewHotspotDefinition } from "../detail-view";
+import {
   validateHUDProjectReferences,
   validateHUDTheme,
   type HUDProjectView,
@@ -148,6 +155,8 @@ export type GameOperation =
       readonly appearance: string;
     }
   | { readonly type: "start-sequence"; readonly sequence: string }
+  | { readonly type: "present-detail-view"; readonly detailView: string }
+  | { readonly type: "dismiss-detail-view" }
   | InventoryOperation
   | DialogueGameOperation;
 
@@ -159,6 +168,7 @@ export interface GameProject {
   readonly narrativeContext?: string;
   readonly logicalResolution: LogicalResolution;
   readonly scenes: Readonly<Record<string, SceneDefinition>>;
+  readonly detailViews?: Readonly<Record<string, DetailViewDefinition>>;
   readonly narrativeFacts?: Readonly<Record<string, NarrativeFactDefinition>>;
   readonly claims?: Readonly<Record<string, ClaimDefinition>>;
   readonly characters?: Readonly<Record<string, CharacterDefinition>>;
@@ -183,8 +193,9 @@ export interface CompiledGameProject {
 
 /** Fully expanded representation kept inside the Game Project implementation. */
 interface GameProjectData
-  extends Omit<GameProject, "scenes" | "characters" | "objects" | "sequences" | "variables" | "narrativeFacts" | "claims"> {
+  extends Omit<GameProject, "scenes" | "detailViews" | "characters" | "objects" | "sequences" | "variables" | "narrativeFacts" | "claims"> {
   readonly scenes: Readonly<Record<string, ResolvedSceneDefinition>>;
+  readonly detailViews: Readonly<Record<string, DetailViewDefinition>>;
   readonly letterboxColor: string;
   readonly characters: Readonly<Record<string, CharacterDefinition>>;
   readonly objects: Readonly<Record<string, ObjectDefinition>>;
@@ -206,6 +217,7 @@ export interface SaveGameProjectView {
 export interface SaveCompositionView {
   readonly gameProject: SaveGameProjectView;
   readonly world: WorldProjectView;
+  readonly detailViews: DetailViewProjectView;
   readonly animation: AnimationProjectView;
   readonly sequences: Readonly<Record<string, SequenceDefinition>>;
   readonly dialogue: KnowledgeDrivenDialogueProjectView;
@@ -220,6 +232,7 @@ export interface GameSessionGameProjectView {
 export interface GameSessionCompositionView {
   readonly gameProject: GameSessionGameProjectView;
   readonly world: WorldProjectView & Pick<WorldDefinitionView, "logicalResolution" | "playerCharacter">;
+  readonly detailViews: DetailViewProjectView;
   readonly interaction: InteractionProjectView;
   readonly animation: AnimationProjectView;
   readonly hud: HUDProjectView;
@@ -229,7 +242,9 @@ export interface GameSessionCompositionView {
 
 /** @internal Authored assets needed by the browser asset adapter. */
 export interface BrowserAssetProjectView {
+  readonly logicalResolution: LogicalResolution;
   readonly scenes: Readonly<Record<string, ResolvedSceneDefinition>>;
+  readonly detailViews: Readonly<Record<string, DetailViewDefinition>>;
   readonly characters: Readonly<Record<string, CharacterDefinition>>;
   readonly objects: Readonly<Record<string, ObjectDefinition>>;
   readonly sequences: Readonly<Record<string, SequenceDefinition>>;
@@ -270,6 +285,7 @@ export type GameProjectCompilation =
 export function compileGameProject(input: GameProject): GameProjectCompilation {
   const diagnostics: AuthoringDiagnostic[] = [];
   const characters = input.characters ?? {};
+  const detailViews = input.detailViews ?? {};
   const objects = input.objects ?? {};
   const sequences = input.sequences ?? {};
   const variables = input.variables ?? {};
@@ -278,6 +294,13 @@ export function compileGameProject(input: GameProject): GameProjectCompilation {
   for (const [sceneId, scene] of Object.entries(input.scenes)) {
     diagnostics.push(...validateSceneDefinition(scene, `scenes.${sceneId}`));
   }
+  for (const [detailViewId, detailView] of Object.entries(detailViews)) {
+    diagnostics.push(...validateDetailViewDefinition(detailView, `detailViews.${detailViewId}`));
+  }
+  diagnostics.push(...validateDetailViewProject({
+    detailViews,
+    logicalResolution: input.logicalResolution,
+  }));
   for (const [characterId, character] of Object.entries(characters)) {
     diagnostics.push(...validateCharacterDefinition(character, `characters.${characterId}`));
   }
@@ -306,7 +329,7 @@ export function compileGameProject(input: GameProject): GameProjectCompilation {
     variables,
     characters,
   }));
-  validateProjectDefinitions(input, characters, objects, sequences, variables, diagnostics);
+  validateProjectDefinitions(input, characters, detailViews, objects, sequences, variables, diagnostics);
   diagnostics.push(...validateAnimationProjectSettings(input.inventoryAppearanceSize));
   if (!input.identity.trim()) {
     diagnostics.push({
@@ -349,6 +372,7 @@ export function compileGameProject(input: GameProject): GameProjectCompilation {
   const data = deepFreeze({
     ...cloned,
     scenes,
+    detailViews: cloned.detailViews ?? {},
     characters: cloned.characters ?? {},
     objects: cloned.objects ?? {},
     sequences: cloned.sequences ?? {},
@@ -382,6 +406,7 @@ export function getGameSessionCompositionView(project: CompiledGameProject): Gam
   return Object.freeze({
     gameProject: Object.freeze({ variables: data.variables }),
     world,
+    detailViews: Object.freeze({ detailViews: data.detailViews }),
     interaction: Object.freeze({
       scenes: data.scenes,
       characters: data.characters,
@@ -410,7 +435,9 @@ export function getBrowserProjectView(project: CompiledGameProject): BrowserProj
       letterboxColor: data.letterboxColor,
     }),
     assets: Object.freeze({
+      logicalResolution: data.logicalResolution,
       scenes: data.scenes,
+      detailViews: data.detailViews,
       characters: data.characters,
       objects: data.objects,
       sequences: data.sequences,
@@ -446,6 +473,7 @@ export function getSaveCompositionView(project: CompiledGameProject): SaveCompos
       characters: data.characters,
       objects: data.objects,
     }),
+    detailViews: Object.freeze({ detailViews: data.detailViews }),
     animation: animationProjectView(data),
     sequences: data.sequences,
     dialogue: dialogueProjectView(data),
@@ -544,6 +572,7 @@ function immutableURLMutation(): never {
 function validateProjectDefinitions(
   input: GameProject,
   characters: Readonly<Record<string, CharacterDefinition>>,
+  detailViews: Readonly<Record<string, DetailViewDefinition>>,
   objects: Readonly<Record<string, ObjectDefinition>>,
   sequences: Readonly<Record<string, SequenceDefinition>>,
   variables: Readonly<Record<string, boolean>>,
@@ -574,6 +603,7 @@ function validateProjectDefinitions(
   diagnostics.push(...validateInteractionComposition({
     commandLexicon: input.commandLexicon,
     scenes: input.scenes,
+    detailViews,
     characters,
     objects,
   }));
@@ -628,6 +658,16 @@ function validateProjectDefinitions(
           path: operationPath,
           message: `Game Variable '${operation.variable}' does not exist.`,
         });
+      } else if (operation.type === "present-detail-view") {
+        if (!(operation.detailView in detailViews)) {
+          operationDiagnostics.push({
+            code: "reference.detail-view",
+            family: "reference",
+            owner: "detail-view",
+            path: operationPath,
+            message: `Detail View '${operation.detailView}' does not exist.`,
+          });
+        }
       } else if (operation.type === "start-sequence") {
         operationDiagnostics.push(...validateSequenceStartReference(
           operation.sequence,
@@ -712,6 +752,14 @@ function validateProjectDefinitions(
       const base = `scenes.${sceneId}.passages[${passageIndex}]`;
       noun(passage.noun, `${base}.noun`, undefined, [sceneId]);
       condition(passage.when, `${base}.when`);
+    });
+  }
+
+  for (const [detailViewId, detailView] of Object.entries(detailViews)) {
+    detailView.hotspots?.forEach((hotspot, hotspotIndex) => {
+      const base = `detailViews.${detailViewId}.hotspots[${hotspotIndex}]`;
+      noun(hotspot.noun, `${base}.noun`, { kind: "background" }, allSceneIds);
+      condition(hotspot.when, `${base}.when`);
     });
   }
 

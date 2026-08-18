@@ -14,14 +14,22 @@ import {
   type InventoryPresentationEntry,
   type Verb,
 } from "../interaction";
+import type { DetailViewTarget } from "../detail-view";
 import {
-  sameWorldTarget,
   type Point,
   type WorldPresentation,
   type WorldTarget,
 } from "../world";
 
 export type PassageDirection = "left" | "right" | "up" | "down" | "enter";
+
+/** @internal Whatever the frame presents addresses its Nouns with one of these. */
+export type HUDTarget = WorldTarget | DetailViewTarget;
+
+/** Reports whether two Targets name the same element of the presented surface. */
+export function samePresentedTarget(left: HUDTarget, right: HUDTarget): boolean {
+  return left.kind === right.kind && left.index === right.index;
+}
 
 /** Declarative visual language for the stable Engine-owned overlay. */
 export interface HUDTheme {
@@ -45,7 +53,7 @@ export type HUDStateView = InteractionStateView;
 
 /** @internal Narrow World and Interaction facts for one available Noun. */
 export interface HUDNounView {
-  readonly target: WorldTarget;
+  readonly target: HUDTarget;
   readonly area: readonly Point[];
   readonly noun: NounDefinition;
   readonly direction?: PassageDirection;
@@ -179,7 +187,7 @@ export interface HUDActionPresentation {
 
 /** @internal */
 export interface HUDNounPresentation {
-  readonly target: WorldTarget;
+  readonly target: HUDTarget;
   readonly area: readonly Point[];
   readonly label: string;
   readonly direction?: PassageDirection;
@@ -236,7 +244,7 @@ export type HUDInput =
   | { readonly type: "close-modal" }
   | {
       readonly type: "activate-noun";
-      readonly target: WorldTarget;
+      readonly target: HUDTarget;
       readonly action: "primary" | "secondary";
     }
   | {
@@ -488,15 +496,15 @@ export function createHUD(input: HUDProjectView): HUD {
           },
         };
       }
-      const noun = context.nouns.find(({ target }) => sameWorldTarget(target, hudInput.target));
+      const noun = context.nouns.find(({ target }) => samePresentedTarget(target, hudInput.target));
       if (!noun) return { focus: null };
       const prepared = nounPresentation(noun, context);
       if (hudInput.action === "secondary" && !prepared.secondary) return { focus: null };
       return {
         focus: null,
-        interaction: noun.target.kind === "hotspot"
-          ? { type: "contextual-hotspot", hotspot: noun.target.index, action: hudInput.action }
-          : { type: "contextual-passage", passage: noun.target.index, action: hudInput.action },
+        interaction: noun.target.kind === "passage"
+          ? { type: "contextual-passage", passage: noun.target.index, action: hudInput.action }
+          : { type: "contextual-hotspot", hotspot: noun.target.index, action: hudInput.action },
       };
     },
   };

@@ -9,6 +9,7 @@ const verifier = resolve(import.meta.dirname, "verify-architecture.mjs");
 const capabilityOwners = [
   "animation",
   "camera",
+  "detail-view",
   "dialogue",
   "game-project",
   "game-session",

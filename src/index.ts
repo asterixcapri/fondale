@@ -70,6 +70,10 @@ export {
   type Testimony,
 } from "./capabilities/dialogue";
 export {
+  type DetailViewDefinition,
+  type DetailViewHotspotDefinition,
+} from "./capabilities/detail-view";
+export {
   type CharacterDialogueDefinition,
   type CharacterKnowledgeDefinition,
   type ClaimDefinition,

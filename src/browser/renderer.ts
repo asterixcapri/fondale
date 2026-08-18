@@ -20,7 +20,6 @@ import type {
   DirectedSubject,
 } from "../capabilities/sequence";
 import {
-  sameWorldTarget,
   type Point,
   type Facing,
   type SceneryAppearance,
@@ -28,6 +27,9 @@ import {
   type WorldTarget,
 } from "../capabilities/world";
 import type { BrowserPresentationProjectView } from "../capabilities/game-project";
+import {
+  samePresentedTarget,
+} from "../capabilities/hud";
 import type {
   HUDNarrativePresentation,
   HUDAdapterFacts,
@@ -58,11 +60,13 @@ const speechTextShadow = "-2px -2px #000,0 -2px #000,2px -2px #000,-2px 0 #000,2
 /** Applies capability presentation facts to PixiJS, DOM, audio, and physical input. */
 export class BrowserRenderer {
   private readonly world = new Container();
+  private readonly detail = new Container();
   private readonly overlay: EngineOverlay;
   private readonly characterViews = new Map<string, CharacterView>();
   private readonly animationViews: AnimationView[] = [];
   private cameraOrigin: Point = { x: 0, y: 0 };
   private sceneSignature = "";
+  private detailViewSignature = "";
 
   constructor(
     private readonly application: Application,
@@ -82,6 +86,7 @@ export class BrowserRenderer {
       (point) => this.sceneToViewport(point),
     );
     application.stage.addChild(this.world);
+    application.stage.addChild(this.detail);
     application.canvas.setAttribute("aria-label", "Fondale game world");
     application.canvas.addEventListener("pointerup", this.onPointerUp);
     application.canvas.addEventListener("dblclick", this.onDoubleClick);
@@ -107,8 +112,33 @@ export class BrowserRenderer {
     this.world.sortChildren();
     this.cameraOrigin = this.core.camera().origin;
     this.world.position.set(-this.cameraOrigin.x, -this.cameraOrigin.y);
+    this.presentDetailView();
     this.overlay.render();
     this.application.renderer.render(this.application.stage);
+  }
+
+  /**
+   * A presented Detail View replaces the world: the Scene, its Characters and
+   * the Camera are left standing but nothing of them is drawn, so pointer
+   * coordinates are the logical frame itself.
+   */
+  private presentDetailView(): void {
+    const detail = this.core.detailView();
+    if (detail) {
+      this.cameraOrigin = { x: 0, y: 0 };
+      this.frame.dataset.fondaleDetailView = detail.detailView;
+      if (this.detailViewSignature !== detail.detailView) {
+        this.detailViewSignature = detail.detailView;
+        this.detail.removeChildren();
+        this.detail.addChild(new Sprite(this.assets.textures.get(assetUrl(detail.image))!));
+      }
+    } else if (this.detailViewSignature !== "") {
+      this.detailViewSignature = "";
+      this.detail.removeChildren();
+      delete this.frame.dataset.fondaleDetailView;
+    }
+    this.world.visible = detail === null;
+    this.detail.visible = detail !== null;
   }
 
   destroy(): void {
@@ -119,7 +149,9 @@ export class BrowserRenderer {
     this.application.canvas.removeEventListener("pointerleave", this.onPointerLeave);
     this.overlay.destroy();
     this.application.stage.removeChild(this.world);
+    this.application.stage.removeChild(this.detail);
     this.world.removeChildren();
+    this.detail.removeChildren();
     this.characterViews.clear();
     this.animationViews.length = 0;
   }
@@ -297,10 +329,7 @@ export class BrowserRenderer {
     const { scene: point } = this.pointerPoints(event);
     if (hud.narrative || hud.sequenceActive) return;
     const target = this.core.hitTest(point);
-    if (target?.kind === "hotspot") {
-      this.overlay.dismissAction();
-      this.overlay.inputHUD({ type: "activate-noun", target, action: "primary" });
-    } else if (target?.kind === "passage") {
+    if (target) {
       this.overlay.dismissAction();
       this.overlay.inputHUD({ type: "activate-noun", target, action: "primary" });
     } else this.core.input({ type: "move", point, fast: event.detail >= 2 });
@@ -314,13 +343,9 @@ export class BrowserRenderer {
     const { scene: point } = this.pointerPoints(event);
     const target = this.core.hitTest(point);
     const noun = target
-      ? this.core.hud().nouns.find((candidate) => sameWorldTarget(candidate.target, target))
+      ? this.core.hud().nouns.find((candidate) => samePresentedTarget(candidate.target, target))
       : undefined;
-    if (target?.kind === "hotspot") {
-      if (!noun?.secondary) return;
-      this.overlay.dismissAction();
-      this.overlay.inputHUD({ type: "activate-noun", target, action: "secondary" });
-    } else if (target?.kind === "passage") {
+    if (target) {
       if (!noun?.secondary) return;
       this.overlay.dismissAction();
       this.overlay.inputHUD({ type: "activate-noun", target, action: "secondary" });
@@ -349,7 +374,7 @@ export class BrowserRenderer {
     const point = points.scene;
     const target = this.core.hitTest(point);
     const noun = target
-      ? this.core.hud().nouns.find((candidate) => sameWorldTarget(candidate.target, target))
+      ? this.core.hud().nouns.find((candidate) => samePresentedTarget(candidate.target, target))
       : undefined;
     this.overlay.showAction(noun);
     const cursors = {
@@ -1235,7 +1260,8 @@ class EngineOverlay {
     for (const noun of this.currentHUD.nouns) {
       const area = noun.area.map(this.sceneToViewport);
       const polygon = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
-      if (noun.target.kind === "hotspot") {
+      const kind = noun.target.kind === "passage" ? "passage" : "hotspot";
+      if (kind === "hotspot") {
         polygon.dataset.fondaleRevealedHotspot = String(noun.target.index);
       } else {
         polygon.dataset.fondaleRevealedPassage = String(noun.target.index);
@@ -1243,17 +1269,14 @@ class EngineOverlay {
       polygon.setAttribute("points", area.map(({ x, y }) => `${x},${y}`).join(" "));
       polygon.setAttribute(
         "fill",
-        noun.target.kind === "hotspot" ? "rgba(53,167,255,.22)" : "rgba(242,173,98,.18)",
+        kind === "hotspot" ? "rgba(53,167,255,.22)" : "rgba(242,173,98,.18)",
       );
-      polygon.setAttribute("stroke", noun.target.kind === "hotspot" ? "#ffffff" : "#f2ad62");
+      polygon.setAttribute("stroke", kind === "hotspot" ? "#ffffff" : "#f2ad62");
       polygon.setAttribute("stroke-width", "1");
       const title = document.createElementNS("http://www.w3.org/2000/svg", "title");
       title.textContent = noun.label;
       polygon.append(title);
-      this.revealedHotspots.append(
-        polygon,
-        revealLabel(area, noun.label, noun.target.kind),
-      );
+      this.revealedHotspots.append(polygon, revealLabel(area, noun.label, kind));
     }
   }
 

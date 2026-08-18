@@ -1,5 +1,6 @@
 import {
   type AuthoringDiagnostic,
+  type AuthoringDiagnosticOwner,
   type LogicalResolution,
 } from "../game-project";
 import {
@@ -211,6 +212,23 @@ export interface SceneDefinition {
 /** A Scene whose default Size has been resolved during composition. */
 export interface ResolvedSceneDefinition extends Omit<SceneDefinition, "size"> {
   readonly size: SceneSize;
+}
+
+/**
+ * Validates one authored polygon on behalf of a capability that owns no Scene
+ * Space, so simplicity and non-zero area are checked in exactly one place. The
+ * caller names both the owner of the rule and the coordinate space its Author
+ * authored the polygon in.
+ */
+export function validatePolygonGeometry(
+  polygon: readonly Point[],
+  path: string,
+  owner: AuthoringDiagnosticOwner,
+  coordinateSpace: string,
+): readonly AuthoringDiagnostic[] {
+  const diagnostics: AuthoringDiagnostic[] = [];
+  validateLocalPolygon(polygon, path, diagnostics, coordinateSpace);
+  return diagnostics.map((diagnostic) => ({ ...diagnostic, owner }));
 }
 
 /** Reports every local Scene Authoring Diagnostic without a Game Project. */
@@ -790,11 +808,6 @@ export function validateWorldProject(view: WorldDefinitionView): readonly Author
 export type WorldTarget =
   | { readonly kind: "hotspot"; readonly index: number }
   | { readonly kind: "passage"; readonly index: number };
-
-/** Reports whether two World Target values refer to the same available world element. */
-export function sameWorldTarget(left: WorldTarget, right: WorldTarget): boolean {
-  return left.kind === right.kind && left.index === right.index;
-}
 
 export interface WorldHotspot {
   readonly index: number;
@@ -1393,6 +1406,7 @@ function validateLocalPolygon(
   polygon: readonly Point[],
   path: string,
   diagnostics: AuthoringDiagnostic[],
+  coordinateSpace = "Scene Space",
 ): void {
   polygon.forEach((point, index) => {
     if (!Number.isFinite(point.x) || !Number.isFinite(point.y)) {
@@ -1400,7 +1414,7 @@ function validateLocalPolygon(
         code: "definition.point.finite",
         family: "definition", owner: "world",
         path: `${path}[${index}]`,
-        message: "Scene Space coordinates must be finite numbers.",
+        message: `${coordinateSpace} coordinates must be finite numbers.`,
       });
     }
   });

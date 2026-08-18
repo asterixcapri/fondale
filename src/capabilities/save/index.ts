@@ -19,6 +19,7 @@ import {
   type CompiledGameProject,
   type SaveGameProjectView,
 } from "../game-project";
+import { createDetailViews, type DetailViews } from "../detail-view";
 import { createWorld, type Point, type World } from "../world";
 import {
   createKnowledgeDrivenDialogue,
@@ -58,6 +59,7 @@ export interface Save {
 interface SaveValidationContext {
   readonly project: SaveGameProjectView;
   readonly world: World;
+  readonly detailViews: DetailViews;
   readonly animation: AnimationProjectView;
   readonly sequence: Sequence;
   readonly dialogue: KnowledgeDrivenDialogue;
@@ -72,6 +74,7 @@ export function createSave(project: CompiledGameProject): Save {
   const context: SaveValidationContext = {
     project: views.gameProject,
     world: createWorld(views.world),
+    detailViews: createDetailViews(views.detailViews),
     animation: views.animation,
     sequence: createSequence(views.sequences),
     dialogue: createKnowledgeDrivenDialogue(views.dialogue),
@@ -158,7 +161,7 @@ function validStateShape(
   context: SaveValidationContext,
 ): value is GameState {
   const { animation, project, world } = context;
-  if (!isRecord(value) || !hasExactKeys(value, ["currentScene", "characters", "scenery", "objects", "inventory", "command", "variables", "characterKnowledge", "relationships", "dialogueStates", "consumedAlternatives", "testimonies", "activity", "tick"], ["conversationContinuation"])) return false;
+  if (!isRecord(value) || !hasExactKeys(value, ["currentScene", "characters", "scenery", "objects", "inventory", "command", "variables", "characterKnowledge", "relationships", "dialogueStates", "consumedAlternatives", "testimonies", "activity", "tick"], ["conversationContinuation", "detailView"])) return false;
   if (!Number.isInteger(value.tick) || (value.tick as number) < 0) return false;
   if (!world.isValidState(value) || !isValidAnimationState(animation, value)) return false;
   const inventoryLocations: string[] = [];
@@ -190,6 +193,12 @@ function validStateShape(
           continuation.character,
           value.activity.sequence,
         )) return false;
+  }
+  if (value.detailView !== undefined) {
+    if (typeof value.detailView !== "string") return false;
+    if (!context.detailViews.has(value.detailView)) return false;
+    /** Nobody walks while a Detail View is presented, so no Intent may be pending. */
+    if (isRecord(value.activity) && value.activity.type === "player-intent") return false;
   }
   if (!validActivity(value.activity, value as unknown as GameState, context)) return false;
   return isJsonSafe(value);

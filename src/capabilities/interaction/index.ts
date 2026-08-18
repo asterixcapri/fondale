@@ -261,6 +261,9 @@ export interface InteractionReferenceView {
 /** @internal The composed definitions needed for Interaction-wide invariants. */
 export interface InteractionCompositionView {
   readonly commandLexicon?: CommandLexicon;
+  readonly detailViews?: Readonly<Record<string, {
+    readonly hotspots?: readonly { readonly noun: NounDefinition }[];
+  }>>;
   readonly scenes: Readonly<Record<string, {
     readonly scenery?: Readonly<Record<string, { readonly noun?: NounDefinition }>>;
     readonly hotspots?: readonly HotspotDefinition[];
@@ -301,7 +304,9 @@ export function validateInteractionComposition(
       });
     }
   }
-  const hasNouns = Object.values(view.characters).some(({ noun }) => noun !== undefined) ||
+  const hasNouns = Object.values(view.detailViews ?? {})
+      .some(({ hotspots }) => (hotspots?.length ?? 0) > 0) ||
+    Object.values(view.characters).some(({ noun }) => noun !== undefined) ||
     Object.values(view.objects).some(({ noun }) => noun !== undefined) ||
     Object.values(view.scenes).some((scene) =>
       Object.values(scene.scenery ?? {}).some(({ noun }) => noun !== undefined) ||
@@ -705,7 +710,7 @@ export interface InventoryPresentation {
 
 /** @internal */
 export interface InteractionTargetView {
-  readonly kind: "hotspot" | "passage";
+  readonly kind: "hotspot" | "passage" | "detail-hotspot";
   readonly scene: string;
   readonly index: number;
   readonly noun: NounDefinition;
@@ -730,6 +735,21 @@ type WorldTargetInteractionInput = Extract<
   InteractionInput,
   { readonly hotspot: number } | { readonly passage: number }
 >;
+
+/** @internal Player input against a Hotspot that has nothing to approach. */
+export type ImmediateInteractionInput = Extract<
+  InteractionInput,
+  { readonly hotspot: number }
+>;
+
+/** Reports whether one Player input names a Hotspot rather than another subject. */
+export function isHotspotInteractionInput(
+  input: InteractionInput,
+): input is ImmediateInteractionInput {
+  return input.type === "activate-hotspot" ||
+    input.type === "quick-hotspot" ||
+    input.type === "contextual-hotspot";
+}
 
 interface TargetCommand {
   readonly verb: Verb;
@@ -765,6 +785,16 @@ export interface Interaction {
   nounForHotspot(scene: string, hotspot: HotspotDefinition): NounDefinition | undefined;
   input(
     input: InteractionInput,
+    state: InteractionStateView,
+    target?: InteractionTargetView,
+  ): InteractionDecision;
+  /**
+   * The second resolution path, for a surface such as a Detail View where no
+   * Approach Point exists and a Command therefore answers at once. It never
+   * consults the walking path, and the walking path never consults it.
+   */
+  immediateInput(
+    input: ImmediateInteractionInput,
     state: InteractionStateView,
     target?: InteractionTargetView,
   ): InteractionDecision;
@@ -827,12 +857,12 @@ export function createInteraction(
   };
 
   const requestApproach = (
-    target: InteractionTargetView,
+    target: WorldTarget,
     intent: PlayerIntent,
     fast = false,
   ): InteractionDecision => ({
     type: "request-approach",
-    target: { kind: target.kind, index: target.index },
+    target: { ...target },
     intent,
     ...(fast ? { fast: true } : {}),
   });
@@ -957,11 +987,7 @@ export function createInteraction(
         );
       }
 
-      if (
-        input.type === "activate-hotspot" ||
-        input.type === "quick-hotspot" ||
-        input.type === "contextual-hotspot"
-      ) {
+      if (isHotspotInteractionInput(input)) {
         if (!target || target.kind !== "hotspot" || target.index !== input.hotspot) {
           return { type: "ignored" };
         }
@@ -975,7 +1001,7 @@ export function createInteraction(
               hotspot: target.index,
               command: pendingCommand(command),
             };
-        return requestApproach(target, intent);
+        return requestApproach({ kind: "hotspot", index: target.index }, intent);
       }
 
       if (!target || target.kind !== "passage" || target.index !== input.passage) {
@@ -994,9 +1020,24 @@ export function createInteraction(
             command: pendingCommand(command),
           };
       return requestApproach(
-        target,
+        { kind: "passage", index: target.index },
         intent,
         input.type === "activate-passage" && Boolean(input.fast),
+      );
+    },
+    immediateInput(input, state, target) {
+      if (!target || target.kind !== "detail-hotspot" || target.index !== input.hotspot) {
+        return { type: "ignored" };
+      }
+      const command = commandForTarget(input, state, target);
+      if (!command || command.verb === "walk-to") return { type: "ignored" };
+      return resolve(
+        target.noun,
+        command.verb,
+        target.target,
+        state,
+        command.preserveCommandState ? "preserve" : "reset",
+        command.firstNoun,
       );
     },
     resume(intent, state, target) {

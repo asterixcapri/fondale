@@ -3,14 +3,21 @@ import {
   type AuthoringDiagnostic,
 } from "../game-project";
 import {
+  createDetailViews,
+  type DetailViewPresentation,
+  type DetailViewTarget,
+} from "../detail-view";
+import {
   createInteraction,
   conditionMatchesState,
+  isHotspotInteractionInput,
   isInventoryOperation,
   type CommandState,
   type CommandResponse,
   type CommandVerb,
   type InteractionDecision,
   type InteractionCondition,
+  type ImmediateInteractionInput,
   type InteractionInput,
   type InteractionTargetView,
   type PlayerIntent,
@@ -122,6 +129,8 @@ export interface GameState extends WorldState {
   consumedAlternatives: ConsumedAlternativeState;
   testimonies: Testimony[];
   conversationContinuation?: ConversationActivityState;
+  /** The Detail View presented in place of the world, when one is. */
+  detailView?: string;
   activity: GameActivityState | null;
   tick: number;
 }
@@ -182,7 +191,7 @@ interface DialogueTurnContent {
   readonly playerCharacter: string;
 }
 
-export type CoreWorldTarget = WorldTarget;
+export type CoreWorldTarget = WorldTarget | DetailViewTarget;
 
 export interface CoreContinuationSnapshot {
   readonly revision: number;
@@ -205,6 +214,8 @@ export interface CoreSession {
   hud(facts?: HUDAdapterFacts): HUDPresentation;
   hudInput(input: HUDInput, facts?: HUDAdapterFacts): HUDInputResult;
   world(): WorldPresentation;
+  /** The Detail View presented in place of the world, or null while the world is watched. */
+  detailView(): DetailViewPresentation | null;
   animation(subject: DirectedSubject): AnimationPresentation | undefined;
   camera(): CameraPresentation;
   sequence(): SequencePresentation | null;
@@ -228,6 +239,7 @@ export function createCoreSession(
     objectHasAppearance: (object, appearance) =>
       objectHasAppearance(projectViews.animation, object, appearance),
   });
+  const detailViews = createDetailViews(projectViews.detailViews);
   const hud = createHUD(projectViews.hud);
   const sequenceCapability = createSequence(projectViews.sequences);
   const dialogue = createKnowledgeDrivenDialogue(projectViews.dialogue);
@@ -317,7 +329,9 @@ export function createCoreSession(
     lifecycle: () => status,
     diagnostics: () => structuredClone(failureDiagnostics),
     hitTest(point) {
-      return world.hitTest(state, point, conditionMatches);
+      if (state.detailView === undefined) return world.hitTest(state, point, conditionMatches);
+      const index = detailViews.hitTest(state.detailView, point, conditionMatches);
+      return index === undefined ? null : { kind: "detail-hotspot", index };
     },
     hud(facts) {
       return hud.presentation(hudContext(facts));
@@ -334,6 +348,11 @@ export function createCoreSession(
         { kind: "scenery", scenery },
         activeDirectionPresentation(),
       ));
+    },
+    detailView() {
+      return state.detailView === undefined
+        ? null
+        : detailViews.presentation(state.detailView) ?? null;
     },
     animation(subject) {
       const direction = activeDirectionPresentation();
@@ -524,24 +543,7 @@ export function createCoreSession(
   }
 
   function hudContext(facts: HUDAdapterFacts = {}): HUDPresentationContext {
-    const nouns: HUDNounView[] = world.hotspots(state, conditionMatches)
-      .flatMap(({ definition: hotspot, index }) => {
-        const noun = interaction.nounForHotspot(state.currentScene, hotspot);
-        if (!noun) return [];
-        return [nounView(
-          { kind: "hotspot", index },
-          hotspot.area,
-          noun,
-        )];
-      });
-    nouns.push(...world.passages(state, conditionMatches).map(({ definition: passage, index }) => ({
-      ...nounView(
-        { kind: "passage", index },
-        passage.area,
-        passage.noun,
-      ),
-      direction: passage.direction,
-    })));
+    const nouns: HUDNounView[] = presentedNouns();
     return {
       state,
       nouns,
@@ -559,6 +561,29 @@ export function createCoreSession(
         state.activity?.type === "reflection" ||
         state.activity?.type === "sequence",
     };
+  }
+
+  /**
+   * The Nouns of whatever the frame presents. A presented Detail View replaces
+   * the world, so it also replaces the Nouns the Player may explore.
+   */
+  function presentedNouns(): HUDNounView[] {
+    if (state.detailView !== undefined) {
+      return detailViews.hotspots(state.detailView, conditionMatches)
+        .map(({ definition, index }) =>
+          nounView({ kind: "detail-hotspot", index }, definition.area, definition.noun));
+    }
+    const nouns: HUDNounView[] = world.hotspots(state, conditionMatches)
+      .flatMap(({ definition: hotspot, index }) => {
+        const noun = interaction.nounForHotspot(state.currentScene, hotspot);
+        if (!noun) return [];
+        return [nounView({ kind: "hotspot", index }, hotspot.area, noun)];
+      });
+    nouns.push(...world.passages(state, conditionMatches).map(({ definition: passage, index }) => ({
+      ...nounView({ kind: "passage", index }, passage.area, passage.noun),
+      direction: passage.direction,
+    })));
+    return nouns;
   }
 
   function activeNarrativeFacts(): HUDPresentationContext["narrative"] {
@@ -610,7 +635,7 @@ export function createCoreSession(
   }
 
   function nounView(
-    target: WorldTarget,
+    target: CoreWorldTarget,
     area: readonly Point[],
     noun: HUDNounView["noun"],
   ): HUDNounView {
@@ -726,11 +751,35 @@ export function createCoreSession(
       return;
     }
 
+    if (state.detailView !== undefined) {
+      if (!isInteractionInput(input)) return;
+      handleInteractionDecision(isHotspotInteractionInput(input)
+        ? interaction.immediateInput(input, state, detailViewTarget(input))
+        : interaction.input(input, state, undefined));
+      return;
+    }
     if (input.type === "move") {
       beginIntent({ kind: "move" }, input.point, undefined, input.fast);
     } else if (isInteractionInput(input)) {
       handleInteractionDecision(interaction.input(input, state, interactionTarget(input)));
     }
+  }
+
+  /** Resolves one Hotspot of the presented Detail View into an Interaction target. */
+  function detailViewTarget(
+    input: ImmediateInteractionInput,
+  ): InteractionTargetView | undefined {
+    if (state.detailView === undefined) return undefined;
+    const hotspot = detailViews.hotspots(state.detailView, conditionMatches)
+      .find(({ index }) => index === input.hotspot);
+    if (!hotspot) return undefined;
+    return {
+      kind: "detail-hotspot",
+      scene: state.currentScene,
+      index: hotspot.index,
+      noun: hotspot.definition.noun,
+      target: { kind: "background" },
+    };
   }
 
   function interactionTarget(
@@ -1076,6 +1125,14 @@ export function createCoreSession(
         }
         current[appearanceTarget.scenery] = operation.appearance;
       }
+    } else if (operation.type === "present-detail-view") {
+      if (!detailViews.has(operation.detailView)) {
+        throw new Error(`Unknown Detail View '${operation.detailView}'.`);
+      }
+      draft.detailView = operation.detailView;
+      if (draft.activity?.type === "player-intent") draft.activity = null;
+    } else if (operation.type === "dismiss-detail-view") {
+      delete draft.detailView;
     } else if (operation.type === "start-sequence") {
       if (draft.activity?.type === "sequence") throw new Error("A Sequence cannot start another Sequence.");
       draft.activity = sequenceCapability.start(operation.sequence, draft.currentScene);

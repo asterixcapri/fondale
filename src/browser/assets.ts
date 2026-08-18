@@ -51,6 +51,9 @@ export async function loadProjectAssets(
       }
     }
   }
+  for (const [detailViewId, detailView] of Object.entries(data.detailViews)) {
+    add(detailView.image, `detailViews.${detailViewId}.image`);
+  }
   for (const [characterId, character] of Object.entries(data.characters)) {
     for (const [appearanceId, appearance] of Object.entries(
       character.appearances,
@@ -167,6 +170,23 @@ export async function loadProjectAssets(
         path: `scenes.${sceneId}.background`,
         message: `Background is ${background.width}×${background.height}; expected ${scene.size.width}×${scene.size.height}.`,
         suggestion: "Export the PNG at the Scene's exact Scene Size.",
+      });
+    }
+  }
+  for (const [detailViewId, detailView] of Object.entries(data.detailViews)) {
+    const image = textures.get(assetUrl(detailView.image));
+    if (
+      image &&
+      (image.width !== data.logicalResolution.width ||
+        image.height !== data.logicalResolution.height)
+    ) {
+      diagnostics.push({
+        code: "asset.detail-view.dimensions",
+        family: "asset",
+        owner: "browser",
+        path: `detailViews.${detailViewId}.image`,
+        message: `Detail View image is ${image.width}×${image.height}; expected ${data.logicalResolution.width}×${data.logicalResolution.height}.`,
+        suggestion: "Export the image at the exact Logical Resolution.",
       });
     }
   }

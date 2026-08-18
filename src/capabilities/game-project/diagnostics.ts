@@ -12,6 +12,7 @@ export type AuthoringDiagnosticOwner =
   | "game-project"
   | "game-session"
   | "dialogue"
+  | "detail-view"
   | "world"
   | "interaction"
   | "sequence"

@@ -53,6 +53,25 @@ least as large as the corresponding viewport axis. The Background must exactly
 match the resolved Scene Size; its startup diagnostic reports actual and
 expected dimensions.
 
+`DetailViewDefinition` describes one Detail View presented in place of the
+world: an `image` that must match the Logical Resolution exactly, and ordered
+`hotspots`. A
+`DetailViewHotspotDefinition` requires a polygon `area` in Logical Resolution
+coordinates, its own local `noun`, and an optional `when`; it accepts no
+Approach Point, and a Detail View accepts no Baseline, Perspective Scale or
+Walkable Region, because nothing walks inside one. Registry keys of the
+optional `detailViews` registry are identities. A `present-detail-view`
+Game Operation names one of them and a `dismiss-detail-view` Game Operation
+returns the Player to the world; both may come from a Command Case, a Sequence
+or any other authored operation group. At most one Detail View is presented at
+a time, so presenting another replaces it rather than stacking. While one is
+presented the Engine draws it instead of the Scene and draws no Character, its
+Hotspots advertise their phrases exactly as Scene Hotspots do, a Command
+against one resolves immediately with no movement stage, and the Inventory
+remains reachable. The presented Detail View is committed Game State recorded
+as `detailView` in the Save Snapshot; the Player Character keeps its Scene,
+Ground Point and Facing throughout, and dismissal returns the world unchanged.
+
 `CharacterDefinition` describes a persistent Character with initial Scene, Ground
 Point, Facing, Appearance, positive `movementSpeed`, optional Noun, optional
 `CharacterDialogueDefinition`, and named Appearances. Every Appearance owns named Animations and a required default
@@ -241,8 +260,9 @@ example `objects.key.noun`), even when several Hotspots reference it. A missing
 target remains the distinct `reference.hotspot.target` failure.
 
 `InteractionCondition` reads a boolean Variable or held Object. `GameOperation`
-can set a Variable or Appearance, start a Sequence, collect the target Object,
-give a named Object that is present in the current Scene to the Player,
+can set a Variable or Appearance, start a Sequence, present or dismiss a Detail
+View, collect the target Object, give a named Object that is present in the
+current Scene to the Player,
 place the selected first Object, place a named Object, or consume the selected
 Object. It also includes `LearnNarrativeFactOperation`, whose
 `learn-narrative-fact` discriminator, Character identity and `factId` add
@@ -372,6 +392,8 @@ identifies the capability or browser adapter responsible for the rule.
 | `HotspotTarget` | interaction subject | Background, Character, Object, Scenery | target is required | target reference diagnostic | [Interaction](recipes/interaction.ts) |
 | `ApproachPoint` | interaction destination | groundPoint and facing | must be walkable and HUD-safe | approach diagnostics | [Interaction](recipes/interaction.ts) |
 | `HotspotDefinition` | Scene interaction surface | target, area, approach, condition; local noun only for Background | target kind discriminates Noun ownership; later overlap wins hit-test | geometry, target and owner-Noun diagnostics | [Interaction](recipes/interaction.ts) |
+| `DetailViewHotspotDefinition` | Detail View interaction surface | area, local noun, condition | no Approach Point; Logical Resolution coordinates; later overlap wins hit-test | geometry, bounds and Noun diagnostics | [Concepts](concepts.md) |
+| `DetailViewDefinition` | declarative image presented in place of the world | image and ordered Hotspots | one presented at a time; presenting another replaces it; no Scene Space, Character or approach | image, geometry and reference diagnostics | [Concepts](concepts.md) |
 | `SceneryDefinition` | depth-sorted visual | baseline, appearances, position, noun | initial Appearance required | Scenery diagnostics | [Scene](recipes/first-scene.ts) |
 | `SceneEntrance` | named arrival | Ground Point and Facing | point must be walkable | entrance diagnostics | [Scene](recipes/first-scene.ts) |
 | `ScenePassage` | directional transition | area, approach, noun, direction, destination | transition is atomic | passage diagnostics | [Scene](recipes/first-scene.ts) |
@@ -408,7 +430,7 @@ identifies the capability or browser adapter responsible for the rule.
 | `PassageDirection` | Passage cursor direction | left, right, up, down, enter | every Passage declares one | cursor/reference diagnostics | [Scene](recipes/first-scene.ts) |
 | `HUDTheme` | project visual language | font, colours, opacity, width, cursors, speech colours | complete local asset set | theme/asset diagnostics | [HUD Theme](recipes/hud-theme.ts) |
 | `AuthoringDiagnosticFamily` | rejecting layer | six stable category strings | category is always present | no independent failure | [Scene](recipes/first-scene.ts) |
-| `AuthoringDiagnosticOwner` | rule owner | ten capabilities or browser adapter | owner is always present | no independent failure | [Scene](recipes/first-scene.ts) |
+| `AuthoringDiagnosticOwner` | rule owner | eleven capabilities or browser adapter | owner is always present | no independent failure | [Scene](recipes/first-scene.ts) |
 | `AuthoringDiagnostic` | one author-facing issue | code, family, owner, path, message, suggestion, cause | stable code/path ordering | describes owning failure | [Scene](recipes/first-scene.ts) |
 | `AuthoringError` | aggregate failure | read-only diagnostics | one error per startup layer | thrown by startup | [Scene](recipes/first-scene.ts) |
 | `SaveSnapshot` | JSON-safe committed state | format, project identities and state | exact fields only | save validation diagnostics | [Save](recipes/save-snapshot.ts) |
@@ -475,6 +497,7 @@ Definition codes: `definition.approach.bounds`,
 `definition.narrative-fact.sets-variable`,
 `definition.character-knowledge.duplicate`,
 `definition.character-knowledge.disclosure`,
+`definition.detail-view.image`, `definition.detail-view.bounds`,
 `definition.scene-space.bounds`, `definition.scenery.baseline`,
 `definition.sequence.cycle`, `definition.sequence.nested`,
 `definition.sequence.skip-outcome`, `definition.sequence.skip-outcome.unused`,
@@ -498,6 +521,7 @@ Definition codes: `definition.approach.bounds`,
 Reference codes: `reference.appearance`, `reference.appearance.initial`,
 `reference.appearance.target`, `reference.character`,
 `reference.character.initial-scene`, `reference.character.player`,
+`reference.detail-view`,
 `reference.hotspot.target`, `reference.object`, `reference.object.initial-scene`,
 `reference.passage.entrance`, `reference.passage.scene`,
 `reference.scene`, `reference.scene.initial`, `reference.sequence`,
@@ -547,7 +571,7 @@ Runtime, save, asset and environment codes: `state.operation.invalid`,
 `save.state.intent-command-noun`, `save.state.invalid`,
 `save.validation.project`, `save.validation.required`, `asset.load.failed`,
 `asset.audio.load.failed`,
-`asset.background.dimensions`,
+`asset.background.dimensions`, `asset.detail-view.dimensions`,
 `asset.cursor.dimensions`, `asset.font.load.failed`,
 `asset.inventory-appearance.dimensions`, `asset.animation-sheet.frame-bounds`,
 `asset.animation-sheet.dimensions`, `asset.visual-anchor.bounds`,

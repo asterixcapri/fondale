@@ -28,6 +28,15 @@ Definition**, and every Hotspot that targets it resolves that same Noun. A
 background region has no registry owner, so its Hotspot owns the Noun locally;
 a Scene Passage also owns its own Noun.
 
+A **Detail View** is a single presented image with its own Hotspots, shown in
+place of the world so the Player may examine one subject closely. It has no
+Scene Space, no Walkable Region and no presented Character, so its Hotspots
+carry a Noun without an Approach Point and their Commands resolve immediately.
+Game Operations present and dismiss one; at most one is presented at a time,
+the Inventory stays reachable, a Sequence keeps running, and the Player
+Character keeps its Scene, Ground Point and Facing until the world is watched
+again.
+
 An **Object** exists in exactly one place: a Scene, the acquisition-ordered
 **Inventory**, or terminal consumption. A Command combines one semantic
 **Verb** with one or two Nouns; **Walk To** remains implicit. Ordered
