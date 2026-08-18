@@ -1,5 +1,6 @@
 .agents
 .claude
+.pi
 node_modules
 dist
 test/.artifacts
