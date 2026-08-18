@@ -9,6 +9,9 @@ branches or pull requests. This remains in effect until the user announces a
 phase change, such as the start of game-code development; update this note when
 that happens.
 
+Never add a co-author trailer for a coding agent to a commit. Commits record the
+person who owns the work, not the tools used to produce it.
+
 ## Project language
 
 Use English for the ubiquitous language, source code, code comments, and public
