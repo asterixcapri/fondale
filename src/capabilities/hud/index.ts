@@ -360,9 +360,6 @@ export function createHUD(input: HUDProjectView): HUD {
 
   const presentation = (context: HUDPresentationContext): HUDPresentation => {
     if (context.ended) {
-      inventoryOpen = false;
-      modal = null;
-      responseText = null;
       return withdrawnPresentation(
         preferences,
         input.commandLexicon ? "keyboard" : "button",

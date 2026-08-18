@@ -282,8 +282,8 @@ target remains the distinct `reference.hotspot.target` failure.
 
 `InteractionCondition` reads a boolean Variable or held Object. `GameOperation`
 can set a Variable or Appearance, start a Sequence, present or dismiss a Detail
-View, end the Game Session on a Detail View, collect the target Object, give a named Object that is present in the
-current Scene to the Player,
+View, end the Game Session on a Detail View, collect the target Object, give a
+named Object that is present in the current Scene to the Player,
 place the selected first Object, place a named Object, or consume the selected
 Object. It also includes `LearnNarrativeFactOperation`, whose
 `learn-narrative-fact` discriminator, Character identity and `factId` add

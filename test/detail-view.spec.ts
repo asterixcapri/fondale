@@ -216,11 +216,21 @@ const registry = {
             operations: [{ type: "end-game", detailView: "harbour" }],
           },
           { verb: "look-at", operations: [{ type: "end-game", detailView: "farewell" }] },
+          { verb: "pull", sequence: "closeTheBook" },
         ],
       } satisfies NounDefinition,
     },
   ],
 } satisfies DetailViewDefinition;
+
+/** Ends the game halfway through, so its last beat must never be directed. */
+const closeTheBook = {
+  steps: [
+    { type: "narration", text: "I close the book." },
+    { type: "operations", operations: [{ type: "end-game", detailView: "farewell" }] },
+    { type: "narration", text: "This narration belongs to a game that has ended." },
+  ],
+} satisfies SequenceDefinition;
 
 /** The closing image of the poorer Ending, with one detail still worth clicking. */
 const farewell = {
@@ -410,7 +420,7 @@ const project = {
   playerCharacter: "player",
   objects: { knife, coin },
   detailViews: { seal, registry, mechanism, farewell, harbour },
-  sequences: { descend, examine, confide, callTheSailor },
+  sequences: { descend, examine, confide, callTheSailor, closeTheBook },
   variables: { sealRead: false, mechanismOpen: false, coinTaken: false, confided: false },
   initialScene: "boat",
   commandLexicon,
@@ -986,6 +996,29 @@ test("a Game Project may author more than one Ending, closing on different Detai
   expect(session.snapshot().ended).toBe(true);
 });
 
+test("a Sequence that ends the game directs nothing after its last beat", () => {
+  const session = createTestSession(project);
+  confideAndOpenTheRegistry(session);
+  session.input({ type: "select-verb", verb: "pull" });
+  session.input({ type: "activate-hotspot", hotspot: registryArea.signature });
+  session.steps();
+  expect(session.sequence()).toMatchObject({ kind: "narration", text: "I close the book." });
+
+  session.input({ type: "advance-sequence" });
+  session.steps();
+
+  expect(session.snapshot().ended).toBe(true);
+  expect(session.snapshot().detailView).toBe("farewell");
+  expect(session.snapshot().activity).toBeNull();
+  expect(session.sequence()).toBeNull();
+
+  session.input({ type: "advance-sequence" });
+  session.steps(20);
+
+  expect(session.sequence()).toBeNull();
+  expect(session.hud().withdrawn).toBe(true);
+});
+
 test("a restored Save Snapshot resumes at the Ending rather than in the world", () => {
   const session = createTestSession(project);
   confideAndOpenTheRegistry(session);
@@ -1021,6 +1054,26 @@ test("a Save Snapshot ending on nothing presented is refused with a clear messag
     code: "save.state.ending",
     path: "Save Snapshot.state.ended",
     message: "Save Snapshot ends the Game Session without a presented Detail View.",
+  }));
+});
+
+test("a Save Snapshot carrying a malformed Ending is refused", () => {
+  const session = createTestSession(project);
+  confideAndOpenTheRegistry(session);
+  examineDetail(session, registryArea.signature);
+  const snapshot = session.createSaveSnapshot();
+
+  const result = validateTestSaveSnapshot(project, {
+    ...snapshot,
+    state: { ...snapshot.state, ended: "yes" },
+  });
+
+  expect(result.ok).toBe(false);
+  if (result.ok) return;
+  expect(result.diagnostics).toContainEqual(expect.objectContaining({
+    code: "save.state.ending",
+    path: "Save Snapshot.state.ended",
+    message: "Save Snapshot contains a malformed Ending.",
   }));
 });
 

@@ -558,7 +558,7 @@ export function createCoreSession(
         activeDirectionPresentation(),
       )),
       camera: cameraPresentation,
-      ...(state.ended ? { ended: true } : {}),
+      ended: state.ended === true,
       inventorySuspended:
         state.activity?.type === "conversation" ||
         state.activity?.type === "reflection" ||
@@ -1093,6 +1093,14 @@ export function createCoreSession(
     return true;
   }
 
+  /** Presents one declared Detail View in place of the world, or fails the Session. */
+  function presentDetailView(draft: GameState, detailView: string): void {
+    if (!detailViews.has(detailView)) {
+      throw new Error(`Unknown Detail View '${detailView}'.`);
+    }
+    draft.detailView = detailView;
+  }
+
   function applyOperation(
     draft: GameState,
     operation: GameOperation,
@@ -1131,25 +1139,20 @@ export function createCoreSession(
         current[appearanceTarget.scenery] = operation.appearance;
       }
     } else if (operation.type === "present-detail-view") {
-      if (!detailViews.has(operation.detailView)) {
-        throw new Error(`Unknown Detail View '${operation.detailView}'.`);
-      }
-      draft.detailView = operation.detailView;
+      presentDetailView(draft, operation.detailView);
       if (draft.activity?.type === "player-intent") draft.activity = null;
     } else if (operation.type === "dismiss-detail-view") {
       delete draft.detailView;
     } else if (operation.type === "end-game") {
-      if (!detailViews.has(operation.detailView)) {
-        throw new Error(`Unknown Detail View '${operation.detailView}'.`);
-      }
       /**
        * The Ending is the terminal state of the Game Session: the named Detail
        * View stays presented and whatever was going on stops with it, so a
        * Sequence that ends the game directs nothing after its last beat.
        */
-      draft.detailView = operation.detailView;
+      presentDetailView(draft, operation.detailView);
       draft.ended = true;
       draft.activity = null;
+      delete draft.conversationContinuation;
     } else if (operation.type === "start-sequence") {
       if (draft.activity?.type === "sequence") throw new Error("A Sequence cannot start another Sequence.");
       draft.activity = sequenceCapability.start(operation.sequence, draft.currentScene);
