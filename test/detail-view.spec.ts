@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { createTestSession } from "./support";
+import { createTestSession, validateTestSaveSnapshot } from "./support";
 import { AuthoringError } from "../src/capabilities/game-project";
 import {
   type CharacterDefinition,
@@ -153,6 +153,20 @@ const hatch = {
   cases: [{ verb: "look-at", sequence: "examine" }],
 } satisfies NounDefinition;
 
+/** Arriving in the hold opens a close-up, so a restore can prove it is no arrival. */
+const descend = {
+  steps: [
+    { type: "operations", operations: [{ type: "present-detail-view", detailView: "registry" }] },
+    { type: "narration", text: "The hold is dark." },
+  ],
+} satisfies SequenceDefinition;
+
+const ladder = {
+  labels: [{ text: "Ladder" }],
+  preferredVerbs: [{ verb: "walk-to" }],
+  cases: [],
+} satisfies NounDefinition;
+
 const boat = {
   background: "boat.png",
   walkableRegion: square,
@@ -161,18 +175,32 @@ const boat = {
     { target: { kind: "object", object: "knife" }, area: upperLeft, approach: { groundPoint: { x: 30, y: 30 }, facing: "front" } },
     { target: { kind: "background" }, area: lowerRight, approach: { groundPoint: { x: 80, y: 80 }, facing: "front" }, noun: hatch },
   ],
+  passages: [{
+    area: [{ x: 45, y: 0 }, { x: 55, y: 0 }, { x: 55, y: 40 }, { x: 45, y: 40 }],
+    approach: { groundPoint: { x: 50, y: 20 }, facing: "back" },
+    noun: ladder,
+    direction: "down",
+    destination: { scene: "hold", entrance: "fromBoat" },
+  }],
+} satisfies SceneDefinition;
+
+const hold = {
+  background: "hold.png",
+  walkableRegion: square,
+  entrances: { fromBoat: { groundPoint: { x: 20, y: 20 }, facing: "front" } },
+  arrivalSequences: [{ entrance: "fromBoat", sequence: "descend" }],
 } satisfies SceneDefinition;
 
 const project = {
   identity: "test.detail-view",
   version: "1",
   logicalResolution: { width: 100, height: 100 },
-  scenes: { boat },
+  scenes: { boat, hold },
   characters: { player },
   playerCharacter: "player",
   objects: { knife },
   detailViews: { seal, registry },
-  sequences: { examine },
+  sequences: { descend, examine },
   variables: { sealRead: false },
   initialScene: "boat",
   commandLexicon,
@@ -278,7 +306,7 @@ test("a Sequence keeps running while a Detail View is presented and dismisses it
   expect(session.snapshot().detailView).toBeUndefined();
   expect(session.detailView()).toBeNull();
   expect(session.snapshot().characters.player).toEqual(presented.characters.player);
-  expect(session.hud().nouns.map(({ label }) => label)).toEqual(["Bundle", "Knife", "Hatch"]);
+  expect(session.hud().nouns.map(({ label }) => label)).toEqual(["Bundle", "Knife", "Hatch", "Ladder"]);
 });
 
 test("a restored Save Snapshot resumes on the presented Detail View", () => {
@@ -325,4 +353,88 @@ test("startup rejects a malformed Detail View and names the offending path", () 
       path: "scenes.boat.hotspots[0].noun.cases[0].operations[0]",
     }));
   }
+});
+
+test("a restored Save Snapshot keeps the world and the Player Character beneath the close-up", () => {
+  const session = createTestSession(project);
+  openTheBundle(session);
+  examineDetail(session, 0);
+  const saved = session.snapshot();
+  const snapshot = JSON.parse(JSON.stringify(session.createSaveSnapshot())) as unknown;
+
+  const restored = createTestSession(project, snapshot);
+
+  const state = restored.snapshot();
+  expect(state.detailView).toBe("seal");
+  expect(state.currentScene).toBe("boat");
+  expect(state.characters.player).toEqual(saved.characters.player);
+  expect(state.characters.player).toMatchObject({
+    scene: "boat",
+    groundPoint: { x: 50, y: 50 },
+    facing: "back",
+  });
+  expect(state.variables.sealRead).toBe(true);
+  expect(state.activity).toBeNull();
+  expect(restored.sequence()).toBeNull();
+  expect(restored.hud().nouns.map(({ label }) => label))
+    .toEqual(["Broken seal", "Registry fragment"]);
+});
+
+test("a Save Snapshot naming an unknown Detail View is refused with a clear message", () => {
+  const session = createTestSession(project);
+  openTheBundle(session);
+  const snapshot = session.createSaveSnapshot();
+
+  const result = validateTestSaveSnapshot(project, {
+    ...snapshot,
+    state: { ...snapshot.state, detailView: "missing" },
+  });
+
+  expect(result.ok).toBe(false);
+  if (result.ok) return;
+  expect(result.diagnostics).toContainEqual(expect.objectContaining({
+    code: "save.state.detail-view",
+    path: "Save Snapshot.state.detailView",
+    message: "Save Snapshot refers to a Detail View that is not in this Game Project.",
+  }));
+});
+
+test("a Save Snapshot carrying a malformed presented Detail View is refused", () => {
+  const session = createTestSession(project);
+  openTheBundle(session);
+  const snapshot = session.createSaveSnapshot();
+
+  const result = validateTestSaveSnapshot(project, {
+    ...snapshot,
+    state: { ...snapshot.state, detailView: 7 },
+  });
+
+  expect(result.ok).toBe(false);
+  if (result.ok) return;
+  expect(result.diagnostics).toContainEqual(expect.objectContaining({
+    code: "save.state.detail-view",
+    path: "Save Snapshot.state.detailView",
+    message: "Save Snapshot contains a malformed presented Detail View.",
+  }));
+});
+
+test("restoring into a presented Detail View is not an arrival and starts no arrival Sequence", () => {
+  const session = createTestSession(project);
+  session.input({ type: "activate-passage", passage: 0 });
+  session.steps(20);
+  expect(session.snapshot().currentScene).toBe("hold");
+  expect(session.snapshot().detailView).toBe("registry");
+  session.input({ type: "advance-sequence" });
+  session.steps();
+  expect(session.snapshot().activity).toBeNull();
+  const arrived = session.snapshot();
+  const snapshot = JSON.parse(JSON.stringify(session.createSaveSnapshot())) as unknown;
+
+  const restored = createTestSession(project, snapshot);
+
+  expect(restored.snapshot().detailView).toBe("registry");
+  expect(restored.snapshot().activity).toBeNull();
+  expect(restored.sequence()).toBeNull();
+  expect(restored.snapshot().characters.player).toEqual(arrived.characters.player);
+  expect(restored.snapshot().currentScene).toBe("hold");
 });
