@@ -136,6 +136,7 @@ export async function continueGameSession(page: Page): Promise<void> {
 export async function continuationState(page: Page): Promise<{
   relationships: Record<string, Record<string, { trust: string }>>;
   dialogueStates: Record<string, string | null>;
+  characterKnowledge: Record<string, readonly string[]>;
 }> {
   return page.evaluate(() => {
     const key = Array.from({ length: localStorage.length }, (_, index) => localStorage.key(index))
@@ -146,10 +147,15 @@ export async function continuationState(page: Page): Promise<{
         state: {
           relationships: Record<string, Record<string, { trust: string }>>;
           dialogueStates: Record<string, string | null>;
+          characterKnowledge: Record<string, readonly string[]>;
         };
       };
     };
-    return { relationships: snapshot.state.relationships, dialogueStates: snapshot.state.dialogueStates };
+    return {
+      relationships: snapshot.state.relationships,
+      dialogueStates: snapshot.state.dialogueStates,
+      characterKnowledge: snapshot.state.characterKnowledge,
+    };
   });
 }
 

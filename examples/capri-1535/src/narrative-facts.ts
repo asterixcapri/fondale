@@ -45,7 +45,7 @@ export const narrativeFacts = ({
   "bundle-holds-broken-seal": {
     proposition:
       "Nel fagotto ci sono il sigillo spezzato di una nave e un frammento di registro.",
-    setsVariable: "prologueComplete",
+    setsVariable: "bundleOpened",
   },
   "seal-belongs-to-the-santa-marta": {
     proposition:

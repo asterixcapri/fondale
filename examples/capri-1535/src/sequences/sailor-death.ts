@@ -40,11 +40,14 @@ export const sailorDeath: readonly SequenceStep[] = [
   },
   {
     type: "operations",
-    operations: [{
-      type: "set-appearance",
-      target: { kind: "character", character: "woundedSailor" },
-      appearance: "dead",
-    }],
+    operations: [
+      {
+        type: "set-appearance",
+        target: { kind: "character", character: "woundedSailor" },
+        appearance: "dead",
+      },
+      { type: "set-variable", variable: "sailorDied", value: true },
+    ],
   },
   {
     type: "line",

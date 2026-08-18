@@ -131,6 +131,12 @@ test("the whole prologue completes through authored Conversation alternatives al
   await clickCanvas(page, { x: 440, y: 350 });
   await expectDetailView(page, "prologueEnding");
 
+  // The contradiction is canonical Game State. The Ending leaves no Player
+  // surface to read it back through, so the persisted Game State is where it
+  // has to be proved.
+  const finished = await continuationState(page);
+  expect(finished.characterKnowledge["michele"]).toContain("santa-marta-sailed-after-her-wreck");
+
   // The demo is finishable without ever typing at a Character: the deterministic
   // support saw no interpretation request, so nothing above depended on a model
   // reading free-form Italian. `reset` and `ready` are session lifecycle.

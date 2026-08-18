@@ -2,9 +2,9 @@ import { type GameProject, startGame, type GameSession } from "@asterixcapri/fon
 
 import { michele } from "../../src/characters/michele";
 import { woundedSailor } from "../../src/characters/wounded-sailor";
+import { openedBundle, prologueEnding } from "../../src/detail-views/oilskin-bundle";
 import { italianCommandFallbacks, italianCommandLexicon } from "../../src/hud";
 import { narrativeFacts } from "../../src/narrative-facts";
-import { openedBundle, prologueEnding } from "../../src/detail-views/oilskin-bundle";
 import { oilskinBundle } from "../../src/objects/oilskin-bundle";
 import { coastalFortification } from "../../src/scenes/coastal-fortification";
 import { driftingBoat } from "../../src/scenes/drifting-boat";

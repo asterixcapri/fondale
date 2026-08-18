@@ -1,13 +1,13 @@
 import { type NounDefinition, type ObjectDefinition } from "@asterixcapri/fondale";
 
 import inventoryUrl from "./inventory.png";
-import openedUrl from "./scene-opened.png";
 import wrappedUrl from "./scene.png";
 
 /**
  * The sailor's parting Object. It lies clutched near his hand until the
- * encounter hands it to Michele and unties it in the same beat, changing the
- * same Object into its opened Appearance and presenting what it held.
+ * encounter hands it to Michele and unties it in the same beat. What it held
+ * is presented as a Detail View, so the Object never returns to the deck and
+ * carries the one Appearance the Scene ever draws.
  */
 export const oilskinBundle = ({
   initialScene: "driftingBoat",
@@ -24,26 +24,16 @@ export const oilskinBundle = ({
       roles: { default: "idle" },
       visualAnchor: { x: 28, y: 36 },
     },
-    opened: {
-      animations: {
-        idle: {
-          sheet: { image: openedUrl, frames: [{ x: 0, y: 0, width: 72, height: 44 }] },
-          timing: { framesPerSecond: 1, loop: true },
-        },
-      },
-      roles: { default: "idle" },
-      visualAnchor: { x: 36, y: 44 },
-    },
   },
   inventoryAppearance: inventoryUrl,
   noun: ({
     labels: [
-      { text: "Fagotto di tela cerata", when: { variable: "prologueComplete", equals: false } },
+      { text: "Fagotto di tela cerata", when: { variable: "bundleOpened", equals: false } },
       { text: "Fagotto aperto" },
     ],
     preferredVerbs: [{ verb: "look-at" }],
     secondaryVerbs: [
-      { verb: "open", when: { variable: "prologueComplete", equals: false } },
+      { verb: "open", when: { variable: "bundleOpened", equals: false } },
       { verb: "look-at" },
     ],
     cases: [
@@ -51,7 +41,7 @@ export const oilskinBundle = ({
         // Until the sailor gives it away the bundle is his, and the encounter
         // is the only thing that opens it.
         verb: "open",
-        when: { variable: "prologueComplete", equals: false },
+        when: { variable: "bundleOpened", equals: false },
         response: { text: "Lo tiene stretto. Non è mio da aprire." },
       },
       {
@@ -60,7 +50,7 @@ export const oilskinBundle = ({
       },
       {
         verb: "look-at",
-        when: { variable: "prologueComplete", equals: false },
+        when: { variable: "bundleOpened", equals: false },
         response: {
           text: "È legato con spago cerato. Il marinaio lo stringeva come un debito.",
         },

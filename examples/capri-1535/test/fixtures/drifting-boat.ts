@@ -7,10 +7,10 @@ import {
 
 import { michele } from "../../src/characters/michele";
 import { woundedSailor } from "../../src/characters/wounded-sailor";
+import { openedBundle, prologueEnding } from "../../src/detail-views/oilskin-bundle";
 import { italianCommandFallbacks, italianCommandLexicon } from "../../src/hud";
 import { rectangle } from "../../src/geometry";
 import { narrativeFacts } from "../../src/narrative-facts";
-import { openedBundle, prologueEnding } from "../../src/detail-views/oilskin-bundle";
 import { oilskinBundle } from "../../src/objects/oilskin-bundle";
 import { driftingBoat } from "../../src/scenes/drifting-boat";
 import { readBrokenSeal } from "../../src/sequences/read-broken-seal";

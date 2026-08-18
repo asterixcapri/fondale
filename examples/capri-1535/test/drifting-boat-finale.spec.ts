@@ -8,10 +8,12 @@ import {
   expectDetailView,
   hearTheContradiction,
   inventoryObject,
+  leaveReflection,
   line,
   reachDriftingBoat,
   readBrokenSeal,
   readRegistryFragment,
+  reflect,
   repairWinchAndSail,
   skipSequence,
   watchSailorDie,
@@ -50,6 +52,13 @@ test("skipping the encounter and reading in the opposite order reaches the same 
   // Either detail can be read first, and neither reading alone ends anything.
   await readRegistryFragment(page);
   await expectDetailView(page, "openedBundle");
+
+  // What that reading taught reaches Reflection like any other Fact, and it
+  // opens no puzzle: the other detail is read exactly as it was before.
+  const reading = await reflect(page, "Che cosa dice il registro?");
+  await expect(line(page, "michele")).toContainText("Amalfi", { timeout: 15_000 });
+  await leaveReflection(page);
+
   await readBrokenSeal(page);
   await hearTheContradiction(page);
   await watchSailorDie(page);

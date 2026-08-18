@@ -28,11 +28,6 @@ const handoff: readonly GameOperation[] = [
  */
 const opening: readonly GameOperation[] = [
   {
-    type: "set-appearance",
-    target: { kind: "object", object: "oilskinBundle" },
-    appearance: "opened",
-  },
-  {
     type: "learn-narrative-fact",
     character: "michele",
     factId: "bundle-holds-broken-seal",

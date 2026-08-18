@@ -79,8 +79,14 @@ export const woundedSailor = ({
       },
     }, {
       verb: "look-at",
+      when: { variable: "sailorDied", equals: false },
       response: {
         text: "È svenuto. Le bende si muovono appena con il respiro: vivo, ma lontano.",
+      },
+    }, {
+      verb: "look-at",
+      response: {
+        text: "Non respira più. Chi fosse davvero, se l'è portato con sé.",
       },
     }, {
       // The first talk-to opens the canonical encounter; afterwards the
@@ -90,9 +96,13 @@ export const woundedSailor = ({
       sequence: "sailorEncounter",
     }, {
       verb: "talk-to",
+      when: { variable: "sailorDied", equals: false },
       response: {
         text: "Il marinaio non risponde più. Quello che sapeva, lo ha affidato al fagotto.",
       },
+    }, {
+      verb: "talk-to",
+      response: { text: "Non c'è più nessuno a cui parlare." },
     }],
   } satisfies NounDefinition),
 } satisfies CharacterDefinition);

@@ -599,7 +599,7 @@ export async function expectDetailView(page: Page, detailView: string): Promise<
 }
 
 /** Waits for the world to be on screen again, with no close-up over it. */
-export async function expectWorld(page: Page): Promise<void> {
+async function expectWorld(page: Page): Promise<void> {
   await expect(scene(page)).not.toHaveAttribute("data-fondale-detail-view", /.*/, {
     timeout: 20_000,
   });

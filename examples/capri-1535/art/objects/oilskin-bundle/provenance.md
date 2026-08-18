@@ -22,6 +22,12 @@ and a `10%` indigo dusk tint with restored alpha, so the Object sits inside
 the boat Scene's dusk illumination. Derived Runtime Assets never overwrite
 the masters.
 
+The opened Scene Appearance was retired when the prologue finale changed: what
+the untied bundle holds is now presented as a Detail View rather than laid back
+on the deck, so the Object never returns to the Scene and `opened-master.png`
+keeps no Runtime copy. The master stays here, and the diagnostic still records
+the size review the retired Appearance passed.
+
 `engine-scale-check.png` is the `1280×720` actual-play-size diagnostic: the
 wrapped Appearance at its `94%` Perspective Scale ground point beside the
 sailor, the opened Appearance at the same anchor on the open deck, and the
