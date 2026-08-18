@@ -131,6 +131,8 @@ export interface GameState extends WorldState {
   conversationContinuation?: ConversationActivityState;
   /** The Detail View presented in place of the world, when one is. */
   detailView?: string;
+  /** The Game Session has concluded on the presented Detail View. */
+  ended?: true;
   activity: GameActivityState | null;
   tick: number;
 }
@@ -556,6 +558,7 @@ export function createCoreSession(
         activeDirectionPresentation(),
       )),
       camera: cameraPresentation,
+      ...(state.ended ? { ended: true } : {}),
       inventorySuspended:
         state.activity?.type === "conversation" ||
         state.activity?.type === "reflection" ||
@@ -692,6 +695,8 @@ export function createCoreSession(
   }
 
   function handleInput(input: CoreInput): void {
+    /** The Ending is terminal: a finished game cannot be poked back into motion. */
+    if (state.ended) return;
     if (state.activity?.type === "reflection") {
       if (input.type === "escape") {
         invalidateProviderTurn("reflection");
@@ -1133,6 +1138,18 @@ export function createCoreSession(
       if (draft.activity?.type === "player-intent") draft.activity = null;
     } else if (operation.type === "dismiss-detail-view") {
       delete draft.detailView;
+    } else if (operation.type === "end-game") {
+      if (!detailViews.has(operation.detailView)) {
+        throw new Error(`Unknown Detail View '${operation.detailView}'.`);
+      }
+      /**
+       * The Ending is the terminal state of the Game Session: the named Detail
+       * View stays presented and whatever was going on stops with it, so a
+       * Sequence that ends the game directs nothing after its last beat.
+       */
+      draft.detailView = operation.detailView;
+      draft.ended = true;
+      draft.activity = null;
     } else if (operation.type === "start-sequence") {
       if (draft.activity?.type === "sequence") throw new Error("A Sequence cannot start another Sequence.");
       draft.activity = sequenceCapability.start(operation.sequence, draft.currentScene);

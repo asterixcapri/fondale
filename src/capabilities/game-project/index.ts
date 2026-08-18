@@ -157,6 +157,7 @@ export type GameOperation =
   | { readonly type: "start-sequence"; readonly sequence: string }
   | { readonly type: "present-detail-view"; readonly detailView: string }
   | { readonly type: "dismiss-detail-view" }
+  | { readonly type: "end-game"; readonly detailView: string }
   | InventoryOperation
   | DialogueGameOperation;
 
@@ -658,7 +659,7 @@ function validateProjectDefinitions(
           path: operationPath,
           message: `Game Variable '${operation.variable}' does not exist.`,
         });
-      } else if (operation.type === "present-detail-view") {
+      } else if (operation.type === "present-detail-view" || operation.type === "end-game") {
         if (!(operation.detailView in detailViews)) {
           operationDiagnostics.push({
             code: "reference.detail-view",

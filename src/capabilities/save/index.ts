@@ -145,6 +145,7 @@ function validateSnapshot(
       diagnostics.push(
         invalidCommandStateDiagnostic(value.state) ??
         invalidDetailViewDiagnostic(value.state, context) ??
+        invalidEndingDiagnostic(value.state) ??
         saveDiagnostic("save.state.invalid", "Save Snapshot contains an invalid Game State."),
       );
     }
@@ -162,7 +163,7 @@ function validStateShape(
   context: SaveValidationContext,
 ): value is GameState {
   const { animation, project, world } = context;
-  if (!isRecord(value) || !hasExactKeys(value, ["currentScene", "characters", "scenery", "objects", "inventory", "command", "variables", "characterKnowledge", "relationships", "dialogueStates", "consumedAlternatives", "testimonies", "activity", "tick"], ["conversationContinuation", "detailView"])) return false;
+  if (!isRecord(value) || !hasExactKeys(value, ["currentScene", "characters", "scenery", "objects", "inventory", "command", "variables", "characterKnowledge", "relationships", "dialogueStates", "consumedAlternatives", "testimonies", "activity", "tick"], ["conversationContinuation", "detailView", "ended"])) return false;
   if (!Number.isInteger(value.tick) || (value.tick as number) < 0) return false;
   if (!world.isValidState(value) || !isValidAnimationState(animation, value)) return false;
   const inventoryLocations: string[] = [];
@@ -194,6 +195,9 @@ function validStateShape(
           continuation.character,
           value.activity.sequence,
         )) return false;
+  }
+  if (value.ended !== undefined && (value.ended !== true || value.detailView === undefined)) {
+    return false;
   }
   if (value.detailView !== undefined) {
     if (typeof value.detailView !== "string") return false;
@@ -432,6 +436,27 @@ function invalidDetailViewDiagnostic(
     return saveDiagnostic(
       "save.state.detail-view",
       "Save Snapshot refers to a Detail View that is not in this Game Project.",
+      path,
+    );
+  }
+  return undefined;
+}
+
+/** Names an Ending a stored Game State could not resume as a concluded session. */
+function invalidEndingDiagnostic(value: unknown): AuthoringDiagnostic | undefined {
+  if (!isRecord(value) || value.ended === undefined) return undefined;
+  const path = "Save Snapshot.state.ended";
+  if (value.ended !== true) {
+    return saveDiagnostic(
+      "save.state.ending",
+      "Save Snapshot contains a malformed Ending.",
+      path,
+    );
+  }
+  if (value.detailView === undefined) {
+    return saveDiagnostic(
+      "save.state.ending",
+      "Save Snapshot ends the Game Session without a presented Detail View.",
       path,
     );
   }

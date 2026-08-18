@@ -9,7 +9,7 @@ starting a new game leaves it cleanly behind.
 **Blocked by:** 01 — Present and examine a Detail View; 03 — Carry the presented
 Detail View through save and restore.
 
-**Status:** ready-for-agent
+**Status:** claimed
 
 - [ ] A Game Operation ends the Game Session and leaves a named Detail View presented.
 - [ ] After the Ending no Command is accepted and the HUD withdraws.

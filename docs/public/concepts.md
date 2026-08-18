@@ -37,6 +37,14 @@ the Inventory stays reachable, a Sequence keeps running, and the Player
 Character keeps its Scene, Ground Point and Facing until the world is watched
 again.
 
+An **Ending** is the terminal state of a Game Session: a Game Operation names
+the Detail View that stays presented, the HUD withdraws, and no further Command
+is accepted. It carries no image of its own, so a closing card, a dedication
+and a final illustration with a detail worth clicking are all the same shape,
+and a Game Project may author as many Endings as it has outcomes. The Ending is
+committed Game State, so a reopened browser finds a finished game at its Ending
+rather than in an exhausted world, and starting a new game leaves it behind.
+
 An **Object** exists in exactly one place: a Scene, the acquisition-ordered
 **Inventory**, or terminal consumption. A Command combines one semantic
 **Verb** with one or two Nouns; **Walk To** remains implicit. Ordered

@@ -194,14 +194,50 @@ const seal = {
 
 const registry = {
   image: "registry.png",
+  hotspots: [
+    {
+      area: upperLeft,
+      noun: {
+        labels: [{ text: "Ledger line" }],
+        preferredVerbs: [{ verb: "look-at" }],
+        cases: [{ verb: "look-at", response: { text: "A name I know." } }],
+      } satisfies NounDefinition,
+    },
+    {
+      area: lowerRight,
+      when: { variable: "confided", equals: true },
+      noun: {
+        labels: [{ text: "Signature" }],
+        preferredVerbs: [{ verb: "look-at" }],
+        cases: [
+          {
+            verb: "look-at",
+            when: { variable: "coinTaken", equals: true },
+            operations: [{ type: "end-game", detailView: "harbour" }],
+          },
+          { verb: "look-at", operations: [{ type: "end-game", detailView: "farewell" }] },
+        ],
+      } satisfies NounDefinition,
+    },
+  ],
+} satisfies DetailViewDefinition;
+
+/** The closing image of the poorer Ending, with one detail still worth clicking. */
+const farewell = {
+  image: "farewell.png",
   hotspots: [{
     area: upperLeft,
     noun: {
-      labels: [{ text: "Ledger line" }],
+      labels: [{ text: "Dedication" }],
       preferredVerbs: [{ verb: "look-at" }],
-      cases: [{ verb: "look-at", response: { text: "A name I know." } }],
+      cases: [{ verb: "look-at", response: { text: "For those who never came back." } }],
     } satisfies NounDefinition,
   }],
+} satisfies DetailViewDefinition;
+
+/** The closing image of the other Ending, proving one Game Project may author several. */
+const harbour = {
+  image: "harbour.png",
 } satisfies DetailViewDefinition;
 
 /**
@@ -373,7 +409,7 @@ const project = {
   characters: { player, sailor },
   playerCharacter: "player",
   objects: { knife, coin },
-  detailViews: { seal, registry, mechanism },
+  detailViews: { seal, registry, mechanism, farewell, harbour },
   sequences: { descend, examine, confide, callTheSailor },
   variables: { sealRead: false, mechanismOpen: false, coinTaken: false, confided: false },
   initialScene: "boat",
@@ -845,4 +881,161 @@ test("restoring into a presented Detail View is not an arrival and starts no arr
   expect(restored.sequence()).toBeNull();
   expect(restored.snapshot().characters.player).toEqual(arrived.characters.player);
   expect(restored.snapshot().currentScene).toBe("hold");
+});
+
+/**
+ * Pulls the cord of the presented mechanism, whose Sequence confides and leaves
+ * the registry open on the Signature that ends the game.
+ */
+function confideByPullingTheCord(session: ReturnType<typeof createTestSession>) {
+  session.input({ type: "select-verb", verb: "pull" });
+  session.input({ type: "activate-hotspot", hotspot: area.cord });
+  session.steps();
+  session.input({ type: "advance-sequence" });
+  session.steps();
+}
+
+/** Reaches the registry Signature from the world, through the mechanism close-up. */
+function confideAndOpenTheRegistry(session: ReturnType<typeof createTestSession>) {
+  presentTheMechanism(session);
+  confideByPullingTheCord(session);
+}
+
+/** The authored order of the Hotspots of the `registry` Detail View. */
+const registryArea = { ledgerLine: 0, signature: 1 } as const;
+
+test("a Game Operation ends the Game Session on a named Detail View", () => {
+  const session = createTestSession(project);
+  confideAndOpenTheRegistry(session);
+  const world = session.snapshot();
+
+  examineDetail(session, registryArea.signature);
+
+  const state = session.snapshot();
+  expect(state.ended).toBe(true);
+  expect(state.detailView).toBe("farewell");
+  expect(session.detailView()).toEqual({ detailView: "farewell", image: "farewell.png" });
+  expect(state.currentScene).toBe(world.currentScene);
+  expect(state.characters.player).toEqual(world.characters.player);
+  expect(session.lifecycle()).toBe("running");
+});
+
+test("the HUD withdraws at the Ending", () => {
+  const session = createTestSession(project);
+  pickUpTheKnife(session);
+  confideAndOpenTheRegistry(session);
+  expect(session.hud().withdrawn).toBe(false);
+  expect(session.hud().inventory.entries).toHaveLength(1);
+
+  examineDetail(session, registryArea.signature);
+
+  const hud = session.hud();
+  expect(hud.withdrawn).toBe(true);
+  expect(hud.nouns).toEqual([]);
+  expect(hud.inventory.entries).toEqual([]);
+  expect(hud.inventory.triggerVisible).toBe(false);
+  expect(hud.inventory.open).toBe(false);
+  expect(hud.narrative).toBeNull();
+  expect(hud.commandResponse).toBeNull();
+});
+
+test("after the Ending no Command is accepted", () => {
+  const session = createTestSession(project);
+  confideAndOpenTheRegistry(session);
+  examineDetail(session, registryArea.signature);
+  session.takeEffects();
+  const ended = committed(session);
+
+  session.input({ type: "select-verb", verb: "look-at" });
+  session.input({ type: "contextual-hotspot", hotspot: 0, action: "primary" });
+  session.input({ type: "activate-hotspot", hotspot: 0 });
+  session.input({ type: "move", point: { x: 10, y: 10 } });
+  session.steps(20);
+
+  expect(committed(session)).toEqual(ended);
+  expect(session.takeEffects()).toEqual([]);
+  expect(session.hud().withdrawn).toBe(true);
+});
+
+test("the Ending carries no image of its own, so what remains is an ordinary Detail View", () => {
+  const session = createTestSession(project);
+  confideAndOpenTheRegistry(session);
+  examineDetail(session, registryArea.signature);
+
+  // The closing image is an ordinary Detail View, with its own Hotspot the
+  // Engine still hit-tests, so a later feature could let the Ending be read.
+  expect(session.detailView()).toEqual({ detailView: "farewell", image: "farewell.png" });
+  expect(session.hitTest({ x: 5, y: 5 })).toEqual({ kind: "detail-hotspot", index: 0 });
+});
+
+test("a Game Project may author more than one Ending, closing on different Detail Views", () => {
+  const session = createTestSession(project);
+  pickUpTheKnife(session);
+  presentTheMechanism(session);
+  session.input({ type: "select-object", object: "knife" });
+  session.steps();
+  session.input({ type: "activate-hotspot", hotspot: area.lock });
+  session.steps();
+  examineDetail(session, area.hollow);
+  expect(session.snapshot().variables.coinTaken).toBe(true);
+
+  confideByPullingTheCord(session);
+  examineDetail(session, registryArea.signature);
+
+  expect(session.snapshot().detailView).toBe("harbour");
+  expect(session.snapshot().ended).toBe(true);
+});
+
+test("a restored Save Snapshot resumes at the Ending rather than in the world", () => {
+  const session = createTestSession(project);
+  confideAndOpenTheRegistry(session);
+  examineDetail(session, registryArea.signature);
+  const ended = session.snapshot();
+  const snapshot = JSON.parse(JSON.stringify(session.createSaveSnapshot())) as unknown;
+
+  const restored = createTestSession(project, snapshot);
+
+  expect(restored.snapshot().ended).toBe(true);
+  expect(restored.snapshot().detailView).toBe("farewell");
+  expect(restored.detailView()).toEqual({ detailView: "farewell", image: "farewell.png" });
+  expect(restored.snapshot().characters.player).toEqual(ended.characters.player);
+  expect(restored.hud().withdrawn).toBe(true);
+
+  restored.input({ type: "contextual-hotspot", hotspot: 0, action: "primary" });
+  restored.steps();
+  expect(restored.takeEffects()).toEqual([]);
+});
+
+test("a Save Snapshot ending on nothing presented is refused with a clear message", () => {
+  const session = createTestSession(project);
+  confideAndOpenTheRegistry(session);
+  examineDetail(session, registryArea.signature);
+  const snapshot = session.createSaveSnapshot();
+  const { detailView: _detailView, ...withoutDetailView } = snapshot.state;
+
+  const result = validateTestSaveSnapshot(project, { ...snapshot, state: withoutDetailView });
+
+  expect(result.ok).toBe(false);
+  if (result.ok) return;
+  expect(result.diagnostics).toContainEqual(expect.objectContaining({
+    code: "save.state.ending",
+    path: "Save Snapshot.state.ended",
+    message: "Save Snapshot ends the Game Session without a presented Detail View.",
+  }));
+});
+
+test("starting a new game leaves the Ending behind", () => {
+  const finished = createTestSession(project);
+  confideAndOpenTheRegistry(finished);
+  examineDetail(finished, registryArea.signature);
+  expect(finished.snapshot().ended).toBe(true);
+
+  const started = createTestSession(project);
+
+  expect(started.snapshot().ended).toBeUndefined();
+  expect(started.snapshot().detailView).toBeUndefined();
+  expect(started.hud().withdrawn).toBe(false);
+  expect(started.hud().nouns.map(({ label }) => label))
+    .toEqual(["Bundle", "Knife", "Hatch", "Mechanism", "Sailor", "Ladder"]);
+  expect(started.snapshot()).toEqual(createTestSession(project).snapshot());
 });

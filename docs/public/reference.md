@@ -81,6 +81,18 @@ the same close-up. Restoring into a presented Detail View is not an arrival
 and starts no arrival Sequence. A stored Detail View the Game Project no
 longer declares is refused during validation with `save.state.detail-view`.
 
+An `end-game` Game Operation names the Detail View a Game Session ends on. It
+presents that Detail View and concludes the Game Session: whatever activity was
+running stops, the HUD withdraws entirely, and no further Command, Sequence
+advance or movement is accepted. The Ending carries no image of its own, so the
+closing Detail View keeps its ordinary Hotspots, and a Game Project may author
+as many Endings as it has outcomes, each closing on its own Detail View. The
+Ending is committed Game State recorded as `ended` beside `detailView` in the
+Save Snapshot, and the Continuation State carries it too, so reopening the
+browser resumes a finished game at its Ending rather than in the world;
+starting a new game leaves it behind. A stored Ending without a presented
+Detail View is refused during validation with `save.state.ending`.
+
 `CharacterDefinition` describes a persistent Character with initial Scene, Ground
 Point, Facing, Appearance, positive `movementSpeed`, optional Noun, optional
 `CharacterDialogueDefinition`, and named Appearances. Every Appearance owns named Animations and a required default
@@ -270,7 +282,7 @@ target remains the distinct `reference.hotspot.target` failure.
 
 `InteractionCondition` reads a boolean Variable or held Object. `GameOperation`
 can set a Variable or Appearance, start a Sequence, present or dismiss a Detail
-View, collect the target Object, give a named Object that is present in the
+View, end the Game Session on a Detail View, collect the target Object, give a named Object that is present in the
 current Scene to the Player,
 place the selected first Object, place a named Object, or consume the selected
 Object. It also includes `LearnNarrativeFactOperation`, whose
@@ -576,7 +588,7 @@ Knowledge-Driven Dialogue definition and operation codes include
 Runtime, save, asset and environment codes: `state.operation.invalid`,
 `save.shape`, `save.fields.unexpected`, `save.format.version`,
 `save.project.identity`, `save.project.version`, `save.state.command`,
-`save.state.command-noun`, `save.state.detail-view`,
+`save.state.command-noun`, `save.state.detail-view`, `save.state.ending`,
 `save.state.intent-command`,
 `save.state.intent-command-noun`, `save.state.invalid`,
 `save.validation.project`, `save.validation.required`, `asset.load.failed`,

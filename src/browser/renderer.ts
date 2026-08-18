@@ -806,6 +806,8 @@ class EngineOverlay {
     if (inventoryWasOpen && !this.currentHUD.inventory.open) {
       this.frame.focus({ preventScroll: true });
     }
+    /** At the Ending the whole overlay withdraws, leaving the closing image alone. */
+    this.root.style.display = this.currentHUD.withdrawn ? "none" : "block";
     this.renderCommandResponse(previousResponseId);
     this.renderInventory();
     if (!this.hoveredNoun && !this.inventoryActionObject) {

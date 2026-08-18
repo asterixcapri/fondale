@@ -3,6 +3,7 @@ import backUrl from "./character-facing-back.svg";
 import frontUrl from "./character-facing-front.svg";
 import leftUrl from "./character-facing-left.svg";
 import rightUrl from "./character-facing-right.svg";
+import endingUrl from "./detail-view-ending.svg";
 import sealUrl from "./detail-view-seal.svg";
 import {
   commandVerbs,
@@ -101,7 +102,31 @@ const seal = {
         }],
       } satisfies NounDefinition,
     },
+    {
+      area: rectangle(40, 170, 180, 220),
+      noun: {
+        labels: [{ text: "Firma" }],
+        preferredVerbs: [{ verb: "look-at" }],
+        cases: [{
+          verb: "look-at",
+          operations: [{ type: "end-game", detailView: "congedo" }],
+        }],
+      } satisfies NounDefinition,
+    },
   ],
+} satisfies DetailViewDefinition;
+
+/** The closing image of the Ending: an ordinary Detail View, Hotspot and all. */
+const congedo = {
+  image: endingUrl,
+  hotspots: [{
+    area: rectangle(40, 40, 140, 140),
+    noun: {
+      labels: [{ text: "Dedica" }],
+      preferredVerbs: [{ verb: "look-at" }],
+      cases: [{ verb: "look-at", response: { text: "Per chi non è tornato." } }],
+    } satisfies NounDefinition,
+  }],
 } satisfies DetailViewDefinition;
 
 const project = {
@@ -109,7 +134,7 @@ const project = {
   version: "1",
   logicalResolution: { width: 426, height: 240 },
   scenes: { boat },
-  detailViews: { seal },
+  detailViews: { seal, congedo },
   characters: { player },
   playerCharacter: "player",
   initialScene: "boat",

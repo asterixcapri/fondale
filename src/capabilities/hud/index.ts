@@ -71,6 +71,8 @@ export interface HUDPresentationContext {
   readonly audioAvailable?: boolean;
   readonly speakerSilhouetteTops?: Readonly<Record<string, number>>;
   readonly sequenceActive?: boolean;
+  /** The Game Session has concluded, so the HUD withdraws entirely. */
+  readonly ended?: boolean;
 }
 
 /** @internal Technical facts supplied by browser adapters when presenting HUD. */
@@ -217,6 +219,8 @@ export interface HUDInventoryPresentation {
 
 /** @internal */
 export interface HUDPresentation {
+  /** At the Ending the HUD withdraws, so an adapter draws none of it. */
+  readonly withdrawn: boolean;
   readonly nouns: readonly HUDNounPresentation[];
   readonly nounsRevealed: boolean;
   readonly nounRevealControl: "button" | "keyboard";
@@ -355,6 +359,15 @@ export function createHUD(input: HUDProjectView): HUD {
   };
 
   const presentation = (context: HUDPresentationContext): HUDPresentation => {
+    if (context.ended) {
+      inventoryOpen = false;
+      modal = null;
+      responseText = null;
+      return withdrawnPresentation(
+        preferences,
+        input.commandLexicon ? "keyboard" : "button",
+      );
+    }
     syncInventory(context);
     if (context.narrative) responseText = null;
     const pageCount = Math.max(1, Math.ceil(context.inventory.entries.length / pageSize));
@@ -363,6 +376,7 @@ export function createHUD(input: HUDProjectView): HUD {
       .map(inventoryEntryPresentation);
     const narrative = narrativePresentation(context, input, preferences, inventoryOpen);
     return deepFreeze({
+      withdrawn: false,
       nouns: context.nouns.map((noun) => nounPresentation(noun, context)),
       nounsRevealed,
       nounRevealControl: input.commandLexicon ? "keyboard" : "button",
@@ -731,6 +745,43 @@ function commandPhrase(
   return lexicon.patterns.unary
     .replace("{verb}", label)
     .replace("{noun}", noun);
+}
+
+/**
+ * Nothing of the HUD survives the Ending: no Noun advertises a phrase, the
+ * Inventory withdraws with its trigger, and no narrative, Command Response or
+ * modal invites a Command that will not be answered.
+ */
+function withdrawnPresentation(
+  preferences: PlayerPreferences,
+  nounRevealControl: HUDPresentation["nounRevealControl"],
+): HUDPresentation {
+  return deepFreeze({
+    withdrawn: true,
+    nouns: [],
+    nounsRevealed: false,
+    nounRevealControl,
+    inventory: {
+      keyboardShortcutAvailable: false,
+      fillEmptySlots: false,
+      triggerVisible: false,
+      open: false,
+      page: 0,
+      pageCount: 1,
+      canGoPrevious: false,
+      canGoNext: false,
+      emptySlots: 0,
+      entries: [],
+    },
+    narrative: null,
+    commandResponse: null,
+    system: {
+      blocksWorldInput: false,
+      preferences: { ...preferences },
+      modal: null,
+    },
+    sequenceActive: false,
+  });
 }
 
 function maximumInventoryPage(count: number, pageSize: number): number {
