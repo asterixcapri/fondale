@@ -277,6 +277,12 @@ The canonical facts that describe the current progress of a Game Session and
 determine how its world may evolve.
 _Avoid_: Game Project, renderer state, transient activity
 
+**Ending**:
+The terminal state of a Game Session, in which a Detail View stays presented and
+no further Command is accepted. It is committed Game State, so restoring a
+concluded Game Session resumes at its Ending rather than in the world.
+_Avoid_: Game over, credits, final Scene, quitting
+
 **Save Snapshot**:
 A JSON-safe representation of one committed Game State, identified by its Game
 Project and compatibility versions and suitable for exact restoration.
@@ -478,11 +484,19 @@ from its background when they need their own position, depth, or behavior.
 _Avoid_: Object, Hotspot, details embedded in the background
 
 **Hotspot**:
-The Scene-local surface that makes Scenery, a Character, an Object present in
-the Scene, or a background region interactive. It has no identity apart from
-what it makes interactive; while inactive it neither receives nor advertises
-Player Intent.
+The local surface that makes something interactive: within a Scene, Scenery, a
+Character, an Object present in the Scene, or a background region; within a
+Detail View, a region of its image. It has no identity apart from what it makes
+interactive; while inactive it neither receives nor advertises Player Intent.
 _Avoid_: Interactive object, world entity, clickable point
+
+**Detail View**:
+A single presented image with its own Hotspots, shown in place of the world so
+the Player may examine one subject closely. It has no Scene Space, no Walkable
+Region and no presented Character, so its Commands never approach before they
+execute, and it represents something the world already contains rather than
+being a place within it.
+_Avoid_: Scene, screen, overlay, popup, close-up
 
 **Object**:
 A persistent entity the Player can collect. It is always present in one Scene,
