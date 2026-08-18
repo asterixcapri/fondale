@@ -30,7 +30,7 @@ his history unresolved as before.
 - [x] The contradiction is committed as its own Narrative Fact, learned only through the reading.
 - [x] The Detail View is dismissed before the death, so the Player watches it happen in the world.
 - [x] The sailor dies once the reading is complete, committed once through explicit Game Operations.
-- [~] The sailor has a newly produced dead Appearance: one static Runtime image at the corrected deck scale, in the same dusk light, with no presentation variants.
+- [x] The sailor has a newly produced dead Appearance: one static Runtime image at the corrected deck scale, in the same dusk light, with no presentation variants.
 - [x] Michele answers the death with a single authored beat that closes on his act rather than on Narration.
 - [x] The Game Session ends on a closing Detail View, and the Player is never returned to free roam beside the dead sailor.
 - [x] Ordinary playback and Sequence skipping commit identical canonical Game State.
@@ -50,12 +50,10 @@ his history unresolved as before.
 Implemented on `ticket/detail-view-and-ending/05-close-the-capri-1535-prologue`
 in two commits: the finale itself, then a pass that answers its own review.
 
-One acceptance criterion is **not** met as written, and it is the reason this
-ticket comes back to a human rather than being closed: the sailor's dead
-Appearance is a derivative of the existing Art Master, not newly produced
-artwork. No image-generation tool was reachable in the environment that
-implemented this (no built-in generator, and the `imagegen` skill's CLI
-fallback needs an `OPENAI_API_KEY` that is not set). Everything else below was
+One acceptance criterion could not be met when this ticket was implemented —
+the sailor's dead Appearance had to be derived from the existing Art Master,
+because no image-generation tool was reachable then. It has since been produced
+properly; see the closing note at the bottom. Everything else below was
 observed.
 
 Acceptance criteria, as observed:
@@ -96,12 +94,9 @@ Acceptance criteria, as observed:
 - **The dead Appearance.** One static Runtime image, `166x166` on the same
   `(83, 164)` Visual Anchor as the wounded and unconscious Appearances, every
   Facing reusing it, no presentation variants — the corrected `0.65` deck scale
-  the second comment asked for. But it is derived from `static-art-master.png`
-  by settling the body a further 12 degrees back about that anchor and grading
-  the life out of the colour, not generated. `art/characters/wounded-sailor/provenance.md`
-  records exactly that, and says what replacing it would take: a generated Art
-  Master for the dead pose, fitted to the same cell, with no change to the
-  Character Definition.
+  the second comment asked for. Originally derived from `static-art-master.png`;
+  replaced with generated artwork, as recorded in the closing note below and in
+  `art/characters/wounded-sailor/provenance.md`.
 - **Michele's single beat closes on his act.** One Line ("Riposa, marinaio…")
   followed by a Direction Step playing his `pick-up` Animation, then
   `end-game`. Nothing is narrated after him. He has no Animation authored for
@@ -162,3 +157,23 @@ Verification, as observed:
   Engine file is touched by this ticket.
 - `examples/capri-1535`: `npm run build` passes. `npm run verify` passes in
   full, 34 of 34, in 33.8 minutes.
+
+- 2026-08-18: the dead Appearance is now newly produced artwork, so the
+  criterion above is met. With `OPENAI_API_KEY` available, it was generated
+  through the `imagegen` skill's CLI fallback (`gpt-image-1.5`, edit mode) from
+  `static-art-master.png` at high input fidelity, so the man and his dusk light
+  carry over while the pose and the life in him change: the torso settled back
+  onto the deck, the head fallen back with the jaw slack, the hand slipped off
+  the bandages and open palm-up, the legs rolled outward. The untouched result
+  is kept as `art/characters/wounded-sailor/dead-art-master.png`.
+
+  The Runtime image was scaled so his head measures what it measures in
+  `static.png` — the one physical invariant between a seated pose and a lying
+  one — which lands the body at `142x133` inside the unchanged `166x166` cell on
+  the unchanged `(83, 164)` Visual Anchor, so the Character Definition needed no
+  change. It then took the family grade one step colder than the living
+  Appearance: brightness `74%`, saturation `55%`, a `14%` indigo tint.
+
+  Verified: the Example builds and `test/drifting-boat.spec.ts` passes. The full
+  Example acceptance suite was started and stopped before it reported, so it has
+  not been run against this artwork.

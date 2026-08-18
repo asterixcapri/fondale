@@ -20,21 +20,29 @@ and one-frame presentation; there are no visual variants.
 
 ## The dead Appearance
 
-The prologue now ends over the sailor's body, so the Character carries a second
+The prologue ends over the sailor's body, so the Character carries a second
 Runtime image, `src/characters/wounded-sailor/dead.png`, at the same `166x166`
 deck scale and on the same `(83, 164)` Visual Anchor: nothing shifts on screen
-when he stops breathing. The body has settled a further `12` degrees back onto
-the deck, rotated about that same anchor so the ground contact cannot drift, and
-the grade drops to brightness `72%` and saturation `52%` under a `15%` indigo
-tint, which takes the coral rim light out of him without changing the dusk he
-lies in.
+when he stops breathing.
 
-It was derived from `static-art-master.png` rather than generated: no
-image-generation tool was reachable in the environment that authored it. A
-newly generated Art Master for the dead pose — the head fallen, the hand slipped
-from the bandages — would replace it without touching the Character Definition,
-because both Appearances reference one static image apiece at the same cell size
-and anchor.
+`dead-art-master.png` is the untouched `1024×1024` generated result behind it,
+produced on 2026-08-18 through the `imagegen` skill's CLI fallback against the
+OpenAI image API — `gpt-image-1.5`, edit mode, `static-art-master.png` supplied
+at high input fidelity so the man, his clothing, his bandage and the dusk key
+light carry over unchanged. The prompt asked only for the pose and the life to
+change: the torso settled back onto the deck, the head fallen back with the jaw
+slack, the hand slipped off the bandages and lying open palm-up, the legs
+relaxed and rolled outward, the skin drained. It prohibited gore, props, text,
+other figures and any ground, shadow or scenery, and the generated source
+carries native alpha, so no chroma removal was necessary.
+
+The Runtime image is Lanczos-fitted from it at the scale that keeps his head
+the size it is in `static.png`, which lands the body at `142×133` inside the
+`166×166` cell, and is placed so its ground contact sits on the shared Visual
+Anchor. It then receives the Scene-matching derivative grade, one step colder
+and duller than the living Appearance: brightness `74%`, saturation `55%`, a
+`14%` indigo dusk tint and the same `0.25 px` edge-softening blur. The Art
+Master remains unchanged.
 
 `actual-size-diagnostic.png` presents that `256×256` Runtime cell at 1:1 inside
 the `1280×720` Logical Resolution, with its cell bounds and Visual Anchor drawn.
