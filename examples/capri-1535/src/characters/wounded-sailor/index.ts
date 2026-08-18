@@ -1,5 +1,6 @@
 import { type CharacterDefinition, type NounDefinition } from "@asterixcapri/fondale";
 
+import deadUrl from "./dead.png";
 import staticUrl from "./static.png";
 
 const staticFrame = [{ x: 0, y: 0, width: 166, height: 166 }];
@@ -39,6 +40,24 @@ export const woundedSailor = ({
             right: { image: staticUrl, frames: staticFrame },
             front: { image: staticUrl, frames: staticFrame },
             back: { image: staticUrl, frames: staticFrame },
+          },
+          timing: { framesPerSecond: 1, loop: true },
+        },
+      },
+      roles: { default: "idle" },
+      visualAnchor: { x: 83, y: 164 },
+    },
+    // The prologue ends over his body. The Appearance is its own Runtime image,
+    // produced at the same deck scale and registered on the same Visual Anchor,
+    // so nothing shifts when the sailor stops breathing.
+    dead: {
+      animations: {
+        idle: {
+          sheets: {
+            left: { image: deadUrl, frames: staticFrame },
+            right: { image: deadUrl, frames: staticFrame },
+            front: { image: deadUrl, frames: staticFrame },
+            back: { image: deadUrl, frames: staticFrame },
           },
           timing: { framesPerSecond: 1, loop: true },
         },

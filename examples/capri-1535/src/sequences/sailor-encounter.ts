@@ -1,7 +1,7 @@
 import { type GameOperation, type SequenceDefinition } from "@asterixcapri/fondale";
 
 /** The canonical handoff: recognition, bundle, unconsciousness. */
-const outcome: readonly GameOperation[] = [
+const handoff: readonly GameOperation[] = [
   { type: "give-object-to-player", object: "oilskinBundle" },
   {
     type: "learn-narrative-fact",
@@ -21,10 +21,29 @@ const outcome: readonly GameOperation[] = [
   },
 ];
 
+/**
+ * The same gesture the encounter ends on: Michele unties the bundle and the
+ * close-up takes the screen. It belongs to the handoff rather than to a chore
+ * the Player is left to discover, so skipping the encounter reaches it too.
+ */
+const opening: readonly GameOperation[] = [
+  {
+    type: "set-appearance",
+    target: { kind: "object", object: "oilskinBundle" },
+    appearance: "opened",
+  },
+  {
+    type: "learn-narrative-fact",
+    character: "michele",
+    factId: "bundle-holds-broken-seal",
+  },
+  { type: "present-detail-view", detailView: "openedBundle" },
+];
+
 export const sailorEncounter = ({
   scene: "driftingBoat",
   skippable: true,
-  skipOutcome: outcome,
+  skipOutcome: [...handoff, ...opening],
   steps: [
     {
       type: "narration",
@@ -65,7 +84,7 @@ export const sailorEncounter = ({
         animation: "pick-up",
       }],
     },
-    { type: "operations", operations: outcome },
+    { type: "operations", operations: handoff },
     {
       type: "narration",
       text: "La mano gli ricade sul fianco. Gli occhi si chiudono; resta soltanto il respiro.",
@@ -77,7 +96,8 @@ export const sailorEncounter = ({
     },
     {
       type: "narration",
-      text: "Sotto gli scogli, la barca alla deriva dondola come se aspettasse.",
+      text: "Nessuna risposta. Michele scioglie lo spago cerato e apre il fagotto sul ponte.",
     },
+    { type: "operations", operations: opening },
   ],
 } satisfies SequenceDefinition);

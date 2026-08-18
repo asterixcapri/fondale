@@ -47,4 +47,23 @@ export const narrativeFacts = ({
       "Nel fagotto ci sono il sigillo spezzato di una nave e un frammento di registro.",
     setsVariable: "prologueComplete",
   },
+  "seal-belongs-to-the-santa-marta": {
+    proposition:
+      "Il sigillo spezzato è quello della Santa Marta, la nave su cui si imbarcò il padre di "
+      + "Michele e che si dice perduta nell'ottobre del 1533.",
+    setsVariable: "sealRead",
+  },
+  "registry-records-amalfi-in-june-1534": {
+    proposition:
+      "Il frammento di registro annota la Santa Marta che scarica grano ad Amalfi nel giugno "
+      + "del 1534.",
+    setsVariable: "registryRead",
+  },
+  // The discovery that ends the prologue: it exists only as the collision of
+  // the two readings, so it is committed by neither of them alone.
+  "santa-marta-sailed-after-her-wreck": {
+    proposition:
+      "La Santa Marta scaricava ad Amalfi otto mesi dopo il naufragio che l'avrebbe inghiottita: "
+      + "una delle due date mente.",
+  },
 } satisfies Readonly<Record<string, NarrativeFactDefinition>>);

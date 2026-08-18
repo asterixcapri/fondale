@@ -565,11 +565,14 @@ export async function reachDriftingBoat(page: Page): Promise<void> {
   await descendToBoat(page);
 }
 
-/** Plays the sailor encounter through to the bundle in Michele's Inventory. */
+/** Plays the sailor encounter through to the presented close-up of the bundle. */
 export async function playSailorEncounter(page: Page): Promise<void> {
   await activateHotspot(page, "Marinaio ferito", { button: "right" });
   const sailor = line(page, "woundedSailor");
   await expect(sailor).toContainText("quel viso", { timeout: 25_000 });
+  // A Sequence owns play from its first beat, so the Inventory is out of reach
+  // for as long as the encounter and its Narrations last.
+  await expect(page.locator("[data-fondale-inventory-trigger]")).toBeHidden();
   await advance(page);
   await expect(line(page, "michele")).toContainText("Mi scambi per un altro");
   await advance(page);
@@ -584,21 +587,67 @@ export async function playSailorEncounter(page: Page): Promise<void> {
   await advance(page);
   await expect(line(page, "michele")).toContainText("resta con me");
   await advance(page);
-  await expect(narration(page)).toContainText("come se aspettasse");
+  await expect(narration(page)).toContainText("apre il fagotto");
+  await advance(page);
+  await expectDetailView(page, "openedBundle");
+}
+
+/** Waits for the named Detail View to be the presented one. */
+export async function expectDetailView(page: Page, detailView: string): Promise<void> {
+  await expect(scene(page))
+    .toHaveAttribute("data-fondale-detail-view", detailView, { timeout: 20_000 });
+}
+
+/** Waits for the world to be on screen again, with no close-up over it. */
+export async function expectWorld(page: Page): Promise<void> {
+  await expect(scene(page)).not.toHaveAttribute("data-fondale-detail-view", /.*/, {
+    timeout: 20_000,
+  });
+}
+
+/** Reads the broken seal inside the presented close-up. */
+export async function readBrokenSeal(page: Page): Promise<void> {
+  await activateHotspot(page, "Sigillo spezzato");
+  await expect(line(page, "michele")).toContainText("ceralacca", { timeout: 20_000 });
+  await advance(page);
+  await expect(line(page, "michele")).toContainText("Santa Marta");
+  await advance(page);
+  await expect(line(page, "michele")).toContainText("ottobre del 1533");
   await advance(page);
 }
 
-/** Opens the oilskin bundle from the Inventory, ending the prologue. */
-export async function openBundle(page: Page): Promise<void> {
-  await page.locator("[data-fondale-inventory-trigger]").click();
-  const bundle = inventoryObject(page, "oilskinBundle");
-  await expect(bundle).toBeVisible();
-  await bundle.click({ button: "right" });
-  await expect(narration(page)).toContainText("apre il fagotto", { timeout: 20_000 });
+/** Reads the torn registry fragment inside the presented close-up. */
+export async function readRegistryFragment(page: Page): Promise<void> {
+  await activateHotspot(page, "Frammento di registro");
+  await expect(line(page, "michele")).toContainText("registro", { timeout: 20_000 });
   await advance(page);
-  await expect(line(page, "michele")).toContainText("sigillo spezzato");
+  await expect(line(page, "michele")).toContainText("Amalfi");
   await advance(page);
-  await expect(narration(page)).toContainText("quel sigillo lo stava aspettando");
+  await expect(line(page, "michele")).toContainText("Giugno del 1534");
   await advance(page);
-  await expect(inventoryObject(page, "oilskinBundle")).toHaveCount(0);
+}
+
+/**
+ * Hears the contradiction the completed reading commits, and leaves the Player
+ * back in the world: the close-up is dismissed before anybody dies in it.
+ */
+export async function hearTheContradiction(page: Page): Promise<void> {
+  await expect(line(page, "michele")).toContainText("Ottobre del 1533", { timeout: 20_000 });
+  await advance(page);
+  await expect(line(page, "michele")).toContainText("Otto mesi dopo");
+  await advance(page);
+  await expectWorld(page);
+}
+
+/** Watches the sailor die and leaves Michele's answer on screen over his body. */
+export async function watchSailorDie(page: Page): Promise<void> {
+  await expect(narration(page)).toContainText("non si sente più", { timeout: 20_000 });
+  await advance(page);
+  await expect(line(page, "michele")).toContainText("Riposa, marinaio");
+}
+
+/** Lets Michele's closing gesture play out, which ends the Game Session. */
+export async function closeOnTheEnding(page: Page): Promise<void> {
+  await advance(page);
+  await expectDetailView(page, "prologueEnding");
 }

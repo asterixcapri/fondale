@@ -18,6 +18,24 @@ image lives at `src/characters/wounded-sailor/static.png`; its stable Visual
 Anchor is `(128, 252)`. Every authored Facing references that same single image
 and one-frame presentation; there are no visual variants.
 
+## The dead Appearance
+
+The prologue now ends over the sailor's body, so the Character carries a second
+Runtime image, `src/characters/wounded-sailor/dead.png`, at the same `166x166`
+deck scale and on the same `(83, 164)` Visual Anchor: nothing shifts on screen
+when he stops breathing. The body has settled a further `12` degrees back onto
+the deck, rotated about that same anchor so the ground contact cannot drift, and
+the grade drops to brightness `72%` and saturation `52%` under a `15%` indigo
+tint, which takes the coral rim light out of him without changing the dusk he
+lies in.
+
+It was derived from `static-art-master.png` rather than generated: no
+image-generation tool was reachable in the environment that authored it. A
+newly generated Art Master for the dead pose — the head fallen, the hand slipped
+from the bandages — would replace it without touching the Character Definition,
+because both Appearances reference one static image apiece at the same cell size
+and anchor.
+
 `actual-size-diagnostic.png` presents that `256×256` Runtime cell at 1:1 inside
 the `1280×720` Logical Resolution, with its cell bounds and Visual Anchor drawn.
 It is the record of the size review this package passed, and the only

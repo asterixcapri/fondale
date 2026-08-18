@@ -3,28 +3,33 @@ import { test } from "@playwright/test";
 import { expect, openGame, shoot } from "./harness";
 import {
   activateHotspot,
-  advance,
+  clickCanvas,
+  closeOnTheEnding,
+  expectDetailView,
+  hearTheContradiction,
   inventoryObject,
   line,
-  narration,
   reachDriftingBoat,
+  readBrokenSeal,
+  readRegistryFragment,
   repairWinchAndSail,
-  response,
   skipSequence,
+  watchSailorDie,
 } from "./prologue";
 
 /**
- * The finale, proved where the acceptance path does not go: what happens when
- * the Player skips the encounter that hands over the oilskin bundle.
+ * The finale, proved where the acceptance path does not go: the Player skips
+ * the encounter that hands over the oilskin bundle, and reads the two details
+ * in the opposite order.
  *
- * Full playback of the same encounter, the opened bundle and the cliffhanger
- * belong to `acceptance.spec.ts`, which is the one place that claims the whole
- * prologue works end to end.
+ * Full playback of the same encounter, the seal-first reading and the Ending's
+ * survival of a reload belong to `acceptance.spec.ts`, which is the one place
+ * that claims the whole prologue works end to end.
  */
 
 test.setTimeout(420_000);
 
-test("skipping the sailor encounter commits the same handoff and unconsciousness", async ({
+test("skipping the encounter and reading in the opposite order reaches the same Ending", async ({
   page,
 }) => {
   const { errors } = await openGame(page);
@@ -34,27 +39,27 @@ test("skipping the sailor encounter commits the same handoff and unconsciousness
   await activateHotspot(page, "Marinaio ferito", { button: "right" });
   await expect(line(page, "woundedSailor")).toContainText("quel viso", { timeout: 25_000 });
   await skipSequence(page);
-  await page.waitForTimeout(800);
 
   // The skipped Sequence committed the same canonical outcome: Michele carries
-  // the bundle and the sailor is unconscious, his identity still unresolved.
+  // the bundle and the close-up of what it held is presented, with no free-roam
+  // gap where full playback has none either.
+  await expectDetailView(page, "openedBundle");
   await expect(inventoryObject(page, "oilskinBundle")).toHaveCount(1);
-  await activateHotspot(page, "Marinaio ferito");
-  await expect(response(page)).toContainText("svenuto", { timeout: 20_000 });
-
-  // And the skipped encounter still opens into the same finale.
-  await page.locator("[data-fondale-inventory-trigger]").click();
-  const bundle = inventoryObject(page, "oilskinBundle");
-  await expect(bundle).toBeVisible();
-  await bundle.click({ button: "right" });
-  await expect(narration(page)).toContainText("apre il fagotto", { timeout: 20_000 });
-  await advance(page);
-  await expect(line(page, "michele")).toContainText("sigillo spezzato");
-  await advance(page);
-  await advance(page);
-  await expect(inventoryObject(page, "oilskinBundle")).toHaveCount(0);
-  await activateHotspot(page, "Fagotto aperto");
-  await expect(response(page)).toContainText("sigillo spezzato", { timeout: 20_000 });
   await shoot(page, "capri-1535-finale-skipped-encounter");
+
+  // Either detail can be read first, and neither reading alone ends anything.
+  await readRegistryFragment(page);
+  await expectDetailView(page, "openedBundle");
+  await readBrokenSeal(page);
+  await hearTheContradiction(page);
+  await watchSailorDie(page);
+  await closeOnTheEnding(page);
+
+  // The same Ending: the closing image, the withdrawn HUD, and a Command that
+  // is answered by nothing.
+  await expect(page.locator("[data-fondale-overlay]")).toBeHidden();
+  await clickCanvas(page, { x: 440, y: 350 });
+  await expectDetailView(page, "prologueEnding");
+  await shoot(page, "capri-1535-finale-ending");
   expect(errors).toEqual([]);
 });

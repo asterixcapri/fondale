@@ -39,6 +39,7 @@ test("the isolated drifting-boat package boards, explores every clue and reaches
   }))).toEqual(sceneSize);
   await expect.poll(() => [...runtimeAssets].sort()).toEqual([
     "background.png",
+    "dead.png",
     "foreground-hull-overlay.png",
     "mast-rigging-overlay.png",
     "shelter-post-overlay.png",

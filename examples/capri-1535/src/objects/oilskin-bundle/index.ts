@@ -6,8 +6,8 @@ import wrappedUrl from "./scene.png";
 
 /**
  * The sailor's parting Object. It lies clutched near his hand until the
- * encounter hands it to Michele; opening it changes the same Object into its
- * opened Appearance, revealing the broken seal and registry fragment.
+ * encounter hands it to Michele and unties it in the same beat, changing the
+ * same Object into its opened Appearance and presenting what it held.
  */
 export const oilskinBundle = ({
   initialScene: "driftingBoat",
@@ -48,15 +48,15 @@ export const oilskinBundle = ({
     ],
     cases: [
       {
+        // Until the sailor gives it away the bundle is his, and the encounter
+        // is the only thing that opens it.
         verb: "open",
         when: { variable: "prologueComplete", equals: false },
-        sequence: "bundleOpening",
+        response: { text: "Lo tiene stretto. Non è mio da aprire." },
       },
       {
         verb: "open",
-        response: {
-          text: "Il sigillo spezzato e il frammento di registro restano dove li ho posati.",
-        },
+        response: { text: "È già aperto: il sigillo e il frammento sono lì dentro." },
       },
       {
         verb: "look-at",

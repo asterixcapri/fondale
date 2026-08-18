@@ -21,7 +21,7 @@ his history unresolved as before.
 
 **Blocked by:** 04 — End a Game Session on a Detail View.
 
-**Status:** ready-for-agent
+**Status:** claimed
 
 - [ ] The handoff presents the bundle's Detail View without an unmotivated free-roam gap.
 - [ ] Its Hotspots are the broken seal and the registry fragment, each examinable on its own and in either order.

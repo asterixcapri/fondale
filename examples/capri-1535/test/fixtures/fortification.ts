@@ -4,12 +4,14 @@ import { michele } from "../../src/characters/michele";
 import { woundedSailor } from "../../src/characters/wounded-sailor";
 import { italianCommandFallbacks, italianCommandLexicon } from "../../src/hud";
 import { narrativeFacts } from "../../src/narrative-facts";
+import { openedBundle, prologueEnding } from "../../src/detail-views/oilskin-bundle";
 import { oilskinBundle } from "../../src/objects/oilskin-bundle";
 import { coastalFortification } from "../../src/scenes/coastal-fortification";
 import { driftingBoat } from "../../src/scenes/drifting-boat";
 import { boatArrival } from "../../src/sequences/boat-arrival";
-import { bundleOpening } from "../../src/sequences/bundle-opening";
 import { prologueConclusion } from "../../src/sequences/prologue-conclusion";
+import { readBrokenSeal } from "../../src/sequences/read-broken-seal";
+import { readRegistryFragment } from "../../src/sequences/read-registry-fragment";
 import { sailorEncounter } from "../../src/sequences/sailor-encounter";
 import { variables } from "../../src/variables";
 
@@ -25,6 +27,7 @@ const isolatedProject = ({
   version: "1",
   logicalResolution: { width: 1280, height: 720 },
   scenes: { coastalFortification, driftingBoat },
+  detailViews: { openedBundle, prologueEnding },
   characters: {
     michele: {
       ...michele,
@@ -41,7 +44,7 @@ const isolatedProject = ({
   // The drifting-boat Scene and the sailor carry the finale content, so the
   // isolated Project has to declare what their Nouns reference.
   objects: { oilskinBundle },
-  sequences: { boatArrival, bundleOpening, prologueConclusion, sailorEncounter },
+  sequences: { boatArrival, prologueConclusion, readBrokenSeal, readRegistryFragment, sailorEncounter },
   variables,
   commandLexicon: italianCommandLexicon,
   commandFallbacks: italianCommandFallbacks,

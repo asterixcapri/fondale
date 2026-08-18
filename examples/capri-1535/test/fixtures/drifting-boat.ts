@@ -10,9 +10,11 @@ import { woundedSailor } from "../../src/characters/wounded-sailor";
 import { italianCommandFallbacks, italianCommandLexicon } from "../../src/hud";
 import { rectangle } from "../../src/geometry";
 import { narrativeFacts } from "../../src/narrative-facts";
+import { openedBundle, prologueEnding } from "../../src/detail-views/oilskin-bundle";
 import { oilskinBundle } from "../../src/objects/oilskin-bundle";
 import { driftingBoat } from "../../src/scenes/drifting-boat";
-import { bundleOpening } from "../../src/sequences/bundle-opening";
+import { readBrokenSeal } from "../../src/sequences/read-broken-seal";
+import { readRegistryFragment } from "../../src/sequences/read-registry-fragment";
 import { sailorEncounter } from "../../src/sequences/sailor-encounter";
 import { variables } from "../../src/variables";
 
@@ -41,6 +43,7 @@ const isolatedProject = ({
   version: "1",
   logicalResolution: { width: 1280, height: 720 },
   scenes: { coastalFortification: fortificationStub, driftingBoat },
+  detailViews: { openedBundle, prologueEnding },
   characters: {
     michele: {
       ...michele,
@@ -55,7 +58,7 @@ const isolatedProject = ({
   objects: { oilskinBundle },
   // The Scene's finale Nouns read Game Variables and open Sequences, so the
   // isolated Project declares both even though this spec never plays them.
-  sequences: { bundleOpening, sailorEncounter },
+  sequences: { readBrokenSeal, readRegistryFragment, sailorEncounter },
   variables,
   commandLexicon: italianCommandLexicon,
   commandFallbacks: italianCommandFallbacks,

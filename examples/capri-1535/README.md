@@ -67,15 +67,25 @@ oiled pulley frees the well that holds it. Back at the harbour the handle goes
 onto the winch, Michele answers Raffaele about what he now knows, and the
 repaired winch launches the gozzo to the coastal fortification. From the
 lookout he sights a small boat adrift, climbs down to it, and finds a wounded
-sailor who mistakes him for his father and hands him an oilskin bundle. Opening
-that bundle is the cliffhanger; the larger mystery remains outside the demo.
+sailor who mistakes him for his father and hands him an oilskin bundle.
+
+The handoff unties the bundle in the same beat and presents its contents as a
+Detail View: the broken seal of the *Santa Marta* and a torn fragment of her
+registry, read close and in either order. The seal names the ship Michele's
+father sailed on, lost in October 1533; the fragment records her unloading
+grain at Amalfi in June 1534, eight months later. The close-up is dismissed on
+the completed reading, the sailor dies where the Player can watch it, Michele
+answers with one line and a gesture, and the Game Session ends on a closing
+Detail View. Who the sailor was, and how the ship kept sailing after she sank,
+remain outside the demo.
 
 The route exercises horizontal and vertical Camera scrolling, target-owned
 Nouns, Commands, directional Passages, persistent puzzle state, Character-bound
 Lines, explicit Narrations, skippable directed Sequences, collectible Objects,
-Reflection, and mouse- and keyboard-selected Choices through the packaged
-public API. The whole prologue is completable through the authored Conversation
-alternatives alone, without ever typing a free-form question.
+Detail Views, an Ending, Reflection, and mouse- and keyboard-selected Choices
+through the packaged public API. The whole prologue is completable through the
+authored Conversation alternatives alone, without ever typing a free-form
+question.
 
 Raffaele and Frate Elia carry a Dialogue Profile as well. Talking to either one
 opens a Conversation that presents the authored questions and the free-form
@@ -104,10 +114,12 @@ npm run verify:dialogue-live   # opt-in: the separately run Dialogue Server and 
 `npm run verify` drives Google Chrome through Playwright and answers the
 production Dialogue HTTP seam from test-owned deterministic support, so it needs
 no Dialogue Server, no PostgreSQL, no model key and no network. It covers the
-whole prologue end to end, the alternative discovery order, Knowledge-Driven
-Dialogue and Disclosure, Reflection, provider failure and cancellation, browser
-continuation, mouse and keyboard parity, the HUD contract, every skippable
-Sequence, and an actual-size inspection of each Scene package. Screenshots land
+whole prologue end to end, the alternative discovery order, both reading orders
+of the closing Detail View, the Ending and its survival of a reload,
+Knowledge-Driven Dialogue and Disclosure, Reflection, provider failure and
+cancellation, browser continuation, mouse and keyboard parity, the HUD
+contract, every skippable Sequence, and an actual-size inspection of each Scene
+package. Screenshots land
 under `test/shots/` for visual review.
 
 `npm run verify:dialogue-live` is described under

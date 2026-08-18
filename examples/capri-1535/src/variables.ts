@@ -13,4 +13,6 @@ export const variables = ({
   boatLanded: false,
   sailorEncountered: false,
   prologueComplete: false,
+  sealRead: false,
+  registryRead: false,
 } satisfies Readonly<Record<string, boolean>>);

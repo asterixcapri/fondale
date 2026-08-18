@@ -9,9 +9,12 @@ import {
   boardGozzo,
   carriedObjects,
   clickCanvas,
+  closeOnTheEnding,
   conversation,
   deliverLetter,
+  expectDetailView,
   freeWellAndCollectHandle,
+  hearTheContradiction,
   hoverCanvas,
   installHandle,
   inventoryObject,
@@ -19,16 +22,18 @@ import {
   leaveConversation,
   leaveReflection,
   line,
-  narration,
   playSailorEncounter,
   pullNetsAndCollectOil,
   reachDriftingBoat,
+  readBrokenSeal,
+  readRegistryFragment,
   reflect,
   response,
   revealedPoint,
   scene,
   travelToCloister,
   travelToHarbour,
+  watchSailorDie,
 } from "./prologue";
 
 /**
@@ -93,26 +98,38 @@ test("the whole prologue completes through authored Conversation alternatives al
   await activateHotspot(page, "Fagotto di tela cerata");
   await expect(response(page)).toContainText("spago cerato", { timeout: 20_000 });
 
+  // 6 — The handoff opens straight into the close-up: no free-roam gap between
+  // the bundle changing hands and what it holds.
   await playSailorEncounter(page);
+  await expectDetailView(page, "openedBundle");
   expect(await carriedObjects(page)).toEqual(["oilskinBundle"]);
-  await activateHotspot(page, "Marinaio ferito");
-  await expect(response(page)).toContainText("svenuto", { timeout: 20_000 });
+  await shoot(page, "acceptance-7-opened-bundle-close-up");
 
-  // The HUD contract holds for Narration too: the opening Narration owns play,
-  // so the Inventory trigger is suspended until the Player dismisses it.
-  await page.locator("[data-fondale-inventory-trigger]").click();
-  await inventoryObject(page, "oilskinBundle").click({ button: "right" });
-  await expect(narration(page)).toContainText("apre il fagotto", { timeout: 20_000 });
-  await expect(page.locator("[data-fondale-inventory-trigger]")).toBeHidden();
+  // The reading is two details examined on their own, in either order. This
+  // path takes the seal first.
+  await readBrokenSeal(page);
+
+  // What the reading teaches reaches Reflection as any other Fact does, and it
+  // opens no puzzle: the other detail is read exactly as it was before.
+  const reading = await reflect(page, "Che cosa so della nave di mio padre?");
+  await expect(line(page, "michele")).toContainText("Santa Marta", { timeout: 15_000 });
   await advance(page);
-  await expect(line(page, "michele")).toContainText("sigillo spezzato");
-  await advance(page);
-  await expect(narration(page)).toContainText("quel sigillo lo stava aspettando");
-  await advance(page);
-  await expect(inventoryObject(page, "oilskinBundle")).toHaveCount(0);
-  await activateHotspot(page, "Fagotto aperto");
-  await expect(response(page)).toContainText("sigillo spezzato", { timeout: 20_000 });
-  await shoot(page, "acceptance-7-prologue-cliffhanger");
+  await reading.getByRole("button", { name: "Leave" }).click();
+
+  await readRegistryFragment(page);
+  await hearTheContradiction(page);
+  // The sailor dies in the world, in front of the Player, not behind a picture.
+  await shoot(page, "acceptance-8-drifting-boat-death");
+  await watchSailorDie(page);
+  await shoot(page, "acceptance-9-michele-answers");
+  await closeOnTheEnding(page);
+  await shoot(page, "acceptance-10-prologue-ending");
+
+  // The Ending withdraws the HUD and answers no further Command: the closing
+  // image keeps its frame whatever the Player clicks.
+  await expect(page.locator("[data-fondale-overlay]")).toBeHidden();
+  await clickCanvas(page, { x: 440, y: 350 });
+  await expectDetailView(page, "prologueEnding");
 
   // The demo is finishable without ever typing at a Character: the deterministic
   // support saw no interpretation request, so nothing above depended on a model
@@ -120,11 +137,11 @@ test("the whole prologue completes through authored Conversation alternatives al
   expect(dialogueRequests.filter(({ operation }) => operation === "interpret")).toEqual([]);
   expect(dialogueRequests.filter(({ operation }) => operation === "verbalize")).toEqual([]);
 
-  // The finished prologue survives leaving the browser.
+  // The finished prologue survives leaving the browser: a reopened game finds
+  // its Ending rather than a world with nothing left in it.
   await continueGameSession(page);
-  await expect(frame).toHaveAttribute("data-fondale-scene", "driftingBoat");
-  await activateHotspot(page, "Fagotto aperto");
-  await expect(response(page)).toContainText("sigillo spezzato", { timeout: 20_000 });
+  await expectDetailView(page, "prologueEnding");
+  await expect(page.locator("[data-fondale-overlay]")).toBeHidden();
   expect(errors).toEqual([]);
 });
 
