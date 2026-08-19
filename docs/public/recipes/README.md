@@ -10,9 +10,14 @@ example that stops working stops the build.
 
 ## Playing it
 
-From a checkout of the Engine, run `npm run dev` and open
-<http://localhost:5170/test/fixtures/recipes.html>. The whole game is four
-steps:
+From a checkout of the Engine:
+
+```sh
+npm run dev
+# then open http://localhost:5170/test/fixtures/recipes.html
+```
+
+The whole game is four steps:
 
 1. **Click the pale shape at the foot of the crate.** That is the lantern. The
    Player walks to it and picks it up: `Heavier than it looks.`
