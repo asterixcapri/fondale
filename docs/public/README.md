@@ -45,4 +45,5 @@ hosting a provider, not for authoring a game.
 
 [Recipes](recipes/README.md) — compiled, executed TypeScript examples.
 
-[Support Baseline](support-baseline.md) — browser and input commitments.
+[What the Player gets](player-experience.md) — the controls, presentation and
+limits the Engine gives every game, and what they constrain.

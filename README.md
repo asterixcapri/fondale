@@ -15,7 +15,7 @@ Install it with `npm install @asterixcapri/fondale`, then follow the
 [contract index](docs/public/contract-index.md),
 [Dialogue Provider protocol](docs/public/dialogue-provider.md),
 [diagnostics](docs/public/diagnostics.md), and exact
-[Support Baseline](docs/public/support-baseline.md).
+[what the Player gets](docs/public/player-experience.md).
 Maintainers and new contributors can explore the complete capability-owned flow in
 the self-contained Italian [Engine architecture map](docs/engine-architecture.html).
 

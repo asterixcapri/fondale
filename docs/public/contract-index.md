@@ -163,4 +163,4 @@ Exact reachable fields also include `x`, `y`, `width`, `height`, `kind`,
 
 [Documentation index](README.md) · [Vocabulary](vocabulary.md) ·
 [Diagnostics](diagnostics.md) · [Dialogue Provider protocol](dialogue-provider.md) ·
-[Support Baseline](support-baseline.md) · [Recipes](recipes/README.md)
+[What the Player gets](player-experience.md) · [Recipes](recipes/README.md)
