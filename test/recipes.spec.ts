@@ -1,125 +1,104 @@
 import { expect, test } from "@playwright/test";
-import { type CharacterDefinition, type GameProject, type NounDefinition, type SceneDefinition } from "@asterixcapri/fondale";
-
-import { player } from "../docs/public/recipes/character-walking";
 import {
-  englishCommandFallbacks,
-  englishCommandLexicon,
-  firstProject,
-  firstScene,
-} from "../docs/public/recipes/first-scene";
-import { openWhenReady } from "../docs/public/recipes/command-case";
-import {
-  interactionHost,
-  interactionKey,
-  interactionScene,
-} from "../docs/public/recipes/interaction";
-import { exampleHUDTheme } from "../docs/public/recipes/hud-theme";
-import { key, successfulUse } from "../docs/public/recipes/inventory";
-import { restoreStoredProject } from "../docs/public/recipes/save-snapshot";
-import { greeting } from "../docs/public/recipes/sequence";
+  activateNoun,
+  advanceToLine,
+  carriedObjects,
+  chooseAlternative,
+  presentedDetailView,
+  presentedLine,
+  pressOn,
+  revealedNouns,
+  stepUntil,
+  selectObject,
+  startCoreSession,
+  type CoreSession,
+} from "@asterixcapri/fondale/testing";
 
-const sequencePlayer = ({
-  initialScene: "opening",
-  initialGroundPoint: { x: 10, y: 10 },
-  initialFacing: "front",
-  initialAppearance: "idle",
-  movementSpeed: 60,
-  appearances: { idle: { animations: { idle: { sheets: { left: { image: "player.png", frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, right: { image: "player.png", frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, front: { image: "player.png", frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) }, back: { image: "player.png", frames: Array.from({ length: 1 }, (_, index) => ({ x: index, y: 0, width: 1, height: 1 })) } }, timing: { framesPerSecond: 1, loop: true } } }, roles: { default: "idle", walking: "idle" } } },
-} satisfies CharacterDefinition);
+import { project } from "../docs/public/recipes/game";
+import { player } from "../docs/public/recipes/characters";
+import { lantern } from "../docs/public/recipes/lantern";
 
-test("every public recipe exposes ordinary author-owned data from the built package root", () => {
-  expect(Object.isFrozen(firstScene)).toBe(false);
-  expect(Object.isFrozen(firstProject)).toBe(false);
+/**
+ * The recipes are one playable game, so they are verified by playing it.
+ *
+ * Every assertion below addresses the game the way a Player meets it — by the
+ * Labels on screen and the answers it gives — which is the same vocabulary the
+ * Testing guide teaches.
+ */
+/**
+ * Puts a selected Object back, which the vocabulary does not yet name.
+ *
+ * A Player deselects by clicking the drawer entry again; `selectObject`
+ * deliberately refuses to toggle, so a test that needs the other half of that
+ * toggle reaches for the Core Session input directly.
+ */
+function deselectObject(session: CoreSession, object: string): void {
+  session.hudInput({ type: "activate-inventory", object, action: "primary" });
+  session.steps(1);
+}
+
+test("the recipes are ordinary author-owned data, not Engine objects", () => {
+  expect(Object.isFrozen(project)).toBe(false);
   expect(Object.isFrozen(player)).toBe(false);
-  expect(Object.isFrozen(interactionScene)).toBe(false);
-  expect(Object.isFrozen(exampleHUDTheme)).toBe(false);
-  expect(Object.isFrozen(key)).toBe(false);
-  expect(Object.isFrozen(greeting)).toBe(false);
-  expect(successfulUse.verb).toBe("use");
-  expect(restoreStoredProject).toBeInstanceOf(Function);
-
-  expect(openWhenReady.operations).toEqual([
-    { type: "set-variable", variable: "doorOpen", value: true },
-  ]);
+  expect(Object.isFrozen(lantern)).toBe(false);
+  expect(project.playerCharacter).toBe("player");
 });
 
-test("the Character recipe authors distinct role Animations for every Facing", () => {
-  const appearance = player.appearances.workwear;
-  const facings = ["left", "right", "front", "back"];
+test("the quay offers only what the Player can reach at the start", () => {
+  const session = startCoreSession(project);
 
-  expect(appearance.roles).toEqual({
-    default: "idle",
-    speaking: "speaking",
-    walking: "walking",
-  });
-  for (const animation of ["idle", "speaking", "walking"] as const) {
-    expect(Object.keys(appearance.animations[animation].sheets)).toEqual(facings);
-  }
-  expect(appearance.animations.idle.sheets.left.image).not.toEqual(
-    appearance.animations.idle.sheets.right.image,
-  );
+  // The storeroom door is withdrawn: its Passage waits on a lit lantern.
+  expect([...revealedNouns(session)].sort()).toEqual(["Brazier", "Keeper", "Lantern", "Notice"]);
 });
 
-test("the Interaction, Sequence, and Inventory recipes compose as typed projects", () => {
-  const plainScene = ({
-    background: "scene.png",
-    walkableRegion: [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 40 }, { x: 0, y: 40 }],
-    hotspots: [{
-      target: { kind: "background" },
-      area: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 0, y: 10 }],
-      approach: { groundPoint: { x: 5, y: 5 }, facing: "front" },
-      noun: ({
-        labels: [{ text: "Plain room" }],
-        preferredVerbs: [{ verb: "look-at" }],
-        cases: [{ verb: "look-at", response: { text: "A plain room." } }, successfulUse],
-      } satisfies NounDefinition),
-    }],
-  } satisfies SceneDefinition);
-  const projects = [
-    ({
-      identity: "recipe.interaction",
-      version: "1",
-      logicalResolution: { width: 100, height: 100 },
-      scenes: { opening: interactionScene },
-      characters: { host: interactionHost },
-      objects: { key: interactionKey },
-      variables: { doorOpen: false },
-      hudTheme: exampleHUDTheme,
-      commandLexicon: englishCommandLexicon,
-      commandFallbacks: englishCommandFallbacks,
-      initialScene: "opening",
-    } satisfies GameProject),
-    ({
-      identity: "recipe.sequence",
-      version: "1",
-      logicalResolution: { width: 100, height: 100 },
-      scenes: { opening: plainScene },
-      characters: { player: sequencePlayer },
-      playerCharacter: "player",
-      sequences: { greeting },
-      variables: { ready: true },
-      objects: { key },
-      commandLexicon: englishCommandLexicon,
-      commandFallbacks: englishCommandFallbacks,
-      initialScene: "opening",
-    } satisfies GameProject),
-    ({
-      identity: "recipe.inventory",
-      version: "1",
-      logicalResolution: { width: 100, height: 100 },
-      scenes: { opening: plainScene },
-      objects: { key },
-      commandLexicon: englishCommandLexicon,
-      commandFallbacks: englishCommandFallbacks,
-      initialScene: "opening",
-    } satisfies GameProject),
-  ];
-  expect(projects.every((project) => !Object.isFrozen(project))).toBe(true);
+test("the lantern is collected, lit, and opens the storeroom", () => {
+  const session = startCoreSession(project);
+
+  activateNoun(session, "Lantern");
+  pressOn(session);
+  expect(carriedObjects(session)).toEqual(["lantern"]);
+
+  selectObject(session, "lantern");
+  activateNoun(session, "Brazier");
+  pressOn(session);
+
+  expect(session.snapshot().variables.lanternLit).toBe(true);
+  expect([...revealedNouns(session)]).toContain("Storeroom door");
 });
 
-test("the Save recipe executes its invalid-data result path", async () => {
-  const result = await restoreStoredProject(firstProject, null!, {});
-  expect(result.ok).toBe(false);
-  if (!result.ok) expect(result.diagnostics.length).toBeGreaterThan(0);
+test("the first arrival plays its Sequence and the ledger ends the game", () => {
+  const session = startCoreSession(project);
+
+  activateNoun(session, "Lantern");
+  pressOn(session);
+  selectObject(session, "lantern");
+  activateNoun(session, "Brazier");
+  pressOn(session);
+
+  deselectObject(session, "lantern");
+  activateNoun(session, "Storeroom door");
+  stepUntil(session, "the Player crosses into the storeroom",
+    () => session.snapshot().currentScene === "storeroom");
+
+  // The arrival Sequence narrates, speaks, and then waits on its Choice.
+  advanceToLine(session, "kept this place in order");
+  chooseAlternative(session, "Say nothing");
+  pressOn(session);
+  expect(session.snapshot().variables.sawTheStoreroom).toBe(true);
+
+  activateNoun(session, "Ledger");
+  advanceToLine(session, "Every crossing since the spring");
+  expect(session.snapshot().variables.readTheLedger).toBe(true);
+
+  activateNoun(session, "Ledger");
+  pressOn(session);
+  expect(presentedDetailView(session)).toBe("notice");
+});
+
+test("the Keeper answers differently once the lantern is carried", () => {
+  const session = startCoreSession(project);
+
+  activateNoun(session, "Keeper");
+  stepUntil(session, "the Keeper speaks", () => presentedLine(session) !== null);
+  expect(presentedLine(session)?.text).toContain("under the crate");
 });

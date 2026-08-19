@@ -109,10 +109,10 @@ The complete list is in [Diagnostics](../diagnostics.md).
 
 ## Example
 
-The harbour of the example game is a Scene wider than the viewport, with a
-Walkable Region along the quay, two depth stops, one Passage to the cloister,
-and the Entrance the cloister sends the Player back through. Its compiled
-source is [`first-scene.ts`](../recipes/first-scene.ts).
+The quay in [`world.ts`](../recipes/world.ts) is `1920×720` behind a `1280×720`
+viewport, so the Camera follows and clamps. Its Walkable Region runs the length
+of the quay, two depth stops carry the Perspective Scale, and its Passage to the
+storeroom stays withdrawn until the lantern is lit.
 
 ## See also
 

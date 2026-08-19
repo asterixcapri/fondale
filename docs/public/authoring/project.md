@@ -110,8 +110,9 @@ Families are `definition`, `reference`, `state`, `save`, `asset`, and
 
 ## Example
 
-The example game declares its project in `example/project.ts` and starts it
-from `example/main.ts`.
+The whole example is assembled in [`game.ts`](../recipes/game.ts): two Scenes,
+two Characters, one Object, two Sequences, a Detail View, the Command Lexicon
+and the theme, handed to `startGame`.
 
 ## See also
 

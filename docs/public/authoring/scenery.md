@@ -91,8 +91,9 @@ per Hotspot.
 
 ## Example
 
-The moored boat in the example harbour has two Appearances and changes to the
-second when the Player cuts its line.
+The crate in [`world.ts`](../recipes/world.ts) is Scenery: it has a Baseline, so
+the Player passes in front of it or behind it depending on where they stand, and
+the lantern lies at its foot.
 
 ## See also
 

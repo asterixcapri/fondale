@@ -148,9 +148,9 @@ strategies to responses, with no network, model or credential.
 
 ## Example
 
-The example game's harbour keeper answers openly about the drifting boat,
-guards who cut its line behind Trust, and tells an authored lie about the wind
-until the Player earns the truth.
+The recipe game answers with authored Command Cases rather than a Dialogue
+Provider, so it declares no Character dialogue profile. For a game that does,
+see the Dialogue Provider protocol and the fields listed above.
 
 ## See also
 

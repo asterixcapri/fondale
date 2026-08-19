@@ -132,8 +132,10 @@ Arrival rules never fire on startup or restoration: those are not arrivals.
 
 ## Example
 
-The example game's arrival Sequence walks the Player onto the quay while the
-Camera pans, then commits the fact that the boat was seen.
+The first arrival in the storeroom, in
+[`sequences.ts`](../recipes/sequences.ts), narrates, speaks a Line, offers a
+Choice, walks the Player with a Direction Step, and declares the Skip Outcome a
+skip must still commit.
 
 ## See also
 

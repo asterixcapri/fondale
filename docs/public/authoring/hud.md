@@ -81,8 +81,9 @@ leads before they take it.
 
 ## Example
 
-The example game themes the HUD in the warm palette of its harbour and gives
-each Character a distinct speech colour.
+[`commands.ts`](../recipes/commands.ts) supplies the Lexicon, the global
+fallbacks, and a theme that gives the Player Character and the Keeper distinct
+speech colours.
 
 ## See also
 

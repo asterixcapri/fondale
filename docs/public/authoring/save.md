@@ -84,8 +84,9 @@ Ending.
 
 ## Example
 
-The example game saves after every committed operation and offers Continue on
-its title screen.
+[`save.ts`](../recipes/save.ts) stores a snapshot as ordinary JSON and hands it
+back to `startGame` as `unknown`, which is exactly how the browser proof restores
+the game mid-play.
 
 ## See also
 

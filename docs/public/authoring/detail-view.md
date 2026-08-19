@@ -92,8 +92,9 @@ its Noun locally. Where areas overlap, the later Hotspot wins the hit test. A
 
 ## Example
 
-The example game ends on a Detail View of the open sea, whose one Hotspot still
-answers when the Player looks at it.
+The notice in [`notice.ts`](../recipes/notice.ts) is presented by a `look-at` on
+the quay, carries one Hotspot of its own, and is the same Detail View the ledger
+ends the game on.
 
 ## See also
 

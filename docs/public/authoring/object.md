@@ -81,8 +81,9 @@ pixel for pixel — only to be recognisably the same thing.
 
 ## Example
 
-The example game's flask is collected from the quay, used on a seized
-mechanism, and consumed by that use.
+The lantern in [`lantern.ts`](../recipes/lantern.ts) is picked up from the quay,
+lit against the brazier — which swaps its Appearance — and carried into the
+storeroom. One Noun answers for it in the world and in the Inventory alike.
 
 ## See also
 

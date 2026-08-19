@@ -125,8 +125,9 @@ and repeat the play-size check at every reachable Perspective Scale.
 
 ## Example
 
-The example game's Player Character has one Appearance with idle, speaking and
-walking Animations in all four Facings.
+[`characters.ts`](../recipes/characters.ts) authors the Player Character and the
+Keeper with the same construction: four Facings, one stable Visual Anchor, and a
+figure 240 pixels tall inside a `256×256` cell — a third of the frame.
 
 ## See also
 

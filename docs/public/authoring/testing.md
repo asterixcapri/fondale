@@ -108,9 +108,9 @@ run in an ordinary test runner with no browser.
 
 ## Example
 
-The example game has one spec per Scene package asserting the Nouns it offers
-and the Appearances it swaps, plus specs for the authored puzzle chains that
-run through them.
+[`test/recipes.spec.ts`](../recipes/game.ts) plays the recipe game from the
+quay to the Ending using only Labels a Player can read: collect the lantern,
+light it, cross into the storeroom, answer the Choice, and reach the notice.
 
 ## See also
 

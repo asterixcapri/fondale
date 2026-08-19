@@ -181,15 +181,16 @@ for (const file of docs) {
   }
 }
 
+// The recipes are one playable game, so each required file is a part of it.
 const requiredRecipes = [
-  "first-scene.ts",
-  "character-walking.ts",
-  "interaction.ts",
-  "sequence.ts",
-  "inventory.ts",
-  "save-snapshot.ts",
-  "command-case.ts",
-  "hud-theme.ts",
+  "game.ts",
+  "world.ts",
+  "characters.ts",
+  "lantern.ts",
+  "sequences.ts",
+  "notice.ts",
+  "commands.ts",
+  "save.ts",
 ];
 for (const recipe of requiredRecipes) {
   if (!existsSync(join(repository, "docs/public/recipes", recipe))) {
@@ -198,26 +199,32 @@ for (const recipe of requiredRecipes) {
 }
 
 const recipeTest = readFileSync(join(repository, "test/recipes.spec.ts"), "utf8");
+if (!recipeTest.includes("docs/public/recipes/game")) {
+  throw new Error("The packaged-recipe test must play the assembled recipe game.");
+}
+// Each recipe has to be part of that one game, not a file that merely compiles
+// beside it: either the game imports it, or it imports the game.
+const assembledGame = readFileSync(join(repository, "docs/public/recipes/game.ts"), "utf8");
 for (const recipe of requiredRecipes) {
   const source = readFileSync(join(repository, "docs/public/recipes", recipe), "utf8");
-  if (!source.includes('from "@asterixcapri/fondale"') || source.includes("/src/")) {
+  const importsPackage = source.includes('from "@asterixcapri/fondale"');
+  if (!importsPackage || source.includes("/src/")) {
     throw new Error(`Recipe must consume only the distributable package root: ${recipe}`);
   }
-  if (!recipeTest.includes(`docs/public/recipes/${recipe.replace(/\.ts$/, "")}`)) {
-    throw new Error(`Recipe is not executed by the packaged-recipe test: ${recipe}`);
+  const part = recipe.replace(/\.ts$/, "");
+  if (part !== "game" && !assembledGame.includes(`from "./${part}"`) &&
+      !source.includes('from "./game"')) {
+    throw new Error(`Recipe is not part of the assembled recipe game: ${recipe}`);
   }
 }
 const browserRecipeProof = ["test/fixtures/recipes.ts", "test/recipes-browser.spec.ts"]
   .map((path) => readFileSync(join(repository, path), "utf8"))
   .join("\n");
 for (const requiredBehavior of [
-  "interactionScene",
-  "greeting",
-  "successfulUse",
+  "recipes/game",
   "snapshot: raw",
-  "Open Door",
-  "eligible branch",
-  "inventoryKey",
+  "Heavier than it looks",
+  "data-fondale-inventory-object=\"lantern\"",
 ]) {
   if (!browserRecipeProof.includes(requiredBehavior)) {
     throw new Error(`Packaged browser recipe proof is missing behavior: ${requiredBehavior}`);

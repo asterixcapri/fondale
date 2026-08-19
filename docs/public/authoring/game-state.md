@@ -86,8 +86,9 @@ Passages, Sequences and conditions read with no special casing.
 
 ## Example
 
-The example game frees a seized winch with one atomic group: the Variable, the
-Scenery Appearance, and the consumption of the oil.
+Lighting the lantern in [`world.ts`](../recipes/world.ts) commits one atomic
+group: the Variable that opens the storeroom Passage, and the Appearance change
+that shows the flame.
 
 ## See also
 

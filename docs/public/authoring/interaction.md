@@ -126,8 +126,9 @@ using the placeholders `{verb}`, `{noun}`, `{first}`, `{second}`.
 
 ## Example
 
-The example game's door answers `open` two ways depending on whether the Player
-carries the key, and refuses every other Verb through its own fallbacks.
+The brazier in [`world.ts`](../recipes/world.ts) answers `use` only when the
+lantern is the selected first Noun and is not already lit, and the lantern in
+[`lantern.ts`](../recipes/lantern.ts) changes its own Label once it burns.
 
 ## See also
 
