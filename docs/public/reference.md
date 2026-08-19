@@ -333,6 +333,18 @@ its current Scene; completion and skip restore Player following. World pointer
 input, Character speech, and revealed Hotspots are projected; Engine-owned HUD
 controls remain in viewport space.
 
+`startCoreSession` runs the same game with no renderer and no wall clock, and
+returns the `CoreSession` the browser adapter itself drives. It takes a Game
+Project, an optional low-level `dialogueProvider`, and an optional unknown
+`restored` Save Snapshot validated exactly as `startGame` validates one. A
+`CoreSession` accepts `CoreInput` — the pointer and keyboard intentions a Player
+produces — advances simulated time in fixed `steps`, reports `GameState` through
+`snapshot`, emits `CoreEffect` values through `takeEffects`, answers `hitTest`
+with a `CoreWorldTarget`, and presents HUD, world, camera, Detail View, Sequence,
+Conversation and Reflection. It draws nothing: presentation belongs to an
+adapter. A Game Project uses it to assert its own puzzles — a Fact learned, a
+Variable committed, a Hotspot withdrawn, an Ending reached — without a browser.
+
 `AuthoringError` contains stably ordered `AuthoringDiagnostic` values. Each has
 stable `code`, `family`, capability `owner`, `path`, `message`, optional
 `suggestion`, and optional `cause`. `AuthoringDiagnosticFamily` is definition,

@@ -33,9 +33,11 @@ import {
   type HUDPresentationContext,
 } from "../hud";
 import {
+  compileGameProject,
   getGameSessionCompositionView,
   type GameOperation,
   type CompiledGameProject,
+  type GameProject,
   type GameSessionGameProjectView,
 } from "../game-project";
 import {
@@ -227,6 +229,33 @@ export interface CoreSession {
   submitDialogue(playerInput: string): Promise<DialogueSubmissionResult>;
   submitReflection(playerInput: string): Promise<DialogueSubmissionResult>;
   stop(): void;
+}
+
+/**
+ * Starts a Game Project with no renderer and no wall clock.
+ *
+ * This is the seam the browser adapter drives itself: it translates pointer and
+ * keyboard events into these same inputs, advances this same simulated time, and
+ * paints these same presentations. A caller here is one more client of the seam,
+ * the one that reads Game State instead of drawing it.
+ */
+export function startCoreSession(
+  project: GameProject,
+  options: {
+    readonly dialogueProvider?: DialogueProvider;
+    /** A Save Snapshot to restore, validated before play resumes. */
+    readonly restored?: unknown;
+  } = {},
+): CoreSession {
+  const compilation = compileGameProject(project);
+  if (!compilation.ok) throw new AuthoringError(compilation.diagnostics);
+  const compiled = compilation.project;
+  if (options.restored === undefined) {
+    return createCoreSession(compiled, undefined, options.dialogueProvider);
+  }
+  const validation = createSave(compiled).validate(options.restored);
+  if (!validation.ok) throw new AuthoringError(validation.diagnostics);
+  return createCoreSession(compiled, validation.snapshot, options.dialogueProvider);
 }
 
 export function createCoreSession(

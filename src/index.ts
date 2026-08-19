@@ -128,3 +128,11 @@ export type {
   DialogueHttpResponse,
 } from "./browser/dialogue-http-protocol";
 export { type SaveSnapshot } from "./capabilities/save";
+export {
+  startCoreSession,
+  type CoreEffect,
+  type CoreInput,
+  type CoreSession,
+  type CoreWorldTarget,
+  type GameState,
+} from "./capabilities/game-session";
