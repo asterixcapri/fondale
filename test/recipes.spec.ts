@@ -68,8 +68,9 @@ test("the first arrival plays its Sequence and the ledger ends the game", () => 
   stepUntil(session, "the Player crosses into the storeroom",
     () => session.snapshot().currentScene === "storeroom");
 
-  // The arrival Sequence narrates, speaks, and then waits on its Choice.
-  advanceToLine(session, "kept this place in order");
+  // The arrival Sequence narrates and speaks, and pressOn stops at its Choice
+  // rather than pressing advance at something that is waiting for an answer.
+  pressOn(session);
   chooseAlternative(session, "Say nothing");
   pressOn(session);
   expect(session.snapshot().variables.sawTheStoreroom).toBe(true);

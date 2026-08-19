@@ -190,9 +190,12 @@ export function presentedDetailView(session: CoreSession): string | undefined {
  * Presses on through everything presented until play is idle again.
  *
  * This is the "and then they got on with it" of a suite: a test that is not
- * proving a particular Line does not have to name the beats it walks past. A
- * Conversation or Reflection stops it, because those wait for what to say next
- * rather than for permission to continue.
+ * proving a particular Line does not have to name the beats it walks past.
+ *
+ * Anything waiting for what to say next stops it, rather than for permission to
+ * continue: a Conversation, a Reflection, and a Sequence Choice alike. Pressing
+ * advance at a Choice does nothing at all, so walking past one is not something
+ * a caller could have wanted — it is a caller who has to answer it.
  */
 export function pressOn(session: CoreSession, beats = 80): void {
   for (let beat = 0; beat < beats; beat += 1) {
@@ -203,6 +206,7 @@ export function pressOn(session: CoreSession, beats = 80): void {
       continue;
     }
     if (session.snapshot().activity === null && session.hud().narrative === null) return;
+    if (session.hud().narrative?.kind === "choice") return;
     if (session.conversation() !== null || session.reflection() !== null) return;
     advanceActivity(session);
   }

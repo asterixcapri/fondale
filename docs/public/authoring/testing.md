@@ -69,9 +69,10 @@ and a test that waits forever reports nothing.
 `atRest` reports that state directly — a queued input the session has yet to
 handle appears in no other way.
 
-`pressOn` advances through everything presented until play is idle, stopping at
-a Conversation or Reflection, which wait for what to say rather than for
-permission to continue. `advanceToLine` presses on until a Line contains the
+`pressOn` advances through everything presented until play is idle. It stops at
+anything waiting for what to say next — a Conversation, a Reflection, or a
+Sequence Choice — rather than for permission to continue, so a test answers it
+and presses on again. `advanceToLine` presses on until a Line contains the
 given substance, matched on substance rather than on a whole authored sentence.
 `stepUntil` advances until a condition holds.
 

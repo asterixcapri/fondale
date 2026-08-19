@@ -1,7 +1,7 @@
 import backgroundUrl from "./background.png";
 import responsiveHUDBackgroundUrl from "./responsive-hud-background.svg";
-import keyInventoryUrl from "../../docs/public/recipes/key-inventory-32.png";
-import keyUrl from "../../docs/public/recipes/key.png";
+import keyInventoryUrl from "./key-inventory-32.png";
+import keyUrl from "./key.png";
 import {
   type CharacterDefinition,
   type CommandLexicon,
