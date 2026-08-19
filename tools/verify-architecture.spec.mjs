@@ -24,8 +24,11 @@ let fixtureRoot;
 
 beforeEach(() => {
   fixtureRoot = mkdtempSync(join(tmpdir(), "fondale-architecture-"));
-  write("package.json", JSON.stringify({ exports: { ".": "./dist/index.js" } }));
+  write("package.json", JSON.stringify({
+    exports: { ".": "./dist/index.js", "./testing": "./dist/testing.js" },
+  }));
   write("src/index.ts", 'export * from "./capabilities/world";\n');
+  write("src/testing.ts", 'export * from "./capabilities/game-session";\n');
   write("src/vite-env.d.ts", '/// <reference types="vite/client" />\n');
   write("src/browser/start-game.ts", "export function startGame() {}\n");
   for (const owner of capabilityOwners) write(`src/capabilities/${owner}/index.ts`, "export {};\n");
@@ -73,13 +76,22 @@ test("rejects private capability imports from another capability or browser adap
   assert.match(result.stderr, /src\/browser\/start-game\.ts imports private world implementation/);
 });
 
-test("requires the package to expose only its public root entry point", () => {
-  write(
-    "package.json",
-    JSON.stringify({ exports: { ".": "./dist/index.js", "./world": "./dist/world.js" } }),
-  );
+test("requires the package to expose exactly its two declared entry points", () => {
+  write("package.json", JSON.stringify({
+    exports: {
+      ".": "./dist/index.js",
+      "./testing": "./dist/testing.js",
+      "./world": "./dist/world.js",
+    },
+  }));
 
-  assertVerifierFails("package.json must expose exactly the '.' public root entry point");
+  assertVerifierFails("package.json must expose exactly . and ./testing");
+});
+
+test("requires the testing entry point to be declared", () => {
+  write("package.json", JSON.stringify({ exports: { ".": "./dist/index.js" } }));
+
+  assertVerifierFails("package.json must expose exactly . and ./testing");
 });
 
 test("rejects a private capability import used only as a type", () => {

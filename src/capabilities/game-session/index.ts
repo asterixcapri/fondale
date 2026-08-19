@@ -206,6 +206,21 @@ export interface CoreContinuationSnapshot {
 export interface CoreSession {
   input(input: CoreInput): void;
   steps(count?: number): void;
+  /**
+   * Whether advancing time further would change anything by itself.
+   *
+   * Play is at rest when nothing resolves on its own any more: no walk in
+   * flight, no queued input still to be handled, no Sequence direction running.
+   * Anything presented — a Line, a Narration, a choice, a Conversation, a
+   * Reflection — is rest: the game has done its part and waits for the Player.
+   *
+   * A Dialogue Turn awaiting its provider is rest too, because no amount of
+   * simulated time completes it: the caller awaits its Promise instead.
+   *
+   * It is a method because a queued input the session has yet to handle appears
+   * nowhere in Game State, so no caller can answer this for itself.
+   */
+  atRest(): boolean;
   snapshot(): GameState;
   effects(): readonly CoreEffect[];
   takeEffects(): readonly CoreEffect[];
@@ -327,6 +342,17 @@ export function createCoreSession(
       assertRunning();
       if (!Number.isInteger(count) || count < 0) throw new RangeError("steps must be non-negative");
       for (let index = 0; index < count && status === "running"; index += 1) step();
+    },
+    atRest() {
+      if (status !== "running") return true;
+      // A queued input has not been handled yet, and handling it is what turns
+      // an activation into its outcome.
+      if (inputs.length > 0 || dialogueCompletion || reflectionCompletion) return false;
+      const activity = state.activity;
+      if (activity === null) return true;
+      if (activity.type === "player-intent") return false;
+      if (activity.type === "sequence") return activity.active?.kind !== "direction";
+      return true;
     },
     snapshot() {
       return structuredClone(state);

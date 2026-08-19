@@ -333,8 +333,9 @@ its current Scene; completion and skip restore Player following. World pointer
 input, Character speech, and revealed Hotspots are projected; Engine-owned HUD
 controls remain in viewport space.
 
-`startCoreSession` runs the same game with no renderer and no wall clock, and
-returns the `CoreSession` the browser adapter itself drives. It takes a Game
+`@asterixcapri/fondale/testing` publishes `startCoreSession`, which runs the same
+game with no renderer and no wall clock and returns the `CoreSession` the browser
+adapter itself drives. It takes a Game
 Project, an optional low-level `dialogueProvider`, and an optional unknown
 `restored` Save Snapshot validated exactly as `startGame` validates one. A
 `CoreSession` accepts `CoreInput` — the pointer and keyboard intentions a Player
@@ -342,8 +343,33 @@ produces — advances simulated time in fixed `steps`, reports `GameState` throu
 `snapshot`, emits `CoreEffect` values through `takeEffects`, answers `hitTest`
 with a `CoreWorldTarget`, and presents HUD, world, camera, Detail View, Sequence,
 Conversation and Reflection. It draws nothing: presentation belongs to an
-adapter. A Game Project uses it to assert its own puzzles — a Fact learned, a
+adapter. A
+Game Project uses all of this to assert its own puzzles — a Fact learned, a
 Variable committed, a Hotspot withdrawn, an Ending reached — without a browser.
+
+`@asterixcapri/fondale/testing` is the second published entry point, and the only
+one a shipped game never imports: it drives a Core Session from a test. `CoreSession.atRest` reports
+whether advancing time further would change anything by itself — a queued input
+the session has yet to handle appears in no other way — and `settle` advances
+simulated time until it holds, failing rather than hanging.
+`activateNoun` activates the Noun carrying a Label, `primary` or `secondary`, and
+settles; `revealedNouns` lists the Labels currently reachable; `selectObject`
+selects a carried Object without toggling one already selected; `advanceActivity`
+advances whatever is presented; `chooseAlternative` answers the alternative that
+reads like the given text, whether a Conversation or a Sequence choice is
+offering it; `presentedLine` returns the `PresentedLine` a Player is reading —
+its `kind`, its `speaker`, its `text` and, for a choice, its `alternatives`.
+`skipSequence` skips the running Sequence and `leaveActivity` leaves an open
+Conversation or Reflection, both the way Escape does; `walkTo` walks the Player
+Character to a Scene Space point; `carriedObjects` and `presentedDetailView` read
+what is carried and which Detail View is presented. `pressOn` advances through
+everything presented until play is idle, stopping at a Conversation or
+Reflection, which wait for what to say rather than for permission to continue;
+`advanceToLine` presses on until a Line contains the given substance, matched on
+substance rather than on a whole authored sentence; `stepUntil` advances time
+until a condition holds; `ask` puts one free-form question to an open
+Conversation and returns the answer. Nothing here knows a game's story: authored
+routes belong to the game.
 
 `AuthoringError` contains stably ordered `AuthoringDiagnostic` values. Each has
 stable `code`, `family`, capability `owner`, `path`, `message`, optional

@@ -25,14 +25,20 @@ const packageExports = packageManifest.exports && typeof packageManifest.exports
   ? Object.keys(packageManifest.exports)
   : [];
 
-if (packageExports.length !== 1 || packageExports[0] !== ".") {
-  failures.push("package.json must expose exactly the '.' public root entry point.");
+// Two declared entry points, and no third. `.` is what a game imports to run;
+// `./testing` is what its tests import to drive one, so a shipped game carries
+// none of the driving vocabulary. See ADR 0027.
+const declaredEntryPoints = [".", "./testing"];
+if (packageExports.length !== declaredEntryPoints.length ||
+    declaredEntryPoints.some((entry) => !packageExports.includes(entry))) {
+  failures.push(`package.json must expose exactly ${declaredEntryPoints.join(" and ")}.`);
 }
 
 for (const file of sourceFiles(sourceRoot)) {
   const sourcePath = relative(sourceRoot, file);
   const sourceOwner = sourcePath.split("/")[0];
-  const isRootContract = sourcePath === "index.ts" || sourcePath === "vite-env.d.ts";
+  const isRootContract = sourcePath === "index.ts" || sourcePath === "testing.ts" ||
+    sourcePath === "vite-env.d.ts";
   if (!isRootContract && sourceOwner !== "capabilities" && sourceOwner !== "browser") {
     failures.push(`${relative(root, file)} has no declared production owner.`);
   }

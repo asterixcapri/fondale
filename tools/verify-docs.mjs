@@ -6,17 +6,17 @@ import { findObsoleteAuthoringContract } from "./obsolete-authoring-contract.mjs
 const repository = resolve(import.meta.dirname, "..");
 const referencePath = join(repository, "docs/public/reference.md");
 const reference = readFileSync(referencePath, "utf8");
-const entryPath = join(repository, "src/index.ts");
-const entrySource = ts.createSourceFile(
-  entryPath,
-  readFileSync(entryPath, "utf8"),
-  ts.ScriptTarget.Latest,
-  true,
-);
-// Read the entry point with the compiler rather than a name pattern. A pattern
+// Read the entry points with the compiler rather than a name pattern. A pattern
 // has to guess which identifiers are exports, and the obvious guess — anything
-// capitalised — silently lets every lower-case function through the gate.
-const publicNames = [...new Set(exportedNames(entrySource))];
+// capitalised — silently lets every lower-case function through the gate. Both
+// declared entry points are read: a public name is public wherever it is
+// published from.
+const publicNames = [...new Set(["src/index.ts", "src/testing.ts"].flatMap((relativePath) => {
+  const path = join(repository, relativePath);
+  return exportedNames(
+    ts.createSourceFile(path, readFileSync(path, "utf8"), ts.ScriptTarget.Latest, true),
+  );
+}))];
 const undocumented = publicNames.filter((name) => !reference.includes(`\`${name}\``));
 if (undocumented.length > 0) {
   throw new Error(`Public exports missing from reference.md: ${undocumented.join(", ")}`);
