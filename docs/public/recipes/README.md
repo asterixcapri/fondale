@@ -8,6 +8,23 @@ They compile against the distributable package and are played by
 `test/recipes.spec.ts` and `test/recipes-browser.spec.ts` on every build, so an
 example that stops working stops the build.
 
+## Playing it
+
+From a checkout of the Engine, start the development server and open
+`/test/fixtures/recipes.html`. The whole game is four steps:
+
+1. **Click the pale shape at the foot of the crate.** That is the lantern. The
+   Player walks to it and picks it up: `Heavier than it looks.`
+2. **Open the Inventory** — the bag, or `I` — and click the lantern to hold it.
+3. **Click the brazier**, the patch to the right of centre. The wick catches,
+   the lantern changes Appearance, and the storeroom door appears on the right
+   of the quay.
+4. **Click the lantern in the drawer again to put it back**, then click the
+   storeroom door. The Scene changes, the arrival Sequence plays, and a Choice
+   waits. Inside, look at the ledger, then take it: the game ends on the notice.
+
+Hold `Tab` at any point to see what is reachable.
+
 - [The Game Project, assembled](game.ts) — every part, and `startGame`
 - [Two Scenes](world.ts) — a panoramic quay and a storeroom, with their
   geometry, Hotspots, Entrances and a conditional Passage
