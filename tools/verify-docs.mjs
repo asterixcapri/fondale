@@ -6,10 +6,17 @@ import { findObsoleteAuthoringContract } from "./obsolete-authoring-contract.mjs
 const repository = resolve(import.meta.dirname, "..");
 const referencePath = join(repository, "docs/public/reference.md");
 const reference = readFileSync(referencePath, "utf8");
-const entry = readFileSync(join(repository, "src/index.ts"), "utf8");
-const publicNames = [...entry.matchAll(/\b(?:type\s+)?([A-Z]\w+|startGame),?/g)]
-  .map((match) => match[1])
-  .filter((name, index, names) => names.indexOf(name) === index);
+const entryPath = join(repository, "src/index.ts");
+const entrySource = ts.createSourceFile(
+  entryPath,
+  readFileSync(entryPath, "utf8"),
+  ts.ScriptTarget.Latest,
+  true,
+);
+// Read the entry point with the compiler rather than a name pattern. A pattern
+// has to guess which identifiers are exports, and the obvious guess — anything
+// capitalised — silently lets every lower-case function through the gate.
+const publicNames = [...new Set(exportedNames(entrySource))];
 const undocumented = publicNames.filter((name) => !reference.includes(`\`${name}\``));
 if (undocumented.length > 0) {
   throw new Error(`Public exports missing from reference.md: ${undocumented.join(", ")}`);
@@ -199,6 +206,29 @@ function markdownFiles(directory) {
     const path = join(directory, name);
     return statSync(path).isDirectory() ? markdownFiles(path) : path.endsWith(".md") ? [path] : [];
   });
+}
+
+/** Every name `src/index.ts` exports, whether re-exported, declared or aliased. */
+function exportedNames(source) {
+  const names = [];
+  for (const statement of source.statements) {
+    if (ts.isExportDeclaration(statement)) {
+      const bindings = statement.exportClause;
+      if (bindings && ts.isNamedExports(bindings)) {
+        for (const element of bindings.elements) names.push(element.name.text);
+      }
+      continue;
+    }
+    if (!statement.modifiers?.some(({ kind }) => kind === ts.SyntaxKind.ExportKeyword)) continue;
+    if (ts.isVariableStatement(statement)) {
+      for (const declaration of statement.declarationList.declarations) {
+        if (ts.isIdentifier(declaration.name)) names.push(declaration.name.text);
+      }
+      continue;
+    }
+    if (statement.name && ts.isIdentifier(statement.name)) names.push(statement.name.text);
+  }
+  return names;
 }
 
 function hasInternalTag(node) {
