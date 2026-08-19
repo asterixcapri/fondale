@@ -8,12 +8,13 @@ describe; Hotspots retain only the declarative target identifier.
 
 Install it with `npm install @asterixcapri/fondale`, then follow the
 [quick start](docs/public/quick-start.md). The package includes the
-[concept guide](docs/public/concepts.md),
-[Game Project authoring guide](docs/public/game-authoring.md),
+[documentation index](docs/public/README.md), one
+[authoring guide per subject](docs/public/README.md#build-a-game), the
+[vocabulary](docs/public/vocabulary.md),
 [recipes](docs/public/recipes/README.md),
-[public reference](docs/public/reference.md), and exact
-[Support Baseline](docs/public/support-baseline.md). Authors upgrading from the
-previous alpha should start with the [0.4 migration guide](docs/public/migration-0.4.md).
+[public reference](docs/public/reference.md),
+[diagnostics](docs/public/diagnostics.md), and exact
+[Support Baseline](docs/public/support-baseline.md).
 Maintainers and new contributors can explore the complete capability-owned flow in
 the self-contained Italian [Engine architecture map](docs/engine-architecture.html).
 

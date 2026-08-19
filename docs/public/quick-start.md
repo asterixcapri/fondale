@@ -48,5 +48,5 @@ requires current desktop Chrome with WebGL and a
 target not owned by another Game Session. Failures are reported as aggregated
 `AuthoringError` diagnostics and leave the target clean.
 
-Continue with the [concept guide](concepts.md), focused [recipes](recipes/README.md),
+Continue with the [vocabulary](vocabulary.md), focused [recipes](recipes/README.md),
 and [public reference](reference.md).

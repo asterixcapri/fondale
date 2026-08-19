@@ -14,7 +14,7 @@ problem.
 ### 1. Inspect the project and the existing Scene
 
 Read the Game Project, `CONTEXT.md`, and the current Fondale Scene types before
-authoring. Also inspect `docs/public/game-authoring.md`,
+authoring. Also inspect `docs/public/authoring/scene.md`,
 `docs/public/recipes/first-scene.ts`, adjacent Scene modules, existing Art
 Masters, and any saved generation prompts that bear on the location. Read
 `docs/agents/visual-direction.md` and

@@ -14,7 +14,7 @@
 Use the current repository as the schema source of truth. Read `CONTEXT.md` for
 the ubiquitous language and inspect the exported Scene interfaces before
 writing definitions; do not rely on cached field lists in this reference.
-Use `docs/public/game-authoring.md` and `docs/public/recipes/first-scene.ts` for
+Use `docs/public/authoring/scene.md` and `docs/public/recipes/first-scene.ts` for
 public authoring patterns. Reuse the target Game Project's adjacent Scene
 modules, `art/scenes/` layout, and saved source or prompt notes as local visual
 and packaging conventions.

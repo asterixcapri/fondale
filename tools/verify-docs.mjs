@@ -95,7 +95,7 @@ for (const invariant of [
 
 const docs = [join(repository, "README.md"), ...markdownFiles(join(repository, "docs/public"))];
 const characterAuthoringGuide = readFileSync(
-  join(repository, "docs/public/game-authoring.md"),
+  join(repository, "docs/public/authoring/character.md"),
   "utf8",
 );
 for (const [description, pattern] of [

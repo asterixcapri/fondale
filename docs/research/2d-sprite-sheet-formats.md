@@ -198,7 +198,7 @@ Fondale adotta deliberatamente un formato runtime più stretto:
 Questi vincoli sono definiti in
 [`src/capabilities/animation/index.ts`](../../src/capabilities/animation/index.ts)
 e descritti nella
-[`Game Authoring Guide`](../public/game-authoring.md#four-facing-character-artwork).
+[`Character authoring guide`](../public/authoring/character.md).
 Il browser divide oggi esclusivamente la larghezza dell'immagine per `count` e
 crea rettangoli lungo `y = 0`; non legge righe, colonne o un JSON atlas
 ([`src/browser/assets.ts`](../../src/browser/assets.ts)). Non c'è invece alcun
