@@ -1,151 +1,53 @@
 # Public reference
 
 Every public symbol is imported from `@asterixcapri/fondale`; deep imports are
-not supported. This is the normative Fondale 0.4 alpha contract. The npm
-package version is `0.4.0`; it is independent from an Author's Project Version
-and from Fondale's Save Snapshot format version.
+not supported. The one other entry point is `@asterixcapri/fondale/testing`,
+which a shipped game never imports. This is the normative Fondale 0.4 alpha
+contract. The npm package version is `0.4.0`; it is independent from an
+Author's Project Version and from Fondale's Save Snapshot format version.
 
-## Commands and HUD
+This file is the exhaustive contract. Read it to check an exact allowed value
+or invariant; read the [authoring guides](README.md#build-a-game) to learn how
+to build the thing it describes. Every stable diagnostic code is listed in
+[Diagnostics](diagnostics.md).
 
-`commandVerbs` lists the semantic Command actions: `open`, `pick-up`, `push`,
-`close`, `look-at`, `pull`, `give`, `talk-to`, `use`. `CommandVerb` is that union and
-`Verb` also includes implicit `walk-to`.
+## Entry points
 
-`NounDefinition` describes `labels` and
-`preferredVerbs` are ordered conditional variants with exactly one
-unconditional final fallback. Optional `secondaryVerbs` and `objectVerbs` use
-the same conditional contract. They advertise the right-button action at rest
-and the primary action when an Inventory Object is selected, respectively;
-Selected Object Verb defaults to Use. `cases` are ordered `CommandCase` values. Give is
-binary, Use may be unary or binary, and all other visible verbs are unary. A
-case may provide exactly one textual outcome: a direct Character `line`, a
-neutral `CommandResponse`, or a `sequence`. Allowed `GameOperation` values may
-accompany that outcome. `fallbacks` map a Verb to a local `CommandFallback`.
+`startGame` compiles an isolated project snapshot, validates any untrusted Save
+Snapshot, then resolves to a `GameSession` after assets validate, WebGL starts
+and the first frame is drawn. `StartGameOptions` contains an unowned `target`,
+an optional unknown `snapshot`, an ordinary `dialogueServerUrl`, and an
+alternative low-level `dialogueProvider`; a Game Project with a Dialogue Profile
+requires exactly one connection form. `GameSession` exposes
+`createSaveSnapshot`, `getStatus`, `getDiagnostics`, and an idempotent terminal
+`stop`. See [Project](authoring/project.md).
 
-`CommandLexicon` declares all nine semantic Verb
-labels, localized `inventory` `select`/`deselect` phrases, plus explicit `unary`, `give`, and `use` sentence patterns. The required
-placeholders are `{verb}`, `{noun}`, `{first}`, and `{second}` as appropriate.
-Startup rejects Nouns without a lexicon and rejects any complete Command
-that lacks a specific case, local fallback, or response-only global fallback.
+`SaveSnapshot` records format version, Project Identity, Project Version and
+canonical state. Stored values are passed as `unknown` and validated before any
+browser effect. Camera position, hover, pointer position and Player Preferences
+are not saved. See [Save](authoring/save.md).
 
-`HUDTheme` supplies one local font,
-six CSS-hex colours, HUD `opacity`, `maxSpeechWidth`, five directional cursor
-assets, and Character-keyed `speechColors`. `PassageDirection` is `left`,
-`right`, `up`, `down`, or `enter`. Theme data styles the stable Engine-owned
-contextual prompts, Inventory drawer and speech; it cannot change their
-controls or structure.
+`startCoreSession` runs the same game with no renderer and no wall clock,
+returning the `CoreSession` the browser adapter itself drives. A `CoreSession`
+accepts `CoreInput`, advances simulated time in fixed `steps`, reports
+`GameState` through `snapshot`, emits `CoreEffect` values through `takeEffects`,
+answers `hitTest` with a `CoreWorldTarget`, and presents HUD, world, camera,
+Detail View, Sequence, Conversation and Reflection. It draws nothing.
+`dialogueInputMaxLength` (500) bounds one turn of Player speech. See
+[Testing](authoring/testing.md).
 
-## Definitions
+`AuthoringError` contains stably ordered `AuthoringDiagnostic` values. Each has
+a stable `code`, a `family`, a capability `owner`, an author-facing `path`, a
+`message`, and optional `suggestion` and `cause`. `AuthoringDiagnosticFamily` is
+definition, reference, state, save, asset, or environment.
+`AuthoringDiagnosticOwner` identifies the capability or browser adapter
+responsible for the rule.
 
-`SceneDefinition` describes a Scene with a PNG
-`background`, optional `size`, finite simple `walkableRegion`, optional `perspectiveScale`,
-named Scenery, ordered Hotspots, named Entrances, and ordered Passages.
-Omission means scale `1`. A Hotspot requires `target`, polygon `area`,
-`approach`, and optional `when`. The target discriminates ownership: a
-Background Hotspot requires a local `noun`; Character, Object, and Scenery
-Hotspots reject `noun` and resolve the target owner's Noun at use time. A
-Passage additionally requires its own Noun,
-`PassageDirection`, and a destination Scene/Entrance. The Scene has no region
-reserved for the HUD; authored geometry may use the complete Scene Size.
-Scene Size has positive-integer width and height. During startup compilation, omission
-defaults Scene Size to Logical Resolution and every declared axis must be at
-least as large as the corresponding viewport axis. The Background must exactly
-match the resolved Scene Size; its startup diagnostic reports actual and
-expected dimensions.
+## Dialogue Provider protocol
 
-`DetailViewDefinition` describes one Detail View presented in place of the
-world: an `image` that must match the Logical Resolution exactly, and ordered
-`hotspots`. A
-`DetailViewHotspotDefinition` requires a polygon `area` in Logical Resolution
-coordinates, its own local `noun`, and an optional `when`; it accepts no
-Approach Point, and a Detail View accepts no Baseline, Perspective Scale or
-Walkable Region, because nothing walks inside one. Registry keys of the
-optional `detailViews` registry are identities. A `present-detail-view`
-Game Operation names one of them and a `dismiss-detail-view` Game Operation
-returns the Player to the world; both may come from a Command Case, a Sequence
-or any other authored operation group. At most one Detail View is presented at
-a time, so presenting another replaces it rather than stacking. While one is
-presented the Engine draws it instead of the Scene and draws no Character, its
-Hotspots advertise their phrases exactly as Scene Hotspots do, a Command
-against one resolves immediately with no movement stage, and the Inventory
-remains reachable. A Detail View Hotspot carries an ordinary Noun Definition,
-so its Command Cases answer with a Line or a Command Response, run Game
-Operations, start a Sequence, and accept a selected Inventory Object with the
-same first-Noun semantics a Scene Hotspot uses; `when` withdraws a Hotspot
-whose condition stops holding, and an unsupported combination answers authored
-feedback and commits nothing. The presented Detail View is committed Game
-State recorded as `detailView` in the Save Snapshot; the Player Character
-keeps its Scene, Ground Point and Facing throughout, and dismissal returns the
-world unchanged. The Continuation State carries it too, so a reload returns to
-the same close-up. Restoring into a presented Detail View is not an arrival
-and starts no arrival Sequence. A stored Detail View the Game Project no
-longer declares is refused during validation with `save.state.detail-view`.
-
-An `end-game` Game Operation names the Detail View a Game Session ends on. It
-presents that Detail View and concludes the Game Session: whatever activity was
-running stops, the HUD withdraws entirely, and no further Command, Sequence
-advance or movement is accepted. The Ending carries no image of its own, so the
-closing Detail View keeps its ordinary Hotspots, and a Game Project may author
-as many Endings as it has outcomes, each closing on its own Detail View. The
-Ending is committed Game State recorded as `ended` beside `detailView` in the
-Save Snapshot, and the Continuation State carries it too, so reopening the
-browser resumes a finished game at its Ending rather than in the world;
-starting a new game leaves it behind. A stored Ending without a presented
-Detail View is refused during validation with `save.state.ending`.
-
-`CharacterDefinition` describes a persistent Character with initial Scene, Ground
-Point, Facing, Appearance, positive `movementSpeed`, optional Noun, optional
-`CharacterDialogueDefinition`, and named Appearances. Every Appearance owns named Animations and a required default
-Animation Role. Every Character Animation owns synchronized `left`, `right`,
-`front`, and `back` strips. The Engine selects the strip matching Facing and
-never mirrors authored pixels. The Player Character also requires a walking Role.
-
-`NarrativeFactDefinition` is a non-empty canonical `proposition` identified by
-its `narrativeFacts` registry key, with an optional `setsVariable` naming a
-declared Game Variable. When a Character learns that Narrative Fact the Engine
-sets the variable to `true` in the same commit as the learning: either both
-commit together or neither does. The variable is set only after Disclosure has
-authorised the Fact and before any verbalisation is spoken, so a Fact answered
-with a Cover Story, withheld, or belonging to a failed or cancelled Dialogue
-Turn leaves it untouched. The result is an ordinary Game Variable that
-Interaction Conditions, Hotspots, Passages, Sequences and alternative
-eligibility read with no special casing. `ClaimDefinition` is a non-canonical,
-non-empty `proposition` identified independently by its `claims` registry key.
-A `CharacterDialogueDefinition` contains the
-Character's initial Character Knowledge, directional Relationships and optional
-qualitative Dialogue State, portrayal profile and Conversation handoffs. A
-`ConversationHandoffDefinition` names an authored condition, one Sequence and
-an explicit `close` or `resume` result. A Conversation presents its authored
-`alternatives` and its free-form input field together, for its whole duration.
-Each `ConversationAlternativeDefinition` declares its displayed `text`, an
-optional eligibility condition, an optional `spoken` flag (default true), the
-exact `response` the Character gives, and optional `operations` committed
-atomically with the selection. An alternative may instead — or additionally —
-name a `sequence` with an explicit `close` or `resume` outcome: that Sequence
-becomes the dominant Game Activity, with its own Lines, Choices, timing, skip
-behaviour and direction, and the free-form input field is not presented while
-it plays. A resumed Conversation re-evaluates alternative eligibility against
-the Game State the Sequence left behind. Eligibility is evaluated against the
-latest committed Game State; ineligible alternatives are hidden rather than
-presented as unavailable, and at most six may be eligible at once. Selecting
-one produces the authored wording without reaching a Dialogue Provider. An
-alternative declaring `once` is consumed by the selection that asks it and is
-never presented again; every other alternative stays repeatable for as long as
-it remains eligible, as a Choice alternative does. Consumption is committed by
-a `ConsumeConversationAlternativeOperation` in the same atomic commit as the
-selection's own Game Operations, is canonical Game State, and validates and
-restores exactly in a Save Snapshot. It is independent of eligibility: an
-alternative may be hidden by its condition, consumed, or both. Every
-`CharacterKnowledgeDefinition` refers to one fact through `factId` and declares
-`open`, `guarded`, or `secret` Disclosure. Guarded facts require minimum Trust
-or a boolean Game Variable; secret facts always require an explicit Game
-Variable unlock. Repeated references are invalid. A `CoverStoryDefinition`
-associates one guarded or secret known fact with one declared Claim. Fondale
-copies Character Knowledge, Relationships and Dialogue State into independent
-Game State; committed `Testimony` remembers speaker, listener and Claim ID
-without storing generated wording or treating the Claim as truth.
-
-## Knowledge-Driven Dialogue
+How the Engine talks to a Dialogue Provider, and what a provider may and may
+not decide. For authoring Character Knowledge, Disclosure, Cover Stories and
+Conversations, see [Dialogue](authoring/dialogue.md).
 
 For ordinary startup, a Game Project that declares at least one Character
 Dialogue Profile declares a non-empty project-level `narrativeContext` and
@@ -304,79 +206,6 @@ places a named Object in a Scene, or consumes the selected Object. Optional
 placement Appearance changes are validated by Animation, while World validates
 the destination in Scene Space.
 
-## Runtime and persistence
-
-`startGame` first compiles an isolated project snapshot and validates any
-untrusted Save Snapshot, then resolves to `GameSession` after assets validate,
-WebGL starts, and the first frame is drawn. `StartGameOptions` contains an
-unowned `target`, optional unknown `snapshot`, ordinary `dialogueServerUrl`,
-and alternative low-level `dialogueProvider`. A Game Project with a Dialogue
-Profile requires exactly one connection form. `GameSession` exposes
-`createSaveSnapshot`, `getStatus`, `getDiagnostics`, and idempotent terminal
-`stop`.
-
-A `SaveSnapshot` records format/project identity/project version and canonical
-state, including an incomplete Command, Character Knowledge and Testimony.
-Generated wording is not stored. Stored values are passed as `unknown`
-to `startGame`; malformed, incompatible or semantically invalid values reject
-with Save-owned diagnostics before browser effects.
-Camera position, hover, pointer position and Player Preferences are not saved.
-The ordinary browser adapter stores one Continuation State per Project
-Identity, pairing the latest compatible Save Snapshot with its provider
-session identity. Continue restores both sides of that association; New Game
-replaces it. Player Preferences remain in separate browser storage.
-On oversized Scenes the internal Camera normally follows the visible Player
-Character, eases ordinary walking, snaps on startup, restoration and Scene
-entry, clamps independently on both axes, and translates the world on whole
-logical pixels. A Sequence may cut, move, hold, or follow another subject in
-its current Scene; completion and skip restore Player following. World pointer
-input, Character speech, and revealed Hotspots are projected; Engine-owned HUD
-controls remain in viewport space.
-
-`@asterixcapri/fondale/testing` publishes `startCoreSession`, which runs the same
-game with no renderer and no wall clock and returns the `CoreSession` the browser
-adapter itself drives. It takes a Game
-Project, an optional low-level `dialogueProvider`, and an optional unknown
-`restored` Save Snapshot validated exactly as `startGame` validates one. A
-`CoreSession` accepts `CoreInput` — the pointer and keyboard intentions a Player
-produces — advances simulated time in fixed `steps`, reports `GameState` through
-`snapshot`, emits `CoreEffect` values through `takeEffects`, answers `hitTest`
-with a `CoreWorldTarget`, and presents HUD, world, camera, Detail View, Sequence,
-Conversation and Reflection. It draws nothing: presentation belongs to an
-adapter. A
-Game Project uses all of this to assert its own puzzles — a Fact learned, a
-Variable committed, a Hotspot withdrawn, an Ending reached — without a browser.
-
-`@asterixcapri/fondale/testing` is the second published entry point, and the only
-one a shipped game never imports: it drives a Core Session from a test. `CoreSession.atRest` reports
-whether advancing time further would change anything by itself — a queued input
-the session has yet to handle appears in no other way — and `settle` advances
-simulated time until it holds, failing rather than hanging.
-`activateNoun` activates the Noun carrying a Label, `primary` or `secondary`, and
-settles; `revealedNouns` lists the Labels currently reachable; `selectObject`
-selects a carried Object without toggling one already selected; `advanceActivity`
-advances whatever is presented; `chooseAlternative` answers the alternative that
-reads like the given text, whether a Conversation or a Sequence choice is
-offering it; `presentedLine` returns the `PresentedLine` a Player is reading —
-its `kind`, its `speaker`, its `text` and, for a choice, its `alternatives`.
-`skipSequence` skips the running Sequence and `leaveActivity` leaves an open
-Conversation or Reflection, both the way Escape does; `walkTo` walks the Player
-Character to a Scene Space point; `carriedObjects` and `presentedDetailView` read
-what is carried and which Detail View is presented. `pressOn` advances through
-everything presented until play is idle, stopping at a Conversation or
-Reflection, which wait for what to say rather than for permission to continue;
-`advanceToLine` presses on until a Line contains the given substance, matched on
-substance rather than on a whole authored sentence; `stepUntil` advances time
-until a condition holds; `ask` puts one free-form question to an open
-Conversation and returns the answer. Nothing here knows a game's story: authored
-routes belong to the game.
-
-`AuthoringError` contains stably ordered `AuthoringDiagnostic` values. Each has
-stable `code`, `family`, capability `owner`, `path`, `message`, optional
-`suggestion`, and optional `cause`. `AuthoringDiagnosticFamily` is definition,
-reference, state, save, asset, or environment. `AuthoringDiagnosticOwner`
-identifies the capability or browser adapter responsible for the rule.
-
 ## Structural contract index
 
 | Structure | Purpose | Allowed values | Defaults and invariants | Errors | Executed example |
@@ -524,124 +353,10 @@ Exact reachable fields also include `x`, `y`, `width`, `height`, `kind`,
 `path`, `message`, `suggestion`, `cause`, `formatVersion`, `projectIdentity`,
 `projectVersion`, `state`, `ok`, `snapshot`, `diagnostics`, and `target`.
 
-## Stable diagnostics
+## See also
 
-Definition codes: `definition.approach.bounds`,
-`definition.approach.walkable`, `definition.character.movement-speed`,
-`definition.character.walkable`, `definition.choice.limit`,
-`definition.choice.player-character`,
-`definition.command-case.arity`, `definition.command-case.empty`,
-`definition.command-case.object-feedback`,
-`definition.command-case.textual-outcome`,
-`definition.command-lexicon.label`, `definition.command-lexicon.pattern`,
-`definition.command-lexicon.required`, `definition.command-response.text`,
-`definition.command-response.semantic`, `definition.line.character`,
-`definition.hotspot.target-noun.required`,
-`definition.line.text`, `definition.narration.text`,
-`definition.command.silent`, `definition.conditional-fallback`,
-`definition.entrance.walkable`, `definition.hud-theme.color`,
-`definition.hud-theme.cursor`, `definition.hud-theme.font`,
-`definition.hud-theme.opacity`, `definition.hud-theme.speech-color`,
-`definition.hud-theme.speech-width`, `definition.inventory-appearance-size`,
-`definition.logical-resolution.positive-integer`,
-`definition.scene-size.positive-integer`,
-`definition.scene-size.viewport-minimum`,
-`definition.noun-label.text`, `definition.operation.collect-target`,
-`definition.operation.ground-point`, `definition.perspective-scale.stop`,
-`definition.point.finite`, `definition.polygon.degenerate`,
-`definition.polygon.self-intersection`, `definition.polygon.vertices`,
-`definition.project.identity`, `definition.project.version`,
-`definition.narrative-fact.identity`,
-`definition.narrative-fact.proposition`,
-`definition.narrative-fact.sets-variable`,
-`definition.character-knowledge.duplicate`,
-`definition.character-knowledge.disclosure`,
-`definition.detail-view.image`, `definition.detail-view.bounds`,
-`definition.scene-space.bounds`, `definition.scenery.baseline`,
-`definition.sequence.cycle`, `definition.sequence.nested`,
-`definition.sequence.skip-outcome`, `definition.sequence.skip-outcome.unused`,
-`definition.sequence.selected-object-operation`,
-`definition.sequence.direction.empty`, `definition.sequence.duration`,
-`definition.sequence.cue-order`, `definition.sequence.cue-source`,
-`definition.sequence.cue-name`,
-`definition.sequence.direction.unbounded`, `definition.motion.path`,
-`definition.motion.character-path`, `definition.motion.character-duration`,
-`definition.motion.duration`, `definition.motion.bounds`,
-`definition.motion.walkable`, `definition.camera.duration`,
-`definition.camera.point.finite`, `definition.camera.bounds`,
-`definition.arrival-sequence.ambiguous`,
-`definition.appearance.animations`, `definition.appearance.default-role`,
-`definition.motion.scenery-rest`, `definition.animation.frames`,
-`definition.animation.directional-frame-count`,
-`definition.animation.frame-source`, `definition.animation.frames-per-second`,
-`definition.animation.loop`, `definition.animation.cue`, and
-`definition.animation.visual-anchor`.
-
-Reference codes: `reference.appearance`, `reference.appearance.initial`,
-`reference.appearance.target`, `reference.character`,
-`reference.character.initial-scene`, `reference.character.player`,
-`reference.detail-view`,
-`reference.hotspot.target`, `reference.object`, `reference.object.initial-scene`,
-`reference.passage.entrance`, `reference.passage.scene`,
-`reference.scene`, `reference.scene.initial`, `reference.sequence`,
-`reference.sequence.scene`, `reference.sequence.subject`, `reference.entrance`,
-`reference.sequence.subject-scene`,
-`reference.animation`, `reference.animation.role`,
-`reference.animation.walking-role`, `reference.animation.cue`,
-`reference.animation.line`, `reference.camera.subject`,
-`reference.camera.subject-scene`, and `reference.variable`.
-Knowledge-Driven Dialogue references use
-`reference.character-knowledge.character` and
-`reference.character-knowledge.fact`, `reference.cover-story.fact`,
-`reference.cover-story.knowledge`, `reference.cover-story.claim`,
-`reference.testimony.speaker`, `reference.testimony.listener`,
-`reference.testimony.claim`, and `reference.testimony.cover-story`, plus
-`reference.relationship.character` and `reference.relationship.missing` for
-directional Relationship edges, and `reference.narrative-fact.variable` for the
-Game Variable a Narrative Fact sets when it is learned.
-
-Knowledge-Driven Dialogue definition and operation codes include
-`definition.narrative-context.required`,
-`definition.narrative-fact.identity`, `definition.narrative-fact.proposition`,
-`definition.narrative-fact.sets-variable`,
-`definition.claim.identity`, `definition.claim.proposition`,
-`definition.character-knowledge.collection`,
-`definition.character-knowledge.item`,
-`definition.character-knowledge.disclosure`, `definition.character-knowledge.duplicate`,
-`definition.cover-story.collection`, `definition.cover-story.item`,
-`definition.cover-story.disclosure`, `definition.cover-story.duplicate`,
-`definition.relationship.collection`, `definition.relationship.trust`,
-`definition.dialogue.profile`, `definition.dialogue.biography`,
-`definition.dialogue.personality`, `definition.dialogue.behavior`,
-`definition.dialogue.voice`, `definition.dialogue.state`,
-`definition.dialogue.handoffs`, `definition.dialogue.handoff`,
-`definition.conversation-alternative.collection`,
-`definition.conversation-alternative.item`,
-`definition.conversation-alternative.condition`,
-`definition.conversation-alternative.limit`,
-`definition.conversation-alternative.sequence`,
-`reference.conversation-alternative.index`, and
-`reference.dialogue-operation.character`.
-
-Runtime, save, asset and environment codes: `state.operation.invalid`,
-`save.shape`, `save.fields.unexpected`, `save.format.version`,
-`save.project.identity`, `save.project.version`, `save.state.command`,
-`save.state.command-noun`, `save.state.detail-view`, `save.state.ending`,
-`save.state.intent-command`,
-`save.state.intent-command-noun`, `save.state.invalid`,
-`save.validation.project`, `save.validation.required`, `asset.load.failed`,
-`asset.audio.load.failed`,
-`asset.background.dimensions`, `asset.detail-view.dimensions`,
-`asset.cursor.dimensions`, `asset.font.load.failed`,
-`asset.inventory-appearance.dimensions`, `asset.animation-sheet.frame-bounds`,
-`asset.animation-sheet.dimensions`, `asset.visual-anchor.bounds`,
-`environment.dialogue-connection.ambiguous`,
-`environment.dialogue-provider.missing`,
-`environment.dialogue-server.connection-failed`,
-`environment.dialogue-server.unreachable`, `environment.start.failed`,
-`environment.target.occupied`, and
-`environment.webgl.unavailable`.
-
-See the [documentation index](README.md), the [authoring guides](README.md#build-a-game),
-the [Support Baseline](support-baseline.md), and the compiled
+The [documentation index](README.md), the
+[authoring guides](README.md#build-a-game), the
+[vocabulary](vocabulary.md), the [diagnostics](diagnostics.md), the
+[Support Baseline](support-baseline.md), and the compiled
 [recipes](recipes/README.md).

@@ -6,6 +6,11 @@ import { findObsoleteAuthoringContract } from "./obsolete-authoring-contract.mjs
 const repository = resolve(import.meta.dirname, "..");
 const referencePath = join(repository, "docs/public/reference.md");
 const reference = readFileSync(referencePath, "utf8");
+// A public name is public wherever it is documented: the guides carry the ones
+// an Author meets while building, the reference carries the exhaustive contract.
+const publicDocumentation = markdownFiles(join(repository, "docs/public"))
+  .map((file) => readFileSync(file, "utf8"))
+  .join("\n");
 // Read the entry points with the compiler rather than a name pattern. A pattern
 // has to guess which identifiers are exports, and the obvious guess — anything
 // capitalised — silently lets every lower-case function through the gate. Both
@@ -17,9 +22,9 @@ const publicNames = [...new Set(["src/index.ts", "src/testing.ts"].flatMap((rela
     ts.createSourceFile(path, readFileSync(path, "utf8"), ts.ScriptTarget.Latest, true),
   );
 }))];
-const undocumented = publicNames.filter((name) => !reference.includes(`\`${name}\``));
+const undocumented = publicNames.filter((name) => !publicDocumentation.includes(`\`${name}\``));
 if (undocumented.length > 0) {
-  throw new Error(`Public exports missing from reference.md: ${undocumented.join(", ")}`);
+  throw new Error(`Public exports missing from the documentation: ${undocumented.join(", ")}`);
 }
 
 const contractSources = [
@@ -46,8 +51,8 @@ for (const relativePath of contractSources) {
     collectFields(statement, contractFields);
   }
 }
-const undocumentedContracts = [...contractNames].filter((name) => !reference.includes(`\`${name}\``));
-const undocumentedFields = [...contractFields].filter((name) => !reference.includes(`\`${name}\``));
+const undocumentedContracts = [...contractNames].filter((name) => !publicDocumentation.includes(`\`${name}\``));
+const undocumentedFields = [...contractFields].filter((name) => !publicDocumentation.includes(`\`${name}\``));
 if (undocumentedContracts.length > 0 || undocumentedFields.length > 0) {
   throw new Error([
     undocumentedContracts.length > 0 ? `nested structures: ${undocumentedContracts.join(", ")}` : "",
@@ -73,24 +78,55 @@ const sourceText = contractSources
   .concat(["src/browser/assets.ts", "src/capabilities/game-session/index.ts"])
   .map((path) => readFileSync(join(repository, path), "utf8"))
   .join("\n");
-const diagnosticCodes = [...sourceText.matchAll(/(?:code:\s*|Diagnostic\()\s*["']([a-z][a-z0-9.-]+)["']/g)]
-  .map((match) => match[1])
+// Only whole codes: every stable code carries its family prefix, so a helper
+// like `profileDiagnostic("biography", …)` contributes its family-qualified
+// result, not the bare subject it was called with.
+const diagnosticCodes = [...sourceText.matchAll(
+  /["'](?:definition|reference|state|save|asset|environment)\.[a-z0-9.-]+["']/g,
+)]
+  .map((match) => match[0].slice(1, -1))
   .filter((code, index, codes) => codes.indexOf(code) === index);
-const undocumentedCodes = diagnosticCodes.filter((code) => !reference.includes(`\`${code}\``));
+const diagnosticsPath = join(repository, "docs/public/diagnostics.md");
+const diagnosticsGuide = readFileSync(diagnosticsPath, "utf8");
+const undocumentedCodes = diagnosticCodes.filter((code) => !diagnosticsGuide.includes(`\`${code}\``));
 if (undocumentedCodes.length > 0) {
-  throw new Error(`Stable diagnostic codes missing from reference.md: ${undocumentedCodes.join(", ")}`);
+  throw new Error(`Stable diagnostic codes missing from diagnostics.md: ${undocumentedCodes.join(", ")}`);
+}
+// The reverse direction, which nothing checked before: a code the documentation
+// promises but no capability ever emits is a code an Author will wait for in
+// vain. Families built from a template contribute their prefix instead.
+const engineSource = typeScriptSources(join(repository, "src"))
+  .map((file) => readFileSync(file, "utf8"))
+  .join("\n");
+const templatePrefixes = [...engineSource.matchAll(
+  /`((?:definition|reference|state|save|asset|environment)\.[a-z-]+)\.\$\{/g,
+)].map((match) => match[1]);
+const emitted = new Set([...engineSource.matchAll(
+  /["'`]((?:definition|reference|state|save|asset|environment)\.[a-z0-9.-]+)["'`]/g,
+)].map((match) => match[1]));
+const invented = [...diagnosticsGuide.matchAll(
+  /`((?:definition|reference|state|save|asset|environment)\.[a-z0-9.-]+)`/g,
+)]
+  .map((match) => match[1])
+  .filter((code) => !emitted.has(code) &&
+    !templatePrefixes.some((prefix) => code.startsWith(`${prefix}.`)))
+  .filter((code, index, codes) => codes.indexOf(code) === index);
+if (invented.length > 0) {
+  throw new Error(`Documented diagnostic codes no capability emits: ${invented.join(", ")}`);
 }
 
 for (const invariant of [
-  "default `#000000`",
-  "Omission means scale `1`",
+  "defaults to `#000000`",
+  "omission means scale `1`",
   "Registry keys are identities",
   "either commit together or",
   "latest committed Game State",
   "omission defaults to Logical Resolution",
   "Camera position, hover, pointer position and Player Preferences are not saved",
 ]) {
-  if (!reference.includes(invariant)) throw new Error(`Missing documented default/invariant: ${invariant}`);
+  if (!publicDocumentation.includes(invariant)) {
+    throw new Error(`Missing documented default/invariant: ${invariant}`);
+  }
 }
 
 const docs = [join(repository, "README.md"), ...markdownFiles(join(repository, "docs/public"))];
@@ -200,6 +236,14 @@ for (const callable of ["startGame"]) {
 }
 
 console.log(`Documentation gate passed for ${publicNames.length} root exports and ${docs.length} Markdown files.`);
+
+function typeScriptSources(directory) {
+  return readdirSync(directory).flatMap((name) => {
+    const path = join(directory, name);
+    if (statSync(path).isDirectory()) return typeScriptSources(path);
+    return path.endsWith(".ts") && !path.endsWith(".spec.ts") ? [path] : [];
+  });
+}
 
 function markdownFiles(directory) {
   return readdirSync(directory).flatMap((name) => {

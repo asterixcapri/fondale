@@ -62,8 +62,10 @@ existing saves after a change that would make them meaningless.
 | `projectVersion` | your Game Project's `version` |
 | `state` | the committed Game State |
 
-Restoring into a presented Detail View is not an arrival and starts no arrival
-Sequence. Restoring into an Ending resumes the finished game at its Ending.
+The presented Detail View is recorded as `detailView` in the state, beside
+`ended`. Restoring into a presented Detail View is not an arrival and starts no
+arrival Sequence. Restoring into an Ending resumes the finished game at its
+Ending.
 
 ## Errors
 

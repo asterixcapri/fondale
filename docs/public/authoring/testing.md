@@ -72,8 +72,8 @@ given substance, matched on substance rather than on a whole authored sentence.
 `revealedNouns` lists the Labels currently reachable — the single most useful
 assertion about a Scene, because it is exactly what a Player can see to do.
 
-`presentedLine` returns what the Player is reading: its `kind`, `speaker`,
-`text`, and for a choice its `alternatives`. `carriedObjects` and
+`presentedLine` returns the `PresentedLine` the Player is reading: its `kind`,
+`speaker`, `text`, and for a choice its `alternatives`. `carriedObjects` and
 `presentedDetailView` read what is carried and which close-up is presented.
 `snapshot` returns the whole `GameState`.
 

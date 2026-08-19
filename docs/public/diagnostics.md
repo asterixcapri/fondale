@@ -103,7 +103,7 @@ reported before any asset is fetched.
 ## Reference codes
 
 **World** — `reference.scene`, `reference.scene.initial`,
-`reference.entrance`, `reference.passage.scene`, `reference.passage.entrance`,
+`reference.passage.scene`, `reference.passage.entrance`,
 `reference.character`, `reference.character.initial-scene`,
 `reference.character.player`, `reference.object`,
 `reference.object.initial-scene`, `reference.hotspot.target`,
@@ -143,8 +143,7 @@ reported before any asset is fetched.
 **Asset** — `asset.load.failed`, `asset.audio.load.failed`,
 `asset.font.load.failed`, `asset.background.dimensions`,
 `asset.detail-view.dimensions`, `asset.cursor.dimensions`,
-`asset.inventory-appearance.dimensions`, `asset.animation-sheet.dimensions`,
-`asset.animation-sheet.frame-bounds`, `asset.visual-anchor.bounds`.
+`asset.inventory-appearance.dimensions`, `asset.animation-sheet.frame-bounds`, `asset.visual-anchor.bounds`.
 
 **Environment** — `environment.webgl.unavailable`,
 `environment.target.occupied`, `environment.start.failed`,

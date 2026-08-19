@@ -102,7 +102,6 @@ authoring path that failed.
 | `reference.scene.initial` | `initialScene` names a Scene that does not exist |
 | `reference.passage.scene` | a Passage names a destination Scene that does not exist |
 | `reference.passage.entrance` | a Passage names an Entrance the destination Scene does not declare |
-| `reference.entrance` | an Entrance reference does not resolve |
 | `reference.character.initial-scene` | a Character starts in a Scene that does not exist |
 | `reference.object.initial-scene` | an Object starts in a Scene that does not exist |
 

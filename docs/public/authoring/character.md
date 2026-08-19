@@ -121,7 +121,7 @@ and repeat the play-size check at every reachable Perspective Scale.
 | `definition.animation.frames`, `definition.animation.frame-source` | a sheet declares no usable frames |
 | `definition.animation.frames-per-second`, `definition.animation.loop` | invalid timing |
 | `definition.animation.visual-anchor`, `asset.visual-anchor.bounds` | the anchor is invalid or outside the cell |
-| `asset.animation-sheet.dimensions`, `asset.animation-sheet.frame-bounds` | the image is missing frames the definition declares |
+| `asset.animation-sheet.frame-bounds` | the image is missing frames the definition declares |
 
 ## Example
 

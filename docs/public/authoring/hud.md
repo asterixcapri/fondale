@@ -53,6 +53,9 @@ export const hudTheme = {
 | `cursors` | one asset per `PassageDirection` | `left`, `right`, `up`, `down`, `enter` |
 | `speechColors` | Character-keyed hex colours | the colour that Character's speech is drawn in |
 
+The Command Lexicon's `inventory` phrases — `select` and `deselect` — are the
+words the HUD uses when the Player picks a carried Object up and puts it back.
+
 The HUD lives in viewport space, not Scene Space. It is measured against the
 Logical Resolution and is unaffected by Perspective Scale. Inventory artwork
 belongs to this scale too, not to the world.

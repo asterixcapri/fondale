@@ -6,8 +6,9 @@ A Player never types. They point at something and pick an action, and the
 Engine builds a **Command**: one semantic Verb with one or two Nouns.
 
 The nine visible Verbs are `open`, `pick-up`, `push`, `close`, `look-at`,
-`pull`, `give`, `talk-to`, `use`. `walk-to` exists too but is implicit — it is
-what a click on empty floor means, and it is never authored as a Command Case.
+`pull`, `give`, `talk-to`, `use` — exported as `commandVerbs`. `walk-to` exists
+too but is implicit: it is what a click on empty floor means, and it is never
+authored as a Command Case.
 
 `give` always takes two Nouns. `use` takes one or two. Every other visible Verb
 takes exactly one.
