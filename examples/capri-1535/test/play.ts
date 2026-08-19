@@ -171,31 +171,43 @@ export function walkTo(session: CoreSession, point: { x: number; y: number }): v
 }
 
 /**
- * Steps until play comes to rest: nothing moving, no walk pending, and nothing
- * running that has yet to present anything.
+ * Whether the Game Session has finished reacting to what it was told.
  *
- * Stillness alone is not rest. An activation that has to be walked to leaves a
- * pending intent, and the interaction it commits lands well after Michele stops
- * — in the harbour, some ninety steps after arrival. Reading the world at the
- * moment the feet stop would report the world before the interaction happened.
+ * Play is at rest when nothing resolves on its own any more: no walk in flight,
+ * no interaction still waiting to be reached, no Sequence direction running. A
+ * presented Line, Narration, choice, Conversation or Reflection *is* rest — the
+ * game has done its part and is waiting for the Player.
+ *
+ * Every walk is a pending Player intent, a plain move included, so this needs no
+ * sampling of positions and no tolerance for how long an effect takes to land:
+ * pulling the fishing nets commits its outcome some ninety steps after Michele
+ * stops walking, and the intent is pending for every one of them.
+ */
+export function atRest(session: CoreSession): boolean {
+  const activity = session.snapshot().activity;
+  if (activity === null) return true;
+  if (activity.type === "player-intent") return false;
+  if (activity.type === "sequence") return activity.active?.kind !== "direction";
+  return true;
+}
+
+/**
+ * Steps until play has finished reacting, and fails rather than hang.
+ *
+ * Rest has to hold for a run of steps rather than for one. From outside, an
+ * `activity` of `null` means both "idle" and "between two states": the walk that
+ * carried an intent is over, but what the intent commits has not been applied
+ * yet. The Engine knows the difference — it still holds the queued input — and
+ * nothing in Game State reports it, so the run of quiet steps stands in.
  */
 export function rest(session: CoreSession, limit = 8_000): void {
-  let previous = JSON.stringify(session.snapshot().characters);
-  let still = 0;
+  let quiet = 0;
   for (let taken = 0; taken < limit; taken += 1) {
+    quiet = atRest(session) ? quiet + 1 : 0;
+    if (quiet >= 30) return;
     session.steps(1);
-    const current = JSON.stringify(session.snapshot().characters);
-    still = current === previous ? still + 1 : 0;
-    previous = current;
-    if (still < 8) continue;
-    const activity = session.snapshot().activity;
-    if (activity?.type === "player-intent") continue;
-    const presenting = session.hud().narrative !== null ||
-      session.hud().commandResponse !== null ||
-      session.conversation() !== null ||
-      session.reflection() !== null;
-    if (activity === null || presenting) return;
   }
+  throw new Error("Play never came to rest.");
 }
 
 /**
