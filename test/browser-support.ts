@@ -27,15 +27,21 @@ export async function clickLogical(
   await page.mouse.click(point.x, point.y);
 }
 
-export async function renderedPixel(
+/**
+ * Reads several pixels out of one screenshot.
+ *
+ * Screenshotting is the expensive half of an inspection, and a test that wants
+ * three points from the same rendered frame must not take three screenshots of
+ * a moving one: the later shots belong to a later frame.
+ */
+export async function renderedPixels(
   page: Page,
-  x: number,
-  y: number,
+  points: readonly { readonly x: number; readonly y: number }[],
   width = 426,
   height = 240,
-): Promise<number[]> {
+): Promise<number[][]> {
   const screenshot = await page.locator("[data-fondale-frame] canvas").screenshot();
-  return page.evaluate(async ({ dataUrl, x, y, width, height }) => {
+  return page.evaluate(async ({ dataUrl, points, width, height }) => {
     const image = new Image();
     image.src = dataUrl;
     await image.decode();
@@ -45,17 +51,27 @@ export async function renderedPixel(
     const context = copy.getContext("2d", { willReadFrequently: true });
     if (!context) throw new Error("A 2D canvas is required to inspect the rendered pixel.");
     context.drawImage(image, 0, 0);
-    return [...context.getImageData(
-      Math.round(x / width * image.width),
-      Math.round(y / height * image.height),
+    return points.map((point) => [...context.getImageData(
+      Math.round(point.x / width * image.width),
+      Math.round(point.y / height * image.height),
       1,
       1,
-    ).data];
+    ).data]);
   }, {
     dataUrl: `data:image/png;base64,${screenshot.toString("base64")}`,
-    x,
-    y,
+    points: points.map((point) => ({ x: point.x, y: point.y })),
     width,
     height,
   });
+}
+
+export async function renderedPixel(
+  page: Page,
+  x: number,
+  y: number,
+  width = 426,
+  height = 240,
+): Promise<number[]> {
+  const [pixel] = await renderedPixels(page, [{ x, y }], width, height);
+  return pixel!;
 }
