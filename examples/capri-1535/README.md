@@ -151,8 +151,9 @@ In the Example directory, run `npm run dev` in a third terminal, then open
 default and accepts the Example's local Vite origins.
 
 That address is the one thing this game reads from its environment, through
-`VITE_DIALOGUE_SERVER_URL`; leaving it unset uses the local default, so an
-ordinary run needs no `.env.local` here at all. Nothing else belongs in the
+`VITE_DIALOGUE_SERVER_URL`, and `.env.local.example` documents it. Leaving it
+unset uses the local default, so an ordinary run needs no `.env.local` here at
+all. Nothing else belongs in the
 Example's environment: `DATABASE_URL`, the model key and every other provider
 setting are read only by Node in the server's own process. There are no `VITE_`
 credential variables, and server failures are not returned verbatim to the
