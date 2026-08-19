@@ -1,4 +1,5 @@
-import { startCoreSession, type CoreSession, type GameProject } from "@asterixcapri/fondale";
+import { type GameProject } from "@asterixcapri/fondale";
+import { startCoreSession, type CoreSession } from "@asterixcapri/fondale/testing";
 
 import { prologueDialogue, type PrologueDialogue } from "./dialogue";
 import { project } from "../src/game";

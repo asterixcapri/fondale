@@ -1,18 +1,16 @@
 import { expect, test } from "vitest";
-
 import {
-  activate,
-  carried,
-  choose,
-  clear,
-  leaveConversation,
-  leaveReflection,
-  narrative,
+  activateNoun,
+  advanceToLine,
+  carriedObjects,
+  chooseAlternative,
+  leaveActivity,
+  pressOn,
   reflect,
-  revealed,
-  select,
-  advanceTo,
-} from "./play";
+  revealedNouns,
+  selectObject,
+} from "@asterixcapri/fondale/testing";
+
 import {
   acceptHarbourJob,
   answerRaffaele,
@@ -43,16 +41,16 @@ test("the authored harbour job gives one sealed letter and records Raffaele's th
   // The engagement is consumed by asking it: it is canonical Game State.
   expect(session.conversation()?.alternatives.map((one) => one.text))
     .not.toContain("Cerchi qualcuno per un lavoro?");
-  leaveConversation(session);
-  expect(carried(session)).toEqual(["sealedLetter"]);
+  leaveActivity(session);
+  expect(carriedObjects(session)).toEqual(["sealedLetter"]);
 
   // What play committed survives reopening the game.
   const resumed = continueSession(session);
-  expect(carried(resumed)).toEqual(["sealedLetter"]);
-  activate(resumed, "Raffaele");
+  expect(carriedObjects(resumed)).toEqual(["sealedLetter"]);
+  activateNoun(resumed, "Raffaele");
   expect(resumed.conversation()?.alternatives.map((one) => one.text))
     .not.toContain("Cerchi qualcuno per un lavoro?");
-  leaveConversation(resumed);
+  leaveActivity(resumed);
 
   // What Raffaele said is remembered as his Testimony, not as the truth.
   const reflected = await reflect(resumed, "Che cosa mi ha detto Raffaele?");
@@ -65,99 +63,99 @@ for (const order of ["before", "after"] as const) {
     const session = startExample();
     if (order === "after") {
       acceptHarbourJob(session);
-      choose(session, "Dove trovo l'ampolla?");
-      advanceTo(session, "reti", "raffaele");
-      leaveConversation(session);
+      chooseAlternative(session, "Dove trovo l'ampolla?");
+      advanceToLine(session, "reti", "raffaele");
+      leaveActivity(session);
     }
 
     // The flask is genuinely behind the nets: it is not reachable until they move.
-    expect(revealed(session)).not.toContain("Ampolla d'olio");
+    expect(revealedNouns(session)).not.toContain("Ampolla d'olio");
     pullNetsAndCollectOil(session);
 
     if (order === "before") {
       acceptHarbourJob(session);
-      choose(session, "Dove trovo l'ampolla?");
-      advanceTo(session, "reti", "raffaele");
-      leaveConversation(session);
+      chooseAlternative(session, "Dove trovo l'ampolla?");
+      advanceToLine(session, "reti", "raffaele");
+      leaveActivity(session);
     }
 
     // Unsupported combinations answer without consuming the essential Object.
-    select(session, "oilFlask");
-    activate(session, "Raffaele");
+    selectObject(session, "oilFlask");
+    activateNoun(session, "Raffaele");
     expect(session.hud().commandResponse?.text).toContain("Non credo che lo vorrebbe");
-    clear(session);
-    expect(carried(session)).toContain("oilFlask");
-    select(session, "oilFlask");
-    activate(session, "Reti da pesca spostate");
+    pressOn(session);
+    expect(carriedObjects(session)).toContain("oilFlask");
+    selectObject(session, "oilFlask");
+    activateNoun(session, "Reti da pesca spostate");
     expect(session.hud().commandResponse?.text).toContain("Non funzionerebbe così");
-    clear(session);
-    expect(carried(session)).toContain("oilFlask");
+    pressOn(session);
+    expect(carriedObjects(session)).toContain("oilFlask");
 
     const resumed = continueSession(session);
-    expect(revealed(resumed)).toContain("Reti da pesca spostate");
-    expect(revealed(resumed)).not.toContain("Ampolla d'olio");
-    expect(carried(resumed)).toContain("oilFlask");
+    expect(revealedNouns(resumed)).toContain("Reti da pesca spostate");
+    expect(revealedNouns(resumed)).not.toContain("Ampolla d'olio");
+    expect(carriedObjects(resumed)).toContain("oilFlask");
   });
 }
 
 test("Michele delivers the letter, frees the well and keeps the recovered handle across return", async () => {
   const session = startExample();
   acceptHarbourJob(session);
-  leaveConversation(session);
+  leaveActivity(session);
   pullNetsAndCollectOil(session);
   travelToCloister(session);
 
   // The social gate: Brother Elia refuses the well before the letter arrives,
   // and refusing costs the Player nothing.
-  select(session, "oilFlask");
-  activate(session, "Supporto della carrucola");
-  advanceTo(session, "Prima la lettera", "brotherElia");
-  expect(carried(session)).toContain("oilFlask");
-  clear(session);
+  selectObject(session, "oilFlask");
+  activateNoun(session, "Supporto della carrucola");
+  advanceToLine(session, "Prima la lettera", "brotherElia");
+  expect(carriedObjects(session)).toContain("oilFlask");
+  pressOn(session);
 
   deliverLetter(session);
-  expect(carried(session)).not.toContain("sealedLetter");
+  expect(carriedObjects(session)).not.toContain("sealedLetter");
 
   // The two steps are separate: pulling a dry pulley changes nothing.
-  activate(session, "Pozzo del chiostro");
+  activateNoun(session, "Pozzo del chiostro");
   expect(session.hud().commandResponse?.text).toContain("troppo secca");
-  clear(session);
+  pressOn(session);
   expect(session.snapshot().variables.wellFreed).toBe(false);
 
-  select(session, "oilFlask");
-  activate(session, "Supporto della carrucola");
+  selectObject(session, "oilFlask");
+  activateNoun(session, "Supporto della carrucola");
   expect(session.snapshot().variables.wellLubricated).toBe(true);
-  expect(carried(session)).not.toContain("oilFlask");
-  clear(session);
+  expect(carriedObjects(session)).not.toContain("oilFlask");
+  pressOn(session);
 
-  activate(session, "Pozzo lubrificato");
-  advanceTo(session, "secchio è risalito", "brotherElia");
-  clear(session);
-  activate(session, "Manovella liberata");
-  clear(session);
-  expect(carried(session)).toContain("winchHandle");
+  activateNoun(session, "Pozzo lubrificato");
+  advanceToLine(session, "secchio è risalito", "brotherElia");
+  pressOn(session);
+  activateNoun(session, "Manovella liberata");
+  pressOn(session);
+  expect(carriedObjects(session)).toContain("winchHandle");
 
   travelToHarbour(session);
   const resumed = continueSession(session);
   expect(scene(resumed)).toBe("harbour");
-  expect(carried(resumed)).toContain("winchHandle");
+  expect(carriedObjects(resumed)).toContain("winchHandle");
 
   // The freed well is still freed when Michele walks back into the cloister.
   travelToCloister(resumed);
-  expect(revealed(resumed)).toContain("Pozzo liberato");
-  expect(revealed(resumed)).not.toContain("Manovella liberata");
+  expect(revealedNouns(resumed)).toContain("Pozzo liberato");
+  expect(revealedNouns(resumed)).not.toContain("Manovella liberata");
 
   const reflected = await reflect(resumed, "Che cosa so della manovella?");
   expect(reflected).toContain("prestato volontariamente");
   expect(reflected).toContain("rubato");
   expect(reflected).not.toContain("torre della fortificazione");
-  leaveReflection(resumed);
+  leaveActivity(resumed);
 });
 
 test("skipping the well Sequence frees the same mechanism", () => {
   const session = startExample();
   acceptHarbourJob(session);
-  leaveConversation(session);
+  leaveActivity(session);
   pullNetsAndCollectOil(session);
   travelToCloister(session);
   deliverLetter(session);
@@ -165,10 +163,10 @@ test("skipping the well Sequence frees the same mechanism", () => {
 
   // The skipped Sequence committed the same canonical outcome: the mechanism is
   // freed, the handle is carried, and the well keeps its freed presentation.
-  expect(carried(session)).toContain("winchHandle");
+  expect(carriedObjects(session)).toContain("winchHandle");
   expect(session.snapshot().variables.wellFreed).toBe(true);
-  expect(revealed(session)).toContain("Pozzo liberato");
-  activate(session, "Pozzo liberato");
+  expect(revealedNouns(session)).toContain("Pozzo liberato");
+  activateNoun(session, "Pozzo liberato");
   expect(session.hud().commandResponse?.text).toContain("secchio è risalito");
 });
 
@@ -181,20 +179,20 @@ for (const branch of [
     const session = startExample();
     recoverHandle(session);
     installHandle(session);
-    expect(carried(session)).not.toContain("winchHandle");
+    expect(carriedObjects(session)).not.toContain("winchHandle");
 
     const resumed = continueSession(session);
-    expect(revealed(resumed)).toContain("Argano riparato");
-    expect(revealed(resumed)).not.toContain("Gozzo verso la fortificazione");
+    expect(revealedNouns(resumed)).toContain("Argano riparato");
+    expect(revealedNouns(resumed)).not.toContain("Gozzo verso la fortificazione");
 
     answerRaffaele(resumed, branch.choice);
 
     // Whatever Michele said, the same later Line and the same unlock follow.
-    activate(resumed, "Raffaele");
+    activateNoun(resumed, "Raffaele");
     expect(resumed.conversation()?.alternatives.map((one) => one.text)).not.toContain(branch.choice);
-    choose(resumed, "L'argano è a posto?");
-    advanceTo(resumed, "L'argano tiene", "raffaele");
-    leaveConversation(resumed);
+    chooseAlternative(resumed, "L'argano è a posto?");
+    advanceToLine(resumed, "L'argano tiene", "raffaele");
+    leaveActivity(resumed);
     boardGozzo(resumed);
     expect(scene(resumed)).toBe("coastalFortification");
   });
@@ -204,13 +202,13 @@ test("skipping the installation commits the same repaired world through continua
   const session = startExample();
   recoverHandle(session);
   installHandle(session, { skip: true });
-  expect(revealed(session)).toContain("Argano riparato");
+  expect(revealedNouns(session)).toContain("Argano riparato");
 
   travelToCloister(session);
   travelToHarbour(session);
   const resumed = continueSession(session);
-  expect(revealed(resumed)).toContain("Argano riparato");
-  expect(revealed(resumed)).not.toContain("Gozzo verso la fortificazione");
+  expect(revealedNouns(resumed)).toContain("Argano riparato");
+  expect(revealedNouns(resumed)).not.toContain("Gozzo verso la fortificazione");
 
   answerRaffaele(resumed);
   boardGozzo(resumed);

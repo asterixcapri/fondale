@@ -1,6 +1,12 @@
 import { expect, test } from "vitest";
+import {
+  activateNoun,
+  carriedObjects,
+  pressOn,
+  revealedNouns,
+  walkTo,
+} from "@asterixcapri/fondale/testing";
 
-import { activate, carried, clear, revealed, walkTo } from "./play";
 import { startExample } from "./support";
 
 /**
@@ -20,7 +26,7 @@ test("the harbour package exposes its panoramic default state", () => {
   // Every target the opening Scene offers, and only those: the flask is still
   // under the nets, so its Noun is not offered yet, and only the cloister is
   // reachable on foot — the gozzo Passage waits on the repaired winch.
-  expect([...revealed(session)].sort()).toEqual([
+  expect([...revealedNouns(session)].sort()).toEqual([
     "Argano senza manovella",
     "Gozzo di Raffaele",
     "Passaggio verso il chiostro",
@@ -54,46 +60,46 @@ test("the harbour Nouns answer, and pulling the nets swaps their Appearance", ()
   const session = startExample();
 
   // A look-at Noun on Scenery, and the same verb on a background-only Hotspot.
-  activate(session, "Gozzo di Raffaele");
+  activateNoun(session, "Gozzo di Raffaele");
   expect(session.hud().commandResponse?.text).toContain("Il gozzo di Raffaele è pronto");
-  clear(session);
-  activate(session, "Zona di lavoro");
+  pressOn(session);
+  activateNoun(session, "Zona di lavoro");
   expect(session.hud().commandResponse?.text).toContain("Ceste, corde e attrezzi");
-  clear(session);
+  pressOn(session);
 
   // A Character Noun opens a Conversation instead of answering inline.
-  activate(session, "Raffaele");
+  activateNoun(session, "Raffaele");
   expect(session.conversation()).not.toBeNull();
   session.input({ type: "escape" });
-  clear(session);
+  pressOn(session);
   expect(session.conversation()).toBeNull();
 
-  activate(session, "Argano senza manovella");
+  activateNoun(session, "Argano senza manovella");
   expect(session.hud().commandResponse?.text).toContain("Sul mozzo manca la manovella");
-  clear(session);
+  pressOn(session);
 
   // The nets carry two verbs. The secondary one still describes the bulge, and
   // the primary one is the pull that reveals what is under them.
   const nets = session.hud().nouns.find((noun) => noun.label === "Reti da pesca")!;
   expect(nets.primary.text).toContain("Tira");
   expect(nets.secondary?.text).toContain("Guarda");
-  activate(session, "Reti da pesca", { action: "secondary" });
+  activateNoun(session, "Reti da pesca", "secondary");
   expect(session.hud().commandResponse?.text).toContain("rigonfiamento");
-  clear(session);
+  pressOn(session);
   expect(session.snapshot().scenery.harbour!.fishingNets).toBe("covering");
 
   // The primary verb plays the reveal Sequence, which swaps the Appearance for
   // good: the heap answers to a new Label and the Noun it hid is reachable.
   expect(session.snapshot().variables.netsMoved).toBe(false);
-  activate(session, "Reti da pesca");
-  clear(session);
+  activateNoun(session, "Reti da pesca");
+  pressOn(session);
   expect(session.snapshot().variables.netsMoved).toBe(true);
   expect(session.snapshot().scenery.harbour!.fishingNets).toBe("moved");
-  expect(revealed(session)).not.toContain("Reti da pesca");
-  expect(revealed(session)).toContain("Reti da pesca spostate");
-  expect(revealed(session)).toContain("Ampolla d'olio");
+  expect(revealedNouns(session)).not.toContain("Reti da pesca");
+  expect(revealedNouns(session)).toContain("Reti da pesca spostate");
+  expect(revealedNouns(session)).toContain("Ampolla d'olio");
 
-  activate(session, "Ampolla d'olio");
-  clear(session);
-  expect(carried(session)).toContain("oilFlask");
+  activateNoun(session, "Ampolla d'olio");
+  pressOn(session);
+  expect(carriedObjects(session)).toContain("oilFlask");
 });

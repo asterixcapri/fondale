@@ -1,6 +1,11 @@
 import { expect, test } from "vitest";
+import {
+  activateNoun,
+  leaveActivity,
+  reflect,
+  revealedNouns,
+} from "@asterixcapri/fondale/testing";
 
-import { activate, leaveReflection, reflect, revealed, skipSequence } from "./play";
 import { descendToBoat, observeSighting, repairWinchAndSail, scene } from "./prologue";
 import { continueSession, startExample } from "./support";
 
@@ -19,23 +24,23 @@ test("the boat arrival lands committed and the sighting unlocks the rocks stairw
   // The stairway stays shut until the sighting is committed, and the climb is
   // Player-driven throughout.
   expect(session.snapshot().variables.boatLanded).toBe(true);
-  expect(revealed(session)).not.toContain("Scaletta verso gli scogli");
+  expect(revealedNouns(session)).not.toContain("Scaletta verso gli scogli");
 
   observeSighting(session);
   expect(session.snapshot().variables.driftingBoatSeen).toBe(true);
-  expect(revealed(session)).toContain("Scaletta verso gli scogli");
+  expect(revealedNouns(session)).toContain("Scaletta verso gli scogli");
 
   // Reflection now reports the sighting among Michele's learned Facts.
   const reflected = await reflect(session, "Che cosa ho visto dal belvedere?");
   expect(reflected).toContain("barca alla deriva");
-  leaveReflection(session);
+  leaveActivity(session);
 
   descendToBoat(session);
   expect(scene(session)).toBe("driftingBoat");
-  expect(revealed(session)).toHaveLength(7);
+  expect(revealedNouns(session)).toHaveLength(7);
 
   // The return stairway leads back to the fortification landing.
-  activate(session, "Scaletta verso gli scogli");
+  activateNoun(session, "Scaletta verso gli scogli");
   expect(scene(session)).toBe("coastalFortification");
 });
 
@@ -44,13 +49,13 @@ test("skipping the boat arrival commits the same sighting and transition", async
   repairWinchAndSail(session, { skipArrival: true });
 
   // The skipped outcome lands the boat exactly as full playback does.
-  activate(session, "Mare al tramonto");
+  activateNoun(session, "Mare al tramonto");
   expect(session.hud().commandResponse?.text).toContain("barca");
 
   observeSighting(session);
   const reflected = await reflect(session, "Che cosa ho visto dal belvedere?");
   expect(reflected).toContain("barca alla deriva");
-  leaveReflection(session);
+  leaveActivity(session);
 
   descendToBoat(session);
   const resumed = continueSession(session);

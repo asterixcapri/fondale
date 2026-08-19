@@ -9,6 +9,9 @@ import type {
   ResponseStrategy,
   ReflectionTestimony,
 } from "@asterixcapri/fondale";
+import {
+  reflect,
+} from "@asterixcapri/fondale/testing";
 
 /**
  * The deterministic stand-in for the separately run Dialogue Server.

@@ -1,6 +1,11 @@
 import { expect, test } from "vitest";
+import {
+  activateNoun,
+  pressOn,
+  revealedNouns,
+  walkTo,
+} from "@asterixcapri/fondale/testing";
 
-import { activate, clear, revealed, walkTo } from "./play";
 import { startExampleAt } from "./support";
 
 /**
@@ -15,37 +20,37 @@ import { startExampleAt } from "./support";
 
 test("the cloister answers, and its Passage leads back to the harbour", () => {
   const session = startExampleAt("cloister", "fromHarbour");
-  clear(session);
+  pressOn(session);
 
-  expect(revealed(session)).toEqual([
+  expect(revealedNouns(session)).toEqual([
     "Frate Elia",
     "Pozzo del chiostro",
     "Supporto della carrucola",
     "Passaggio verso il porto",
   ]);
 
-  activate(session, "Pozzo del chiostro");
+  activateNoun(session, "Pozzo del chiostro");
   expect(session.hud().commandResponse?.text).toContain("corda è in tensione");
-  clear(session);
+  pressOn(session);
 
   // Brother Elia opens a Conversation rather than answering inline, and he has
   // nothing to offer before the letter reaches him.
-  activate(session, "Frate Elia");
+  activateNoun(session, "Frate Elia");
   expect(session.conversation()).not.toBeNull();
   expect(session.conversation()?.alternatives.map((one) => one.text))
     .toEqual(["Posso trattenermi un momento?"]);
   session.input({ type: "escape" });
-  clear(session);
+  pressOn(session);
 
-  activate(session, "Passaggio verso il porto");
-  clear(session);
+  activateNoun(session, "Passaggio verso il porto");
+  pressOn(session);
   expect(session.snapshot().currentScene).toBe("harbour");
 });
 
 test("the drifting boat answers every clue and reaches the sailor", () => {
   const session = startExampleAt("driftingBoat", "fromFortification");
-  clear(session);
-  expect(revealed(session)).toHaveLength(7);
+  pressOn(session);
+  expect(revealedNouns(session)).toHaveLength(7);
 
   for (const [label, expected] of [
     ["Sartie recise", "tagliate"],
@@ -54,15 +59,15 @@ test("the drifting boat answers every clue and reaches the sailor", () => {
     ["Traccia di sangue", "sangue"],
     ["Marinaio ferito", "Respira"],
   ] as const) {
-    activate(session, label);
+    activateNoun(session, label);
     expect(session.hud().commandResponse?.text).toContain(expected);
-    clear(session);
+    pressOn(session);
   }
 });
 
 test("the fortification climbs through every vertical Camera band", () => {
   const session = startExampleAt("coastalFortification", "fromHarbour");
-  clear(session);
+  pressOn(session);
 
   // 1280 by 1440 points of cliff seen through a 720-point viewport: the Player
   // lands at the foot of it, so the Camera starts clamped at the bottom band.
@@ -78,9 +83,9 @@ test("the fortification climbs through every vertical Camera band", () => {
   // The upper band, where the Camera clamps at the top of the Scene.
   walkTo(session, { x: 850, y: 230 });
   expect(session.camera().origin.y).toBe(0);
-  expect(revealed(session)).toHaveLength(3);
+  expect(revealedNouns(session)).toHaveLength(3);
 
-  activate(session, "Belvedere della fortificazione");
-  clear(session);
+  activateNoun(session, "Belvedere della fortificazione");
+  pressOn(session);
   expect(session.snapshot().variables.driftingBoatSeen).toBe(true);
 });
