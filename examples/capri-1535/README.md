@@ -31,9 +31,9 @@ stays on the server console, and no server configuration or credential ever
 reaches the browser.
 
 The Example declares only the Dialogue Server URL. Fondale owns the HTTP
-adapter, Game Session identity and connection check. The acceptance suite
-intercepts that production HTTP seam with test-owned deterministic support,
-which is why `npm run verify` needs no database, model or network.
+adapter, Game Session identity and connection check. The suite answers the
+Dialogue Provider seam with test-owned deterministic support instead, which is
+why `npm run verify` needs no database, model or network.
 
 The committed tarball under `vendor/` stands in for the npm registry while the
 library is developed in the same repository. It contains the same installable
@@ -103,28 +103,30 @@ Game State.
 
 ## Verification
 
-Two flows, and they never overlap. The standard suite is what proves the demo;
-the live flow is an opt-in look at the real model.
-
 ```sh
-npm run verify                 # standard: deterministic, no database, model or network
-npm run verify:dialogue-live   # opt-in: the separately run Dialogue Server and a real model
+npm run verify   # deterministic, no browser, database, model or network
 ```
 
-`npm run verify` drives Google Chrome through Playwright and answers the
-production Dialogue HTTP seam from test-owned deterministic support, so it needs
-no Dialogue Server, no PostgreSQL, no model key and no network. It covers the
-whole prologue end to end, the alternative discovery order, both reading orders
-of the closing Detail View, the Ending and its survival of a reload,
-Knowledge-Driven Dialogue and Disclosure, Reflection, provider failure and
-cancellation, browser continuation, mouse and keyboard parity, the HUD
-contract, every skippable Sequence, and an actual-size inspection of each Scene
-package. Screenshots land
-under `test/shots/` for visual review.
+`npm run verify` runs the Example as a headless Core Session — the seam the
+browser adapter drives itself — and asserts Game State. It covers the whole
+prologue end to end, the alternative discovery order, both reading orders of the
+closing Detail View, the Ending and its survival of a reload, Capri's authored
+Knowledge and Disclosure, Reflection, every skippable Sequence, continuation
+mid-route, both Camera edges of the panoramic quay and the vertical bands of the
+fortification, and each Scene package driven on its own.
 
-`npm run verify:dialogue-live` is described under
-[Live model spike](#live-model-spike). It needs the Dialogue Server, PostgreSQL,
-a model key and the network, and it stays outside `npm run build`.
+What it deliberately does not cover. Animation timing is not machine-checked: it
+measures machine load more often than a defect. Asset loading is not asserted
+either — every asset is a static ESM import, so a missing file fails the build in
+seconds. Engine behaviour is not re-proved here: provider failure, turn
+cancellation, keyboard parity and the browser startup diagnostic all belong to
+Fondale's own suite, against fixtures of its own. What is left is Capri 1535.
+
+Visual correctness is a human review, and it has no automated substitute here. A
+Scene's size at actual play scale, its depth sorting and its occlusion are judged
+by running the game and looking at it. The browser suite that once left
+screenshots behind judged none of those either: it only proved that the frame had
+been redrawn.
 
 ## Local Dialogue Server
 
@@ -151,8 +153,8 @@ other provider configuration are read only by Node; there are no `VITE_`
 credential variables and server failures are not returned verbatim to the
 browser.
 
-The acceptance harness responds to the production Dialogue HTTP protocol from
-test-owned code. The local server always uses its configured live model and
+The suite never reaches this server: it answers the Dialogue Provider seam in
+process instead. The local server always uses its configured live model and
 stores only visible Conversation and Reflection history in PostgreSQL.
 
 Run Dialogue Server verification from its owning workspace, independently from
@@ -198,32 +200,10 @@ Facts the speaking Character actually knows, and Fondale independently rejects
 any ID outside that set. Verbalisation receives only the Engine-authorised
 fact, Claim or Response Strategy, so the model chooses wording, never content.
 
-The technical Michele/Antonio fixture lives at
-`test/fixtures/live-dialogue.html` and shares nothing with the Example's
-canonical story. With the adapter running in `live` mode you can open it
-in the browser and talk to Antonio yourself.
+With the adapter running in `live` mode you can open the Example in the browser
+and talk to a Character yourself, which is how the real model is judged.
 
-The live verification is opt-in and stays outside `npm run build` and
-`npm run verify`. It needs local PostgreSQL, an independently running Dialogue
-Server, a model API key with credit, and the network. Start each owner in its
-own terminal:
-
-```sh
-# Terminal 1 — packages/dialogue-server
-docker compose up -d
-
-# Terminal 2 — packages/dialogue-server
-npm run dev
-
-# Terminal 3 — examples/capri-1535
-npm run verify:dialogue-live
-```
-
-It starts only its own Vite server, then observes paraphrased questions,
-a communicated `open` fact, a protected `secret`, the declared Cover Story and
-its remembered Testimony, multi-turn continuity, restored canonical state, and
-Reflection separating uncertain Hypothesis. It asserts through the browser
-seam; the generated Lines are printed for a human to read, never compared with
-an expected sentence. The server's integration suite owns direct PostgreSQL
-memory assertions. The server console reports model ID, latency and token cost,
-all outside Game State.
+Whether a real model reads a paraphrase into the right Narrative Fact is a
+question about the prompt, which `packages/dialogue-server` owns and where its
+verification belongs. The Example asks nothing of a model: it proves that Capri's
+authored Disclosure decides correctly, whoever puts the answer into words.
