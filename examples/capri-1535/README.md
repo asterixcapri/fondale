@@ -148,9 +148,14 @@ npm run dev
 
 In the Example directory, run `npm run dev` in a third terminal, then open
 <http://localhost:5173>. The server listens only on `127.0.0.1:4315` by
-default and accepts the Example's local Vite origins. `DATABASE_URL` and all
-other provider configuration are read only by Node; there are no `VITE_`
-credential variables and server failures are not returned verbatim to the
+default and accepts the Example's local Vite origins.
+
+That address is the one thing this game reads from its environment, through
+`VITE_DIALOGUE_SERVER_URL`; leaving it unset uses the local default, so an
+ordinary run needs no `.env.local` here at all. Nothing else belongs in the
+Example's environment: `DATABASE_URL`, the model key and every other provider
+setting are read only by Node in the server's own process. There are no `VITE_`
+credential variables, and server failures are not returned verbatim to the
 browser.
 
 The suite never reaches this server: it answers the Dialogue Provider seam in
