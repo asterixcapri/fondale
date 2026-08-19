@@ -10,3 +10,4 @@ test/.artifacts
 .env.local
 output/
 tmp/
+test-results
