@@ -35,10 +35,13 @@ read the authoring guides in the order you build.
 
 [Vocabulary](vocabulary.md) — every term, defined once.
 
-[Reference](reference.md) — the exhaustive normative contract: every exported
-symbol, every allowed value.
+[Contract index](contract-index.md) — one row per exported structure: allowed
+values, invariants, diagnostics, compiled example.
 
 [Diagnostics](diagnostics.md) — every stable diagnostic code, by family.
+
+[Dialogue Provider protocol](dialogue-provider.md) — for implementing or
+hosting a provider, not for authoring a game.
 
 [Recipes](recipes/README.md) — compiled, executed TypeScript examples.
 

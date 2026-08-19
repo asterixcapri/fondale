@@ -12,7 +12,8 @@ Install it with `npm install @asterixcapri/fondale`, then follow the
 [authoring guide per subject](docs/public/README.md#build-a-game), the
 [vocabulary](docs/public/vocabulary.md),
 [recipes](docs/public/recipes/README.md),
-[public reference](docs/public/reference.md),
+[contract index](docs/public/contract-index.md),
+[Dialogue Provider protocol](docs/public/dialogue-provider.md),
 [diagnostics](docs/public/diagnostics.md), and exact
 [Support Baseline](docs/public/support-baseline.md).
 Maintainers and new contributors can explore the complete capability-owned flow in

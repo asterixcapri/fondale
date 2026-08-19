@@ -35,7 +35,13 @@ test("the flask can be collected once the nets are moved", () => {
 
 `startCoreSession` takes the Game Project, an optional low-level
 `dialogueProvider`, and an optional unknown `restored` Save Snapshot validated
-exactly as `startGame` validates one.
+exactly as `startGame` validates one. It returns a `CoreSession`: the same
+session the browser adapter drives, accepting the `CoreInput` values a Player
+produces, emitting `CoreEffect` values through `takeEffects`, and answering
+`hitTest` with a `CoreWorldTarget`.
+
+The helpers below are the vocabulary you should normally use. Reach for the raw
+session only when a test needs an input the vocabulary does not name.
 
 ### Driving play
 

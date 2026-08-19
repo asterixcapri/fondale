@@ -49,4 +49,4 @@ target not owned by another Game Session. Failures are reported as aggregated
 `AuthoringError` diagnostics and leave the target clean.
 
 Continue with the [vocabulary](vocabulary.md), focused [recipes](recipes/README.md),
-and [public reference](reference.md).
+and the [contract index](contract-index.md).

@@ -4,8 +4,7 @@ import ts from "typescript";
 import { findObsoleteAuthoringContract } from "./obsolete-authoring-contract.mjs";
 
 const repository = resolve(import.meta.dirname, "..");
-const referencePath = join(repository, "docs/public/reference.md");
-const reference = readFileSync(referencePath, "utf8");
+const reference = readFileSync(join(repository, "docs/public/contract-index.md"), "utf8");
 // A public name is public wherever it is documented: the guides carry the ones
 // an Author meets while building, the reference carries the exhaustive contract.
 const publicDocumentation = markdownFiles(join(repository, "docs/public"))
