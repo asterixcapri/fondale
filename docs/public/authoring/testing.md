@@ -46,8 +46,10 @@ session only when a test needs an input the vocabulary does not name.
 ### Driving play
 
 `activateNoun` activates the Noun carrying a Label, `primary` or `secondary`,
-and settles. `selectObject` selects a carried Object without toggling one
-already selected. `walkTo` walks the Player Character to a Scene Space point.
+and settles. `selectObject` takes a carried Object in hand and
+`deselectObject` puts it back; neither toggles, so selecting twice cannot
+quietly put an Object down and deselecting twice cannot pick it up. `walkTo`
+walks the Player Character to a Scene Space point.
 
 `advanceActivity` advances whatever is presented. `chooseAlternative` answers
 the alternative that reads like the given text, whether a Conversation or a

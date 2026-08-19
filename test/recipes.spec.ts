@@ -4,6 +4,7 @@ import {
   advanceToLine,
   carriedObjects,
   chooseAlternative,
+  deselectObject,
   presentedDetailView,
   presentedLine,
   pressOn,
@@ -11,7 +12,6 @@ import {
   stepUntil,
   selectObject,
   startCoreSession,
-  type CoreSession,
 } from "@asterixcapri/fondale/testing";
 
 import { project } from "../docs/public/recipes/game";
@@ -25,18 +25,6 @@ import { lantern } from "../docs/public/recipes/lantern";
  * Labels on screen and the answers it gives — which is the same vocabulary the
  * Testing guide teaches.
  */
-/**
- * Puts a selected Object back, which the vocabulary does not yet name.
- *
- * A Player deselects by clicking the drawer entry again; `selectObject`
- * deliberately refuses to toggle, so a test that needs the other half of that
- * toggle reaches for the Core Session input directly.
- */
-function deselectObject(session: CoreSession, object: string): void {
-  session.hudInput({ type: "activate-inventory", object, action: "primary" });
-  session.steps(1);
-}
-
 test("the recipes are ordinary author-owned data, not Engine objects", () => {
   expect(Object.isFrozen(project)).toBe(false);
   expect(Object.isFrozen(player)).toBe(false);

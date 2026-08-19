@@ -74,7 +74,11 @@ export function activateNoun(
   settle(session);
 }
 
-/** Selects a carried Object, so the next activation uses it on its target. */
+/**
+ * Selects a carried Object, so the next activation uses it on its target.
+ *
+ * See {@link deselectObject} for putting it back.
+ */
 export function selectObject(session: CoreSession, object: string): void {
   const carried = session.hud().inventory.entries
     .find((candidate) => candidate.object === object);
@@ -82,6 +86,25 @@ export function selectObject(session: CoreSession, object: string): void {
   // Selecting is a toggle, so an already selected Object is left alone: a test
   // that selects the same Object twice must not silently put it back.
   if (carried.selected) return;
+  session.hudInput({ type: "activate-inventory", object, action: "primary" });
+  session.steps(1);
+}
+
+/**
+ * Puts a selected Object back, the way clicking its drawer entry again does.
+ *
+ * Naming the Object is deliberate. Only one can be selected, so the argument
+ * looks redundant — but it makes a test say what it believes it is putting
+ * back, and fail loudly when something else is in hand rather than silently
+ * deselecting the wrong thing.
+ */
+export function deselectObject(session: CoreSession, object: string): void {
+  const carried = session.hud().inventory.entries
+    .find((candidate) => candidate.object === object);
+  if (!carried) throw new Error(`"${object}" is not carried.`);
+  // The other half of the same toggle: an Object that is not selected is left
+  // alone, so deselecting twice cannot pick it back up.
+  if (!carried.selected) return;
   session.hudInput({ type: "activate-inventory", object, action: "primary" });
   session.steps(1);
 }
