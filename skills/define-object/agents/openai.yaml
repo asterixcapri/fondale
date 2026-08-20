@@ -1,4 +1,0 @@
-interface:
-  display_name: "Define Object"
-  short_description: "Create or modify complete Fondale Objects"
-  default_prompt: "Use $define-object to create or modify a production-ready Object for this Fondale Game Project."
