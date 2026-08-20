@@ -1,6 +1,6 @@
-# Renderer confinato agli interni del motore
+# Keep the renderer internal to the Engine
 
-Fondale può continuare a usare PixiJS per il rendering, ma i progetti di gioco
-non manipolano direttamente i suoi oggetti. Esporre soltanto concetti di
-Fondale mantiene coerente l'authoring, rende testabile il contratto pubblico e
-consente di sostituire o aggiornare il renderer senza riscrivere i giochi.
+Fondale may go on using PixiJS for rendering, but Game Projects do not
+manipulate its objects directly. Exposing only Fondale's own concepts keeps
+authoring coherent, makes the public contract testable, and allows the renderer
+to be replaced or upgraded without rewriting games.

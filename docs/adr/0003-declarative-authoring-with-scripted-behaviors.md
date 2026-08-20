@@ -1,9 +1,9 @@
-# Authoring dichiarativo con comportamenti TypeScript
+# Declarative authoring with scripted behaviors
 
-Un progetto Fondale descrive stanze, attori, hotspot, dialoghi e inventario
-come dati validabili e usa funzioni TypeScript soltanto per i comportamenti
-specifici che i dati non esprimono bene. Abbiamo scartato sia l'ereditarietà
-dalle classi interne del motore, che accoppierebbe ogni gioco
-all'implementazione, sia editor visuale e authoring no-code, che non appartengono
-alla direzione del prodotto: l'Author di Fondale è uno sviluppatore TypeScript e
-il formato dichiarativo resta la sua interface anche nelle versioni future.
+A Fondale project describes rooms, actors, hotspots, dialogue and inventory as
+validatable data, and uses TypeScript functions only for the specific behaviors
+data does not express well. We rejected both inheritance from the Engine's
+internal classes, which would couple every game to the implementation, and
+visual editors and no-code authoring, which do not belong to the product's
+direction: Fondale's Author is a TypeScript developer, and the declarative
+format remains their interface in future versions too.
