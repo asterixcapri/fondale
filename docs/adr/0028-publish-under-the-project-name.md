@@ -28,7 +28,7 @@ unedited so the record still says what was decided when.
 ## Considered options
 
 **Keeping the author's scope** was the cheapest option and, for a private
-engine, the right one — `docs/research/product-naming-study.md` had judged it
+engine, the right one: the product naming study of 16 August 2026 had judged it
 sufficient. What changed is not the name's quality but its audience.
 
 **`@fondale/core`** puts everything under the scope and drops the unscoped name.
