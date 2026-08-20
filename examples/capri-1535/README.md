@@ -49,7 +49,9 @@ dependencies, and generated output. Runtime media live beside the source module
 that owns them; `src/assets/` is reserved for media genuinely shared by multiple
 modules. The `art/` directory contains only source masters and their prompt or
 provenance notes; tools write processed game assets directly beside their owning
-modules under `src/`.
+modules under `src/`. [`docs/visual-direction.md`](docs/visual-direction.md)
+records the look this Example was drawn to, for whoever adds to it; it binds
+nothing outside this directory.
 
 ## The prologue route
 

@@ -4,15 +4,19 @@
 // to be complete on its own. The fabrication cycle is therefore written once in
 // `skills/shared/fabrication-cycle.md` and rendered into each skill's SKILL.md
 // here, from the skill's own source document and its values.
-import { readdirSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { readdirSync, readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const sources = "skills/shared/sources";
+const snippets = "skills/shared/snippets";
 const cyclePath = "skills/shared/fabrication-cycle.md";
 // The marker names no path: an installed skill is one directory, and a pointer
 // at a file the reader cannot open is worse than none.
 const banner = "<!-- Generated. Hand edits are overwritten by the next generation. -->";
+// One grammar for a block marker, read both by the renderer that fills it in
+// and by the check that no shared snippet goes unmarked.
+const blockMarker = /^\{\{ ([^}]+) \}\}$/gm;
 
 // The values document is Markdown a human reads and edits beside the prose it
 // feeds, so a value is a `## key` section and its body is everything until the
@@ -92,11 +96,22 @@ function numberSteps(text) {
     .join("\n");
 }
 
-export function renderSkillDocument({ document, values, cycle }) {
+// A block is inserted before the values pass, so a value inside it is
+// substituted like any other: the cycle and the shared snippets are both
+// whole-line markers a source puts where the block belongs.
+export function renderSkillDocument({ document, values, cycle, snippets = new Map() }) {
   const substitutions = parseValues(values);
+  const collision = [...snippets.keys()].find((name) => substitutions.has(name));
+  if (collision) {
+    throw new Error(`The value {{ ${collision} }} has the name of a shared snippet.`);
+  }
+  const blocks = new Map([["fabrication-cycle", cycle], ...snippets]);
   const used = new Set();
   const rendered = document
-    .replace(/^\{\{ fabrication-cycle \}\}$/m, () => cycle.trim())
+    .replace(blockMarker, (whole, name) => {
+      const key = name.trim();
+      return blocks.has(key) ? blocks.get(key).trim() : whole;
+    })
     .replace(/\{\{ ([^}]+) \}\}/g, (_, name) => {
       const key = name.trim();
       if (!substitutions.has(key)) throw new Error(`No value for the placeholder {{ ${key} }}.`);
@@ -112,20 +127,41 @@ export function renderSkillDocument({ document, values, cycle }) {
 
 export function generatedSkillDocuments(root) {
   const cycle = readFileSync(resolve(root, cyclePath), "utf8");
+  const shared = sharedSnippets(root);
   const documents = new Map();
+  const marked = new Set();
   for (const name of readdirSync(resolve(root, sources)).sort()) {
     if (!name.endsWith(".md") || name.endsWith(".values.md")) continue;
     const skill = name.slice(0, -".md".length);
+    const document = readFileSync(resolve(root, sources, name), "utf8");
+    for (const [, key] of document.matchAll(blockMarker)) marked.add(key.trim());
     documents.set(
       `skills/${skill}/SKILL.md`,
       renderSkillDocument({
-        document: readFileSync(resolve(root, sources, name), "utf8"),
+        document,
         values: readFileSync(resolve(root, sources, `${skill}.values.md`), "utf8"),
         cycle,
+        snippets: shared,
       }),
     );
   }
+  const unused = [...shared.keys()].filter((key) => !marked.has(key));
+  if (unused.length > 0) throw new Error(`Shared snippets nothing marks: ${unused.join(", ")}.`);
   return documents;
+}
+
+// A snippet is prose more than one skill says identically. It lives here rather
+// than in one skill's source because `npx skills` copies one directory: three
+// hand-kept copies of the same paragraph are three paragraphs that drift.
+function sharedSnippets(root) {
+  const directory = resolve(root, snippets);
+  if (!existsSync(directory)) return new Map();
+  return new Map(
+    readdirSync(directory)
+      .filter((name) => name.endsWith(".md"))
+      .sort()
+      .map((name) => [name.slice(0, -".md".length), readFileSync(resolve(directory, name), "utf8")]),
+  );
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

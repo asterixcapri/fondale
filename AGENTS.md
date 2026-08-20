@@ -81,27 +81,16 @@ To list the skills currently available in the project:
 npx skills list
 ```
 
-Use the project content skills for their owning definitions:
+The skills under `skills/` are the game-authoring pipeline: `define-story`,
+`define-puzzles` and `setup-game` interview a game's author, and
+`define-character`, `define-scene` and `define-object` fabricate its artwork.
+They are written to be installed into a game's own repository, not used on this
+one, and each is complete on its own because `npx skills` copies one directory.
+`docs/public/building-a-game.md` is the entry point that documents the pipeline;
+change it whenever a skill's `## Documents` table changes.
 
-- `skills/define-scene/SKILL.md` for Scenes fabricated against a game's own
-  world contract: geometry measured at 1:1, the Walkable Region, Perspective
-  Scale, placeholder and finished artwork, and the `SceneDefinition`;
-- `skills/define-character/SKILL.md` for Characters fabricated against a game's
-  own world contract: target height, generation, normalisation, Appearances,
-  Animations and the `CharacterDefinition`;
-- `skills/define-object/SKILL.md` for Objects fabricated against a game's own
-  world contract: the world target measured beside the carrying Character, the
-  Inventory Appearance on the UI scale, the lifecycle, the Noun and the
-  `ObjectDefinition`;
-- `skills/define-dialogue/SKILL.md` for narrative authority, Character Knowledge,
-  Disclosure, authored Conversation, and Knowledge-Driven Dialogue.
-
-`docs/agents/visual-direction.md` now records Capri 1535's own visual choices
-alone: the three fabrication skills are portable to any game and take their
-scale and their art direction from that game's `docs/game/world.md`.
-
-Their `SKILL.md` files are generated: see `skills/shared/README.md` before
-changing any of them.
+The three fabrication `SKILL.md` files are generated: see
+`skills/shared/README.md` before changing any of them.
 
 ### Issue tracker
 

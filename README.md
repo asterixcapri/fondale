@@ -7,7 +7,9 @@ Project. Character, Object, and Scenery Nouns live on the definition they
 describe; Hotspots retain only the declarative target identifier.
 
 Install it with `npm install @asterixcapri/fondale`, then follow the
-[quick start](docs/public/quick-start.md). The package includes the
+[quick start](docs/public/quick-start.md) to get a Scene on screen, or
+[building a game](docs/public/building-a-game.md) for the authoring pipeline
+that takes an idea to a playable short adventure. The package includes the
 [documentation index](docs/public/README.md), one
 [authoring guide per subject](docs/public/README.md#build-a-game), the
 [vocabulary](docs/public/vocabulary.md),

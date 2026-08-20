@@ -18,11 +18,7 @@ arrives at a size nobody decided.
 | Missing input | stop and tell the author to run `/setup-game`; never run it yourself |
 | Next command | `/define-scene` while the Character has no Scene to stand in; otherwise back to the ticket |
 
-Paths are literal and relative to the game's own repository, which is the
-working directory, except `<skill>/scripts/normalise-runtime-asset.mjs`: that
-one is this skill's own copy of the normaliser, and `<skill>` stands for the
-directory this skill was installed into. ImageMagick 7 — the `magick` command —
-must be installed.
+{{ literal-paths }}
 
 ## Workflow
 
@@ -54,8 +50,7 @@ performance differs — its Noun and the lines it answers with, its initial Scen
 Ground Point and Facing, its movement speed, and, for a re-run, what must survive
 unchanged.
 
-The look of the game is settled: quote the `## Visual direction` section of
-`docs/game/world.md` into every generation and add no style of your own.
+{{ settled-look }}
 
 Finish when the frontier is empty and the author has confirmed the list of
 Appearances, the Animations of each, and the four Facings of each Animation.

@@ -1,36 +1,14 @@
-# Game Project visual direction
+# Capri 1535 visual direction
 
-Shared visual contract for Fondale content skills. Read this file before
-creating or modifying Scenes, Characters, or Objects, then inspect the target
-Game Project for its concrete values and established assets.
+A record of the choices made for this Example, kept so that anything added to it
+later still looks drawn by the same hand. It is not a contract for anything
+outside `examples/capri-1535/`: no skill reads it, and it ships in no package.
 
-## Project scale
-
-- Treat the Logical Resolution as the visible world viewport and the reference
-  for composition, Character size, and UI legibility.
-- Give a fixed Scene a Scene Size at least as large as the Logical Resolution.
-  Make a scrolling Scene wider or taller and give its Runtime Background exactly
-  the Scene Size; the Engine Camera reveals the larger Scene Space.
-- Use a 1:1 mapping between Runtime Asset pixels and Scene Space units unless
-  the Game Project explicitly defines a different asset pipeline.
-- Calibrate Background architecture, Characters, Scenery, and in-Scene Object
-  Appearances as one world scale. Use the Player Character as the reference.
-- Preserve an established Character-to-viewport ratio. For a new visual system,
-  begin near one third of the Logical Resolution height at Perspective Scale 1;
-  at `1280×720`, test a reference Character around `240 px` tall.
-- Express positions, Baselines, Visual Anchors, Hotspots, Walkable Region,
-  Approach Points, entrances, and passages in the same Scene Space.
-- Use Perspective Scale only for depth. Do not use it to repair an asset authored
-  at the wrong project-wide size.
-- Calibrate HUD, text, cursors, and Inventory Appearances against the Logical
-  Resolution as a separate UI scale; do not apply Scene perspective to them.
-- When Logical Resolution changes, inventory every world and UI asset and every
-  authored coordinate before treating existing content as compatible. Prefer
-  deliberate redrawing and reauthoring over blind mechanical scaling.
-
-The scale is coherent when a reference Character, representative Scenery, an
-in-Scene Object, and the HUD can be shown together at actual play size with
-intentional proportions.
+A Fondale game settles its own look in its own `docs/game/world.md`, written by
+the `setup-game` interview and quoted into every generation from there — see
+[building a game](../../../docs/public/building-a-game.md). Scale is settled
+there too, as a measured anchor rather than a rule: this document says nothing
+about how large anything is.
 
 ## Illustrated neo-retro language
 
