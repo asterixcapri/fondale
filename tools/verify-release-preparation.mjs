@@ -5,8 +5,13 @@ import { fileURLToPath } from "node:url";
 const architecturePath = "docs/engine-architecture.html";
 
 export function verifyReleasePreparation({ readme, packageVersion }) {
-  if (packageVersion !== "0.4.0" || !readme.includes("Fondale 0.4")) {
-    throw new Error("Package metadata and public documentation must identify Fondale 0.4.0.");
+  const series = /^(\d+)\.(\d+)\.\d+/.exec(packageVersion);
+  if (!series) throw new Error(`package.json: '${packageVersion}' is not a version to release.`);
+  const [, major, minor] = series;
+  if (!readme.includes(`Fondale ${major}.${minor}`)) {
+    throw new Error(
+      `Package metadata and public documentation must identify Fondale ${major}.${minor}.`,
+    );
   }
   for (const link of [architecturePath]) {
     if (!readme.includes(link)) throw new Error(`README.md: missing release documentation link '${link}'.`);
