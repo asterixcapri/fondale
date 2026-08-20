@@ -1,7 +1,0 @@
-[mcp_servers.autosprite]
-url = "https://www.autosprite.io/api/mcp"
-http_headers = { "Authorization" = "Bearer vspk_e11d741750_a6zCSoFN0NVWdUZCS4cVt5dihGkasP0YmG3TMRDU" }
-
-[mcp_servers.godmodeai]
-url = "https://www.godmodeai.co/api/mcp"
-http_headers = { "Authorization" = "Bearer gmd_7369d00734f46d42710c2811cc5069d42f918845caeaa35f" }

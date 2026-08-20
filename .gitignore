@@ -11,3 +11,6 @@ test/.artifacts
 output/
 tmp/
 test-results
+
+# Local agent configuration, which may hold credentials
+.codex/
