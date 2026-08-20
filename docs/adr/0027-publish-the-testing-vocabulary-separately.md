@@ -13,7 +13,7 @@ addressed by an index the Player never sees, and an activation walked to commits
 its outcome long after the walk ends. Every author would pay that again, and a
 motor that ships no repeatable way to test a game has delivered half the work.
 
-`@asterixcapri/fondale/testing` publishes that vocabulary in the terms a Player
+`fondale/testing` publishes that vocabulary in the terms a Player
 would use: activate the Noun labelled this, answer the alternative that reads
 like that, let play settle. Opening the game without a renderer belongs there
 too, so `startCoreSession` and the Core Session's own types move out of the

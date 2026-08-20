@@ -26,7 +26,7 @@ Neither alternative would have given the capability to anybody outside this
 repository, and the need is not ours alone — every author writing an adventure
 with Fondale has to verify puzzles without a browser.
 
-A second entry point (`@asterixcapri/fondale/testing`) was tried and abandoned:
+A second entry point (`fondale/testing`) was tried and abandoned:
 the architecture verification requires exactly one public root entry, and the
 seam is a capability of the Engine rather than a separate testing product.
 

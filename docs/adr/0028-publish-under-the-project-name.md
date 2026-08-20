@@ -5,14 +5,14 @@ status: accepted
 # Publish under the project's own name rather than the author's
 
 The Engine was first published under the author's own npm scope, and ADR 0020
-followed it with a dialogue server under the same scope. That scope reads as one person's
-shelf, which was accurate while the repository was private and the Engine had
-exactly one game. It stopped being accurate the day the repository went public,
-the package reached the registry, and `docs/public/building-a-game.md` began
-addressing a stranger who has installed nothing yet. The first line that
-stranger types is the package name, and an MIT engine that wants to be used by
-people other than its author should not introduce itself as somebody's
-belongings.
+followed it with a dialogue server under the same scope. That scope reads as one
+person's shelf, which was accurate while the repository was private and the
+Engine had exactly one game. It stopped being accurate the day the repository
+went public, the package reached the registry, and
+`docs/public/building-a-game.md` began addressing a stranger who has installed
+nothing yet. The first line that stranger types is the package name, and an MIT
+engine that wants to be used by people other than its author should not
+introduce itself as somebody's belongings.
 
 The Engine is therefore published as **`fondale`**, unscoped, and its satellites
 under the **`@fondale`** scope, beginning with `@fondale/dialogue-server`. The
@@ -22,8 +22,10 @@ short name while the family stays gathered — the arrangement `vue` and `@vue/*
 scope now also costs nothing and cannot be done later if somebody else takes it.
 
 This supersedes the package names in ADRs 0020, 0026 and 0027 and nothing else
-about them: those decisions stand as they were argued, and are left unedited so
-the record still says what was decided when.
+about them. Those documents now spell the new names, so that each states a
+decision that still holds rather than one a reader has to translate; what they
+decided — a separately published server, a headless entry point, a testing
+vocabulary of its own — is untouched.
 
 ## Considered options
 
@@ -52,5 +54,5 @@ withdrawn within npm's 72-hour window, so no version of it survives to be
 depended on.
 
 The GitHub repository is a separate namespace and is unaffected: `npx skills add
-asterixcapri/fondale` remains the way the skills are installed until, and unless,
-the repository itself moves.
+asterixcapri/fondale` remains the way the skills are installed until, and
+unless, the repository itself moves.
