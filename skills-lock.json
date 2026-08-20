@@ -163,6 +163,11 @@
       "skillPath": "skills/misc/scaffold-exercises/SKILL.md",
       "computedHash": "354c91f6dbc9b058632f30594aacb4edc6d25012596585abb00402af8d7ec5e9"
     },
+    "setup-game": {
+      "source": "./skills",
+      "sourceType": "local",
+      "computedHash": "8cbb5ec346926ba09c445cec0d77b81954e6adad6115c9fd67e3aa9d92ea0c96"
+    },
     "setup-matt-pocock-skills": {
       "source": "mattpocock/skills",
       "sourceType": "github",
