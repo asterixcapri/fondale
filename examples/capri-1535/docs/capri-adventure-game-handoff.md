@@ -870,8 +870,8 @@ hotspot sono controlli HUD sovrapposti.
 Ogni hotspot espone una sola azione primaria scritta per la situazione. Un
 click comprende avvicinamento, orientamento e interazione; selezionare un
 oggetto dell'inventario trasforma invece il click successivo in un uso di
-inventario. La decisione completa è in
-`docs/adr/0001-full-scene-contextual-interaction.md`.
+inventario. Questo modello contestuale è stato poi sostituito: la decisione in
+vigore è l'ADR 0007.
 
 ---
 
