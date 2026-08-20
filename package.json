@@ -28,7 +28,7 @@
     "typecheck": "tsc --noEmit && npm run typecheck --workspace @asterixcapri/fondale-dialogue-server",
     "build:package": "vite build --config vite.lib.config.ts && tsc -p tsconfig.declarations.json",
     "build:dialogue-server": "npm run build --workspace @asterixcapri/fondale-dialogue-server",
-    "build": "npm run build:package && npm run build:dialogue-server && npm run typecheck && npm run verify:dialogue-server && npm run verify:architecture && npm run verify:architecture-doc && npm run verify:release-preparation && npm run verify:docs && npm run verify:runtime-asset-normaliser",
+    "build": "npm run build:package && npm run build:dialogue-server && npm run typecheck && npm run verify:dialogue-server && npm run verify:architecture && npm run verify:architecture-doc && npm run verify:release-preparation && npm run verify:docs && npm run verify:runtime-asset-normaliser && npm run verify:carried-skill-scripts",
     "verify:dialogue-server": "npm run verify --workspace @asterixcapri/fondale-dialogue-server",
     "verify:dialogue-server:integration": "npm run verify:integration --workspace @asterixcapri/fondale-dialogue-server",
     "verify:architecture": "node --test tools/verify-architecture.spec.mjs && node tools/verify-architecture.mjs",
@@ -36,6 +36,7 @@
     "verify:release-preparation": "node --test tools/verify-release-preparation.spec.mjs && node tools/verify-release-preparation.mjs",
     "verify:docs": "node --test tools/verify-docs.spec.mjs && node tools/verify-docs.mjs",
     "verify:runtime-asset-normaliser": "node --test skills/shared/scripts/normalise-runtime-asset.spec.mjs",
+    "verify:carried-skill-scripts": "node --test tools/verify-carried-skill-scripts.spec.mjs && node tools/verify-carried-skill-scripts.mjs",
     "verify": "playwright test",
     "sandcastle:implement": "node .sandcastle/index.js"
   },
