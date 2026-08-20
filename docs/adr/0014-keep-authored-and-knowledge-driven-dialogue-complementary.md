@@ -12,3 +12,9 @@ A Conversation is the dominant Game Activity while the Player conducts
 Knowledge-Driven Dialogue. An authored condition may hand control to a
 Sequence, and the Engine explicitly decides whether the Conversation resumes
 or closes afterward; generated speech cannot initiate that handoff.
+
+ADR-0017 supersedes the assumption above that play reaches one path at a time
+through an authored handoff: authored alternatives and free-form input are now
+presented together for a Conversation's whole duration. What stands here is the
+division of authority — authored conditions and Engine decisions govern Game
+State, and generated speech decides nothing.
