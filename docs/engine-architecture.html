@@ -200,7 +200,7 @@
         <div class="rule"><strong>Interfacce, non dettagli.</strong><br>Una capability importa un’altra capability soltanto dal suo <code>index.ts</code> dichiarato.</div>
         <div class="rule"><strong>Viste strette e immutabili.</strong><br><code>startGame</code> copia e congela il Game Project valido; ogni modulo interno riceve soltanto la propria vista e nessun riferimento mutabile dell’Author o del Game State.</div>
         <div class="rule"><strong>Niente contenitore shared.</strong><br>La policy resta presso il proprietario; il controllo strutturale impedisce scorciatoie orizzontali.</div>
-        <div class="rule"><strong>Un solo package root.</strong><br>L’Author importa da <code>@asterixcapri/fondale</code>; la struttura interna non diventa contratto pubblico.</div>
+        <div class="rule"><strong>Un solo package root.</strong><br>L’Author importa da <code>fondale</code>; la struttura interna non diventa contratto pubblico.</div>
       </div>
       <h3 style="margin-top:28px">Adapter tecnici</h3>
       <div class="adapter-grid">

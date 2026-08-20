@@ -3,7 +3,7 @@ import {
   type CommandLexicon,
   type CommandResponse,
   type HUDTheme,
-} from "@asterixcapri/fondale";
+} from "fondale";
 
 /** The Engine never infers grammar: every word a Player reads is authored. */
 export const commandLexicon = ({

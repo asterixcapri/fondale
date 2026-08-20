@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import type { DialogueProvider } from "@asterixcapri/fondale";
-import { HttpDialogueProvider } from "@asterixcapri/fondale";
+import type { DialogueProvider } from "fondale";
+import { HttpDialogueProvider } from "fondale";
 
 import type { DialogueModel } from "./dialogue-model.js";
 import { createDialogueServer } from "./server.js";

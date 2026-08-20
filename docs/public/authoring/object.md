@@ -16,7 +16,7 @@ and one square Inventory Appearance for the drawer.
 ## How you author one
 
 ```ts
-import { type ObjectDefinition } from "@asterixcapri/fondale";
+import { type ObjectDefinition } from "fondale";
 
 export const oilFlask = {
   initialScene: "harbour",

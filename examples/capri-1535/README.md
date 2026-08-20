@@ -1,7 +1,6 @@
 # Capri 1535 Example
 
-This is a self-contained consumer of the packaged `@asterixcapri/fondale`
-library.
+This is a self-contained consumer of the packaged `fondale` library.
 
 Running the game needs the separately run Dialogue Server and PostgreSQL:
 Raffaele and Frate Elia offer authored questions and a free-form field
@@ -133,7 +132,7 @@ been redrawn.
 ## Local Dialogue Server
 
 The Dialogue Server runs as a separate Node.js process and is part of what it takes to
-run the game. The installable `@asterixcapri/fondale-dialogue-server` package
+run the game. The installable `@fondale/dialogue-server` package
 implements Fondale's public `DialogueProvider` interface, uses Mastra Memory
 with `@mastra/pg`, and keeps PostgreSQL credentials outside the Vite bundle.
 

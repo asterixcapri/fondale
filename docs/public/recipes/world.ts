@@ -1,4 +1,4 @@
-import { type NounDefinition, type SceneDefinition } from "@asterixcapri/fondale";
+import { type NounDefinition, type SceneDefinition } from "fondale";
 
 const brazierNoun = ({
   labels: [{ text: "Brazier" }],

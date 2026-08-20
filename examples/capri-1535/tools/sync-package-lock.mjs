@@ -7,9 +7,9 @@ const lockPath = join(project, "package-lock.json");
 const lock = JSON.parse(readFileSync(lockPath, "utf8"));
 
 const packages = [{
-  name: "@asterixcapri/fondale",
+  name: "fondale",
   version: "0.4.0",
-  tarball: "vendor/asterixcapri-fondale-0.4.0.tgz",
+  tarball: "vendor/fondale-0.4.0.tgz",
 }];
 
 for (const packageDefinition of packages) {

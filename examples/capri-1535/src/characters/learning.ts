@@ -1,4 +1,4 @@
-import { type GameOperation } from "@asterixcapri/fondale";
+import { type GameOperation } from "fondale";
 
 /**
  * What Michele takes away from an authored answer, whatever path brought him

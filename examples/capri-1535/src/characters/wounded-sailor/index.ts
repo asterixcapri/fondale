@@ -1,4 +1,4 @@
-import { type CharacterDefinition, type NounDefinition } from "@asterixcapri/fondale";
+import { type CharacterDefinition, type NounDefinition } from "fondale";
 
 import deadUrl from "./dead.png";
 import staticUrl from "./static.png";

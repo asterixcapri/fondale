@@ -12,7 +12,7 @@ import {
   stepUntil,
   selectObject,
   startCoreSession,
-} from "@asterixcapri/fondale/testing";
+} from "fondale/testing";
 
 import { project } from "../docs/public/recipes/game";
 import { player } from "../docs/public/recipes/characters";

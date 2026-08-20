@@ -7,7 +7,7 @@ import type {
   DialogueProvider,
   DialogueTurnContext,
   ReflectionResponse,
-} from "@asterixcapri/fondale";
+} from "fondale";
 
 import { throwIfAborted } from "./cancellation.js";
 import type { DialogueModel, VisibleDialogueLine } from "./dialogue-model.js";

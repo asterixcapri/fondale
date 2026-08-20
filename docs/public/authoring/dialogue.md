@@ -22,7 +22,7 @@ Every state change comes from authored operations.
 ## How you author it
 
 ```ts
-import { type CharacterDialogueDefinition } from "@asterixcapri/fondale";
+import { type CharacterDialogueDefinition } from "fondale";
 
 export const raffaeleDialogue = {
   biography: "Harbour keeper on Capri since before the raid.",

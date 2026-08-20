@@ -15,7 +15,7 @@ export default defineConfig({
     sourcemap: true,
     rollupOptions: {
       external: [
-        "@asterixcapri/fondale",
+        "fondale",
         "@hono/node-server",
         "@mastra/core/agent",
         "@mastra/core/llm",

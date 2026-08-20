@@ -1,4 +1,4 @@
-import { type NarrativeFactDefinition } from "@asterixcapri/fondale";
+import { type NarrativeFactDefinition } from "fondale";
 
 // Propositions are written in the Example's own language, because they are
 // the material a Dialogue Provider verbalises for an Italian-speaking Player

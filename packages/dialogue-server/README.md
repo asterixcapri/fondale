@@ -1,10 +1,10 @@
 # Fondale Dialogue Server
 
-`@asterixcapri/fondale-dialogue-server` is the separately run Node.js
-implementation of Fondale's public `DialogueProvider` seam. It owns HTTP
-transport, Mastra-backed Conversation memory, PostgreSQL storage and live model
-calls. The browser Engine sends only the material authorised for the current
-Dialogue Turn; this server never loads a Game Project or its files.
+`@fondale/dialogue-server` is the separately run Node.js implementation of
+Fondale's public `DialogueProvider` seam. It owns HTTP transport, Mastra-backed
+Conversation memory, PostgreSQL storage and live model calls. The browser Engine
+sends only the material authorised for the current Dialogue Turn; this server
+never loads a Game Project or its files.
 
 HTTP compute is stateless. Every operation creates a request-scoped Dialogue
 Provider from the request's Game Session identity, reads its Conversation or

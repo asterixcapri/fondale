@@ -1,4 +1,4 @@
-import { type CharacterDefinition, type NounDefinition, uniformGrid } from "@asterixcapri/fondale";
+import { type CharacterDefinition, type NounDefinition, uniformGrid } from "fondale";
 
 // One cell, one frame. A real game animates; the contract is the same.
 const frames = uniformGrid({ frameWidth: 256, frameHeight: 256, columns: 1, count: 1 });

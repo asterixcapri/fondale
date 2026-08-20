@@ -10,7 +10,7 @@ import type {
   ReflectionRequest,
   ReflectionResponse,
   VoiceDefinition,
-} from "@asterixcapri/fondale";
+} from "fondale";
 
 import type { DialogueModel, VisibleDialogueLine } from "./dialogue-model.js";
 

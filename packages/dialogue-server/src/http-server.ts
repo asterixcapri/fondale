@@ -8,7 +8,7 @@ import type {
   DialogueHttpResponse,
   DialogueProvider,
   DialogueTurnContext,
-} from "@asterixcapri/fondale";
+} from "fondale";
 
 interface ClosableDialogueProvider extends DialogueProvider {
   close?: () => Promise<void>;

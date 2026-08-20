@@ -26,16 +26,15 @@ lantern never arrives the size of a door.
 
 Read `docs/game/world.md` for the pixels per world unit, the Logical Resolution,
 the Inventory Appearance Size, the stage and the visual direction;
-`docs/game/assets.md` for this Object's declared size, for the measured height of
-the Character who will carry it, and for every asset already made;
-`docs/game/story.md` and `docs/game/puzzles.md` for what this Object is and which
-puzzle it serves. Read the Engine's own contract from the installed package,
-which is the version the game is built against:
-`node_modules/@asterixcapri/fondale/docs/public/authoring/object.md` for the
-lifecycle, the non-directional Appearances, the Inventory Appearance and the
-Noun, `authoring/interaction.md` for Nouns, Verbs, Command Cases and Game
-Operations, and
-`node_modules/@asterixcapri/fondale/docs/public/recipes/lantern.ts` for a worked
+`docs/game/assets.md` for this Object's declared size, for the measured height
+of the Character who will carry it, and for every asset already made;
+`docs/game/story.md` and `docs/game/puzzles.md` for what this Object is and
+which puzzle it serves. Read the Engine's own contract from the installed
+package, which is the version the game is built against:
+`node_modules/fondale/docs/public/authoring/object.md` for the lifecycle, the
+non-directional Appearances, the Inventory Appearance and the Noun,
+`authoring/interaction.md` for Nouns, Verbs, Command Cases and Game Operations,
+and `node_modules/fondale/docs/public/recipes/lantern.ts` for a worked
 definition.
 
 Stop at the missing-input row above when `docs/game/world.md` is absent, and when
@@ -96,14 +95,14 @@ state the game can carry on from.
 ### Verify in the Engine
 
 Run the game and play the Object's whole lifecycle: walk to it, look at it,
-collect it, open the Inventory, select it, use it on every authored target and on
-one nobody authored, place it back where it can be placed, and consume it where
-it is consumed. Confirm that it stands beside the carrying Character at the size
-`preview.png` showed, that changing its Appearance does not change its height,
-that it reads in the drawer at the Inventory Appearance Size, and that the same
-Noun answers in the Scene and in the Inventory.
-`node_modules/@asterixcapri/fondale/docs/public/authoring/testing.md` drives the
-same play from a test.
+collect it, open the Inventory, select it, use it on every authored target and
+on one nobody authored, place it back where it can be placed, and consume it
+where it is consumed. Confirm that it stands beside the carrying Character at
+the size `preview.png` showed, that changing its Appearance does not change its
+height, that it reads in the drawer at the Inventory Appearance Size, and that
+the same Noun answers in the Scene and in the Inventory.
+`node_modules/fondale/docs/public/authoring/testing.md` drives the same play
+from a test.
 
 Finish when every Appearance and Animation loads, the Object measures the height
 the register records, and no interaction leaves the game in a state the Player

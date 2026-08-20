@@ -1,4 +1,4 @@
-import { type NounDefinition, type ObjectDefinition } from "@asterixcapri/fondale";
+import { type NounDefinition, type ObjectDefinition } from "fondale";
 
 import inventoryUrl from "./inventory.png";
 import wrappedUrl from "./scene.png";

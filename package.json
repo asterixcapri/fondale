@@ -1,5 +1,5 @@
 {
-  "name": "@asterixcapri/fondale",
+  "name": "fondale",
   "version": "0.4.0",
   "description": "A web-native, TypeScript-first point-and-click adventure engine.",
   "license": "MIT",
@@ -28,12 +28,12 @@
   ],
   "scripts": {
     "dev": "npm run build:package && vite --force",
-    "typecheck": "tsc --noEmit && npm run typecheck --workspace @asterixcapri/fondale-dialogue-server",
+    "typecheck": "tsc --noEmit && npm run typecheck --workspace @fondale/dialogue-server",
     "build:package": "vite build --config vite.lib.config.ts && tsc -p tsconfig.declarations.json",
-    "build:dialogue-server": "npm run build --workspace @asterixcapri/fondale-dialogue-server",
+    "build:dialogue-server": "npm run build --workspace @fondale/dialogue-server",
     "build": "npm run build:package && npm run build:dialogue-server && npm run typecheck && npm run verify:dialogue-server && npm run verify:architecture && npm run verify:architecture-doc && npm run verify:release-preparation && npm run verify:docs && npm run verify:runtime-asset-normaliser && npm run verify:carried-skill-scripts && npm run verify:generated-skill-documents",
-    "verify:dialogue-server": "npm run verify --workspace @asterixcapri/fondale-dialogue-server",
-    "verify:dialogue-server:integration": "npm run verify:integration --workspace @asterixcapri/fondale-dialogue-server",
+    "verify:dialogue-server": "npm run verify --workspace @fondale/dialogue-server",
+    "verify:dialogue-server:integration": "npm run verify:integration --workspace @fondale/dialogue-server",
     "verify:architecture": "node --test tools/verify-architecture.spec.mjs && node tools/verify-architecture.mjs",
     "verify:architecture-doc": "node --test tools/verify-architecture-doc.spec.mjs && node tools/verify-architecture-doc.mjs",
     "verify:release-preparation": "node --test tools/verify-release-preparation.spec.mjs && node tools/verify-release-preparation.mjs",

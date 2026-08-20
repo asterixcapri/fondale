@@ -24,15 +24,15 @@ arrives at a size nobody decided.
 
 ### Take stock
 
-Read `docs/game/world.md` for the pixels per world unit, the Logical
-Resolution, the stage and the visual direction; `docs/game/assets.md` for this
-Character's declared size and for every asset already made; `docs/game/story.md`
-for who this Character is. Read the Engine's own contract from the installed
-package, which is the version the game is built against:
-`node_modules/@asterixcapri/fondale/docs/public/authoring/character.md` for
-Appearances, Animations, Roles, the Visual Anchor and the cell rules, and
-`node_modules/@asterixcapri/fondale/docs/public/recipes/characters.ts` for a
-worked definition.
+Read `docs/game/world.md` for the pixels per world unit, the Logical Resolution,
+the stage and the visual direction; `docs/game/assets.md` for this Character's
+declared size and for every asset already made; `docs/game/story.md` for who
+this Character is. Read the Engine's own contract from the installed package,
+which is the version the game is built against:
+`node_modules/fondale/docs/public/authoring/character.md` for Appearances,
+Animations, Roles, the Visual Anchor and the cell rules, and
+`node_modules/fondale/docs/public/recipes/characters.ts` for a worked
+definition.
 
 Stop at the missing-input row above when `docs/game/world.md` is absent, and
 when the Character has no row in `docs/game/assets.md`: a declared size is the
@@ -75,12 +75,12 @@ inside the initial Scene's Walkable Region.
 ### Verify in the Engine
 
 Run the game and walk the Character across its Scene. Confirm that it faces four
-ways, that its height does not change when it turns, walks or changes Appearance,
-that its feet stay on the ground point it is walking to, and that it matches
-`preview.png` at the same place in the Scene. Repeat at the far edge of the
-Walkable Region, where Perspective Scale is smallest.
-`node_modules/@asterixcapri/fondale/docs/public/authoring/testing.md` drives the
-same play from a test.
+ways, that its height does not change when it turns, walks or changes
+Appearance, that its feet stay on the ground point it is walking to, and that it
+matches `preview.png` at the same place in the Scene. Repeat at the far edge of
+the Walkable Region, where Perspective Scale is smallest.
+`node_modules/fondale/docs/public/authoring/testing.md` drives the same play
+from a test.
 
 Finish when every Facing of every Animation loads and plays, and the Character
 stands the height the register records.

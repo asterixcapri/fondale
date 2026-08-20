@@ -207,7 +207,7 @@ if (!recipeTest.includes("docs/public/recipes/game")) {
 const assembledGame = readFileSync(join(repository, "docs/public/recipes/game.ts"), "utf8");
 for (const recipe of requiredRecipes) {
   const source = readFileSync(join(repository, "docs/public/recipes", recipe), "utf8");
-  const importsPackage = source.includes('from "@asterixcapri/fondale"');
+  const importsPackage = source.includes('from "fondale"');
   if (!importsPackage || source.includes("/src/")) {
     throw new Error(`Recipe must consume only the distributable package root: ${recipe}`);
   }

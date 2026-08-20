@@ -4,7 +4,7 @@ import {
   leaveActivity,
   reflect,
   revealedNouns,
-} from "@asterixcapri/fondale/testing";
+} from "fondale/testing";
 
 import { descendToBoat, observeSighting, repairWinchAndSail, scene } from "./prologue";
 import { continueSession, startExample } from "./support";

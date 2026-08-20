@@ -1,4 +1,4 @@
-import { type ClaimDefinition } from "@asterixcapri/fondale";
+import { type ClaimDefinition } from "fondale";
 
 export const claims = ({
   "friars-stole-the-handle": {

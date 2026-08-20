@@ -1,4 +1,4 @@
-import { type DetailViewDefinition, type NounDefinition } from "@asterixcapri/fondale";
+import { type DetailViewDefinition, type NounDefinition } from "fondale";
 
 import { rectangle } from "../../geometry";
 import closeUpUrl from "./close-up.png";

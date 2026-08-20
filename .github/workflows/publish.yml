@@ -39,7 +39,7 @@ jobs:
       - name: Refuse a dialogue server that disagrees with the core
         run: |
           core="$(node -p 'require("./package.json").version')"
-          peer="$(node -p 'require("./packages/dialogue-server/package.json").peerDependencies["@asterixcapri/fondale"]')"
+          peer="$(node -p 'require("./packages/dialogue-server/package.json").peerDependencies["fondale"]')"
           if [ "$peer" != "$core" ]; then
             echo "dialogue-server expects core $peer but this tag publishes $core." >&2
             exit 1
@@ -51,6 +51,6 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish the dialogue server
-        run: npm publish --provenance --workspace @asterixcapri/fondale-dialogue-server
+        run: npm publish --provenance --workspace @fondale/dialogue-server
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

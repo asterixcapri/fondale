@@ -21,7 +21,7 @@ grammar.
 ## How you author it
 
 ```ts
-import { type NounDefinition } from "@asterixcapri/fondale";
+import { type NounDefinition } from "fondale";
 
 export const doorNoun = {
   labels: [

@@ -1,4 +1,4 @@
-import { type NounDefinition, type ObjectDefinition } from "@asterixcapri/fondale";
+import { type NounDefinition, type ObjectDefinition } from "fondale";
 
 /**
  * One Noun answers for the lantern on the quay and in the Inventory alike.

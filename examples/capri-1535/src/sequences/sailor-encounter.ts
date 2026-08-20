@@ -1,4 +1,4 @@
-import { type GameOperation, type SequenceDefinition } from "@asterixcapri/fondale";
+import { type GameOperation, type SequenceDefinition } from "fondale";
 
 /** The canonical handoff: recognition, bundle, unconsciousness. */
 const handoff: readonly GameOperation[] = [

@@ -4,7 +4,7 @@ import type {
   DialogueVerbalizationRequest,
   ReflectionRequest,
   ReflectionResponse,
-} from "@asterixcapri/fondale";
+} from "fondale";
 
 /** One Line of a Conversation as the Player actually saw it. */
 export interface VisibleDialogueLine {

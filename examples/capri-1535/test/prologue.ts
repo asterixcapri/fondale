@@ -1,4 +1,4 @@
-import type { CoreSession } from "@asterixcapri/fondale/testing";
+import type { CoreSession } from "fondale/testing";
 import {
   activateNoun,
   advanceActivity,
@@ -11,7 +11,7 @@ import {
   settle,
   skipSequence,
   stepUntil,
-} from "@asterixcapri/fondale/testing";
+} from "fondale/testing";
 
 
 /**

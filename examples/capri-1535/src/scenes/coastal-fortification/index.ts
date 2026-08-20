@@ -1,4 +1,4 @@
-import { type NounDefinition, type SceneDefinition } from "@asterixcapri/fondale";
+import { type NounDefinition, type SceneDefinition } from "fondale";
 
 import { rectangle } from "../../geometry";
 import backgroundUrl from "./background.png";

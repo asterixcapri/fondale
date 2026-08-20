@@ -5,7 +5,7 @@ import {
   pressOn,
   revealedNouns,
   walkTo,
-} from "@asterixcapri/fondale/testing";
+} from "fondale/testing";
 
 import { startExample } from "./support";
 

@@ -1,4 +1,4 @@
-import { type SequenceDefinition } from "@asterixcapri/fondale";
+import { type SequenceDefinition } from "fondale";
 
 /**
  * What Raffaele says when nothing is at stake.

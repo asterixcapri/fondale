@@ -9,7 +9,7 @@ import {
   pressOn,
   reflect,
   revealedNouns,
-} from "@asterixcapri/fondale/testing";
+} from "fondale/testing";
 
 import {
   acceptHarbourJob,

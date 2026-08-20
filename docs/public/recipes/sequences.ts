@@ -1,4 +1,4 @@
-import { type SequenceDefinition } from "@asterixcapri/fondale";
+import { type SequenceDefinition } from "fondale";
 
 /**
  * The first arrival in the storeroom: narration, a Line, and a Choice.

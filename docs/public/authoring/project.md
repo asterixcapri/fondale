@@ -17,7 +17,7 @@ it; renaming a key renames the thing.
 ## How you author one
 
 ```ts
-import { startGame, type GameProject } from "@asterixcapri/fondale";
+import { startGame, type GameProject } from "fondale";
 import { harbour } from "./scenes/harbour";
 import { michele } from "./characters/michele";
 import { commandLexicon, commandFallbacks } from "./commands";
@@ -43,7 +43,7 @@ widening its inferred type, so registry keys stay literal and references stay
 checkable.
 
 Import only from the package root. Deep imports into the package are not
-supported. The single exception is `@asterixcapri/fondale/testing`, which a
+supported. The single exception is `fondale/testing`, which a
 shipped game never imports.
 
 ## Values and rules

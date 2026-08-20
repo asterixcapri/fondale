@@ -3,7 +3,7 @@
 Install Fondale in a TypeScript web project:
 
 ```sh
-npm install @asterixcapri/fondale
+npm install fondale
 ```
 
 Import only from the package root. Author ordinary typed data, pass the complete
@@ -14,7 +14,7 @@ import {
   startGame,
   type GameProject,
   type SceneDefinition,
-} from "@asterixcapri/fondale";
+} from "fondale";
 
 const opening = {
   background: new URL("./opening.png", import.meta.url),

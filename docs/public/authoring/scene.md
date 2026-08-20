@@ -18,7 +18,7 @@ destination, a Sequence owner — names that key.
 ## How you author one
 
 ```ts
-import { type SceneDefinition } from "@asterixcapri/fondale";
+import { type SceneDefinition } from "fondale";
 
 export const harbour = {
   background: new URL("./harbour.png", import.meta.url),

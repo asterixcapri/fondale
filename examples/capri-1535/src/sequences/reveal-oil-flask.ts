@@ -1,4 +1,4 @@
-import { type SequenceDefinition } from "@asterixcapri/fondale";
+import { type SequenceDefinition } from "fondale";
 
 export const revealOilFlask = ({
   scene: "harbour",

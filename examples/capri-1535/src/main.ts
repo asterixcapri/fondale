@@ -2,7 +2,7 @@ import {
   AuthoringError,
   startGame,
   type GameSession,
-} from "@asterixcapri/fondale";
+} from "fondale";
 
 import { project } from "./game";
 

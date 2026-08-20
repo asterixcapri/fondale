@@ -1,4 +1,4 @@
-import { type GameProject } from "@asterixcapri/fondale";
+import { type GameProject } from "fondale";
 
 import { claims } from "./claims";
 import { brotherElia } from "./characters/brother-elia";

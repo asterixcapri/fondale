@@ -6,9 +6,9 @@ You test a game the way a Player plays it: activate the thing with this label,
 answer the alternative that reads like that, let play settle, then assert what
 the world became.
 
-`@asterixcapri/fondale/testing` runs the whole game with no renderer and no
-wall clock. It is the same session the browser adapter drives — the game, not a
-model of it — so a test proves the real puzzle chain, not a rehearsal of it.
+`fondale/testing` runs the whole game with no renderer and no wall clock. It is
+the same session the browser adapter drives — the game, not a model of it — so a
+test proves the real puzzle chain, not a rehearsal of it.
 
 This is the second published entry point, and the only one a shipped game never
 imports.
@@ -17,8 +17,8 @@ imports.
 
 ```ts
 import { expect, test } from "vitest";
-import { startCoreSession } from "@asterixcapri/fondale/testing";
-import { activateNoun, carriedObjects, pressOn } from "@asterixcapri/fondale/testing";
+import { startCoreSession } from "fondale/testing";
+import { activateNoun, carriedObjects, pressOn } from "fondale/testing";
 import { project } from "../src/game";
 
 test("the flask can be collected once the nets are moved", () => {

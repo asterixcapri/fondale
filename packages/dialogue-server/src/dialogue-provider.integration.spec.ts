@@ -7,7 +7,7 @@ import type {
   DialogueVerbalizationRequest,
   ReflectionRequest,
   ReflectionResponse,
-} from "@asterixcapri/fondale";
+} from "fondale";
 import { PostgresStore } from "@mastra/pg";
 
 import { throwIfAborted } from "./cancellation.js";

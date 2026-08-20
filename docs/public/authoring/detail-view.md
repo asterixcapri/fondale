@@ -16,7 +16,7 @@ rather than stacking.
 ## How you author one
 
 ```ts
-import { type DetailViewDefinition } from "@asterixcapri/fondale";
+import { type DetailViewDefinition } from "fondale";
 
 export const letter = {
   image: new URL("./letter.png", import.meta.url),

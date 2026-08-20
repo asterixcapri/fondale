@@ -1,4 +1,4 @@
-import { type CharacterDefinition, type NounDefinition, uniformGrid } from "@asterixcapri/fondale";
+import { type CharacterDefinition, type NounDefinition, uniformGrid } from "fondale";
 
 import { micheleLearns } from "../learning";
 import idleUrl from "./idle.png";

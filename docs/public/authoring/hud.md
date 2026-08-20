@@ -17,7 +17,7 @@ reinvented.
 ## How you author it
 
 ```ts
-import { type HUDTheme } from "@asterixcapri/fondale";
+import { type HUDTheme } from "fondale";
 
 export const hudTheme = {
   font: { family: "Alegreya", source: new URL("./alegreya.woff2", import.meta.url) },

@@ -14,8 +14,8 @@ time.
 ## Before you start
 
 - **Your game's repository**, a TypeScript web project with
-  `npm install @asterixcapri/fondale` already done. The skills read the Engine's
-  contract out of `node_modules/@asterixcapri/fondale/docs/public/`, so what
+  `npm install fondale` already done. The skills read the Engine's
+  contract out of `node_modules/fondale/docs/public/`, so what
   they read is always the version you build against.
 - **An agent that runs skills**, and the `npx skills` CLI to install them.
 - **ImageMagick 7** — the `magick` command on the PATH, from

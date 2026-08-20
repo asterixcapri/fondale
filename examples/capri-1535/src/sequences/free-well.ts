@@ -1,4 +1,4 @@
-import { type GameOperation, type SequenceDefinition } from "@asterixcapri/fondale";
+import { type GameOperation, type SequenceDefinition } from "fondale";
 
 const outcome: readonly GameOperation[] = [{
   type: "set-variable",

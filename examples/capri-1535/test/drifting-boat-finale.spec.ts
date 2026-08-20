@@ -4,7 +4,7 @@ import {
   carriedObjects,
   presentedDetailView,
   skipSequence,
-} from "@asterixcapri/fondale/testing";
+} from "fondale/testing";
 
 import {
   hearTheContradiction,

@@ -1,4 +1,4 @@
-import { startGame, type GameProject } from "@asterixcapri/fondale";
+import { startGame, type GameProject } from "fondale";
 
 import { keeper, player } from "./characters";
 import { commandFallbacks, commandLexicon } from "./commands";

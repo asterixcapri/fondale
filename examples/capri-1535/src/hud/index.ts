@@ -1,4 +1,4 @@
-import { type CommandLexicon, type HUDTheme } from "@asterixcapri/fondale";
+import { type CommandLexicon, type HUDTheme } from "fondale";
 
 import fontUrl from "./alegreya-sans-medium.ttf";
 import cursorDownUrl from "./cursors/down.svg";

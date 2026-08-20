@@ -27,18 +27,17 @@ arrives later and changes no coordinate.
 
 Read `docs/game/world.md` for the Logical Resolution, the pixels per world unit,
 the view, the horizon, the Perspective Scale at each edge of the Walkable Region
-and the visual direction; `docs/game/assets.md` for this Scene's Background row —
-its declared size is the Scene Size in pixels — and for every asset already made,
-each with the measured height the Scene has to accommodate; `docs/game/story.md`
-and `docs/game/puzzles.md` for what happens here and what the Player must be
-able to reach. Read the Engine's own contract from the installed package, which
-is the version the game is built against:
-`node_modules/@asterixcapri/fondale/docs/public/authoring/scene.md` for Scene
-Size, Walkable Region, Perspective Scale, Hotspots, Approach Points, Scene
-Entrances and Scene Passages, `authoring/scenery.md` for Scenery, its Baseline,
-its position and its Appearances, and
-`node_modules/@asterixcapri/fondale/docs/public/recipes/world.ts` for two worked
-definitions.
+and the visual direction; `docs/game/assets.md` for this Scene's Background row
+— its declared size is the Scene Size in pixels — and for every asset already
+made, each with the measured height the Scene has to accommodate;
+`docs/game/story.md` and `docs/game/puzzles.md` for what happens here and what
+the Player must be able to reach. Read the Engine's own contract from the
+installed package, which is the version the game is built against:
+`node_modules/fondale/docs/public/authoring/scene.md` for Scene Size, Walkable
+Region, Perspective Scale, Hotspots, Approach Points, Scene Entrances and Scene
+Passages, `authoring/scenery.md` for Scenery, its Baseline, its position and its
+Appearances, and `node_modules/fondale/docs/public/recipes/world.ts` for two
+worked definitions.
 
 Stop at the missing-input row above when any of those four documents is absent,
 and when the Scene has no Background row in `docs/game/assets.md`: a Scene Size
@@ -166,7 +165,7 @@ front of Scenery whose Baseline is above its Ground Point and behind Scenery
 whose Baseline is below it; the ground the artwork paints as walkable is the
 ground the Walkable Region contains, and no painted obstacle stands inside it;
 every Scene Passage, Scene Entrance, Hotspot and Scenery Appearance still
-answers. `node_modules/@asterixcapri/fondale/docs/public/authoring/testing.md`
+answers. `node_modules/fondale/docs/public/authoring/testing.md`
 drives the same play from a test.
 
 Finish when the Scene plays as it did on the placeholder, and every Scenery

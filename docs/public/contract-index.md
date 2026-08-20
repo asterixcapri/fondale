@@ -8,11 +8,11 @@ This is a lookup table, not a guide. To learn how to build something, read the
 [authoring guides](README.md#build-a-game); come here when you already know
 what you are doing and need the exact allowed value.
 
-Every public symbol is imported from `@asterixcapri/fondale`; deep imports are
-not supported. The one other entry point is `@asterixcapri/fondale/testing`,
-which a shipped game never imports. This is the normative Fondale 0.4 alpha
-contract. The npm package version is `0.4.0`; it is independent from an
-Author's Project Version and from Fondale's Save Snapshot format version.
+Every public symbol is imported from `fondale`; deep imports are not supported.
+The one other entry point is `fondale/testing`, which a shipped game never
+imports. This is the normative Fondale 0.4 alpha contract. The npm package
+version is `0.4.0`; it is independent from an Author's Project Version and from
+Fondale's Save Snapshot format version.
 
 | Structure | Purpose | Allowed values | Defaults and invariants | Errors | Executed example |
 | --- | --- | --- | --- | --- | --- |

@@ -1,4 +1,4 @@
-import { startGame, type GameSession } from "@asterixcapri/fondale";
+import { startGame, type GameSession } from "fondale";
 
 import { project } from "../../docs/public/recipes/game";
 

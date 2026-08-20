@@ -18,7 +18,7 @@ It never mirrors or falls back to another presentation.
 ## How you author one
 
 ```ts
-import { type CharacterDefinition, uniformGrid } from "@asterixcapri/fondale";
+import { type CharacterDefinition, uniformGrid } from "fondale";
 
 const idleFrames = uniformGrid({ frameWidth: 256, frameHeight: 256, columns: 1, count: 1 });
 

@@ -16,7 +16,7 @@ carried, and never leaves its Scene.
 ## How you author it
 
 ```ts
-import { type SceneryDefinition } from "@asterixcapri/fondale";
+import { type SceneryDefinition } from "fondale";
 
 export const gozzo = {
   baseline: 462,

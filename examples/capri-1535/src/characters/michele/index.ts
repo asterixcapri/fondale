@@ -1,4 +1,4 @@
-import { type CharacterDefinition, uniformGrid } from "@asterixcapri/fondale";
+import { type CharacterDefinition, uniformGrid } from "fondale";
 
 import idleBackUrl from "./runtime-workwear-idle-back.png";
 import idleFrontUrl from "./runtime-workwear-idle-front.png";

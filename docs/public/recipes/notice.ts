@@ -1,4 +1,4 @@
-import { type DetailViewDefinition, type NounDefinition } from "@asterixcapri/fondale";
+import { type DetailViewDefinition, type NounDefinition } from "fondale";
 
 const sealNoun = ({
   labels: [{ text: "Seal" }],

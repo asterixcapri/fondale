@@ -1,6 +1,9 @@
 # Studio del nome di prodotto per Fondale
 
-Data della seconda ricerca: 16 agosto 2026
+Data della seconda ricerca: 16 agosto 2026 Aggiornamento: la lettura
+«sufficiente per continuare col package scoped corrente» è stata superata
+dall'ADR 0028, che pubblica l'Engine come `fondale` e i satelliti sotto
+`@fondale`. Il nome del prodotto, che è la domanda di questo studio, non cambia.
 Domanda: qual è il nome più opportuno per il prodotto oggi chiamato Fondale?
 
 ## Risultato in breve
@@ -8,23 +11,23 @@ Domanda: qual è il nome più opportuno per il prodotto oggi chiamato Fondale?
 La raccomandazione aggiornata è **tenere Fondale**.
 
 Non è una scelta per inerzia. In questa seconda tornata il primo filtro è stato
-umano e fonetico: il nome deve essere una parola comune naturale,
-reggere pronunciato ad alta voce in italiano e in inglese e non denunciare il
-processo con cui è stato inventato. Solo dopo questo gate sono stati valutati
-fit di prodotto, collisioni e identificatori digitali.
+umano e fonetico: il nome deve essere una parola comune naturale, reggere
+pronunciato ad alta voce in italiano e in inglese e non denunciare il processo
+con cui è stato inventato. Solo dopo questo gate sono stati valutati fit di
+prodotto, collisioni e identificatori digitali.
 
 Con questo ordine, `Tramario` e `Storiario` escono immediatamente. Il feedback
 umano «trammammuro» non è una piccola penalità da compensare con un dominio
 libero: è il fallimento del requisito fondamentale. Anche le alternative più
-serie hanno un limite decisivo. `Quinte` è elegante in italiano ma meno netto
-in inglese e molto rumoroso nella ricerca; `Intreccio` descrive bene il modello
-ma è difficile da dire e trasmettere fuori dall'Italia; `Ribalta`, `Regia`,
-`Scena`, `Ordito`, `Sipario`, `Prospero` e `Diorama` hanno collisioni software
-o creative già visibili da fonti first-party.
+serie hanno un limite decisivo. `Quinte` è elegante in italiano ma meno netto in
+inglese e molto rumoroso nella ricerca; `Intreccio` descrive bene il modello ma
+è difficile da dire e trasmettere fuori dall'Italia; `Ribalta`, `Regia`,
+`Scena`, `Ordito`, `Sipario`, `Prospero` e `Diorama` hanno collisioni software o
+creative già visibili da fonti first-party.
 
 `Fondale` resta imperfetto: racconta meglio la messa in scena che lo stato, le
-azioni e l'autorità narrativa dell'Engine. Ma è una parola vera, sobria,
-visiva, memorabile in italiano e coerente con piccole avventure illustrate. Il
+azioni e l'autorità narrativa dell'Engine. Ma è una parola vera, sobria, visiva,
+memorabile in italiano e coerente con piccole avventure illustrate. Il
 descrittore può completarla senza deformarla:
 
 > **Fondale — a TypeScript engine for authored point-and-click worlds.**
@@ -39,8 +42,8 @@ oggi un sostituto abbastanza buono.
 La descrizione pubblica corrente definisce Fondale un Engine web-native e
 TypeScript-first per piccole avventure point-and-click, distribuito come
 pacchetto MIT e separato dai Game Project che lo usano
-([README](../../README.md), [package.json](../../package.json)). Non è un
-editor no-code, un generatore di giochi o un semplice renderer.
+([README](../../README.md), [package.json](../../package.json)). Non è un editor
+no-code, un generatore di giochi o un semplice renderer.
 
 Il modello canonico in [CONTEXT.md](../../CONTEXT.md) richiede che il nome possa
 contenere almeno quattro aspetti:
@@ -87,8 +90,8 @@ insieme all'authorial authority che governa la conversazione libera.
 Infine si controllano prodotti vicini, package npm, domini e marchi. Un dominio
 libero è un dato operativo, non una qualità del nome. L'USPTO raccomanda di
 cercare anche marchi simili per suono, aspetto e significato e usi commerciali
-non registrati, non soltanto identici
-([USPTO, comprehensive clearance search](https://www.uspto.gov/trademarks/search/comprehensive-clearance-search-similar-trademarks)).
+non registrati, non soltanto identici ([USPTO, comprehensive clearance
+search](https://www.uspto.gov/trademarks/search/comprehensive-clearance-search-similar-trademarks)).
 
 ## Esame dei nomi reali
 
@@ -140,20 +143,19 @@ Le collisioni decisive sono verificabili sulle fonti che possiedono i prodotti:
 `Intreccio` ha probabilmente il fit semantico migliore: storia, relazioni,
 condizioni e stato si intrecciano senza perdere i fili predisposti dall'Author.
 Ma _in-TRET-cho_ è difficile da dedurre, scrivere e ripetere per un anglofono.
-`Avanscena` è una parola teatrale autentica ma rara anche in italiano e opaca
-in inglese. `Proscenio` è più riconoscibile, ma è già il nome di una piattaforma
-digitale per la gestione teatrale
-([Proscenio](https://proscen.io/)).
+`Avanscena` è una parola teatrale autentica ma rara anche in italiano e opaca in
+inglese. `Proscenio` è più riconoscibile, ma è già il nome di una piattaforma
+digitale per la gestione teatrale ([Proscenio](https://proscen.io/)).
 
-Altre parole comuni gradevoli non migliorano il quadro. `Arazzo` coincide con
-la specifica OpenAPI per descrivere workflow e dipendenze fra chiamate
-([Arazzo Specification](https://spec.openapis.org/arazzo/latest.html));
-`Varco` con una suite AI per game developer che offre plugin Unity e Unreal
-([VARCO Game AI](https://game-ai.varco.ai/en)); `Teatrino` sia con un toolchain
-di code generation
-([pubblicazione e artefatto ufficiali](https://mrg.cs.ox.ac.uk/publications/designing-asynchronous-multiparty-protocols-with-crash-stop-failures/))
-sia con un'avventura HTML5 e Windows già pubblicata
-([pagina dell'autore](https://paranoid-alien.itch.io/teatrino-ggj2026)).
+Altre parole comuni gradevoli non migliorano il quadro. `Arazzo` coincide con la
+specifica OpenAPI per descrivere workflow e dipendenze fra chiamate ([Arazzo
+Specification](https://spec.openapis.org/arazzo/latest.html)); `Varco` con una
+suite AI per game developer che offre plugin Unity e Unreal ([VARCO Game
+AI](https://game-ai.varco.ai/en)); `Teatrino` sia con un toolchain di code
+generation ([pubblicazione e artefatto
+ufficiali](https://mrg.cs.ox.ac.uk/publications/designing-asynchronous-multiparty-protocols-with-crash-stop-failures/))
+sia con un'avventura HTML5 e Windows già pubblicata ([pagina
+dell'autore](https://paranoid-alien.itch.io/teatrino-ggj2026)).
 
 Questi nomi non vanno salvati con un buon punteggio semantico: imporrebbero
 proprio la spiegazione fonetica che il nuovo metodo vuole evitare.
@@ -171,26 +173,26 @@ lezione metodologica della prima tornata: un nome non diventa buono perché si
 può spiegare e registrare.
 
 Anche **Ariosto** è stato valutato e respinto al gate umano. Come nome proprio è
-naturale e suona bene; il riferimento all'_Orlando furioso_ avrebbe avuto un
-fit reale con avventura e linee narrative intrecciate — una fonte del Ministero
+naturale e suona bene; il riferimento all'_Orlando furioso_ avrebbe avuto un fit
+reale con avventura e linee narrative intrecciate — una fonte del Ministero
 della Cultura descrive proprio il «complesso intreccio tra diversi filoni
-narrativi»
-([Pinacoteca Nazionale di Bologna](https://www.pinacotecabologna.beniculturali.it/images/immagini/parole_ad_arte/LOrlando_Furioso_tra_parole_e_immagini.pdf)).
+narrativi» ([Pinacoteca Nazionale di
+Bologna](https://www.pinacotecabologna.beniculturali.it/images/immagini/parole_ad_arte/LOrlando_Furioso_tra_parole_e_immagini.pdf)).
 Esiste inoltre un precedente di categoria: Godot dichiara ufficialmente di
-prendere il nome da _Waiting for Godot_
-([press kit di Godot Engine](https://godotengine.org/press/)).
+prendere il nome da _Waiting for Godot_ ([press kit di Godot
+Engine](https://godotengine.org/press/)).
 
 Il riferimento, però, non si trasforma in identità di prodotto: nel test
 immediato `Ariosto` è stato percepito semplicemente come «uno scrittore». Anche
 qui il giudizio umano viene prima della buona spiegazione. Lo screening era
 peraltro praticabile — nessun documento npm
-([registry](https://registry.npmjs.org/ariosto)), `.com` registrato
-([Verisign RDAP](https://rdap.verisign.com/com/v1/domain/ARIOSTO.COM)) e nessun
-record `.dev`
-([Google Registry RDAP](https://pubapi.registry.google/rdap/domain/ariosto.dev))
-— ma non lo salva. Questa tornata esclude quindi anche nomi di autori o persone:
-spostano l'attenzione sulla biografia del referente e richiedono una nota a piè
-di pagina per parlare dell'Engine.
+([registry](https://registry.npmjs.org/ariosto)), `.com` registrato ([Verisign
+RDAP](https://rdap.verisign.com/com/v1/domain/ARIOSTO.COM)) e nessun record
+`.dev` ([Google Registry
+RDAP](https://pubapi.registry.google/rdap/domain/ariosto.dev)) — ma non lo
+salva. Questa tornata esclude quindi anche nomi di autori o persone: spostano
+l'attenzione sulla biografia del referente e richiedono una nota a piè di pagina
+per parlare dell'Engine.
 
 ## Ranking aggiornato
 
@@ -221,17 +223,17 @@ Verifica puntuale del 16 agosto 2026:
 
 “Nessun record” descrive la risposta RDAP al momento del controllo; non
 garantisce vendibilità, assenza di diritti o disponibilità futura. Un package
-scoped come `@asterixcapri/fondale` non attribuisce diritti esclusivi sulla
-parola.
+scoped come `fondale` non attribuisce diritti esclusivi sulla parola.
 
-Per i marchi questo resta un _knock-out screen_, non una clearance. EUIPO
-indica eSearch plus e TMview come strumenti ufficiali, alimentati anche dagli
-uffici nazionali e internazionali
-([EUIPO, Search IP](https://www.euipo.europa.eu/en/search-ip)); il Regno Unito
-offre una ricerca ufficiale per parola, frase o immagine
-([UK IPO](https://www.gov.uk/search-for-trademark)); l'USPTO precisa che una
-ricerca nel database federale non determina da sola la registrabilità
-([USPTO, federal trademark searching](https://www.uspto.gov/trademarks/search/federal-trademark-searching)).
+Per i marchi questo resta un _knock-out screen_, non una clearance. EUIPO indica
+eSearch plus e TMview come strumenti ufficiali, alimentati anche dagli uffici
+nazionali e internazionali ([EUIPO, Search
+IP](https://www.euipo.europa.eu/en/search-ip)); il Regno Unito offre una ricerca
+ufficiale per parola, frase o immagine ([UK
+IPO](https://www.gov.uk/search-for-trademark)); l'USPTO precisa che una ricerca
+nel database federale non determina da sola la registrabilità ([USPTO, federal
+trademark
+searching](https://www.uspto.gov/trademarks/search/federal-trademark-searching)).
 Qualsiasi rinomina futura richiederà ricerca professionale di marchi identici e
 simili nelle classi e nei territori pertinenti.
 
@@ -245,18 +247,18 @@ quella superficie opera un Engine TypeScript che governa mondo, azioni, stato e
 dialogo.
 
 Il limite semantico è reale ma gestibile. Un marchio non deve essere la
-specifica dell'architettura; deve poterla ospitare senza contraddirla.
-`Fondale` non promette un editor passivo e non impedisce estensioni come il
-Dialogue Server. `Quinte` cambierebbe soltanto la posizione nella stessa
-metafora teatrale, introducendo più attrito internazionale e di ricerca.
+specifica dell'architettura; deve poterla ospitare senza contraddirla. `Fondale`
+non promette un editor passivo e non impedisce estensioni come il Dialogue
+Server. `Quinte` cambierebbe soltanto la posizione nella stessa metafora
+teatrale, introducendo più attrito internazionale e di ricerca.
 
 Se il team sente ancora che `Fondale` non è il nome definitivo, il prossimo
 passo non è un'altra matrice. È una fase creativa breve e orale:
 
 1. produrre nomi senza controllare domini, evitando suffissi inventati e parole
    che tentano di riassumere tutta l'architettura;
-2. fare una selezione _sound-only_ con parlanti IT/EN, senza logo né pitch;
-3. conservare soltanto i nomi che generano curiosità e nessuna spiegazione o
+2. fare una selezione _sound-only_ con parlanti IT/EN, senza logo né pitch; 3.
+conservare soltanto i nomi che generano curiosità e nessuna spiegazione o
    battuta dominante;
 4. applicare fit, collisioni e clearance legale solo ai due o tre sopravvissuti.
 

@@ -1,4 +1,4 @@
-import { type SequenceStep } from "@asterixcapri/fondale";
+import { type SequenceStep } from "fondale";
 
 /**
  * The end of the prologue, from the completed reading to the closing image.

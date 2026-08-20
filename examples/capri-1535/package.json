@@ -1,5 +1,5 @@
 {
-  "name": "@asterixcapri/capri-1535-example",
+  "name": "capri-1535-example",
   "version": "1.0.0",
   "private": true,
   "type": "module",
@@ -11,7 +11,7 @@
     "verify": "vitest run --dir test"
   },
   "dependencies": {
-    "@asterixcapri/fondale": "file:vendor/asterixcapri-fondale-0.4.0.tgz"
+    "fondale": "file:vendor/fondale-0.4.0.tgz"
   },
   "devDependencies": {
     "@types/node": "^22.20.1",
