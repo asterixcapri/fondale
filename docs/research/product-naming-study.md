@@ -1,10 +1,12 @@
 # Studio del nome di prodotto per Fondale
 
-Data della seconda ricerca: 16 agosto 2026 Aggiornamento: la lettura
-«sufficiente per continuare col package scoped corrente» è stata superata
-dall'ADR 0028, che pubblica l'Engine come `fondale` e i satelliti sotto
-`@fondale`. Il nome del prodotto, che è la domanda di questo studio, non cambia.
+Data della seconda ricerca: 16 agosto 2026
 Domanda: qual è il nome più opportuno per il prodotto oggi chiamato Fondale?
+
+> **Aggiornamento:** la lettura «sufficiente per continuare col package scoped
+> corrente» è stata superata dall'ADR 0028, che pubblica l'Engine come `fondale`
+> e i satelliti sotto `@fondale`. Il nome del prodotto, che è la domanda di
+> questo studio, non cambia.
 
 ## Risultato in breve
 
