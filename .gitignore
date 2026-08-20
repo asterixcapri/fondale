@@ -1,5 +1,6 @@
 .agents
 .claude
+.codex
 .pi
 node_modules
 dist
@@ -11,6 +12,3 @@ test/.artifacts
 output/
 tmp/
 test-results
-
-# Local agent configuration, which may hold credentials
-.codex/
