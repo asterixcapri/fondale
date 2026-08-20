@@ -28,12 +28,12 @@
     "define-character": {
       "source": "./skills",
       "sourceType": "local",
-      "computedHash": "d7ca2971c6be190a11c963c608e2cc4381eaadbbcfe98013511872b7edd27341"
+      "computedHash": "aa685651442e6fec6bf9f1bfdd15ac7abf1fbddef399b1dac7968a1d754f8596"
     },
     "define-object": {
       "source": "./skills",
       "sourceType": "local",
-      "computedHash": "251cf7ba5751995c0a2e56ee8e9946dde334e1afcee54eacf6af478e455c05bc"
+      "computedHash": "8e1165a2958c34af87a15b37c3449e31292349c3ee07fd46a9ac9b5633e0e34b"
     },
     "define-puzzles": {
       "source": "./skills",
@@ -43,7 +43,7 @@
     "define-scene": {
       "source": "./skills",
       "sourceType": "local",
-      "computedHash": "45c5653d1a686e95cb1134112a0a792c8d353c1d2ba750ae412a15b959e3ff7d"
+      "computedHash": "e650dbda292c955cddccef5f6b25b934db4d7711db3875b8d9229faecbfa44f2"
     },
     "define-story": {
       "source": "./skills",
@@ -61,6 +61,11 @@
       "sourceType": "github",
       "skillPath": "skills/engineering/domain-modeling/SKILL.md",
       "computedHash": "683744795bdc9fbfb6c0c2122c4b8119c950e2fe5bcbbf44237dd28aaea34b67"
+    },
+    "fabrication-cycle": {
+      "source": "./skills",
+      "sourceType": "local",
+      "computedHash": "4169adcd07259873eb73ee9d794856a554cd0709a3e0e3e5cac40cdfe96e477c"
     },
     "git-guardrails-claude-code": {
       "source": "mattpocock/skills",

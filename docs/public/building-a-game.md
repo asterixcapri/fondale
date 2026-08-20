@@ -21,12 +21,13 @@ time.
 - **ImageMagick 7** — the `magick` command on the PATH, from
   <https://imagemagick.org>. The fabrication skills crop and rescale every
   generated image with it. Nothing else in the pipeline needs it.
-- **The skills.** Install Fondale's six from this repository, and the four they
-  lean on but do not own:
+- **The skills.** Install Fondale's six from this repository, together with
+  `fabrication-cycle`, which the three fabrication skills invoke, and the four
+  they lean on but do not own:
 
   ```sh
   for skill in define-story define-puzzles setup-game \
-      define-character define-scene define-object; do
+      define-character define-scene define-object fabrication-cycle; do
     npx skills add asterixcapri/fondale --skill "$skill" -y
   done
   npx skills add mattpocock/skills --skill grilling -y
@@ -79,9 +80,10 @@ replaying the pipeline.
 | `/define-scene` | a Scene measured at 1:1, with its Walkable Region and Perspective Scale derived from `world.md`, and its `SceneDefinition` |
 | `/define-object` | an Object sized beside the Character who carries it, its Inventory Appearance on the UI scale, and its `ObjectDefinition` |
 
-Each of them anchors the generation on the artwork already made, normalises the
-result to its target height with the script it ships, has you approve it at play
-size rather than as an isolated image, and writes the measured height back into
+Each of them invokes `fabrication-cycle`, which anchors the generation on the
+artwork already made, normalises the result to its target height with the script
+it ships, has you approve it at play size rather than as an isolated image, and
+writes the measured height back into
 `docs/game/assets.md`. That register is the memory of the whole process: whoever
 makes the next asset finds the true size of the existing ones there, measured
 rather than declared.

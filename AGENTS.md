@@ -85,12 +85,15 @@ The skills under `skills/` are the game-authoring pipeline: `define-story`,
 `define-puzzles` and `setup-game` interview a game's author, and
 `define-character`, `define-scene` and `define-object` fabricate its artwork.
 They are written to be installed into a game's own repository, not used on this
-one, and each is complete on its own because `npx skills` copies one directory.
-`docs/public/building-a-game.md` is the entry point that documents the pipeline;
-change it whenever a skill's `## Documents` table changes.
+one. `docs/public/building-a-game.md` is the entry point that documents the
+pipeline; change it whenever a skill's `## Documents` table changes.
 
-The three fabrication `SKILL.md` files are generated: see
-`skills/shared/README.md` before changing any of them.
+The three fabrication skills share `fabrication-cycle`, which owns the six steps
+that turn a brief into an approved Runtime Asset and carries the only copy of
+`normalise-runtime-asset.mjs`. It knows nothing about Scenes, Characters or
+Objects: each caller carries a `## Fabrication definitions` section whose
+headings are the names the cycle's steps ask for. Change a step's name in one
+place and change it in the other four.
 
 ### Issue tracker
 
