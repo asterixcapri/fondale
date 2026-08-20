@@ -45,6 +45,11 @@
       "sourceType": "local",
       "computedHash": "2f562e0b23a8c793f6d001cc37f9576544126427e8049038839b44ffa5d871be"
     },
+    "define-story": {
+      "source": "./skills",
+      "sourceType": "local",
+      "computedHash": "bb0ed3b825ea6b14e14bbedf69a1060c6d0f27ad1642c45fd765dd45c79ad1f3"
+    },
     "diagnosing-bugs": {
       "source": "mattpocock/skills",
       "sourceType": "github",
