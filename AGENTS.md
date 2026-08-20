@@ -89,19 +89,19 @@ Use the project content skills for their owning definitions:
 - `skills/define-character/SKILL.md` for Characters fabricated against a game's
   own world contract: target height, generation, normalisation, Appearances,
   Animations and the `CharacterDefinition`;
-- `skills/define-object/SKILL.md` for collectible Objects, Scene and Inventory
-  presentation, interactions, and lifecycle;
+- `skills/define-object/SKILL.md` for Objects fabricated against a game's own
+  world contract: the world target measured beside the carrying Character, the
+  Inventory Appearance on the UI scale, the lifecycle, the Noun and the
+  `ObjectDefinition`;
 - `skills/define-dialogue/SKILL.md` for narrative authority, Character Knowledge,
   Disclosure, authored Conversation, and Knowledge-Driven Dialogue.
 
-`define-object` still shares `docs/agents/visual-direction.md` for project scale,
-illustrated neo-retro art direction, colour, and cross-asset consistency.
-`define-scene` and `define-character` no longer read it: they are portable to any
-game and take their scale and their art direction from that game's
-`docs/game/world.md`.
+`docs/agents/visual-direction.md` now records Capri 1535's own visual choices
+alone: the three fabrication skills are portable to any game and take their
+scale and their art direction from that game's `docs/game/world.md`.
 
 Their `SKILL.md` files are generated: see `skills/shared/README.md` before
-changing either of them.
+changing any of them.
 
 ### Issue tracker
 
