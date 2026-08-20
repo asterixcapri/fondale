@@ -5,7 +5,7 @@ copies one skill directory and nothing else, so anything more than one of
 `define-scene`, `define-character` and `define-object` needs is kept here once
 and carried into each of them, never referenced across directories.
 
-## `fabrication-cycle.md` and `sources/`
+## `fabrication-cycle.md`, `snippets/` and `sources/`
 
 Anchor, Generate, Normalise, Recompose, Approve, Register is the same procedure
 for a Scene, a Character and an Object, and an installed skill cannot read it out
@@ -18,10 +18,17 @@ of another skill's directory. It is therefore written once in
   from this skill;
 - `sources/<skill>.values.md` — one `## a value` section per placeholder.
 
+A paragraph shorter than the cycle but still written identically by more than
+one skill is a file in `snippets/`, marked as `{{ <file name> }}` on a line of
+its own wherever it belongs. A snippet reads the same in every skill that marks
+it, so it carries no `{{ a value }}` of its own unless every one of them means
+the same thing by it.
+
 Steps are numbered by the generator, so a skill puts as many steps of its own
 before and after the cycle as it needs, and the cycle refers to its own steps by
-name rather than by number. A placeholder with no value and a value nothing uses
-are both errors.
+name rather than by number. A placeholder with no value, a value nothing uses, a
+snippet no source marks, and a value that takes a snippet's name are all
+errors.
 
 After editing anything here, run:
 

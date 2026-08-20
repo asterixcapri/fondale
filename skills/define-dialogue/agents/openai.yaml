@@ -1,4 +1,0 @@
-interface:
-  display_name: "Define Dialogue"
-  short_description: "Create coherent Fondale dialogue systems"
-  default_prompt: "Use $define-dialogue to create or modify dialogue for this Fondale Game Project."

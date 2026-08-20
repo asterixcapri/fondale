@@ -18,11 +18,7 @@ lantern never arrives the size of a door.
 | Missing input | stop and tell the author to run `/setup-game`, or `/define-story` or `/define-puzzles` when only their own document is missing; never run any of them yourself |
 | Next command | `/define-scene` while the Scene this Object starts in has no artwork; otherwise back to the ticket |
 
-Paths are literal and relative to the game's own repository, which is the
-working directory, except `<skill>/scripts/normalise-runtime-asset.mjs`: that
-one is this skill's own copy of the normaliser, and `<skill>` stands for the
-directory this skill was installed into. ImageMagick 7 — the `magick` command —
-must be installed.
+{{ literal-paths }}
 
 ## Workflow
 
@@ -65,8 +61,7 @@ advertises, every target it may be used with, the answer to each, and the answer
 to a combination nobody authored; what must stay recognisable at the Inventory
 Appearance Size; and, for a re-run, what must survive unchanged.
 
-The look of the game is settled: quote the `## Visual direction` section of
-`docs/game/world.md` into every generation and add no style of your own.
+{{ settled-look }}
 
 Finish when the frontier is empty and the author has confirmed the Object's
 lifecycle, the list of Appearances, the Animations of each, and every interaction

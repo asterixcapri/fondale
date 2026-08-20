@@ -19,11 +19,7 @@ arrives later and changes no coordinate.
 | Missing input | stop and tell the author to run `/setup-game`, or `/define-story` or `/define-puzzles` when only their own document is missing; never run any of them yourself |
 | Next command | `/define-object` while an Object this Scene needs has no artwork; otherwise back to the ticket |
 
-Paths are literal and relative to the game's own repository, which is the
-working directory, except `<skill>/scripts/normalise-runtime-asset.mjs`: that
-one is this skill's own copy of the normaliser, and `<skill>` stands for the
-directory this skill was installed into. ImageMagick 7 — the `magick` command —
-must be installed.
+{{ literal-paths }}
 
 ## Workflow
 
@@ -65,8 +61,7 @@ at; which elements need their own depth, Appearance or Animation, and are
 therefore Scenery rather than painted into the Background; the mood of the place;
 and, for a re-run, what must survive unchanged.
 
-The look of the game is settled: quote the `## Visual direction` section of
-`docs/game/world.md` into every generation and add no style of your own.
+{{ settled-look }}
 
 Finish when the frontier is empty and the author has confirmed the Scene's
 connections, its interactive content, and which elements are Scenery.

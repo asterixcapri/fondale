@@ -30,11 +30,6 @@
       "sourceType": "local",
       "computedHash": "d7ca2971c6be190a11c963c608e2cc4381eaadbbcfe98013511872b7edd27341"
     },
-    "define-dialogue": {
-      "source": "./skills",
-      "sourceType": "local",
-      "computedHash": "0fcd8343736f6b9d80923e0a64e3b9a5882c92571ca678e6dc83c1d0dc296760"
-    },
     "define-object": {
       "source": "./skills",
       "sourceType": "local",

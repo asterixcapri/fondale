@@ -6,6 +6,10 @@ TypeScript data that you hand to `startGame`.
 Start with the [quick start](quick-start.md) to get a Scene on screen, then
 read the authoring guides in the order you build.
 
+To build a whole game rather than look a contract up, follow
+[building a game](building-a-game.md): the authoring pipeline in order, what it
+needs installed, and how long a short adventure really takes.
+
 ## Build a game
 
 1. [Project](authoring/project.md) — what a Game Project is, startup, and what

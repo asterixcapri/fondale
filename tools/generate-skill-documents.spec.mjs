@@ -7,8 +7,8 @@ import { renderSkillDocument, generatedSkillDocuments } from "./generate-skill-d
 
 const frontmatter = ["---", "name: define-thing", "description: A thing.", "---", ""].join("\n");
 
-function render(document, values, cycle = "### Anchor\n\nThe target.\n") {
-  return renderSkillDocument({ document: frontmatter + document, values, cycle });
+function render(document, values, { cycle = "### Anchor\n\nThe target.\n", snippets } = {}) {
+  return renderSkillDocument({ document: frontmatter + document, values, cycle, snippets });
 }
 
 test("puts the shared cycle where the source marks it", () => {
@@ -40,7 +40,11 @@ test("substitutes a value that spans several paragraphs", () => {
 });
 
 test("substitutes into the shared cycle as well as into the source", () => {
-  const rendered = render("## Workflow\n\n{{ fabrication-cycle }}\n", "## art directory\n\n`art/scenes/`\n", "### Generate\n\nWrite to {{ art directory }}.\n");
+  const rendered = render(
+    "## Workflow\n\n{{ fabrication-cycle }}\n",
+    "## art directory\n\n`art/scenes/`\n",
+    { cycle: "### Generate\n\nWrite to {{ art directory }}.\n" },
+  );
   assert.match(rendered, /Write to `art\/scenes\/`\./);
 });
 
@@ -116,4 +120,73 @@ test("generates one SKILL.md per source document", () => {
   const generated = generatedSkillDocuments(root);
   assert.deepEqual([...generated.keys()], ["skills/define-thing/SKILL.md"]);
   assert.match(generated.get("skills/define-thing/SKILL.md"), /Read the Thing\.\n\n### 2\. Anchor/);
+});
+
+test("puts a shared snippet where the source marks it", () => {
+  const rendered = render(
+    "## Documents\n\n{{ paths }}\n\n## Workflow\n\n### Take stock\n\nRead.\n",
+    "",
+    { snippets: new Map([["paths", "Paths are literal.\n"]]) },
+  );
+  assert.match(rendered, /\nPaths are literal\.\n/);
+});
+
+test("substitutes a value inside a shared snippet", () => {
+  const rendered = render(
+    "## Workflow\n\n### Take stock\n\n{{ paths }}\n",
+    "## asset\n\nthe Scene\n",
+    { snippets: new Map([["paths", "Paths are relative to {{ asset }}.\n"]]) },
+  );
+  assert.match(rendered, /Paths are relative to the Scene\./);
+});
+
+test("leaves a snippet this skill never marks out of the rendered document", () => {
+  const rendered = render(
+    "## Workflow\n\n### Take stock\n\nRead.\n",
+    "",
+    { snippets: new Map([["paths", "Paths are literal.\n"]]) },
+  );
+  assert.doesNotMatch(rendered, /Paths are literal\./);
+});
+
+test("refuses a snippet whose name this skill also defines as a value", () => {
+  assert.throws(
+    () => render(
+      "## Workflow\n\n### Take stock\n\n{{ paths }}\n",
+      "## paths\n\nthe Scene\n",
+      { snippets: new Map([["paths", "Paths are literal.\n"]]) },
+    ),
+    /paths/,
+  );
+});
+
+test("carries every shared snippet into the sources that mark it", () => {
+  const root = mkdtempSync(join(tmpdir(), "generate-skill-documents-"));
+  mkdirSync(join(root, "skills/shared/sources"), { recursive: true });
+  mkdirSync(join(root, "skills/shared/snippets"), { recursive: true });
+  writeFileSync(join(root, "skills/shared/fabrication-cycle.md"), "### Anchor\n\nThe target.\n");
+  writeFileSync(join(root, "skills/shared/snippets/paths.md"), "Paths are literal.\n");
+  writeFileSync(
+    join(root, "skills/shared/sources/define-thing.md"),
+    frontmatter + "## Documents\n\n{{ paths }}\n\n## Workflow\n\n### Take stock\n\nRead.\n",
+  );
+  writeFileSync(join(root, "skills/shared/sources/define-thing.values.md"), "");
+
+  const generated = generatedSkillDocuments(root);
+  assert.match(generated.get("skills/define-thing/SKILL.md"), /\nPaths are literal\.\n/);
+});
+
+test("refuses a shared snippet no source marks", () => {
+  const root = mkdtempSync(join(tmpdir(), "generate-skill-documents-"));
+  mkdirSync(join(root, "skills/shared/sources"), { recursive: true });
+  mkdirSync(join(root, "skills/shared/snippets"), { recursive: true });
+  writeFileSync(join(root, "skills/shared/fabrication-cycle.md"), "### Anchor\n\nThe target.\n");
+  writeFileSync(join(root, "skills/shared/snippets/paths.md"), "Paths are literal.\n");
+  writeFileSync(
+    join(root, "skills/shared/sources/define-thing.md"),
+    frontmatter + "## Workflow\n\n### Take stock\n\nRead.\n",
+  );
+  writeFileSync(join(root, "skills/shared/sources/define-thing.values.md"), "");
+
+  assert.throws(() => generatedSkillDocuments(root), /paths/);
 });
