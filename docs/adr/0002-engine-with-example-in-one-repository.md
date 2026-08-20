@@ -1,9 +1,8 @@
-# Motore riutilizzabile con Capri 1535 come esempio nello stesso repository
+# Reusable Engine with Capri 1535 as an Example in one repository
 
-Il repository diventa Fondale, un motore web-native riutilizzabile per
-avventure grafiche point-and-click, mentre Capri 1535 diventa il primo progetto
-di gioco incluso come esempio. Tenere motore ed esempio nello stesso repository
-permette di validare ogni capacità pubblica contro un gioco reale senza
-mescolare contenuti specifici di Capri negli interni del motore; la separazione
-in repository distinti potrà essere rivalutata quando esisteranno esigenze di
-rilascio indipendenti dimostrate.
+The repository becomes Fondale, a reusable web-native engine for point-and-click
+adventure games, while Capri 1535 becomes the first Game Project included as an
+Example. Keeping Engine and Example in one repository allows every public
+capability to be validated against a real game without mixing Capri-specific
+content into the Engine's internals; splitting them into separate repositories
+may be reconsidered once demonstrated independent release needs exist.
