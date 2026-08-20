@@ -1,0 +1,50 @@
+# Shared skill source
+
+What the fabrication skills need but cannot share at install time. `npx skills`
+copies one skill directory and nothing else, so anything more than one of
+`define-scene`, `define-character` and `define-object` needs is kept here once
+and carried into each of them, never referenced across directories.
+
+## `scripts/normalise-runtime-asset.mjs`
+
+Makes a generated image the size the game decided. It crops to the alpha
+bounding box, rescales to the target height, writes the result as a Runtime
+Asset, and records what it actually measured. Generation settles how a figure
+looks; this settles how tall it is, so approving artwork is never a negotiation
+with the generator.
+
+Node invoking ImageMagick 7 — the `magick` command. Nothing else, so a host game
+gains no npm dependency and no Python.
+
+```sh
+node normalise-runtime-asset.mjs \
+  --input generated.png --output art/characters/michele/idle.png \
+  --target-height 249 \
+  --register docs/game/assets.md --asset michele
+```
+
+`--register` and `--asset` are given together and may both be omitted, in which
+case the image is normalised and the measurements are only printed.
+
+A fully transparent image is refused rather than measured.
+
+## The asset register
+
+`docs/game/assets.md` in the host game, one row per Runtime Asset:
+
+| Asset | Declared size | Target height | Measured height | Measured width | Visual Anchor x | File |
+| --- | --- | --- | --- | --- | --- | --- |
+| michele | 1.75 m | 249 | 249 | 96 | 47 | art/characters/michele/idle.png |
+
+`Declared size` is the author's, in the author's own world unit, and is decided
+before fabrication; `setup-game` writes it and leaves every other cell as an em
+dash. All the rest are pixels the script measured from the finished image and
+are never written by hand — a declared number nobody checked is the defect this
+script exists to remove. `Visual Anchor x` is the centre of the asset's lowest
+opaque row, in pixels from its left edge: where the asset meets its Ground
+Point.
+
+Running the script on an asset already listed rewrites its row and preserves the
+declared size. Running it on one that is not listed appends a row. The script
+creates the register, with this header and a note explaining it, when the file
+does not exist.

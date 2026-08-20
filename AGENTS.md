@@ -50,6 +50,9 @@ not available in the environment, install it with:
 npx playwright install chrome
 ```
 
+`npm run build` also exercises the Runtime Asset normaliser, which requires
+ImageMagick 7 — the `magick` command — on the PATH.
+
 ## Agent skills
 
 The skills installed for this project can be reconstructed from
