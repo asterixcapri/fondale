@@ -95,23 +95,6 @@ Objects: each caller carries a `## Fabrication definitions` section whose
 headings are the names the cycle's steps ask for. Change a step's name in one
 place and change it in the other four.
 
-### Issue tracker
-
-Issues live as Markdown files under `.scratch/`, which is tracked by Git. See
-`docs/agents/issue-tracker.md` when working with issues or specs.
-
-### Triage labels
-
-Use the five canonical roles (`needs-triage`, `needs-info`, `ready-for-agent`,
-`ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md` when triaging
-issues.
-
-### Domain docs
-
-The repository uses a single domain context: `CONTEXT.md` and `docs/adr/` at the
-repository root. See `docs/agents/domain.md` when changing the domain model or
-recording architectural decisions.
-
 ## Releasing
 
 The two packages are published independently, each by its own tag. Pushing the
@@ -143,3 +126,22 @@ The server's `peerDependencies` pins the Engine version it expects, so raising
 the Engine alone leaves the published server declaring an incompatibility. Raise
 both, or widen the range, before releasing an Engine the server has not caught
 up with.
+
+## Conventions
+
+### Issue tracker
+
+Issues live as Markdown files under `.scratch/`, which is tracked by Git. See
+`docs/agents/issue-tracker.md` when working with issues or specs.
+
+### Triage labels
+
+Use the five canonical roles (`needs-triage`, `needs-info`, `ready-for-agent`,
+`ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md` when triaging
+issues.
+
+### Domain docs
+
+The repository uses a single domain context: `CONTEXT.md` and `docs/adr/` at the
+repository root. See `docs/agents/domain.md` when changing the domain model or
+recording architectural decisions.
