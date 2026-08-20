@@ -53,6 +53,38 @@ npx playwright install chrome
 `npm run build` also exercises the Runtime Asset normaliser, which requires
 ImageMagick 7 — the `magick` command — on the PATH.
 
+## Releasing
+
+The two packages are published independently, each by its own tag. Pushing the
+tag is the release: `.github/workflows/publish.yml` refuses a tag that disagrees
+with the version its package declares, then builds, runs the full suite, and
+publishes only what the tag names. Nothing is published from a workstation.
+
+To release the Engine as `fondale`:
+
+```sh
+npm version patch          # or minor, or major
+git push --follow-tags
+```
+
+To release `@fondale/dialogue-server`, whose tag `npm version` does not write
+for you:
+
+```sh
+npm version patch --workspace @fondale/dialogue-server
+git tag dialogue-server-v0.4.1
+git push --follow-tags
+```
+
+A `minor` or `major` release changes the series the README names, and
+`npm run build` fails until `README.md` says the new one. A patch leaves the
+series alone.
+
+The server's `peerDependencies` pins the Engine version it expects, so raising
+the Engine alone leaves the published server declaring an incompatibility. Raise
+both, or widen the range, before releasing an Engine the server has not caught
+up with.
+
 ## Agent skills
 
 The skills installed for this project can be reconstructed from
