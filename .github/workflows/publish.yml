@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - "v*"
+      - "dialogue-server-v*"
 
 jobs:
   publish:
@@ -19,14 +20,29 @@ jobs:
           node-version: 22
           registry-url: https://registry.npmjs.org
 
+      - name: Read the tag
+        id: target
+        run: |
+          case "$GITHUB_REF_NAME" in
+            dialogue-server-v*)
+              echo "workspace=@fondale/dialogue-server" >> "$GITHUB_OUTPUT"
+              echo "manifest=packages/dialogue-server/package.json" >> "$GITHUB_OUTPUT"
+              echo "version=${GITHUB_REF_NAME#dialogue-server-v}" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "workspace=" >> "$GITHUB_OUTPUT"
+              echo "manifest=package.json" >> "$GITHUB_OUTPUT"
+              echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+              ;;
+          esac
+
       - run: npm ci
 
-      - name: Refuse a tag that disagrees with package.json
+      - name: Refuse a tag that disagrees with its package
         run: |
-          tagged="${GITHUB_REF_NAME#v}"
-          declared="$(node -p 'require("./package.json").version')"
-          if [ "$tagged" != "$declared" ]; then
-            echo "Tag $GITHUB_REF_NAME does not match package.json $declared." >&2
+          declared="$(node -p 'require("./${{ steps.target.outputs.manifest }}").version')"
+          if [ "${{ steps.target.outputs.version }}" != "$declared" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match ${{ steps.target.outputs.manifest }} $declared." >&2
             exit 1
           fi
 
@@ -36,21 +52,12 @@ jobs:
 
       - run: npm run verify
 
-      - name: Refuse a dialogue server that disagrees with the core
+      - name: Publish
         run: |
-          core="$(node -p 'require("./package.json").version')"
-          peer="$(node -p 'require("./packages/dialogue-server/package.json").peerDependencies["fondale"]')"
-          if [ "$peer" != "$core" ]; then
-            echo "dialogue-server expects core $peer but this tag publishes $core." >&2
-            exit 1
+          if [ -n "${{ steps.target.outputs.workspace }}" ]; then
+            npm publish --provenance --workspace "${{ steps.target.outputs.workspace }}"
+          else
+            npm publish --provenance
           fi
-
-      - name: Publish the core
-        run: npm publish --provenance
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-      - name: Publish the dialogue server
-        run: npm publish --provenance --workspace @fondale/dialogue-server
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
