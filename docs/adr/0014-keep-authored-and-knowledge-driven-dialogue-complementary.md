@@ -2,19 +2,16 @@
 
 Fondale uses Knowledge-Driven Dialogue for exploratory free-form conversation
 and retains Sequence, Line, and Choice for scenes that require exact authored
-language, branching, timing, or choreography. Both paths share canonical
-Narrative Facts and change Game State only through Game Operations; authored
-conditions, never generated speech or a Dialogue Provider, decide when play
-moves between them, avoiding both rigid dialogue trees for investigation and
-loss of authorial control over directed scenes.
+language, branching, timing, or choreography. Neither replaces the other:
+without the first, investigation collapses into rigid dialogue trees; without
+the second, directed scenes lose authorial control over wording and timing.
 
-A Conversation is the dominant Game Activity while the Player conducts
-Knowledge-Driven Dialogue. An authored condition may hand control to a
-Sequence, and the Engine explicitly decides whether the Conversation resumes
-or closes afterward; generated speech cannot initiate that handoff.
+Both paths share canonical Narrative Facts and change Game State only through
+Game Operations. A Conversation is the dominant Game Activity while the Player
+conducts Knowledge-Driven Dialogue, and an authored condition may hand control
+to a Sequence, after which the Engine explicitly decides whether the
+Conversation resumes or closes. Generated speech decides none of this.
 
-ADR-0017 supersedes the assumption above that play reaches one path at a time
-through an authored handoff: authored alternatives and free-form input are now
-presented together for a Conversation's whole duration. What stands here is the
-division of authority — authored conditions and Engine decisions govern Game
-State, and generated speech decides nothing.
+How the two paths are presented is settled by ADR-0017: authored alternatives
+and free-form input are offered together for a Conversation's whole duration,
+rather than reached one at a time.
