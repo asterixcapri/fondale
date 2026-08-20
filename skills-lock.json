@@ -40,6 +40,11 @@
       "sourceType": "local",
       "computedHash": "4a6923584b4d5ac4985b947f55542804d091b08884152c55b9aaf1b0214452dd"
     },
+    "define-puzzles": {
+      "source": "./skills",
+      "sourceType": "local",
+      "computedHash": "aa214d6c4727d3267f2944f91cf2610656274ca8c5c8124e993a45523a4068d2"
+    },
     "define-scene": {
       "source": "./skills",
       "sourceType": "local",
