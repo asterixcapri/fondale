@@ -4,8 +4,8 @@ status: accepted
 
 # Publish under the project's own name rather than the author's
 
-ADR 0005 named the package after the author's own scope, and ADR 0020 followed
-it with a dialogue server under the same scope. That scope reads as one person's
+The Engine was first published under the author's own npm scope, and ADR 0020
+followed it with a dialogue server under the same scope. That scope reads as one person's
 shelf, which was accurate while the repository was private and the Engine had
 exactly one game. It stopped being accurate the day the repository went public,
 the package reached the registry, and `docs/public/building-a-game.md` began
@@ -21,9 +21,9 @@ short name while the family stays gathered — the arrangement `vue` and `@vue/*
 `svelte` and `@sveltejs/*`, `astro` and `@astrojs/*` all use. Reserving the
 scope now also costs nothing and cannot be done later if somebody else takes it.
 
-This supersedes the package names in ADRs 0005, 0020, 0026 and 0027 and nothing
-else about them: those decisions stand as they were argued, and are left
-unedited so the record still says what was decided when.
+This supersedes the package names in ADRs 0020, 0026 and 0027 and nothing else
+about them: those decisions stand as they were argued, and are left unedited so
+the record still says what was decided when.
 
 ## Considered options
 
