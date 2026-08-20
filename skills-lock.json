@@ -28,7 +28,7 @@
     "define-character": {
       "source": "./skills",
       "sourceType": "local",
-      "computedHash": "7899eaebcbdad663ec28476150ee6cd84c4f4d53023bfdbf97dcbe75907bcceb"
+      "computedHash": "d7ca2971c6be190a11c963c608e2cc4381eaadbbcfe98013511872b7edd27341"
     },
     "define-dialogue": {
       "source": "./skills",
@@ -48,7 +48,7 @@
     "define-scene": {
       "source": "./skills",
       "sourceType": "local",
-      "computedHash": "2f562e0b23a8c793f6d001cc37f9576544126427e8049038839b44ffa5d871be"
+      "computedHash": "45c5653d1a686e95cb1134112a0a792c8d353c1d2ba750ae412a15b959e3ff7d"
     },
     "define-story": {
       "source": "./skills",

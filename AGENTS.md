@@ -83,8 +83,9 @@ npx skills list
 
 Use the project content skills for their owning definitions:
 
-- `skills/define-scene/SKILL.md` for Scenes, Background, Scenery, geometry, and
-  spatial integration;
+- `skills/define-scene/SKILL.md` for Scenes fabricated against a game's own
+  world contract: geometry measured at 1:1, the Walkable Region, Perspective
+  Scale, placeholder and finished artwork, and the `SceneDefinition`;
 - `skills/define-character/SKILL.md` for Characters fabricated against a game's
   own world contract: target height, generation, normalisation, Appearances,
   Animations and the `CharacterDefinition`;
@@ -93,10 +94,14 @@ Use the project content skills for their owning definitions:
 - `skills/define-dialogue/SKILL.md` for narrative authority, Character Knowledge,
   Disclosure, authored Conversation, and Knowledge-Driven Dialogue.
 
-`define-scene` and `define-object` share `docs/agents/visual-direction.md` for
-project scale, illustrated neo-retro art direction, colour, and cross-asset
-consistency. `define-character` no longer reads it: it is portable to any game
-and takes its scale and its art direction from that game's `docs/game/world.md`.
+`define-object` still shares `docs/agents/visual-direction.md` for project scale,
+illustrated neo-retro art direction, colour, and cross-asset consistency.
+`define-scene` and `define-character` no longer read it: they are portable to any
+game and take their scale and their art direction from that game's
+`docs/game/world.md`.
+
+Their `SKILL.md` files are generated: see `skills/shared/README.md` before
+changing either of them.
 
 ### Issue tracker
 
