@@ -98,9 +98,10 @@ Fondale's Save Snapshot format version.
 | `LineStep` | modal Character speech | line type plus Line fields | waits for advance and audio duration | Line/Character/asset diagnostics | [Sequence](recipes/sequences.ts) |
 | `NarrationStep` | narrator prose | narration type and non-empty text | lower warm presentation | Narration diagnostics | [Sequence](recipes/sequences.ts) |
 | `OperationsStep` | Sequence state commit | operations type and operation group | commits before continuation | nested/operation diagnostics | [Sequence](recipes/sequences.ts) |
-| `ChoiceAlternative` | eligible answer | text, condition, spoken, steps | spoken defaults true | condition/cycle diagnostics | [Sequence](recipes/sequences.ts) |
-| `ChoiceStep` | modal answer set | alternatives and fallback | maximum six alternatives | choice-limit diagnostic | [Sequence](recipes/sequences.ts) |
-| `BranchStep` | automatic branch | ordered cases and fallback | first eligible case wins | condition/cycle diagnostics | [Sequence](recipes/sequences.ts) |
+| `ChoiceAlternative` | eligible answer | text, condition, spoken, steps | spoken defaults true; the last alternative carries no condition and is always offered | condition/ordering/cycle diagnostics | [Sequence](recipes/sequences.ts) |
+| `ChoiceStep` | modal answer set | ordered alternatives | maximum six eligible at once, the guaranteed one included; unconditional alternatives come last | choice-limit and ordering diagnostics | [Sequence](recipes/sequences.ts) |
+| `BranchCase` | one branch of a Sequence | optional condition and steps | the last case carries no condition and is the default | condition/ordering/cycle diagnostics | [Sequence](recipes/sequences.ts) |
+| `BranchStep` | automatic branch | ordered cases | read from the top, first eligible case wins | condition/ordering/cycle diagnostics | [Sequence](recipes/sequences.ts) |
 | `DirectedSubject` | target of transient direction | Character, Object, or current-Scene Scenery | declarative registry identity | subject/reference diagnostics | [Sequence](recipes/sequences.ts) |
 | `CueStart` | causal direction start | earlier direction index and Cue name | source must be an earlier Animation | Cue/order diagnostics | [Sequence](recipes/sequences.ts) |
 | `AnimationDirection` | explicit transient playback | subject, Animation name and optional Cue start | finite playback blocks; loops need another boundary | Animation/Cue diagnostics | [Sequence](recipes/sequences.ts) |
@@ -141,7 +142,7 @@ Exact reachable fields also include `x`, `y`, `width`, `height`, `kind`,
 `appearance`, `sequence`, `groundPoint`, `baseline`, `position`, `approach`,
 `when`, `direction`, `destination`, `entrance`, `scale`, `background`, `size`,
 `walkableRegion`, `perspectiveScale`, `hotspots`, `entrances`, `passages`,
-`alternatives`, `fallback`, `steps`, `cases`, `skippable`,
+`alternatives`, `steps`, `cases`, `skippable`,
 `skipOutcome`, `subject`, `animation`, `animationStartedTick`, `startAfter`, `cue`, `duration`, `mode`,
 `point`, `from`, `to`, `directions`,
 `identity`, `version`,

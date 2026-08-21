@@ -26,8 +26,7 @@ test("Sequence validates its complete local contract with a rooted path", () => 
   const cyclic: unknown[] = [];
   cyclic.push({
     type: "branch",
-    cases: [],
-    fallback: cyclic,
+    cases: [{ steps: cyclic }],
   });
   const diagnostics = validateSequenceDefinition({
     skippable: true,
@@ -36,8 +35,10 @@ test("Sequence validates its complete local contract with a rooted path", () => 
       text: "",
     }, {
       type: "choice",
-      alternatives: Array.from({ length: 7 }, (_, index) => ({ text: String(index), steps: [] })),
-      fallback: { text: "Leave", steps: cyclic },
+      alternatives: [
+        ...Array.from({ length: 6 }, (_, index) => ({ text: String(index), steps: [] })),
+        { text: "Leave", steps: cyclic },
+      ],
     }, {
       type: "operations",
       operations: [{ type: "start-sequence", sequence: "nested" }],
@@ -94,8 +95,9 @@ test("Sequence traverses a Branch and requests Operations before presenting a Li
             character: "guide",
             text: "Welcome inside.",
           }],
+        }, {
+          steps: [{ type: "narration", text: "The door remains closed." }],
         }],
-        fallback: [{ type: "narration", text: "The door remains closed." }],
       }],
     } satisfies SequenceDefinition)),
   });
@@ -135,15 +137,18 @@ test("Sequence owns Choice eligibility, speech, and nested continuation", () => 
           text: "Wait.",
           when: { variable: "open", equals: false },
           steps: [],
+        }, {
+          text: "Leave.",
+          spoken: false,
+          steps: [],
         }],
-        fallback: { text: "Leave.", spoken: false, steps: [] },
       }],
     } satisfies SequenceDefinition)),
   });
   const choiceDecision = sequence.advance(sequence.start("conversation", "room"), runtimeContext);
   expect(choiceDecision).toMatchObject({
     type: "waiting",
-    activity: { active: { kind: "choice", eligibleAlternatives: [0] } },
+    activity: { active: { kind: "choice", eligibleAlternatives: [0, 2] } },
   });
   if (choiceDecision.type !== "waiting") return;
 
@@ -166,31 +171,30 @@ test("Sequence owns Choice eligibility, speech, and nested continuation", () => 
   });
 });
 
-test("Sequence selects the unspoken Choice fallback and completes its nested path", () => {
+test("Sequence offers the final unconditional alternative when no other is eligible", () => {
   const sequence = createSequence({
-    fallback: (validateTestSequenceDefinition({
+    guaranteed: (validateTestSequenceDefinition({
       steps: [{
         type: "choice",
         alternatives: [{
           text: "Unavailable.",
           when: { variable: "open", equals: false },
           steps: [],
-        }],
-        fallback: {
+        }, {
           text: "Leave.",
           spoken: false,
           steps: [{ type: "narration", text: "You step away." }],
-        },
+        }],
       }],
     } satisfies SequenceDefinition)),
   });
-  const choice = sequence.advance(sequence.start("fallback", "room"), runtimeContext);
+  const choice = sequence.advance(sequence.start("guaranteed", "room"), runtimeContext);
   expect(choice).toMatchObject({
     type: "waiting",
-    activity: { active: { kind: "choice", eligibleAlternatives: [-1] } },
+    activity: { active: { kind: "choice", eligibleAlternatives: [1] } },
   });
   if (choice.type !== "waiting") return;
-  const narration = sequence.choose(choice.activity, -1, runtimeContext);
+  const narration = sequence.choose(choice.activity, 1, runtimeContext);
   expect(narration).toMatchObject({
     type: "waiting",
     activity: { active: { kind: "narration" } },
@@ -271,8 +275,7 @@ test("Sequence owns diagnostics for its composed references", () => {
       alternatives: [{ text: "Continue.", steps: [{
         type: "operations",
         operations: [{ type: "start-sequence", sequence: "another" }],
-      }] }],
-      fallback: { text: "Leave.", spoken: false, steps: [] },
+      }] }, { text: "Leave.", spoken: false, steps: [] }],
     }],
   } as const;
 
@@ -300,7 +303,6 @@ test("Sequence validates restored active state against its authored traversal", 
       steps: [{ type: "narration", text: "Before." }, {
         type: "choice",
         alternatives: [{ text: "Continue.", spoken: false, steps: [] }],
-        fallback: { text: "Leave.", spoken: false, steps: [] },
       }, { type: "narration", text: "After." }, {
         type: "narration",
         text: "Last.",
@@ -333,7 +335,6 @@ test("Sequence rejects impossible restored Choice speech metadata", () => {
         {
           type: "choice",
           alternatives: [{ text: "Continue.", steps: [] }],
-          fallback: { text: "Leave.", steps: [] },
         },
       ],
     } satisfies SequenceDefinition)),
@@ -372,8 +373,9 @@ test("Sequence enumerates nested Lines with stable authored paths", () => {
       cases: [{
         when: { variable: "open", equals: true },
         steps: [{ type: "line", character: "guide", text: "Inside.", audio: "inside.ogg" }],
+      }, {
+        steps: [{ type: "narration", text: "Outside." }],
       }],
-      fallback: [{ type: "narration", text: "Outside." }],
     }],
   } satisfies SequenceDefinition));
 
@@ -400,4 +402,40 @@ test("Sequence presentation defensively clones a Line audio URL", () => {
       !(presentation.audio instanceof URL) || !(repeated.audio instanceof URL)) return;
   expect(presentation.audio).not.toBe(audio);
   expect(presentation.audio).not.toBe(repeated.audio);
+});
+
+test("Sequence refuses a default placed before a conditional Branch case or Choice alternative", () => {
+  const diagnostics = validateSequenceDefinition({
+    steps: [{
+      type: "branch",
+      cases: [
+        { steps: [] },
+        { when: { variable: "open", equals: true }, steps: [] },
+      ],
+    }, {
+      type: "choice",
+      alternatives: [
+        { text: "Always.", spoken: false, steps: [] },
+        { text: "Sometimes.", when: { variable: "open", equals: true }, spoken: false, steps: [] },
+      ],
+    }, {
+      type: "branch",
+      cases: [{ when: { variable: "open", equals: true }, steps: [] }],
+    }],
+  } satisfies SequenceDefinition, "sequences.opening");
+
+  expect(diagnostics).toEqual(expect.arrayContaining([
+    expect.objectContaining({
+      code: "definition.conditional-fallback",
+      path: "sequences.opening.steps[0].cases",
+    }),
+    expect.objectContaining({
+      code: "definition.conditional-fallback",
+      path: "sequences.opening.steps[1].alternatives",
+    }),
+    expect.objectContaining({
+      code: "definition.conditional-fallback",
+      path: "sequences.opening.steps[2].cases",
+    }),
+  ]));
 });

@@ -59,9 +59,7 @@ export function validateConditionalFallbackOrder(
   variantName: string,
   diagnostics: AuthoringDiagnostic[],
 ): void {
-  const unconditional = values
-    .map((value, index) => value.when === undefined ? index : -1)
-    .filter((index) => index >= 0);
+  const unconditional = unconditionalIndexes(values);
   if (unconditional.length !== 1 || unconditional[0] !== values.length - 1) {
     diagnostics.push({
       code: "definition.conditional-fallback",
@@ -70,6 +68,39 @@ export function validateConditionalFallbackOrder(
       message: `${variantName} variants require exactly one unconditional fallback in the final position.`,
     });
   }
+}
+
+/**
+ * @internal The same ordering rule for a list the Player is offered all at once
+ * rather than one the Engine reads from the top: the entries carrying no
+ * Interaction Condition are the last ones, and there is at least one, so the
+ * list always has something to offer. Several of them are allowed here, unlike
+ * in `validateConditionalFallbackOrder`, because the Player sees them together
+ * and none of them hides the others.
+ */
+export function validateConditionalFallbackTail(
+  values: readonly { readonly when?: InteractionCondition }[],
+  path: string,
+  variantName: string,
+  diagnostics: AuthoringDiagnostic[],
+): void {
+  const unconditional = unconditionalIndexes(values);
+  if (unconditional.length === 0 || unconditional[0] !== values.length - unconditional.length) {
+    diagnostics.push({
+      code: "definition.conditional-fallback",
+      family: "definition", owner: "interaction",
+      path,
+      message:
+        `${variantName} variants require an unconditional fallback in the final position, after every conditional one.`,
+    });
+  }
+}
+
+/** The positions, in authored order, of the entries carrying no condition. */
+function unconditionalIndexes(
+  values: readonly { readonly when?: InteractionCondition }[],
+): number[] {
+  return values.flatMap((value, index) => value.when === undefined ? [index] : []);
 }
 
 /**

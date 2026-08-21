@@ -571,8 +571,8 @@ test("composition diagnoses nested directed Sequences and Motion outside their S
               },
             ],
           },
+          { steps: [] },
         ],
-        fallback: [],
       },
     ],
   } satisfies SequenceDefinition;

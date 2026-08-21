@@ -258,8 +258,8 @@ function projectFixture(
               { type: "narration", text: "The committed branch continues." },
             ],
           },
+          { text: "Again", steps: [] },
         ],
-        fallback: { text: "Again", steps: [] },
       },
       { type: "narration", text: "The road still waits." },
       { type: "line", character: "player", text: "The conversation ends." },
@@ -351,7 +351,7 @@ test("a modal Sequence exposes a resumable Line and Choice, then commits its bra
   session.steps();
   expect(session.snapshot().activity).toMatchObject({
     type: "sequence",
-    active: { kind: "choice", eligibleAlternatives: [0] },
+    active: { kind: "choice", eligibleAlternatives: [0, 1] },
   });
 
   session.input({ type: "choose", alternative: 0 });

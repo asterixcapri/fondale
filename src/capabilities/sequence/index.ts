@@ -2,6 +2,8 @@ import type { AuthoringDiagnostic, GameOperation } from "../game-project";
 import {
   eligibleAlternativeIndexes,
   exceedsEligibleAlternativeLimit,
+  validateConditionalFallbackOrder,
+  validateConditionalFallbackTail,
   type InteractionCondition,
 } from "../interaction";
 import {
@@ -74,6 +76,12 @@ export interface OperationsStep {
   readonly operations: readonly GameOperation[];
 }
 
+/**
+ * One answer the Player may pick. The alternatives carrying no condition are the
+ * last ones and there is at least one, so a Choice always has something to
+ * offer; several may sit together at the end, because the Player is offered them
+ * all at once and none of them hides the others.
+ */
 export interface ChoiceAlternative {
   readonly text: string;
   readonly when?: InteractionCondition;
@@ -84,20 +92,22 @@ export interface ChoiceAlternative {
 export interface ChoiceStep {
   readonly type: "choice";
   readonly alternatives: readonly ChoiceAlternative[];
-  readonly fallback: {
-    readonly text: string;
-    readonly spoken?: boolean;
-    readonly steps: readonly SequenceStep[];
-  };
+}
+
+/**
+ * One branch the Engine may take. Like every Interaction Case it carries an
+ * optional condition and the last one carries none, which makes it the default.
+ * Its outcome is the further Sequence steps an Interaction Case may produce,
+ * and only those, because a Branch continues the Sequence it lives in.
+ */
+export interface BranchCase {
+  readonly when?: InteractionCondition;
+  readonly steps: readonly SequenceStep[];
 }
 
 export interface BranchStep {
   readonly type: "branch";
-  readonly cases: readonly {
-    readonly when: InteractionCondition;
-    readonly steps: readonly SequenceStep[];
-  }[];
-  readonly fallback: readonly SequenceStep[];
+  readonly cases: readonly BranchCase[];
 }
 
 /** A Character, Object, or current-Scene Scenery directed by a Sequence. */
@@ -289,15 +299,25 @@ export function validateSequenceDefinition(
             message: "A Choice can present at most six eligible alternatives.",
           });
         }
+        validateConditionalFallbackTail(
+          step.alternatives,
+          `${path}[${index}].alternatives`,
+          "Choice alternative",
+          diagnostics,
+        );
         step.alternatives.forEach((alternative, alternativeIndex) =>
           visit(alternative.steps, `${path}[${index}].alternatives[${alternativeIndex}].steps`),
         );
-        visit(step.fallback.steps, `${path}[${index}].fallback.steps`);
       } else if (step.type === "branch") {
+        validateConditionalFallbackOrder(
+          step.cases,
+          `${path}[${index}].cases`,
+          "Branch case",
+          diagnostics,
+        );
         step.cases.forEach((branch, branchIndex) =>
           visit(branch.steps, `${path}[${index}].cases[${branchIndex}].steps`),
         );
-        visit(step.fallback, `${path}[${index}].fallback`);
       }
     });
     visiting.delete(steps);
@@ -577,15 +597,6 @@ export function validateSequenceReferences(
             objectsInScene,
           ));
         });
-        if (step.fallback.spoken !== false && !context.playerCharacter) {
-          diagnostics.push({
-            code: "definition.choice.player-character",
-            family: "definition", owner: "sequence",
-            path: `${base}.fallback.spoken`,
-            message: "A spoken Choice requires a Player Character.",
-          });
-        }
-        branches.push(visit(step.fallback.steps, `${base}.fallback.steps`, objectsInScene));
         objectsInScene = intersectSets(branches);
       } else if (step.type === "branch") {
         const branches: Set<string>[] = [];
@@ -600,7 +611,6 @@ export function validateSequenceReferences(
             objectsInScene,
           ));
         });
-        branches.push(visit(step.fallback, `${base}.fallback`, objectsInScene));
         objectsInScene = intersectSets(branches);
       }
     });
@@ -732,12 +742,10 @@ export function sequenceLines(
         step.alternatives.forEach((alternative, alternativeIndex) =>
           visit(alternative.steps, `${stepPath}.alternatives[${alternativeIndex}].steps`),
         );
-        visit(step.fallback.steps, `${stepPath}.fallback.steps`);
       } else if (step.type === "branch") {
         step.cases.forEach((branch, branchIndex) =>
           visit(branch.steps, `${stepPath}.cases[${branchIndex}].steps`),
         );
-        visit(step.fallback, `${stepPath}.fallback`);
       }
     });
   };
@@ -889,19 +897,25 @@ export function createSequence(
         }
         if (step.type === "narration") return next({ kind: "narration", path });
         if (step.type === "choice") {
-          const eligible = eligibleAlternativeIndexes(step.alternatives, context.conditionMatches);
           return next({
             kind: "choice",
             path,
-            eligibleAlternatives: eligible.length > 0 ? eligible : [-1],
+            eligibleAlternatives: eligibleAlternativeIndexes(
+              step.alternatives,
+              context.conditionMatches,
+            ),
           });
         }
         if (step.type === "branch") {
+          // A validated Branch ends in an unconditional case, so one always
+          // applies; a Branch that somehow matches none contributes no steps
+          // rather than inventing a destination for the Sequence.
           const branchIndex = step.cases.findIndex(({ when }) => context.conditionMatches(when));
-          const container = branchIndex >= 0
-            ? `${path}/cases/${branchIndex}/steps`
-            : `${path}/fallback`;
-          pendingPaths.unshift(...pathsForContainer(definition, container));
+          if (branchIndex >= 0) {
+            pendingPaths.unshift(
+              ...pathsForContainer(definition, `${path}/cases/${branchIndex}/steps`),
+            );
+          }
           continue;
         }
         if (step.type === "operations") {
@@ -934,14 +948,11 @@ export function createSequence(
       if (step?.type !== "choice") {
         return { type: "invalid", message: "Sequence Choice state refers to an invalid step path." };
       }
-      const container = alternative === -1
-        ? `${active.path}/fallback/steps`
-        : `${active.path}/alternatives/${alternative}/steps`;
       const pendingPaths = [
-        ...pathsForContainer(definition, container),
+        ...pathsForContainer(definition, `${active.path}/alternatives/${alternative}/steps`),
         ...activity.pendingPaths,
       ];
-      const choice = alternative === -1 ? step.fallback : step.alternatives[alternative]!;
+      const choice = step.alternatives[alternative]!;
       if (choice.spoken !== false && context.playerCharacter) {
         return {
           type: "waiting",
@@ -1021,7 +1032,7 @@ export function createSequence(
           kind: "choice",
           alternatives: active.eligibleAlternatives.map((index) => ({
             index,
-            text: index === -1 ? step.fallback.text : step.alternatives[index]!.text,
+            text: step.alternatives[index]!.text,
           })),
         };
       }
@@ -1097,10 +1108,9 @@ export function createSequence(
           !isSequenceStep(step) || step.type !== "choice" ||
           !Array.isArray(active.eligibleAlternatives) ||
           !active.eligibleAlternatives.every((index) => Number.isInteger(index))) return false;
-      const eligible = eligibleAlternativeIndexes(step.alternatives, context.conditionMatches);
       return sameNumbers(
         active.eligibleAlternatives as number[],
-        eligible.length > 0 ? eligible : [-1],
+        eligibleAlternativeIndexes(step.alternatives, context.conditionMatches),
       );
     },
   };
@@ -1147,13 +1157,11 @@ function validChoiceSpeechPending(
   outerPending: readonly string[],
   conditionMatches: (condition?: InteractionCondition) => boolean,
 ): boolean {
-  const eligible = eligibleAlternativeIndexes(step.alternatives, conditionMatches);
-  const choices = eligible.length > 0
-    ? eligible.map((index) => ({
-        choice: step.alternatives[index]!,
-        container: `${activePath}/alternatives/${index}/steps`,
-      }))
-    : [{ choice: step.fallback, container: `${activePath}/fallback/steps` }];
+  const choices = eligibleAlternativeIndexes(step.alternatives, conditionMatches)
+    .map((index) => ({
+      choice: step.alternatives[index]!,
+      container: `${activePath}/alternatives/${index}/steps`,
+    }));
   return choices.some(({ choice, container }) => choice.spoken !== false &&
     choice.text === choiceText && sameOrderedStrings(
       pending,
@@ -1195,14 +1203,10 @@ function hasExactKeys(
 function hasDirectedStep(steps: readonly SequenceStep[]): boolean {
   return steps.some((step) =>
     step.type === "direction" ||
-    step.type === "choice" && (
-      step.alternatives.some((alternative) => hasDirectedStep(alternative.steps)) ||
-      hasDirectedStep(step.fallback.steps)
-    ) ||
-    step.type === "branch" && (
-      step.cases.some((branch) => hasDirectedStep(branch.steps)) ||
-      hasDirectedStep(step.fallback)
-    ));
+    (step.type === "choice" &&
+      step.alternatives.some((alternative) => hasDirectedStep(alternative.steps))) ||
+    (step.type === "branch" &&
+      step.cases.some((branch) => hasDirectedStep(branch.steps))));
 }
 
 function intersectSets(sets: readonly Set<string>[]): Set<string> {

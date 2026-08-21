@@ -53,6 +53,11 @@ export const hudTheme = {
 | `cursors` | one asset per `PassageDirection` | `left`, `right`, `up`, `down`, `enter` |
 | `speechColors` | Character-keyed hex colours | the colour that Character's speech is drawn in |
 
+A Sequence Choice is presented as the alternatives eligible in the current Game
+State, in their authored order. The last alternative of a Choice carries no
+condition, so the Player is always offered at least it, and it counts towards
+the six that may be eligible at once.
+
 The Command Lexicon's `inventory` phrases — `select` and `deselect` — are the
 words the HUD uses when the Player picks a carried Object up and puts it back.
 

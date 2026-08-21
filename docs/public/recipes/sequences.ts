@@ -25,8 +25,10 @@ export const firstLight = ({
           spoken: false,
           steps: [{ type: "narration", text: "You keep the question to yourself." }],
         },
+        // The last alternative carries no condition, so the Player is never
+        // left without an answer to pick.
+        { text: "Go on.", steps: [] },
       ],
-      fallback: { text: "Go on.", steps: [] },
     },
     {
       type: "direction",

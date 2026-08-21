@@ -36,8 +36,10 @@ export const readBrokenSeal = ({
       // is also why neither Sequence is skippable: a Skip Outcome is a flat
       // list of Game Operations and cannot answer "was the other one read?".
       type: "branch",
-      cases: [{ when: { variable: "registryRead", equals: true }, steps: sailorDeath }],
-      fallback: [],
+      cases: [
+        { when: { variable: "registryRead", equals: true }, steps: sailorDeath },
+        { steps: [] },
+      ],
     },
   ],
 } satisfies SequenceDefinition);

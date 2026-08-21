@@ -48,13 +48,17 @@ differently from speech on purpose.
 
 `operations` commits a group of Game Operations atomically.
 
-`choice` presents alternatives the Player picks from — at most six eligible,
-each with `text`, an optional condition, an optional `spoken` flag (default
-true) and its own steps. It also requires a `fallback` for when no alternative
-is eligible.
+`choice` presents alternatives the Player picks from — at most six eligible at
+once, each with `text`, an optional condition, an optional `spoken` flag
+(default true) and its own steps. Its last alternative carries no condition and
+is therefore always offered, so the Player is never left with nothing to pick,
+and it counts towards the six. No unconditional alternative may come before a
+conditional one, but several may sit together at the end: the Player is offered
+them all.
 
-`branch` picks automatically: ordered `cases` with conditions, plus a
-`fallback` list of steps.
+`branch` picks automatically: ordered `cases`, read from the top, the first
+eligible one taken. Like every Interaction Case list the Engine reads, its last
+case carries no condition and is the default, and it is the only one that may.
 
 `direction` starts concurrent visual directions and waits for every finite one
 to end.
@@ -124,8 +128,9 @@ Sequence.
 | `definition.motion.walkable`, `definition.motion.bounds`, `definition.motion.path` | a path leaves the Walkable Region or the Scene |
 | `definition.motion.scenery-rest` | directed Scenery does not return to its authored position |
 | `definition.camera.bounds`, `definition.camera.point.finite` | a Camera point is invalid or outside the Scene |
-| `definition.choice.limit` | more than six alternatives |
+| `definition.choice.limit` | more than six alternatives may be eligible at once |
 | `definition.choice.player-character` | a spoken alternative has no Player Character to speak it |
+| `definition.conditional-fallback` | a Branch or a Choice has no unconditional final entry, or one comes before a conditional one |
 | `definition.line.text`, `definition.line.character`, `definition.narration.text` | empty text or a missing speaker |
 | `reference.sequence`, `reference.sequence.scene`, `reference.sequence.subject`, `reference.sequence.subject-scene` | a Sequence, its Scene, or a directed subject does not resolve |
 | `reference.animation`, `reference.animation.cue`, `reference.animation.line` | a directed or overridden Animation does not exist |

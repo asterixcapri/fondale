@@ -33,8 +33,11 @@ export const raffaeleConversation = ({
           text: "Lavoro prima, monete dopo?",
           steps: [],
         },
+        {
+          text: "Dimmi cosa devo fare.",
+          steps: [],
+        },
       ],
-      fallback: { text: "Dimmi cosa devo fare.", steps: [] },
     },
     {
       type: "line",

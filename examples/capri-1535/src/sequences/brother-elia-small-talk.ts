@@ -37,11 +37,12 @@ export const brotherEliaSmallTalk = ({
             character: "brotherElia",
             text: "Un secchio fermo a mezz'aria e dodici uomini che fingono di non pensarci.",
           }],
-        }],
-        fallback: [{
-          type: "line",
-          character: "brotherElia",
-          text: "Come sempre: le campane in orario e gli uomini un poco in ritardo.",
+        }, {
+          steps: [{
+            type: "line",
+            character: "brotherElia",
+            text: "Come sempre: le campane in orario e gli uomini un poco in ritardo.",
+          }],
         }],
       }],
     }, {
@@ -69,7 +70,9 @@ export const brotherEliaSmallTalk = ({
         character: "brotherElia",
         text: "Non è una preghiera che si possa fare con la faccia seria. Quindi tiro la corda.",
       }],
+    }, {
+      text: "Nulla, frate. Buona giornata.",
+      steps: [],
     }],
-    fallback: { text: "Nulla, frate. Buona giornata.", steps: [] },
   }],
 } satisfies SequenceDefinition);

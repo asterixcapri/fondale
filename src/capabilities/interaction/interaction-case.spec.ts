@@ -3,6 +3,7 @@ import { expect, test } from "@playwright/test";
 import type { AuthoringDiagnostic } from "../game-project";
 import {
   validateConditionalFallbackOrder,
+  validateConditionalFallbackTail,
   validateInteractionCaseOutcome,
   type InteractionCase,
 } from "./index";
@@ -93,6 +94,37 @@ test("exactly one unconditional entry in the final position is required", () => 
     expect.objectContaining({ code: "definition.conditional-fallback" }),
   ]);
   expect(orderDiagnostics([{}, {}])).toEqual([
+    expect.objectContaining({ code: "definition.conditional-fallback" }),
+  ]);
+});
+
+test("a list offered all at once requires its unconditional entries last", () => {
+  const tailDiagnostics = (
+    values: readonly { readonly when?: InteractionCase["when"] }[],
+  ): readonly AuthoringDiagnostic[] => {
+    const diagnostics: AuthoringDiagnostic[] = [];
+    validateConditionalFallbackTail(values, "alternatives", "Choice alternative", diagnostics);
+    return diagnostics;
+  };
+
+  expect(tailDiagnostics([{ when: { variable: "opened", equals: true } }, {}])).toEqual([]);
+  expect(tailDiagnostics([{}, {}])).toEqual([]);
+  expect(tailDiagnostics([
+    {},
+    { when: { variable: "opened", equals: true } },
+  ])).toEqual([
+    expect.objectContaining({
+      code: "definition.conditional-fallback",
+      owner: "interaction",
+      path: "alternatives",
+      message:
+        "Choice alternative variants require an unconditional fallback in the final position, after every conditional one.",
+    }),
+  ]);
+  expect(tailDiagnostics([{ when: { variable: "opened", equals: true } }])).toEqual([
+    expect.objectContaining({ code: "definition.conditional-fallback" }),
+  ]);
+  expect(tailDiagnostics([])).toEqual([
     expect.objectContaining({ code: "definition.conditional-fallback" }),
   ]);
 });

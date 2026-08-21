@@ -139,6 +139,15 @@ direct Line, a Sequence, a Conversation, or Reflection.
 **Sequence** — a finite modal flow of steps. See
 [Sequence](authoring/sequence.md).
 
+**Choice** — the point in a Sequence where the Player picks one of the
+`alternatives` eligible in the current Game State. At most six may be eligible
+at once, and the last one carries no condition, so there is always something to
+pick.
+
+**Branch** — the Sequence step the Engine takes for the Player: `cases` read
+from the top, the first eligible one taken, the last carrying no condition and
+so acting as the default.
+
 **Direction Step** — one step running concurrent Animation, Motion and Camera
 directions.
 

@@ -357,8 +357,9 @@ eligible in the current Game State from the HUD. By default, the selected phrase
 is pronounced by the Player Character before the Sequence continues along its
 branch, but an alternative may explicitly remain unspoken; ineligible
 alternatives are not presented. At most six alternatives may be eligible at
-once.
-_Avoid_: Menu, disabled answer, arbitrary input prompt
+once, and the final alternative carries no Interaction Condition, so the Player
+is never offered nothing.
+_Avoid_: Menu, disabled answer, arbitrary input prompt, fallback field
 
 ## Interaction language
 

@@ -100,6 +100,7 @@ export {
 } from "./capabilities/world";
 export {
   type AnimationDirection,
+  type BranchCase,
   type BranchStep,
   type ChoiceAlternative,
   type ChoiceStep,

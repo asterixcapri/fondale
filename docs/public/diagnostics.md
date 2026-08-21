@@ -65,6 +65,10 @@ reported before any asset is fetched.
 `definition.line.character`, `definition.narration.text`,
 `definition.choice.limit`, `definition.choice.player-character`.
 
+`definition.conditional-fallback`, listed under Nouns and Commands, is the
+shared ordering rule and is reported for a Sequence Branch and a Sequence Choice
+as well.
+
 **Motion and Camera** — `definition.motion.path`,
 `definition.motion.character-path`, `definition.motion.character-duration`,
 `definition.motion.duration`, `definition.motion.bounds`,

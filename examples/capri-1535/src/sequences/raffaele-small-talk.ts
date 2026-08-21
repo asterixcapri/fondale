@@ -30,11 +30,12 @@ export const raffaeleSmallTalk = ({
             character: "raffaele",
             text: "Storta. Ma adesso ho te, quindi è storta in due.",
           }],
-        }],
-        fallback: [{
-          type: "line",
-          character: "raffaele",
-          text: "Tre boghe e un polpo che se n'è tornato a casa. Il mare oggi tiene le mani in tasca.",
+        }, {
+          steps: [{
+            type: "line",
+            character: "raffaele",
+            text: "Tre boghe e un polpo che se n'è tornato a casa. Il mare oggi tiene le mani in tasca.",
+          }],
         }],
       }],
     }, {
@@ -77,7 +78,9 @@ export const raffaeleSmallTalk = ({
         character: "raffaele",
         text: "Intanto rammendo le reti. Uno si accontenta di quello che sa fare.",
       }],
+    }, {
+      text: "Niente. Pensavo ad alta voce.",
+      steps: [],
     }],
-    fallback: { text: "Niente. Pensavo ad alta voce.", steps: [] },
   }],
 } satisfies SequenceDefinition);

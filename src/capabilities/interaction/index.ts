@@ -25,6 +25,7 @@ export {
 } from "./alternative-eligibility";
 export {
   validateConditionalFallbackOrder,
+  validateConditionalFallbackTail,
   validateInteractionCaseOutcome,
   type InteractionCase,
 } from "./interaction-case";

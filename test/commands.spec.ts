@@ -430,9 +430,11 @@ test("Dialogue Choices use the Player Character speech styling", async ({ page }
   const choice = frame.locator("[data-fondale-choice]");
   await expect(choice).toBeVisible();
   const alternatives = choice.getByRole("button");
-  await expect(alternatives).toHaveCount(2);
+  await expect(alternatives).toHaveCount(3);
   await expect(alternatives.nth(0)).toHaveText("1. Grazie!");
   await expect(alternatives.nth(1)).toHaveText("2. Non ora.");
+  // The last alternative carries no condition, so it is always offered.
+  await expect(alternatives.nth(2)).toHaveText("3. Arrivederci.");
   await expect(choice).toHaveAttribute("data-fondale-phrase-surface", "");
   await expect(choice).toHaveCSS("background-color", "rgba(12, 22, 38, 0.96)");
   await expect(choice).toHaveCSS("background-image", "none");
