@@ -70,10 +70,14 @@ gains the guaranteed alternative; no new canonical term was invented here.
 `package-lock.json` are refreshed, as the published surface changed; the browser
 recipe test consumes that tarball and fails against a stale one.
 
-Reviewed with `/code-review` against the base commit. Acted on: a dead value
-import in `interaction/index.ts`; the two validators now share one helper and
-say plainly how they differ; the branch runtime's silent fall-through when no
-case matches carries the reason it is safe; the authoring guides state that
-several unconditional alternatives may sit together at the end and that the
-guaranteed one counts towards the six; and a **Branch** entry drafted for
-`CONTEXT.md` was withdrawn as vocabulary this effort did not commission.
+**Review.** `/code-review` was invoked but neither of its two sub-agents ever
+reported, so the diff was reviewed by hand against this ticket, the parent spec
+and the repository's conventions instead. That pass produced: removal of a dead
+value import in `interaction/index.ts`; one shared `unconditionalIndexes` helper
+under both ordering validators, each saying plainly how it differs from the
+other; a reason on the branch runtime's silent fall-through when no case
+matches; guide wording stating that several unconditional alternatives may sit
+together at the end and that the guaranteed one counts towards the six; and the
+withdrawal of a **Branch** entry drafted for `CONTEXT.md`, as vocabulary this
+effort did not commission. A second pair of eyes on the diff would still be
+worth having.
