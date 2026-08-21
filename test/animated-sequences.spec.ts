@@ -1298,19 +1298,16 @@ test("a Scene Opening case naming a Scene Entrance that does not exist is refuse
 });
 
 /** The same project with Interaction Cases on the Scene the game begins in. */
-function openingProject(
-  initialSceneCases: readonly SceneOpeningCase[],
-  openingCases: readonly SceneOpeningCase[] = [],
-) {
-  const base = arrivalProject(undefined, openingCases);
+function initialSceneOpeningProject(cases: readonly SceneOpeningCase[]) {
+  const base = arrivalProject(undefined, []);
   return validateTestGameProject({
     ...base,
-    scenes: { ...base.scenes, room: { ...base.scenes.room, cases: initialSceneCases } },
+    scenes: { ...base.scenes, room: { ...base.scenes.room, cases } },
   });
 }
 
 test("a new game opens on its initial Scene before the Player has control", () => {
-  const session = createTestSession(openingProject([{ sequence: "arrival" }]));
+  const session = createTestSession(initialSceneOpeningProject([{ sequence: "arrival" }]));
 
   expect(session.snapshot()).toMatchObject({
     currentScene: "room",
@@ -1327,7 +1324,7 @@ test("a new game opens on its initial Scene before the Player has control", () =
 });
 
 test("the same game restored from a Save Snapshot does not open its initial Scene", () => {
-  const project = openingProject([{ sequence: "arrival" }]);
+  const project = initialSceneOpeningProject([{ sequence: "arrival" }]);
   const opened = createTestSession(project);
   opened.input({ type: "advance-sequence" });
   opened.steps(2);
@@ -1343,7 +1340,7 @@ test("the same game restored from a Save Snapshot does not open its initial Scen
 });
 
 test("an opening case naming a Scene Entrance waits for that door rather than the start", () => {
-  const session = createTestSession(openingProject([
+  const session = createTestSession(initialSceneOpeningProject([
     { entrance: "fromTower", line: { character: "player", text: "Back in the room." } },
   ]));
   expect(session.snapshot().activity).toBeNull();
@@ -1361,7 +1358,7 @@ test("an opening case naming a Scene Entrance waits for that door rather than th
 });
 
 test("an opening case naming no Entrance applies at the start and on every later arrival", () => {
-  const session = createTestSession(openingProject([
+  const session = createTestSession(initialSceneOpeningProject([
     { line: { character: "player", text: "The room is quiet." } },
   ]));
   expect(session.snapshot().activity).toMatchObject({
@@ -1383,13 +1380,33 @@ test("an opening case naming no Entrance applies at the start and on every later
 });
 
 test("an opening at the start of a game is decided by the whole initial Session state", () => {
-  const session = createTestSession(openingProject([
-    { when: { variable: "arrived", equals: true }, line: { character: "player", text: "Back again." } },
-    { when: { variable: "arrived", equals: false }, line: { character: "player", text: "For the first time." } },
+  const session = createTestSession(initialSceneOpeningProject([
+    {
+      when: { variable: "arrived", equals: true },
+      line: { character: "player", text: "Back again." },
+    },
+    {
+      when: { variable: "arrived", equals: false },
+      line: { character: "player", text: "For the first time." },
+    },
   ]));
 
   expect(session.snapshot().activity).toMatchObject({
     type: "line",
     line: { text: "For the first time." },
   });
+});
+
+test("an opening at the start of a game may answer with a Command Response alone", () => {
+  const session = createTestSession(initialSceneOpeningProject([
+    {
+      response: { text: "The door has already closed behind you." },
+      operations: [{ type: "set-variable", variable: "arrived", value: true }],
+    },
+  ]));
+
+  expect(session.effects().map((effect) =>
+    effect.type === "interaction-response" ? effect.text : "",
+  )).toContain("The door has already closed behind you.");
+  expect(session.snapshot()).toMatchObject({ variables: { arrived: true }, activity: null });
 });

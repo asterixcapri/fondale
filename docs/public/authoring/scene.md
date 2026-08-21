@@ -76,9 +76,9 @@ the Player arrives through a Scene Passage or the game begins in that Scene. A
 Scene declares what it does then in `cases`, the same list every conditional
 reaction in the Engine is written as: each case carries an optional `when`, at
 most one of a `line`, a `response` or a `sequence`, and `operations` alongside
-any of them. The Engine reads the list from the top and applies the first eligible
-case, so cases are written from the specific to the general, and a case with no
-`when` is the default for everything below it. A Scene need not react at all,
+any of them. The Engine reads the list from the top and applies the first
+eligible case, so cases are written from the specific to the general, and a case
+with no `when` is the default for everything below it. A Scene need not react at all,
 so the list may be empty, absent, or entirely conditional.
 
 ```ts
