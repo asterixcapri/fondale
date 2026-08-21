@@ -13,9 +13,9 @@ lantern never arrives the size of a door.
 
 | | |
 | --- | --- |
-| Reads | `docs/game/world.md`, `docs/game/assets.md`, `docs/game/story.md`, `docs/game/puzzles.md` |
+| Reads | `docs/game/world.md`, `docs/game/assets.md`, `docs/game/story.md`, `docs/game/puzzles.md`, `docs/game/screenplay.md` |
 | Writes | the Object's Runtime Assets, its `ObjectDefinition`, and its row of `docs/game/assets.md` |
-| Missing input | stop and tell the author to run `/setup-game`, or `/define-story` or `/define-puzzles` when only their own document is missing; never run any of them yourself |
+| Missing input | stop and tell the author to run `/setup-game`, or `/define-story`, `/define-puzzles` or `/define-screenplay` when only their own document is missing; never run any of them yourself |
 | Next command | `/define-scene` while the Scene this Object starts in has no artwork; otherwise back to the ticket |
 
 Paths are literal and relative to the game's own repository, which is the
@@ -33,7 +33,12 @@ the Inventory Appearance Size, the stage and the visual direction;
 `docs/game/assets.md` for this Object's declared size, for the measured height
 of the Character who will carry it, and for every asset already made;
 `docs/game/story.md` and `docs/game/puzzles.md` for what this Object is and
-which puzzle it serves. Read the Engine's own contract from the installed
+which puzzle it serves; and `docs/game/screenplay.md` for the `The Objects here`
+table of the Scene that holds it, which says where in the room it sits and from
+when the Player may take it. Where that table says a row of
+`docs/game/story.md` is not a thing the game builds — an Object that turned out
+to be a mark on the Background — stop and tell the author, and fabricate
+nothing. Read the Engine's own contract from the installed
 package, which is the version the game is built against:
 `node_modules/fondale/docs/public/authoring/object.md` for the lifecycle, the
 non-directional Appearances, the Inventory Appearance and the Noun,
@@ -56,13 +61,18 @@ it, and which Appearances and Animations this run produces.
 ### 2. Grill the Object brief
 
 Invoke `$grilling`. Cover what the Object is for and which puzzle it serves;
-which Character carries it and what it looks like in that hand; where it starts,
-in which Scene and at which Ground Point; how the Player collects it; every
+which Character carries it and what it looks like in that hand; how the Player
+collects it; every
 Appearance the world needs and what changes it; the Animations of each; whether
 it is ever placed back and where; whether it is consumed; its Noun, the Verbs it
 advertises, every target it may be used with, the answer to each, and the answer
 to a combination nobody authored; what must stay recognisable at the Inventory
 Appearance Size; and, for a re-run, what must survive unchanged.
+
+Where it starts and from when it may be taken are not the author's to give
+again here: `docs/game/screenplay.md` placed it against a piece of the set. Take
+the Scene and the spot from there, and go back to the author only where the
+screenplay is silent about this Object.
 
 The look of the game is settled: quote the `## Visual direction` section of
 `docs/game/world.md` into every generation and add no style of your own.

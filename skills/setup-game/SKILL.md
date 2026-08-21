@@ -13,9 +13,9 @@ improvised.
 
 | | |
 | --- | --- |
-| Reads | `docs/game/story.md`, `docs/game/puzzles.md` |
+| Reads | `docs/game/story.md`, `docs/game/puzzles.md`, `docs/game/screenplay.md` |
 | Writes | `docs/game/world.md`, `docs/game/assets.md`, `docs/game/progress.md`, the delimited section of `AGENTS.md` |
-| Missing input | stop and tell the author to run `/define-story`, or `/define-puzzles` when only the puzzles are missing; never run either yourself |
+| Missing input | stop and tell the author to run `/define-story`, or `/define-puzzles` or `/define-screenplay` when only that document is missing; never run any of them yourself |
 | Next command | `/to-tickets` |
 
 Paths are literal and relative to the game's own repository, which is the
@@ -25,8 +25,12 @@ working directory.
 
 ### 1. Take stock
 
-Read `docs/game/story.md` and `docs/game/puzzles.md`, and `docs/game/world.md`
-where it already exists. Read the Engine's own contract from the installed
+Read `docs/game/story.md` and `docs/game/puzzles.md` for what the game holds,
+`docs/game/screenplay.md` for what each Scene shows — its Scene Size, every
+piece of Scenery it takes out of the Background, every occupation the cast is
+animated doing and every Character the game moves, each of which is artwork this
+register has to carry a row for — and `docs/game/world.md` where it already
+exists. Read the Engine's own contract from the installed
 package, which is the version the game is built against:
 `node_modules/@asterixcapri/fondale/docs/public/authoring/project.md` for the
 Logical Resolution and the Inventory Appearance Size, `authoring/hud.md` for the
@@ -35,8 +39,9 @@ Perspective Scale.
 
 Stop at the missing-input row above when an input document is absent.
 
-Finish when you can list every Scene, Character and Object the two documents
-name, and state in one line what a re-run is here to change.
+Finish when you can list every Scene, Character and Object the three documents
+name, name every Animation the screenplay has ordered, and state in one line
+what a re-run is here to change.
 
 ### 2. Grill the world
 
@@ -239,13 +244,18 @@ there, so that what you read is the version this game is built against. Never
 copy it into this repository.
 
 This game's own decisions live in `docs/game/`: `story.md` for what exists and
-what is true, `puzzles.md` for what stops the Player, `world.md` for the scale,
-the stage, the visual direction and the HUD Theme, `assets.md` for every Runtime
-Asset with its declared size and its measured height, `progress.md` for what is
-built. Update `progress.md` at the end of each ticket.
+what is true, `puzzles.md` for what stops the Player, `screenplay.md` for what
+each Scene shows, `world.md` for the scale, the stage, the visual direction and
+the HUD Theme, `assets.md` for every Runtime Asset with its declared size and
+its measured height, `progress.md` for what is built. Update `progress.md` at
+the end of each ticket.
 
-A vertical slice is one playable puzzle: a ticket is done when the puzzle can be
-played from beginning to end.
+Tickets are drafted from `docs/game/`, never from the codebase alone. Before
+proposing any breakdown — `/to-tickets` included — read `story.md` for the keys
+every ticket must name things by, `puzzles.md` for the obstacle each ticket
+makes playable, and `screenplay.md` for the staging its Scene owes. A vertical
+slice is one playable puzzle, and it is done when the puzzle can be played from
+beginning to end **and** the Scene reads as the screenplay says it should.
 
 Runtime Assets are made by invoking `/define-character`, `/define-scene` and
 `/define-object`, which derive each target height from `world.md`, normalise the

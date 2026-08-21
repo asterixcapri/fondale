@@ -82,8 +82,9 @@ npx skills list
 ```
 
 The skills under `skills/` are the game-authoring pipeline: `define-story`,
-`define-puzzles` and `setup-game` interview a game's author, and
-`define-character`, `define-scene` and `define-object` fabricate its artwork.
+`define-puzzles`, `define-screenplay` and `setup-game` interview a game's
+author, and `define-character`, `define-scene` and `define-object` fabricate its
+artwork.
 They are written to be installed into a game's own repository, not used on this
 one. `docs/public/building-a-game.md` is the entry point that documents the
 pipeline; change it whenever a skill's `## Documents` table changes.

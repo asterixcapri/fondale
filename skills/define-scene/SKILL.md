@@ -14,9 +14,9 @@ arrives later and changes no coordinate.
 
 | | |
 | --- | --- |
-| Reads | `docs/game/world.md`, `docs/game/assets.md`, `docs/game/story.md`, `docs/game/puzzles.md` |
+| Reads | `docs/game/world.md`, `docs/game/assets.md`, `docs/game/story.md`, `docs/game/puzzles.md`, `docs/game/screenplay.md` |
 | Writes | the Scene's Runtime Assets, its `SceneDefinition`, and the Background's row of `docs/game/assets.md` |
-| Missing input | stop and tell the author to run `/setup-game`, or `/define-story` or `/define-puzzles` when only their own document is missing; never run any of them yourself |
+| Missing input | stop and tell the author to run `/setup-game`, or `/define-story`, `/define-puzzles` or `/define-screenplay` when only their own document is missing; never run any of them yourself |
 | Next command | `/define-object` while an Object this Scene needs has no artwork; otherwise back to the ticket |
 
 Paths are literal and relative to the game's own repository, which is the
@@ -35,7 +35,10 @@ and the visual direction; `docs/game/assets.md` for this Scene's Background row
 — its declared size is the Scene Size in pixels — and for every asset already
 made, each with the measured height the Scene has to accommodate;
 `docs/game/story.md` and `docs/game/puzzles.md` for what happens here and what
-the Player must be able to reach. Read the Engine's own contract from the
+the Player must be able to reach; and `docs/game/screenplay.md` for this Scene's
+own section, which is what this Scene has to show — its set, which elements are
+Scenery and why, where every Character stands and what they are doing there, and
+the route. Read the Engine's own contract from the
 installed package, which is the version the game is built against:
 `node_modules/fondale/docs/public/authoring/scene.md` for Scene Size, Walkable
 Region, Perspective Scale, Hotspots, Approach Points, Scene Entrances and Scene
@@ -43,7 +46,7 @@ Passages, `authoring/scenery.md` for Scenery, its Baseline, its position and its
 Appearances, and `node_modules/fondale/docs/public/recipes/world.ts` for two
 worked definitions.
 
-Stop at the missing-input row above when any of those four documents is absent,
+Stop at the missing-input row above when any of those five documents is absent,
 and when the Scene has no Background row in `docs/game/assets.md`: a Scene Size
 is the author's to give and `/setup-game` is where it is given.
 
@@ -52,17 +55,20 @@ proposing one: the definition, its Runtime Assets, the passages that arrive
 here, and every Character or Object placed by its Ground Point in this Scene.
 
 Finish when you can state the Scene Size, the Perspective Scale at each edge of
-the Walkable Region, the measured height of the scale anchor, and what this run
-is here to produce.
+the Walkable Region, the measured height of the scale anchor, what the
+screenplay's route says this Scene's Walkable Region is a corridor between, and
+what this run is here to produce.
 
 ### 2. Grill the Scene brief
 
-Invoke `$grilling`. Cover what the Player does here and which puzzles touch it;
-who and what stands in the Scene; every Scene Entrance and every Scene Passage
-and where it leads; what must be reachable on foot and what is only to be looked
-at; which elements need their own depth, Appearance or Animation, and are
-therefore Scenery rather than painted into the Background; the mood of the place;
-and, for a re-run, what must survive unchanged.
+Invoke `$grilling`. The screenplay has already settled what this Scene shows,
+so bring its section as the proposal and grill what it does not answer rather
+than reopening it: every Scene Entrance and every Scene Passage and where it
+leads; what must be reachable on foot and what is only to be looked at; the
+measurements the set and the route need to become coordinates; and, for a re-run,
+what must survive unchanged. Where the screenplay is silent on something this
+Scene cannot be built without, ask the author for it here and say which section
+of `docs/game/screenplay.md` gained the answer.
 
 The look of the game is settled: quote the `## Visual direction` section of
 `docs/game/world.md` into every generation and add no style of your own.
@@ -84,12 +90,16 @@ the Player will see there, and draw those silhouettes on the plan before drawing
 anything else. Architecture, doorways, furniture and Scenery are sized around
 them; a Character is never resized to fit a Scene that was drawn too large.
 
-Then draw the Walkable Region as one broad connected polygon with the fewest
-purposeful vertices, and keep it honest about what it costs to cross: obstacles
-lie outside it or along its boundary, never as islands inside it; no channel is
-narrower than the widest silhouette that has to pass; and the route between any
-two things the Player uses is direct rather than a detour around a concavity
-nobody asked for. Inset the boundary from every solid form by half that
+Then draw the set, from the screenplay's own table, before drawing the floor:
+every element where it stands, at the size the silhouettes give it. The Walkable
+Region is what the furniture leaves — the corridor the screenplay's route
+describes, traced between the pieces rather than under them — as one connected
+polygon with the fewest purposeful vertices. Keep it honest about what it costs
+to cross: obstacles lie outside it or along its boundary, never as islands
+inside it; no channel is narrower than the widest silhouette that has to pass,
+except a chokepoint the screenplay asks for on purpose, which is drawn exactly
+one silhouette wide; and the route between any two things the Player uses is
+direct rather than a detour around a concavity nobody asked for. Inset the boundary from every solid form by half that
 silhouette's width, so a Character walking the edge does not clip into it.
 
 Place the Approach Point of every interactive target inside the region, and every
@@ -131,9 +141,11 @@ magick src/scenes/<scene>/background.png -fill none -strokewidth 2 \
   art/scenes/<scene>/geometry.png
 ```
 
-Finish when the placeholder Background is exactly the Scene Size, every Scenery
-Appearance has a placeholder at its planned size, every point and polygon has a
-coordinate measured on the 1:1 plan, and the anchor silhouette fits the Scene at
+Finish when the placeholder Background is exactly the Scene Size, every element
+of the screenplay's set is on the plan, every Scenery Appearance has a
+placeholder at its planned size, every Character the screenplay places has a
+Ground Point inside the region at the spot its section gives, every point and
+polygon has a coordinate measured on the 1:1 plan, and the anchor silhouette fits the Scene at
 the near, middle and far bands without clipping the frame.
 
 ### 4. Author the playable Scene

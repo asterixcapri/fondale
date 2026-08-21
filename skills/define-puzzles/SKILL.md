@@ -17,7 +17,7 @@ the build order comes straight out of the document.
 | Reads | `docs/game/story.md` |
 | Writes | `docs/game/puzzles.md`, and rows appended to `docs/game/story.md` |
 | Missing input | when `docs/game/story.md` is absent, stop, write nothing, and tell the author to run `/define-story` first, leaving that skill for the author to invoke |
-| Next command | `/setup-game` |
+| Next command | `/define-screenplay` |
 
 Paths are literal and relative to the game's own repository, which is the
 working directory. When `docs/game/puzzles.md` already exists, revise it in

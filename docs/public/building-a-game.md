@@ -26,7 +26,7 @@ time.
   they lean on but do not own:
 
   ```sh
-  for skill in define-story define-puzzles setup-game \
+  for skill in define-story define-puzzles define-screenplay setup-game \
       define-character define-scene define-object fabrication-cycle; do
     npx skills add asterixcapri/fondale --skill "$skill" -y
   done
@@ -36,14 +36,14 @@ time.
   npx skills add openai/skills --skill imagegen -y
   ```
 
-  Fondale's skills invoke `grilling` for the three interviews and `imagegen`
+  Fondale's skills invoke `grilling` for the four interviews and `imagegen`
   for the images. `to-tickets` and `implement` run the construction and you
   start them yourself: no skill here starts them for you. Add
   `--agent <your agent>` when your harness needs to be named.
 
 ## The pipeline
 
-Run these five commands in this order. Each skill declares what it reads and
+Run these six commands in this order. Each skill declares what it reads and
 writes in a `## Documents` table at the top of its own text, and ends by giving
 you the next command to type.
 
@@ -51,12 +51,13 @@ you the next command to type.
 | --- | --- | --- |
 | Story | `/define-story` | `docs/game/story.md` — every place and how places connect, every Character, every Object, every Narrative Fact, under the names that become registry keys |
 | Puzzles | `/define-puzzles` | `docs/game/puzzles.md` — one row per puzzle: what it needs, what the Player does, what changes — plus any row it has to add to `story.md` |
+| Screenplay | `/define-screenplay` | `docs/game/screenplay.md` — what each Scene shows: its set, where every Character stands and what they are doing there, the route between the furniture, and the Sequences that play in it |
 | Setup | `/setup-game` | `docs/game/world.md`, `docs/game/assets.md`, `docs/game/progress.md`, and a delimited section in your own `AGENTS.md` |
-| Tickets | `/to-tickets` | one ticket per puzzle, read out of `story.md` and `puzzles.md` and ordered by real dependency |
+| Tickets | `/to-tickets` | one ticket per puzzle, read out of `story.md`, `puzzles.md` and `screenplay.md` and ordered by real dependency |
 | Implementation | `/implement` | the game, one ticket per session |
 
 A skill whose input document is missing stops, tells you which command to run
-first, and never runs it for you. You can re-run any of the three interviews
+first, and never runs it for you. You can re-run any of the four interviews
 later: they revise their document in place rather than starting again.
 
 `/setup-game` is where the scale stops being a matter of opinion. You declare a
@@ -115,7 +116,7 @@ A short adventure is roughly a dozen locations, ten Characters, twenty Objects
 and one to two hours of play. Building one is weeks of evenings, not an
 afternoon.
 
-The three interviews are a working session each, and they are conversations
+The four interviews are a working session each, and they are conversations
 rather than typing. `/to-tickets` takes minutes. After that the cost is one
 session per ticket and one ticket per puzzle, so ten to twenty sessions before
 the game is playable end to end. The artwork is the long tail: a dozen

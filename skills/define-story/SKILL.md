@@ -39,6 +39,10 @@ one line what the author is here to change.
 Invoke `$grilling` and interview the author before writing anything. Cover:
 
 - **premise** — where the game opens, what the Player wants, how it ends;
+- **the situation** — what hour the game opens at, who is awake at that hour,
+  and what each of them is up at that hour for. A cast with no answer to the
+  third question becomes people standing in a room for no reason, and no later
+  document can invent the reason for them;
 - **places** — every place the Player Character can stand, and which place
   reaches which;
 - **cast** — every Character the Player can meet, and which one the Player
@@ -53,7 +57,8 @@ Invoke `$grilling` and interview the author before writing anything. Cover:
 The author owns the setting, the tone and the look; ask for them, and record
 what the author says.
 
-Finish when the frontier is empty, the author has confirmed the premise, and
+Finish when the frontier is empty, the author has confirmed the premise, every
+Character has an ordinary reason to be awake where the game finds them, and
 every place, Character, Object and Narrative Fact sits on a list the author has
 agreed to.
 
@@ -91,6 +96,12 @@ other document in `docs/game/` derives from it.
 ## Premise
 
 <Where the game opens, what the Player wants, how it ends. Three sentences.>
+
+## The situation
+
+<What hour the game opens at, and why each Character is awake at it. One line
+per Character, in their ordinary words, before anybody knows anything is
+wrong.>
 
 ## Setting and tone
 

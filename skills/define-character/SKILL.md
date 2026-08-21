@@ -13,7 +13,7 @@ arrives at a size nobody decided.
 
 | | |
 | --- | --- |
-| Reads | `docs/game/world.md`, `docs/game/assets.md`, `docs/game/story.md` |
+| Reads | `docs/game/world.md`, `docs/game/assets.md`, `docs/game/story.md`, `docs/game/screenplay.md` |
 | Writes | the Character's Runtime Assets, its `CharacterDefinition`, and its row of `docs/game/assets.md` |
 | Missing input | stop and tell the author to run `/setup-game`; never run it yourself |
 | Next command | `/define-scene` while the Character has no Scene to stand in; otherwise back to the ticket |
@@ -31,7 +31,10 @@ command — must be installed.
 Read `docs/game/world.md` for the pixels per world unit, the Logical Resolution,
 the stage and the visual direction; `docs/game/assets.md` for this Character's
 declared size and for every asset already made; `docs/game/story.md` for who
-this Character is. Read the Engine's own contract from the installed package,
+this Character is; and `docs/game/screenplay.md` for where this Character stands
+in its Scene, which way it is turned, what it is doing there and whether the
+game moves it — which is what its Ground Point, its Facing and its Animations
+are. Read the Engine's own contract from the installed package,
 which is the version the game is built against:
 `node_modules/fondale/docs/public/authoring/character.md` for Appearances,
 Animations, Roles, the Visual Anchor and the cell rules, and
@@ -50,9 +53,14 @@ unit, and which Appearances, Animations and Facings this run produces.
 Invoke `$grilling`. Cover the Character's part in the story, its silhouette,
 build and costume, every Appearance it needs, the Animations of each — a
 `default` always, `walking` for a Character the game moves, `speaking` where the
-performance differs — its Noun and the lines it answers with, its initial Scene,
-Ground Point and Facing, its movement speed, and, for a re-run, what must survive
-unchanged.
+performance differs — its Noun and the lines it answers with, its movement speed,
+and, for a re-run, what must survive unchanged.
+
+Its initial Scene, Ground Point, Facing and `default` occupation are not the
+author's to give again here: `docs/game/screenplay.md` decided them and gave
+each a reason. Take them from there, quote the reason into the definition, and
+go back to the author only where the screenplay is silent or where the plan
+shows the spot it names is outside the Walkable Region.
 
 The look of the game is settled: quote the `## Visual direction` section of
 `docs/game/world.md` into every generation and add no style of your own.
