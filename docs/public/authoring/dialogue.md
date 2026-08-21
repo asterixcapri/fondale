@@ -90,7 +90,11 @@ A Character declares in `cases` the Interaction Cases with which its
 Conversation gives way to an exact authored scene. Each case names a Sequence
 and whether the Conversation `close`s or `resume`s afterwards, under an optional
 condition. The list is read from the top and the first eligible case applies, so
-a last case carrying no condition is the Conversation's default.
+a last case carrying no condition is the Conversation's default. Because such a
+case always applies, at most one may be declared and it must come last; a case
+below it would never be reached, and the Engine refuses that with
+`definition.conditional-fallback`. A Conversation needs no default at all: with
+no eligible case it simply stays open.
 
 Cases are evaluated after an accepted free-form turn's effects commit, and again
 when the Player leaves the Conversation: an eligible case takes over instead of

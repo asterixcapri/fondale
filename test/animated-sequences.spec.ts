@@ -1297,6 +1297,39 @@ test("a Scene Opening case naming a Scene Entrance that does not exist is refuse
   );
 });
 
+test("a Scene Opening case placed below an unconditional one is refused", () => {
+  let error: unknown;
+  try {
+    arrivalProject(undefined, [
+      // Unconditional and naming no Entrance, so it applies to every opening:
+      // the case below it can never be reached.
+      { line: { character: "player", text: "Always." } },
+      {
+        when: { variable: "arrived", equals: false },
+        line: { character: "player", text: "Never reached." },
+      },
+    ]);
+  } catch (cause) {
+    error = cause;
+  }
+  expect(error).toBeInstanceOf(AuthoringError);
+  expect((error as AuthoringError).diagnostics).toContainEqual(
+    expect.objectContaining({
+      code: "definition.conditional-fallback",
+      path: "scenes.tower.cases",
+    }),
+  );
+});
+
+test("a Scene Opening case naming an Entrance never shadows the cases below it", () => {
+  // Naming an Entrance is itself a condition — the case applies only to that
+  // door — so it is not a default and nothing below it is dead.
+  expect(() => arrivalProject(undefined, [
+    { entrance: "fromRoom", sequence: "arrival" },
+    { line: { character: "player", text: "Every other opening." } },
+  ])).not.toThrow();
+});
+
 /** The same project with Interaction Cases on the Scene the game begins in. */
 function initialSceneOpeningProject(cases: readonly SceneOpeningCase[]) {
   const base = arrivalProject(undefined, []);

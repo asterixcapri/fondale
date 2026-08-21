@@ -14,7 +14,7 @@ import {
   declaresTextualOutcome,
   validateConditionalFallbackOrder,
   validateInteractionCaseOutcome,
-  type InteractionCase,
+  validateUnconditionalVariantLast,
 } from "./interaction-case";
 export { conditionMatchesState };
 export {
@@ -27,6 +27,8 @@ export {
   validateConditionalFallbackOrder,
   validateConditionalFallbackTail,
   validateInteractionCaseOutcome,
+  validateUnconditionalVariantExists,
+  validateUnconditionalVariantLast,
   type InteractionCase,
 } from "./interaction-case";
 
@@ -97,9 +99,14 @@ export interface CommandResponse {
  * case of a Verb carrying neither a first Noun nor an Interaction Condition is
  * that Verb's default: it answers every Command the cases above it do not.
  */
-export interface CommandCase extends InteractionCase {
+export interface CommandCase {
   readonly verb: CommandVerb;
   readonly firstNoun?: string;
+  readonly when?: InteractionCondition;
+  readonly line?: Line;
+  readonly response?: CommandResponse;
+  readonly operations?: readonly GameOperation[];
+  readonly sequence?: string;
 }
 
 /** The common interaction definition used by every world and Inventory Noun. */
@@ -246,8 +253,10 @@ function validateCommandCaseOrder(
     else selectors.set(selector, [candidate]);
   }
   for (const group of selectors.values()) {
-    if (group.every(({ when }) => when !== undefined)) continue;
-    validateConditionalFallbackOrder(group, path, `'${group[0]!.verb}' Command Case`, diagnostics);
+    // Only the ordering rule: a Verb left with no unconditional case is not an
+    // error here, because the Game Project's Command Fallbacks may answer it.
+    // `definition.command.silent` is what refuses a Verb no one answers.
+    validateUnconditionalVariantLast(group, path, `'${group[0]!.verb}' Command Case`, diagnostics);
   }
 }
 

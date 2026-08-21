@@ -65,9 +65,25 @@ reported before any asset is fetched.
 `definition.line.character`, `definition.narration.text`,
 `definition.choice.limit`, `definition.choice.player-character`.
 
-`definition.conditional-fallback`, listed under Nouns and Commands, is the
-shared ordering rule and is reported for a Sequence Branch and a Sequence Choice
-as well.
+`definition.conditional-fallback`, listed under Nouns and Commands, carries two
+rules that every list of cases obeys, and it is reported wherever such a list is
+authored — on a Noun, on a Scene Opening, on a Character's Conversation, and in a
+Sequence Branch and Choice.
+
+The **ordering** rule holds everywhere: a case carrying no Interaction Condition
+always applies, so at most one may be declared and it must come last. Anything
+below it would never be reached. Naming a selector — a Verb on a Noun, a Scene
+Entrance on a Scene — is itself a condition, so such a case never shadows the
+ones below it.
+
+The **coverage** rule holds only where an answer is required whatever the state:
+one case carries no condition. Noun Labels, Preferred, Secondary and Selected
+Object Verbs, a Sequence Branch and a Sequence Choice obey it. A Scene and a
+Conversation do not — a Scene need not react to its own opening, and a
+Conversation with no eligible case simply stays open. A Noun does not obey it
+case by case either: the Game Project's Command Fallbacks may answer a Verb the
+Noun leaves alone, and `definition.command.silent` is what refuses a Verb no one
+answers at all.
 
 **Motion and Camera** — `definition.motion.path`,
 `definition.motion.character-path`, `definition.motion.character-duration`,

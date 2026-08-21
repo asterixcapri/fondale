@@ -78,8 +78,13 @@ reaction in the Engine is written as: each case carries an optional `when`, at
 most one of a `line`, a `response` or a `sequence`, and `operations` alongside
 any of them. The Engine reads the list from the top and applies the first
 eligible case, so cases are written from the specific to the general, and a case
-with no `when` is the default for everything below it. A Scene need not react at all,
-so the list may be empty, absent, or entirely conditional.
+with no `when` is the default for everything below it. Because such a case always
+applies, at most one may be declared and it must come last; anything below it
+would be unreachable, and the Engine refuses it with
+`definition.conditional-fallback`. A case naming an `entrance` is filtered to
+that door, which makes it conditional too, so it never shadows the cases below
+it. A Scene need not react at all, so the list may be empty, absent, or entirely
+conditional.
 
 ```ts
 cases: [
@@ -142,6 +147,7 @@ authoring path that failed.
 | `reference.character.initial-scene` | a Character starts in a Scene that does not exist |
 | `reference.object.initial-scene` | an Object starts in a Scene that does not exist |
 | `reference.scene-opening.entrance` | a Scene Opening case names an Entrance the Scene does not declare |
+| `definition.conditional-fallback` | a case with no `when` and no `entrance` is not the last one, leaving a case below it unreachable |
 
 The complete list is in [Diagnostics](../diagnostics.md).
 

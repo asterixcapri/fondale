@@ -2,6 +2,7 @@ import type { AuthoringDiagnostic, GameOperation } from "../game-project";
 import {
   exceedsEligibleAlternativeLimit,
   eligibleAlternativeIndexes,
+  validateUnconditionalVariantLast,
   type InteractionCondition,
 } from "../interaction";
 
@@ -1409,6 +1410,17 @@ export function validateKnowledgeDrivenDialogueProject(
           message: "A Conversation case requires a named Sequence and an explicit close or resume outcome, with an optional Interaction Condition.",
         });
       }
+    }
+    if (Array.isArray(cases)) {
+      // Read from the top like every other list of cases, so an unconditional
+      // one placed above another leaves it unreachable. A Conversation needs no
+      // default: with no eligible case it simply stays open.
+      validateUnconditionalVariantLast(
+        cases.filter(isRecord),
+        `${basePath}.cases`,
+        "Conversation case",
+        diagnostics,
+      );
     }
     validateConversationAlternatives(dialogue.alternatives, basePath, diagnostics);
     validateQualitativeProfile(dialogue as unknown as CharacterDialogueDefinition, basePath, diagnostics);

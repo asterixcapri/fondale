@@ -5,6 +5,8 @@ import {
   validateConditionalFallbackOrder,
   validateConditionalFallbackTail,
   validateInteractionCaseOutcome,
+  validateUnconditionalVariantExists,
+  validateUnconditionalVariantLast,
   type InteractionCase,
 } from "./index";
 
@@ -87,7 +89,7 @@ test("exactly one unconditional entry in the final position is required", () => 
       code: "definition.conditional-fallback",
       owner: "interaction",
       path: "labels",
-      message: "Noun Label variants require exactly one unconditional fallback in the final position.",
+      message: "Noun Label variants allow at most one unconditional variant, and it must come last.",
     }),
   ]);
   expect(orderDiagnostics([{ when: { variable: "opened", equals: true } }])).toEqual([
@@ -118,7 +120,7 @@ test("a list offered all at once requires its unconditional entries last", () =>
       owner: "interaction",
       path: "alternatives",
       message:
-        "Choice alternative variants require an unconditional fallback in the final position, after every conditional one.",
+        "Choice alternative variants require an unconditional variant in the final position, after every conditional one.",
     }),
   ]);
   expect(tailDiagnostics([{ when: { variable: "opened", equals: true } }])).toEqual([
@@ -126,5 +128,52 @@ test("a list offered all at once requires its unconditional entries last", () =>
   ]);
   expect(tailDiagnostics([])).toEqual([
     expect.objectContaining({ code: "definition.conditional-fallback" }),
+  ]);
+});
+
+test("the ordering rule stands alone, and requires no default", () => {
+  const lastDiagnostics = (
+    values: readonly { readonly when?: InteractionCase["when"] }[],
+  ): readonly AuthoringDiagnostic[] => {
+    const diagnostics: AuthoringDiagnostic[] = [];
+    validateUnconditionalVariantLast(values, "cases", "Scene Opening", diagnostics);
+    return diagnostics;
+  };
+
+  // A container that need not react at all: wholly conditional is legitimate,
+  // and an empty list even more so.
+  expect(lastDiagnostics([{ when: { variable: "opened", equals: true } }])).toEqual([]);
+  expect(lastDiagnostics([])).toEqual([]);
+  expect(lastDiagnostics([{ when: { variable: "opened", equals: true } }, {}])).toEqual([]);
+
+  // What is never legitimate: an entry below one that always applies.
+  expect(lastDiagnostics([{}, { when: { variable: "opened", equals: true } }])).toEqual([
+    expect.objectContaining({
+      code: "definition.conditional-fallback",
+      path: "cases",
+      message: "Scene Opening variants allow at most one unconditional variant, and it must come last.",
+    }),
+  ]);
+  expect(lastDiagnostics([{}, {}])).toEqual([
+    expect.objectContaining({ code: "definition.conditional-fallback" }),
+  ]);
+});
+
+test("the coverage rule stands alone, and says nothing about position", () => {
+  const existsDiagnostics = (
+    values: readonly { readonly when?: InteractionCase["when"] }[],
+  ): readonly AuthoringDiagnostic[] => {
+    const diagnostics: AuthoringDiagnostic[] = [];
+    validateUnconditionalVariantExists(values, "labels", "Noun Label", diagnostics);
+    return diagnostics;
+  };
+
+  expect(existsDiagnostics([{}, { when: { variable: "opened", equals: true } }])).toEqual([]);
+  expect(existsDiagnostics([{ when: { variable: "opened", equals: true } }])).toEqual([
+    expect.objectContaining({
+      code: "definition.conditional-fallback",
+      path: "labels",
+      message: "Noun Label variants require one unconditional variant, which answers whatever the state.",
+    }),
   ]);
 });

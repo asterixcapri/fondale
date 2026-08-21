@@ -1,6 +1,7 @@
 import {
   type AuthoringDiagnostic,
   type AuthoringDiagnosticOwner,
+  type GameOperation,
   type LogicalResolution,
 } from "../game-project";
 import {
@@ -13,12 +14,13 @@ import {
 import {
   validateCommandResponse,
   validateInteractionCaseOutcome,
-  type InteractionCase,
+  validateUnconditionalVariantLast,
+  type CommandResponse,
   type InteractionCondition,
   type NounDefinition,
 } from "../interaction";
 import type { PassageDirection } from "../hud";
-import type { DirectionStep, DirectedSubject, MotionDirection } from "../sequence";
+import type { DirectionStep, DirectedSubject, Line, MotionDirection } from "../sequence";
 import type { CharacterDialogueDefinition } from "../dialogue";
 import { isInside, navigationPath, nearestPoint } from "./geometry";
 
@@ -196,8 +198,13 @@ export interface ScenePassage {
  * come through that door, so a case naming one never applies where no door was
  * used.
  */
-export interface SceneOpeningCase extends InteractionCase {
+export interface SceneOpeningCase {
   readonly entrance?: string;
+  readonly when?: InteractionCondition;
+  readonly line?: Line;
+  readonly response?: CommandResponse;
+  readonly operations?: readonly GameOperation[];
+  readonly sequence?: string;
 }
 
 export interface PerspectiveScaleStop {
@@ -386,6 +393,19 @@ export function validateSceneDefinition(
         "A Scene Entrance Ground Point must lie in the Walkable Region.",
       ));
     }
+  }
+  if (input.cases) {
+    // A case naming no Scene Entrance applies whatever door was used, so an
+    // unconditional one shadows every case below it. Naming an Entrance is
+    // itself a condition, which is why a case that names one never shadows.
+    validateUnconditionalVariantLast(
+      input.cases.map(({ when, entrance }) => ({
+        when: when ?? (entrance === undefined ? undefined : entrance),
+      })),
+      childPath(path, "cases"),
+      "Scene Opening",
+      diagnostics,
+    );
   }
   input.cases?.forEach((candidate, caseIndex) => {
     const base = childPath(path, `cases[${caseIndex}]`);

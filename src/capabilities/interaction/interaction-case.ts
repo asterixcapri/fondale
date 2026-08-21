@@ -3,10 +3,12 @@ import type { Line } from "../sequence";
 import type { CommandResponse, InteractionCondition } from "./index";
 
 /**
- * @internal The shape every conditional reaction shares, whatever selects it:
- * an optional Interaction Condition, at most one outcome, and Game Operations
- * alongside. A container adds only its selector — a Verb on a Noun, a Scene
- * Entrance on a Scene, nothing inside a Sequence or a Conversation.
+ * @internal The outcome shape the rules below police, and nothing more. It is
+ * deliberately NOT a base type: every container declares its own case in full,
+ * because they do not agree on what an outcome is — a Conversation requires a
+ * Sequence, a Branch produces further Sequence steps, and neither can be
+ * spelled here. What they share is behaviour, not structure: read from the top,
+ * first eligible one applies, and the rules in this file say the rest.
  */
 export interface InteractionCase {
   readonly when?: InteractionCondition;
@@ -35,7 +37,7 @@ export function validateInteractionCaseOutcome(
       code: "definition.command-case.textual-outcome",
       family: "definition", owner: "interaction",
       path,
-      message: "A Command Case can declare only one textual outcome: Line, Command Response, or Sequence.",
+      message: "An Interaction Case can declare only one textual outcome: Line, Command Response, or Sequence.",
     });
   }
   if (!declaresTextualOutcome(candidate) && !(candidate.operations?.length)) {
@@ -43,43 +45,88 @@ export function validateInteractionCaseOutcome(
       code: "definition.command-case.empty",
       family: "definition", owner: "interaction",
       path,
-      message: "A Command Case must produce a Line, Command Response, Game Operation, or Sequence.",
+      message: "An Interaction Case must produce a Line, Command Response, Game Operation, or Sequence.",
     });
   }
 }
 
 /**
- * @internal Reports the ordering rule shared by every list read from the top:
- * exactly one entry carries no Interaction Condition, and it comes last, so
- * that no default hides the entries below it.
+ * @internal Reports the ordering rule every list read from the top obeys: at
+ * most one entry carries no Interaction Condition, and it comes last. An
+ * unconditional entry placed above another is always an authoring error,
+ * whatever the container — it wins every time, so everything below it is dead.
+ *
+ * Whether such an entry is *required* is a separate question, asked by
+ * `validateUnconditionalVariantExists`, because the containers disagree on it:
+ * a Verb must answer, a Scene need not react.
  */
-export function validateConditionalFallbackOrder(
-  values: readonly { readonly when?: InteractionCondition }[],
+export function validateUnconditionalVariantLast(
+  values: readonly { readonly when?: unknown }[],
   path: string,
   variantName: string,
   diagnostics: AuthoringDiagnostic[],
 ): void {
   const unconditional = unconditionalIndexes(values);
-  if (unconditional.length !== 1 || unconditional[0] !== values.length - 1) {
+  if (unconditional.length > 1 ||
+      (unconditional.length === 1 && unconditional[0] !== values.length - 1)) {
     diagnostics.push({
       code: "definition.conditional-fallback",
       family: "definition", owner: "interaction",
       path,
-      message: `${variantName} variants require exactly one unconditional fallback in the final position.`,
+      message: `${variantName} variants allow at most one unconditional variant, and it must come last.`,
     });
   }
 }
 
 /**
- * @internal The same ordering rule for a list the Player is offered all at once
+ * @internal Reports the coverage rule, for the containers that require an
+ * answer whatever the state: one entry carries no Interaction Condition. It
+ * says nothing about position — `validateUnconditionalVariantLast` owns that —
+ * so a container composes the two rules it needs and no others.
+ */
+export function validateUnconditionalVariantExists(
+  values: readonly { readonly when?: unknown }[],
+  path: string,
+  variantName: string,
+  diagnostics: AuthoringDiagnostic[],
+): void {
+  if (unconditionalIndexes(values).length === 0) {
+    diagnostics.push({
+      code: "definition.conditional-fallback",
+      family: "definition", owner: "interaction",
+      path,
+      message: `${variantName} variants require one unconditional variant, which answers whatever the state.`,
+    });
+  }
+}
+
+/**
+ * @internal The pair of rules a list read from the top by the Engine obeys when
+ * it must always answer: exactly one unconditional variant, in final position.
+ */
+export function validateConditionalFallbackOrder(
+  values: readonly { readonly when?: unknown }[],
+  path: string,
+  variantName: string,
+  diagnostics: AuthoringDiagnostic[],
+): void {
+  const before = diagnostics.length;
+  validateUnconditionalVariantLast(values, path, variantName, diagnostics);
+  if (diagnostics.length === before) {
+    validateUnconditionalVariantExists(values, path, variantName, diagnostics);
+  }
+}
+
+/**
+ * @internal The same coverage rule for a list the Player is offered all at once
  * rather than one the Engine reads from the top: the entries carrying no
  * Interaction Condition are the last ones, and there is at least one, so the
  * list always has something to offer. Several of them are allowed here, unlike
- * in `validateConditionalFallbackOrder`, because the Player sees them together
+ * in `validateUnconditionalVariantLast`, because the Player sees them together
  * and none of them hides the others.
  */
 export function validateConditionalFallbackTail(
-  values: readonly { readonly when?: InteractionCondition }[],
+  values: readonly { readonly when?: unknown }[],
   path: string,
   variantName: string,
   diagnostics: AuthoringDiagnostic[],
@@ -91,14 +138,19 @@ export function validateConditionalFallbackTail(
       family: "definition", owner: "interaction",
       path,
       message:
-        `${variantName} variants require an unconditional fallback in the final position, after every conditional one.`,
+        `${variantName} variants require an unconditional variant in the final position, after every conditional one.`,
     });
   }
 }
 
-/** The positions, in authored order, of the entries carrying no condition. */
+/**
+ * The positions, in authored order, of the entries carrying no condition. Every
+ * rule below asks only whether a condition is present, never what it says, so
+ * the parameter is deliberately structural: a container whose selector is a
+ * condition of its own — a Scene Entrance, say — can project onto this shape.
+ */
 function unconditionalIndexes(
-  values: readonly { readonly when?: InteractionCondition }[],
+  values: readonly { readonly when?: unknown }[],
 ): number[] {
   return values.flatMap((value, index) => value.when === undefined ? [index] : []);
 }
