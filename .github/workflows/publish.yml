@@ -48,6 +48,22 @@ jobs:
 
       - run: npx playwright install --with-deps chrome
 
+      # `npm run build` exercises the Runtime Asset normaliser, which shells out
+      # to `magick`. Ubuntu ships ImageMagick 6, which has no such command, so
+      # the upstream 7 AppImage is put on the PATH behind a shim. The shim sets
+      # APPIMAGE_EXTRACT_AND_RUN because the runners have no FUSE.
+      - name: Install ImageMagick 7
+        env:
+          IMAGEMAGICK_VERSION: 7.1.2-29
+        run: |
+          url="https://github.com/ImageMagick/ImageMagick/releases/download/$IMAGEMAGICK_VERSION/ImageMagick-$IMAGEMAGICK_VERSION-gcc-x86_64.AppImage"
+          curl -fsSL -o "$RUNNER_TEMP/magick.AppImage" "$url"
+          chmod +x "$RUNNER_TEMP/magick.AppImage"
+          printf '#!/bin/sh\nexport APPIMAGE_EXTRACT_AND_RUN=1\nexec "%s" "$@"\n' \
+            "$RUNNER_TEMP/magick.AppImage" | sudo tee /usr/local/bin/magick > /dev/null
+          sudo chmod +x /usr/local/bin/magick
+          magick -version
+
       - run: npm run build
 
       - run: npm run verify
