@@ -174,7 +174,9 @@ to its speaker and never treated as truth.
 **Dialogue State** — an optional qualitative current condition.
 
 **Conversation** — the activity presenting authored alternatives and free-form
-input together.
+input together. A Character answers it with `alternatives`, which the Player
+chooses among, and with `cases`, which the Engine chooses among. See
+[Dialogue](authoring/dialogue.md).
 
 **Dialogue Turn** — one free-form exchange: interpretation, policy,
 verbalisation.

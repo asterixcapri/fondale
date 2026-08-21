@@ -99,9 +99,20 @@ export interface RelationshipDefinition {
   readonly trust: Trust;
 }
 
-/** Authored transition from exploratory Conversation to an exact Sequence. */
-export interface ConversationHandoffDefinition {
-  readonly when: InteractionCondition;
+/**
+ * The Interaction Case with which a Character's exploratory Conversation gives
+ * way to an exact Sequence. A Character declares its cases in one list, read
+ * from the top; the first eligible one applies, and a last case carrying no
+ * condition is therefore the Conversation's default. Here the Engine selects,
+ * so the list is `cases`; where the Player selects it stays `alternatives`.
+ *
+ * It restricts the shared `InteractionCase` rather than extending it: the only
+ * thing a Conversation can hand direction of play to is a Sequence, which it
+ * therefore requires, and it alone declares what becomes of the Conversation
+ * once that Sequence completes.
+ */
+export interface ConversationCase {
+  readonly when?: InteractionCondition;
   readonly sequence: string;
   readonly after: "close" | "resume";
 }
@@ -136,7 +147,7 @@ export interface CharacterDialogueDefinition {
   readonly knowledge: readonly CharacterKnowledgeDefinition[];
   readonly coverStories?: readonly CoverStoryDefinition[];
   readonly relationships?: Readonly<Record<string, RelationshipDefinition>>;
-  readonly handoffs?: readonly ConversationHandoffDefinition[];
+  readonly cases?: readonly ConversationCase[];
   readonly alternatives?: readonly ConversationAlternativeDefinition[];
 }
 
@@ -491,11 +502,12 @@ export interface KnowledgeDrivenDialogue {
   initialState(): KnowledgeDrivenDialogueState;
   requiresProvider(): boolean;
   hasProfile(character: string): boolean;
-  handoff(
+  /** The first Interaction Case this Character's Conversation is eligible for. */
+  conversationCase(
     character: string,
-    conditionMatches: (condition: InteractionCondition) => boolean,
-  ): ConversationHandoffDefinition | undefined;
-  /** Whether an authored handoff or alternative directs this Sequence and resumes afterwards. */
+    conditionMatches: (condition?: InteractionCondition) => boolean,
+  ): ConversationCase | undefined;
+  /** Whether an authored case or alternative directs this Sequence and resumes afterwards. */
   hasResumableSequence(character: string, sequence: string): boolean;
   /** The alternatives this Character may still be asked: eligible and not yet consumed. */
   alternatives(
@@ -587,22 +599,18 @@ export function createKnowledgeDrivenDialogue(
       return hasOwn(project.characters, character) &&
         project.characters[character]!.dialogue !== undefined;
     },
-    handoff(
+    conversationCase(
       character: string,
-      conditionMatches: (condition: InteractionCondition) => boolean,
+      conditionMatches: (condition?: InteractionCondition) => boolean,
     ) {
-      const handoff = project.characters[character]?.dialogue?.handoffs?.find(({ when }) =>
+      const eligible = project.characters[character]?.dialogue?.cases?.find(({ when }) =>
         conditionMatches(when)
       );
-      return handoff ? structuredClone(handoff) : undefined;
+      return eligible ? structuredClone(eligible) : undefined;
     },
     hasResumableSequence(character: string, sequence: string) {
       const dialogue = project.characters[character]?.dialogue;
-      return (dialogue?.handoffs?.some((handoff) =>
-        handoff.sequence === sequence && handoff.after === "resume"
-      ) ?? false) || (dialogue?.alternatives?.some((alternative) =>
-        alternative.sequence === sequence && alternative.after === "resume"
-      ) ?? false);
+      return resumes(dialogue?.cases, sequence) || resumes(dialogue?.alternatives, sequence);
     },
     alternatives(
       character: string,
@@ -1376,29 +1384,29 @@ export function validateKnowledgeDrivenDialogueProject(
       }
       if (typeof concealsFactId === "string") concealedFacts.add(concealsFactId);
     }
-    const handoffs = dialogue.handoffs;
-    if (handoffs !== undefined && !Array.isArray(handoffs)) {
+    const cases = dialogue.cases;
+    if (cases !== undefined && !Array.isArray(cases)) {
       diagnostics.push({
-        code: "definition.dialogue.handoffs",
+        code: "definition.dialogue.cases",
         family: "definition",
         owner: "dialogue",
-        path: `${basePath}.handoffs`,
-        message: "Conversation handoffs must be an array.",
+        path: `${basePath}.cases`,
+        message: "Conversation cases must be an array.",
       });
     }
-    for (const [index, handoff] of (
-      Array.isArray(handoffs) ? handoffs : []
+    for (const [index, candidate] of (
+      Array.isArray(cases) ? cases : []
     ).entries()) {
-      if (!isRecord(handoff) ||
-          !hasExactKeys(handoff, ["when", "sequence", "after"]) ||
-          typeof handoff.sequence !== "string" || !handoff.sequence.trim() ||
-          (handoff.after !== "close" && handoff.after !== "resume")) {
+      if (!isRecord(candidate) ||
+          !hasExactKeys(candidate, ["sequence", "after"], ["when"]) ||
+          typeof candidate.sequence !== "string" || !candidate.sequence.trim() ||
+          (candidate.after !== "close" && candidate.after !== "resume")) {
         diagnostics.push({
-          code: "definition.dialogue.handoff",
+          code: "definition.dialogue.case",
           family: "definition",
           owner: "dialogue",
-          path: `${basePath}.handoffs[${index}]`,
-          message: "A Conversation handoff requires a condition, a named Sequence and an explicit close or resume outcome.",
+          path: `${basePath}.cases[${index}]`,
+          message: "A Conversation case requires a named Sequence and an explicit close or resume outcome, with an optional Interaction Condition.",
         });
       }
     }
@@ -1646,6 +1654,20 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function hasOwn(value: object, key: PropertyKey): boolean {
   return Object.prototype.hasOwnProperty.call(value, key);
+}
+
+/**
+ * Whether any authored direction of play in this list names the Sequence and
+ * resumes the Conversation once it completes. A case and an alternative direct
+ * a Sequence the same way, so one predicate answers for both.
+ */
+function resumes(
+  directions: readonly { readonly sequence?: string; readonly after?: string }[] | undefined,
+  sequence: string,
+): boolean {
+  return directions?.some((direction) =>
+    direction.sequence === sequence && direction.after === "resume"
+  ) ?? false;
 }
 
 function hasExactKeys(

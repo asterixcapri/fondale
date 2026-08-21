@@ -77,7 +77,7 @@ export const project = ({
       proposition: "Antonio was never aboard the Santa Lucia.",
     },
   },
-  variables: { confessionUnlocked: false, handoffReady: true },
+  variables: { confessionUnlocked: false, caseReady: true },
   characters: {
     player: character(180, { dialogue: { knowledge: [] } }),
     antonio: character(315, {
@@ -121,8 +121,8 @@ export const project = ({
           factId: "harbour-chain-cut",
           disclosure: { level: "open" },
         }],
-        handoffs: [{
-          when: { variable: "handoffReady", equals: true },
+        cases: [{
+          when: { variable: "caseReady", equals: true },
           sequence: "luciaExactAccount",
           after: "resume",
         }],
@@ -140,8 +140,8 @@ export const project = ({
           factId: "harbour-chain-cut",
           disclosure: { level: "open" },
         }],
-        handoffs: [{
-          when: { variable: "handoffReady", equals: true },
+        cases: [{
+          when: { variable: "caseReady", equals: true },
           sequence: "marcoExactAccount",
           after: "close",
         }],

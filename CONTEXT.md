@@ -160,9 +160,12 @@ direction of play to a named Sequence, which then becomes the dominant Game
 Activity and closes or resumes the Conversation when it completes; free-form
 input is not presented while it plays. An authored alternative may be consumed
 by the selection that asks it, and is then never offered again; which
-alternatives were consumed is canonical Game State. Its provider-owned
-transcript and context memory are not Game State; a Continuation State retains
-their external identity across browser reloads.
+alternatives were consumed is canonical Game State. Where the Engine rather
+than the Player chooses, the Character's own Interaction Cases decide: read from
+the top, the first eligible one directs its Sequence and declares whether the
+Conversation closes or resumes afterwards. Its provider-owned transcript and
+context memory are not Game State; a Continuation State retains their external
+identity across browser reloads.
 _Avoid_: Sequence, dialogue tree, arbitrary input prompt, Save Snapshot transcript
 
 **Reflection**:

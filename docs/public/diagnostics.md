@@ -92,7 +92,7 @@ reported before any asset is fetched.
 `definition.dialogue.profile`, `definition.dialogue.biography`,
 `definition.dialogue.personality`, `definition.dialogue.behavior`,
 `definition.dialogue.voice`, `definition.dialogue.state`,
-`definition.dialogue.handoffs`, `definition.dialogue.handoff`,
+`definition.dialogue.cases`, `definition.dialogue.case`,
 `definition.conversation-alternative.collection`,
 `definition.conversation-alternative.item`,
 `definition.conversation-alternative.condition`,

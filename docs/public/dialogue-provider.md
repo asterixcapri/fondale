@@ -38,11 +38,12 @@ Only one Dialogue Turn may be pending. Leaving or stopping the Game Session
 aborts it and ignores late provider results. Automatic continuation captures
 an accepted turn only after its canonical effects commit; provider-owned
 transcript, thread, model and usage data never enter a Save Snapshot. After an
-accepted turn's canonical effects commit, the Engine may
-evaluate a matching authored Conversation handoff. Its Sequence becomes the
-dominant Game Activity and retains ownership of exact Lines, Choices, timing
-and skip behavior. A resumable handoff stores only the canonical Conversation
-continuation; the Continuation State retains the external provider identity.
+accepted turn's canonical effects commit, the Engine may evaluate the
+Character's Conversation cases and apply the first eligible one. Its Sequence
+becomes the dominant Game Activity and retains ownership of exact Lines,
+Choices, timing and skip behavior. A resuming case stores only the canonical
+Conversation continuation; the Continuation State retains the external provider
+identity.
 
 `GameSession.startReflection()` opens Reflection only while the session is
 idle and the Player Character has a Dialogue Profile. `reflect` receives a
@@ -83,8 +84,8 @@ Turn's `AbortSignal`. Server credentials, model configuration and failure
 details never enter this adapter.
 
 The authored condition fields are `trustAtLeast`, `variable`, and `equals`.
-Conversation handoff fields are `handoffs` and `after`. Qualitative profile
-fields are `biography`, `personality`, `behavior`, `voice`,
+Conversation case fields are `cases` and `after`. Qualitative profile fields
+are `biography`, `personality`, `behavior`, `voice`,
 `relationships`, `talkativeness`, `honesty`, `discretion`, `suspiciousness`,
 `withholding`, `verbosity`, `tone`, `vocabulary`, `trust`, `coverStories`,
 `concealsFactId`, and `claimId`. Provider requests carry Engine-selected

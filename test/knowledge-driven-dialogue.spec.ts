@@ -270,14 +270,14 @@ function coverStoryProject(): GameProject {
   } satisfies GameProject;
 }
 
-function conversationHandoffProject(
+function conversationCaseProject(
   after: "close" | "resume",
-  handoffReady = true,
+  caseReady = true,
 ): GameProject {
   const base = coverStoryProject();
   return {
     ...base,
-    variables: { ...base.variables, handoffReady },
+    variables: { ...base.variables, caseReady },
     sequences: {
       exactAccount: {
         steps: [{
@@ -293,8 +293,8 @@ function conversationHandoffProject(
         ...base.characters!.antonio!,
         dialogue: {
           ...base.characters!.antonio!.dialogue!,
-          handoffs: [{
-            when: { variable: "handoffReady", equals: true },
+          cases: [{
+            when: { variable: "caseReady", equals: true },
             sequence: "exactAccount",
             after,
           }],
@@ -389,19 +389,19 @@ function alternativeSequenceProject(after: "close" | "resume" = "resume"): GameP
   } satisfies GameProject;
 }
 
-function alternativeAndHandoffProject(): GameProject {
+function alternativeAndCaseProject(): GameProject {
   const base = alternativeSequenceProject("resume");
   const antonio = base.characters!.antonio!;
   return {
     ...base,
-    variables: { ...base.variables, handoffReady: true },
+    variables: { ...base.variables, caseReady: true },
     sequences: {
       ...base.sequences,
-      handoffAccount: {
+      directedAccount: {
         steps: [{
           type: "line",
           character: "antonio",
-          text: "This handoff account is authored.",
+          text: "This directed account is authored.",
         }],
       } satisfies SequenceDefinition,
     },
@@ -411,9 +411,9 @@ function alternativeAndHandoffProject(): GameProject {
         ...antonio,
         dialogue: {
           ...antonio.dialogue!,
-          handoffs: [{
-            when: { variable: "handoffReady", equals: true },
-            sequence: "handoffAccount",
+          cases: [{
+            when: { variable: "caseReady", equals: true },
+            sequence: "directedAccount",
             after: "close",
           }],
         },
@@ -984,8 +984,8 @@ test("Save validates and restores active Reflection without generated memory", (
   });
 });
 
-test("an authored handoff runs a Sequence after a Dialogue Turn and resumes the Conversation", async () => {
-  const project = conversationHandoffProject("resume");
+test("an authored Conversation case runs a Sequence after a Dialogue Turn and resumes the Conversation", async () => {
+  const project = conversationCaseProject("resume");
   const provider = new FakeDialogueProvider({
     interpretations: { "Were you aboard?": "santa-lucia" },
     verbalizations: { denial: "I was never aboard that ship." },
@@ -1024,8 +1024,86 @@ test("an authored handoff runs a Sequence after a Dialogue Turn and resumes the 
   expect(session.conversation()).toMatchObject({ character: "antonio", status: "ready" });
 });
 
-test("Conversation handoffs reject invalid conditions, Sequence references and outcomes at startup", () => {
-  const project = conversationHandoffProject("resume");
+test("a Conversation reads its cases from the top and falls back to the unconditional one", async () => {
+  const base = conversationCaseProject("resume", false);
+  const project = {
+    ...base,
+    sequences: {
+      ...base.sequences,
+      ordinaryAccount: {
+        steps: [{
+          type: "line",
+          character: "antonio",
+          text: "This ordinary account is authored.",
+        }],
+      } satisfies SequenceDefinition,
+    },
+    characters: {
+      ...base.characters,
+      antonio: {
+        ...base.characters!.antonio!,
+        dialogue: {
+          ...base.characters!.antonio!.dialogue!,
+          cases: [
+            {
+              when: { variable: "caseReady", equals: true },
+              sequence: "exactAccount",
+              after: "resume",
+            },
+            { sequence: "ordinaryAccount", after: "resume" },
+          ],
+        },
+      },
+    },
+  } satisfies GameProject;
+  const provider = new FakeDialogueProvider({
+    interpretations: { "Were you aboard?": "santa-lucia" },
+    verbalizations: { denial: "I was never aboard that ship." },
+  });
+  const session = createTestSession(project, undefined, provider);
+  openAntonioConversation(session);
+  await session.submitDialogue("Were you aboard?");
+  session.steps();
+  session.input({ type: "advance-conversation-line" });
+  session.steps();
+  session.input({ type: "advance-conversation-line" });
+  session.steps();
+
+  expect(session.snapshot().activity).toMatchObject({
+    type: "sequence",
+    sequence: "ordinaryAccount",
+  });
+});
+
+test("an unconditional Conversation case takes over when the Player leaves", () => {
+  const base = conversationCaseProject("close", false);
+  const project = {
+    ...base,
+    characters: {
+      ...base.characters,
+      antonio: {
+        ...base.characters!.antonio!,
+        dialogue: {
+          ...base.characters!.antonio!.dialogue!,
+          cases: [{ sequence: "exactAccount", after: "close" }],
+        },
+      },
+    },
+  } satisfies GameProject;
+  const session = createTestSession(project);
+  openAntonioConversation(session);
+
+  session.input({ type: "escape" });
+  session.steps();
+
+  expect(session.snapshot().activity).toMatchObject({
+    type: "sequence",
+    sequence: "exactAccount",
+  });
+});
+
+test("Conversation cases reject invalid conditions, Sequence references and outcomes at startup", () => {
+  const project = conversationCaseProject("resume");
   const result = compileGameProject({
     ...project,
     characters: {
@@ -1034,7 +1112,7 @@ test("Conversation handoffs reject invalid conditions, Sequence references and o
         ...project.characters!.antonio!,
         dialogue: {
           ...project.characters!.antonio!.dialogue!,
-          handoffs: [{
+          cases: [{
             when: { variable: "missing", equals: true },
             sequence: "missing",
             after: "later",
@@ -1048,7 +1126,7 @@ test("Conversation handoffs reject invalid conditions, Sequence references and o
     ok: false,
     diagnostics: expect.arrayContaining([
       expect.objectContaining({
-        code: "definition.dialogue.handoff",
+        code: "definition.dialogue.case",
         owner: "dialogue",
       }),
       expect.objectContaining({ code: "reference.variable" }),
@@ -1093,8 +1171,8 @@ test("authored alternatives reject unknown condition and operation references at
   });
 });
 
-test("a malformed Conversation handoff collection produces diagnostics without throwing", () => {
-  const project = conversationHandoffProject("resume");
+test("a malformed Conversation case collection produces diagnostics without throwing", () => {
+  const project = conversationCaseProject("resume");
   const result = compileGameProject({
     ...project,
     characters: {
@@ -1103,7 +1181,7 @@ test("a malformed Conversation handoff collection produces diagnostics without t
         ...project.characters!.antonio!,
         dialogue: {
           ...project.characters!.antonio!.dialogue!,
-          handoffs: {},
+          cases: {},
         },
       },
     },
@@ -1112,14 +1190,14 @@ test("a malformed Conversation handoff collection produces diagnostics without t
   expect(result).toMatchObject({
     ok: false,
     diagnostics: [expect.objectContaining({
-      code: "definition.dialogue.handoffs",
+      code: "definition.dialogue.cases",
       owner: "dialogue",
     })],
   });
 });
 
-test("an authored handoff can close the Conversation after its Sequence", async () => {
-  const project = conversationHandoffProject("close");
+test("an authored Conversation case can close the Conversation after its Sequence", async () => {
+  const project = conversationCaseProject("close");
   const provider = new FakeDialogueProvider({
     interpretations: { "Were you aboard?": "santa-lucia" },
     verbalizations: { denial: "I was never aboard that ship." },
@@ -1142,8 +1220,8 @@ test("an authored handoff can close the Conversation after its Sequence", async 
   expect(session.conversation()).toBeNull();
 });
 
-test("a Conversation closes normally when no authored handoff condition matches", async () => {
-  const project = conversationHandoffProject("resume", false);
+test("a Conversation closes normally when no authored case is eligible", async () => {
+  const project = conversationCaseProject("resume", false);
   const provider = new FakeDialogueProvider({
     interpretations: { "Were you aboard?": "santa-lucia" },
     verbalizations: { denial: "I was never aboard that ship." },
@@ -1164,7 +1242,7 @@ test("a Conversation closes normally when no authored handoff condition matches"
 });
 
 test("leaving for an authored Sequence cancels a pending Dialogue Turn before takeover", async () => {
-  const project = conversationHandoffProject("resume");
+  const project = conversationCaseProject("resume");
   const provider = new FakeDialogueProvider({
     interpretations: {
       "Wait for me.": {
@@ -1199,7 +1277,7 @@ test("leaving for an authored Sequence cancels a pending Dialogue Turn before ta
 });
 
 test("Save restores an authored Conversation continuation without provider memory", async () => {
-  const project = conversationHandoffProject("resume");
+  const project = conversationCaseProject("resume");
   const provider = new FakeDialogueProvider({
     interpretations: { "Were you aboard?": "santa-lucia" },
     verbalizations: { denial: "I was never aboard that ship." },
@@ -1224,8 +1302,8 @@ test("Save restores an authored Conversation continuation without provider memor
   expect(restored.conversation()).toMatchObject({ character: "antonio", status: "ready" });
 });
 
-test("Save rejects a forged Conversation continuation without an authored resume handoff", async () => {
-  const project = conversationHandoffProject("resume");
+test("Save rejects a forged Conversation continuation without an authored resuming Conversation case", async () => {
+  const project = conversationCaseProject("resume");
   const provider = new FakeDialogueProvider({
     interpretations: { "Were you aboard?": "santa-lucia" },
     verbalizations: { denial: "I was never aboard that ship." },
@@ -1251,8 +1329,8 @@ test("Save rejects a forged Conversation continuation without an authored resume
   expect(validation.ok).toBe(false);
 });
 
-test("skipping an authored handoff Sequence applies its outcome before resuming", async () => {
-  const base = conversationHandoffProject("resume");
+test("skipping the Sequence of a Conversation case applies its outcome before resuming", async () => {
+  const base = conversationCaseProject("resume");
   const project = {
     ...base,
     sequences: {
@@ -1862,8 +1940,8 @@ test("Save validates and restores a continuation left by an authored alternative
   expect(restored.conversation()).toMatchObject({ character: "antonio", status: "ready" });
 });
 
-test("an authored alternative directs its own Sequence while its Character keeps a handoff", () => {
-  const session = createTestSession(alternativeAndHandoffProject());
+test("an authored alternative directs its own Sequence while its Character keeps a Conversation case", () => {
+  const session = createTestSession(alternativeAndCaseProject());
 
   openAntonioConversation(session);
   session.input({ type: "select-alternative", alternative: 2 });
@@ -1883,7 +1961,7 @@ test("an authored alternative directs its own Sequence while its Character keeps
   session.steps();
   expect(session.snapshot().activity).toMatchObject({
     type: "sequence",
-    sequence: "handoffAccount",
+    sequence: "directedAccount",
   });
 });
 

@@ -769,7 +769,7 @@ function validateProjectDefinitions(
         "Character",
       ));
     }
-    /** Validates one Sequence a Conversation may direct, alternative or handoff alike. */
+    /** Validates one Sequence a Conversation may direct, alternative or case alike. */
     const directedSequence = (value: unknown, path: string): void => {
       if (typeof value !== "string") return;
       diagnostics.push(...validateSequenceStartReference(value, path, sequences));
@@ -794,12 +794,12 @@ function validateProjectDefinitions(
       }
       directedSequence(alternative.sequence, `${path}.sequence`);
     });
-    const handoffs = character.dialogue?.handoffs;
-    if (Array.isArray(handoffs)) handoffs.forEach((handoff, index) => {
-      const path = `characters.${characterId}.dialogue.handoffs[${index}]`;
-      if (!handoff || typeof handoff !== "object") return;
-      if ("when" in handoff) condition(handoff.when, `${path}.when`);
-      if ("sequence" in handoff) directedSequence(handoff.sequence, `${path}.sequence`);
+    const cases = character.dialogue?.cases;
+    if (Array.isArray(cases)) cases.forEach((candidate, index) => {
+      const path = `characters.${characterId}.dialogue.cases[${index}]`;
+      if (!candidate || typeof candidate !== "object") return;
+      if ("when" in candidate) condition(candidate.when, `${path}.when`);
+      if ("sequence" in candidate) directedSequence(candidate.sequence, `${path}.sequence`);
     });
   }
   for (const [objectId, object] of Object.entries(objects)) {

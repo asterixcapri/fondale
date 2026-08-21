@@ -769,7 +769,7 @@ export function createCoreSession(
       if (input.type === "escape") {
         invalidateProviderTurn("conversation");
         dialogueTurn = null;
-        closeOrHandoffConversation(state.activity.character);
+        closeOrDirectConversation(state.activity.character);
       } else if (input.type === "select-alternative") {
         selectConversationAlternative(state.activity.character, input.alternative);
       } else if (input.type === "advance-conversation-line" && dialogueTurn) {
@@ -778,7 +778,7 @@ export function createCoreSession(
         } else {
           dialogueTurn = null;
           if (!startAlternativeSequence(state.activity.character) &&
-              !startConversationHandoff(state.activity.character)) {
+              !startConversationCase(state.activity.character)) {
             conversationStatus = "ready";
           }
         }
@@ -1069,9 +1069,9 @@ export function createCoreSession(
     emitted.push({ type: "conversation-changed" });
   }
 
-  function closeOrHandoffConversation(character: string): void {
+  function closeOrDirectConversation(character: string): void {
     directedByAlternative = null;
-    if (!startConversationHandoff(character)) {
+    if (!startConversationCase(character)) {
       state.activity = null;
       emitted.push({ type: "conversation-changed" });
     }
@@ -1085,10 +1085,11 @@ export function createCoreSession(
     return true;
   }
 
-  function startConversationHandoff(character: string): boolean {
-    const handoff = dialogue.handoff(character, conditionMatches);
-    if (!handoff) return false;
-    startDirectedSequence(character, handoff);
+  /** Directs the Sequence of the Conversation's first eligible Interaction Case. */
+  function startConversationCase(character: string): boolean {
+    const eligible = dialogue.conversationCase(character, conditionMatches);
+    if (!eligible) return false;
+    startDirectedSequence(character, eligible);
     return true;
   }
 
