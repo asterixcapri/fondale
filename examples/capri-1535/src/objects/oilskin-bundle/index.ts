@@ -61,10 +61,14 @@ export const oilskinBundle = ({
           text: "Un sigillo spezzato e un frammento di registro: una nave che non è mai tornata.",
         },
       },
+      {
+        verb: "use",
+        response: { text: "Non c'è altro da aprire né da usare." },
+      },
+      {
+        verb: "give",
+        response: { text: "Questo fagotto non si cede: appartiene alla storia di mio padre." },
+      },
     ],
-    fallbacks: {
-      use: { response: { text: "Non c'è altro da aprire né da usare." } },
-      give: { response: { text: "Questo fagotto non si cede: appartiene alla storia di mio padre." } },
-    },
   } satisfies NounDefinition),
 } satisfies ObjectDefinition);

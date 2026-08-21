@@ -39,10 +39,10 @@ export const brotherElia = ({
           "oil-frees-the-pulley",
         ),
       ],
+    }, {
+      verb: "give",
+      response: { text: "Frate Elia non ha chiesto questo oggetto." },
     }],
-    fallbacks: {
-      give: { response: { text: "Frate Elia non ha chiesto questo oggetto." } },
-    },
   } satisfies NounDefinition),
   dialogue: {
     biography:

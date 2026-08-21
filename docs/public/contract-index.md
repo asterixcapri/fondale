@@ -115,9 +115,8 @@ Fondale's Save Snapshot format version.
 | `PreferredVerbCase` | conditional contextual action | Verb and optional condition | one final unconditional Verb per declared set | conditional diagnostic | [Interaction](recipes/world.ts) |
 | `SelectedObjectVerbCase` | Object-first contextual action | Give or Use and optional condition | one final unconditional Verb when declared | conditional diagnostic | [Inventory](recipes/lantern.ts) |
 | `CommandResponse` | neutral Command outcome | non-empty explanatory text | never speech or Narration | response diagnostics | [Interaction](recipes/world.ts) |
-| `CommandCase` | specific resolution | Verb, firstNoun, condition, line/response/sequence, operations | one textual outcome; arity is fixed | outcome/arity/reference diagnostics | [Command](recipes/commands.ts) |
-| `CommandFallback` | local final resolution | response, operations, sequence | used after specific cases | response/reference diagnostics | [Interaction](recipes/world.ts) |
-| `NounDefinition` | common interaction model | labels, Preferred, Secondary and Selected Object Verbs, cases, fallbacks | secondary/object sets optional; immutable | Noun/Command diagnostics | [Interaction](recipes/world.ts) |
+| `CommandCase` | one ordered resolution of a Command | Verb, firstNoun, condition, line/response/sequence, operations | one textual outcome; arity is fixed; a Verb's case with no first Noun and no condition comes last and is its default | outcome/arity/order/reference diagnostics | [Command](recipes/commands.ts) |
+| `NounDefinition` | common interaction model | labels, Preferred, Secondary and Selected Object Verbs, cases | secondary/object sets optional; immutable; every Verb answered by an unconditional case or a global Command Fallback | Noun/Command diagnostics | [Interaction](recipes/world.ts) |
 | `CommandLexicon` | localized Command and Inventory-action grammar | nine Verb labels, select/deselect phrases and three Command patterns | Engine never infers grammar | lexicon diagnostics | [Scene](recipes/world.ts) |
 | `CommandVerb` | semantic Verb union | nine commandVerbs values | fixed Engine vocabulary | compile-time restriction | [Interaction](recipes/world.ts) |
 | `Verb` | complete Verb union | CommandVerb or walk-to | walk-to is implicit | compile-time restriction | [Scene](recipes/world.ts) |
@@ -154,7 +153,7 @@ Exact reachable fields also include `x`, `y`, `width`, `height`, `kind`,
 `playerCharacter`, `objects`,
 `sequences`, `variables`, `inventoryAppearanceSize`, `initialScene`,
 `letterboxColor`, `commandLexicon`, `commandFallbacks`, `hudTheme`, `verb`,
-`line`, `audio`, `firstNoun`, `response`, `operations`, `fallbacks`,
+`line`, `audio`, `firstNoun`, `response`, `operations`,
 `labels`, `preferredVerbs`, `verbs`, `patterns`, `unary`, `give`, `use`, `code`,
 `path`, `message`, `suggestion`, `cause`, `formatVersion`, `projectIdentity`,
 `projectVersion`, `state`, `ok`, `snapshot`, `diagnostics`, and `target`.

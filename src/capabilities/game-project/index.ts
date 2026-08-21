@@ -709,15 +709,6 @@ function validateProjectDefinitions(
         scenes: destinationScenes,
       }));
     });
-    for (const verb of commandVerbs) {
-      const fallback = value.fallbacks?.[verb];
-      if (fallback) {
-        diagnostics.push(...operations(fallback.operations ?? [], `${path}.fallbacks.${verb}.operations`, {
-          target,
-          scenes: destinationScenes,
-        }));
-      }
-    }
   };
 
   for (const [verb, fallback] of Object.entries(input.commandFallbacks ?? {})) {

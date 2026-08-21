@@ -21,8 +21,8 @@ export const lanternNoun = ({
     },
     { verb: "look-at", when: { variable: "lanternLit", equals: true }, response: { text: "The wick holds a steady flame." } },
     { verb: "look-at", response: { text: "Oil enough, and no flame." } },
+    { verb: "push", response: { text: "It only rocks." } },
   ],
-  fallbacks: { push: { response: { text: "It only rocks." } } },
 } satisfies NounDefinition);
 
 export const lantern = ({

@@ -14,6 +14,8 @@ import {
   validateCommandLexicon,
   validateInventoryOperation,
   validateNounDefinition,
+  validateNounReferences,
+  resolveCommandDefinition,
 } from "./index";
 import { validateTestDefinition } from "../../../test/definition-support";
 
@@ -39,7 +41,7 @@ test("Interaction validates complete local authoring values without throwing", (
   const nounDiagnostics = validateNounDefinition({
     labels: [{ when: { variable: "known", equals: true }, text: "" }],
     preferredVerbs: [{ when: { variable: "open", equals: true }, verb: "open" }],
-    cases: [{ verb: "give" }],
+    cases: [{ verb: "give", when: { variable: "open", equals: true } }],
   }, "objects.key.noun");
 
   expect(nounDiagnostics).toEqual(expect.arrayContaining([
@@ -636,4 +638,156 @@ test("an Inventory condition is counted as always eligible by the limit", () => 
   expect(exceedsEligibleAlternativeLimit(
     Array.from({ length: maximumEligibleAlternatives + 1 }, () => ({ when: { hasObject: "key" } })),
   )).toBe(true);
+});
+
+test("a Noun's default for a Verb is its final unconditional case", () => {
+  expect(validateNounDefinition({
+    labels: [{ text: "Brother Elia" }],
+    preferredVerbs: [{ verb: "talk-to" }],
+    cases: [
+      { verb: "give", firstNoun: "letter", response: { text: "He breaks the seal." } },
+      { verb: "give", response: { text: "Brother Elia did not ask for that." } },
+    ],
+  } satisfies NounDefinition, "characters.elia.noun")).toEqual([]);
+});
+
+test("a conditional Give Command Case still requires its first Noun", () => {
+  expect(validateNounDefinition({
+    labels: [{ text: "Brother Elia" }],
+    preferredVerbs: [{ verb: "talk-to" }],
+    cases: [
+      { verb: "give", when: { hasObject: "letter" }, response: { text: "He takes it." } },
+      { verb: "give", response: { text: "Brother Elia did not ask for that." } },
+    ],
+  } satisfies NounDefinition, "characters.elia.noun")).toEqual([
+    expect.objectContaining({
+      code: "definition.command-case.arity",
+      path: "characters.elia.noun.cases[0].firstNoun",
+    }),
+  ]);
+});
+
+test("an unconditional Command Case placed before a conditional one for the same Verb is refused", () => {
+  expect(validateNounDefinition({
+    labels: [{ text: "Door" }],
+    preferredVerbs: [{ verb: "open" }],
+    cases: [
+      { verb: "open", response: { text: "It is locked." } },
+      { verb: "open", when: { hasObject: "key" }, response: { text: "It gives." } },
+    ],
+  } satisfies NounDefinition, "scenes.courtyard.hotspots[0].noun")).toEqual([
+    expect.objectContaining({
+      code: "definition.conditional-fallback",
+      path: "scenes.courtyard.hotspots[0].noun.cases",
+    }),
+  ]);
+});
+
+test("a Verb with neither an unconditional case nor a global Command Fallback is refused", () => {
+  const cases = [{
+    verb: "open" as const,
+    when: { variable: "hasKey", equals: true },
+    response: { text: "It gives." },
+  }];
+  const noun = {
+    labels: [{ text: "Door" }],
+    preferredVerbs: [{ verb: "open" }],
+    cases,
+  } satisfies NounDefinition;
+  const view = {
+    variables: new Set(["hasKey"]),
+    objects: new Set<string>(),
+    sequences: new Set<string>(),
+    commandFallbacks: Object.fromEntries(
+      commandVerbs.filter((verb) => verb !== "open").map((verb) => [verb, { text: "That does not help." }]),
+    ),
+  };
+
+  expect(validateNounReferences(noun, "scenes.courtyard.hotspots[0].noun", view)).toEqual([
+    expect.objectContaining({
+      code: "definition.command.silent",
+      path: "scenes.courtyard.hotspots[0].noun.cases",
+    }),
+  ]);
+  expect(validateNounReferences(
+    { ...noun, cases: [...cases, { verb: "open" as const, response: { text: "It is locked." } }] },
+    "scenes.courtyard.hotspots[0].noun",
+    view,
+  )).toEqual([]);
+});
+
+test("a Noun's unconditional case answers the Commands its specific cases do not", () => {
+  const winch = validateTestNounDefinition({
+    labels: [{ text: "Winch" }],
+    preferredVerbs: [{ verb: "look-at" }],
+    objectVerbs: [{ verb: "use" }],
+    cases: [
+      {
+        verb: "use",
+        firstNoun: "handle",
+        when: { variable: "repaired", equals: false },
+        sequence: "winchInstallation",
+      },
+      { verb: "use", response: { text: "The handle from the well is what it needs." } },
+    ],
+  } satisfies NounDefinition);
+  const winchState: InteractionStateView = {
+    currentScene: "harbour",
+    variables: { repaired: false },
+    inventory: { objects: ["handle", "rope"] },
+    command: { verb: "use", firstNoun: { kind: "object", object: "rope" } },
+  };
+  const projectFallbacks = { use: { text: "That does not help." }, "look-at": { text: "Nothing to see." } };
+
+  expect(resolveCommandDefinition({ noun: winch, verb: "use", firstNoun: "rope", state: winchState, projectFallbacks }))
+    .toEqual({ operations: [], response: { text: "The handle from the well is what it needs." } });
+  expect(resolveCommandDefinition({ noun: winch, verb: "use", state: winchState, projectFallbacks }))
+    .toEqual({ operations: [], response: { text: "The handle from the well is what it needs." } });
+  expect(resolveCommandDefinition({ noun: winch, verb: "use", firstNoun: "handle", state: winchState, projectFallbacks }))
+    .toEqual({ operations: [{ type: "start-sequence", sequence: "winchInstallation" }] });
+  expect(resolveCommandDefinition({ noun: winch, verb: "look-at", state: winchState, projectFallbacks }))
+    .toEqual({ operations: [], response: { text: "Nothing to see." } });
+});
+
+test("an Inventory Object whose only bare Use case is its default is selected, not used", () => {
+  const flask = validateTestNounDefinition({
+    labels: [{ text: "Oil flask" }],
+    preferredVerbs: [{ verb: "pick-up" }],
+    cases: [{ verb: "use", response: { text: "I will not waste the oil." } }],
+  } satisfies NounDefinition);
+  const interaction = createInteraction({
+    objects: { flask: { noun: flask } },
+    commandFallbacks: {},
+  });
+
+  expect(interaction.input(
+    { type: "activate-object", object: "flask" },
+    {
+      currentScene: "harbour",
+      variables: {},
+      inventory: { objects: ["flask"] },
+      command: { verb: "use", firstNoun: null },
+    },
+  )).toEqual({
+    type: "command",
+    command: { verb: "use", firstNoun: { kind: "object", object: "flask" } },
+    cancelActivity: true,
+  });
+});
+
+test("a Verb's default does not hide a conditional case that names a first Noun", () => {
+  expect(validateNounDefinition({
+    labels: [{ text: "Winch" }],
+    preferredVerbs: [{ verb: "look-at" }],
+    objectVerbs: [{ verb: "use" }],
+    cases: [
+      { verb: "use", response: { text: "The handle from the well is what it needs." } },
+      {
+        verb: "use",
+        firstNoun: "handle",
+        when: { variable: "repaired", equals: false },
+        sequence: "winchInstallation",
+      },
+    ],
+  } satisfies NounDefinition, "scenes.harbour.scenery.winch.noun")).toEqual([]);
 });

@@ -28,9 +28,9 @@ export const sealedLetter = ({
     cases: [{
       verb: "look-at",
       response: { text: "La ceralacca è intatta. È destinata a Frate Elia." },
+    }, {
+      verb: "use",
+      response: { text: "Non devo rompere il sigillo né perdere la lettera." },
     }],
-    fallbacks: {
-      use: { response: { text: "Non devo rompere il sigillo né perdere la lettera." } },
-    },
   } satisfies NounDefinition),
 } satisfies ObjectDefinition);

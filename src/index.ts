@@ -7,7 +7,6 @@ export {
 export {
   commandVerbs,
   type CommandCase,
-  type CommandFallback,
   type CommandLexicon,
   type CommandResponse,
   type CommandVerb,

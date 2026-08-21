@@ -91,17 +91,14 @@ export interface CommandResponse {
   readonly text: string;
 }
 
-/** An Interaction Case selected by a Verb against one or two Nouns. */
+/**
+ * An Interaction Case selected by a Verb against one or two Nouns. The last
+ * case of a Verb carrying neither a first Noun nor an Interaction Condition is
+ * that Verb's default: it answers every Command the cases above it do not.
+ */
 export interface CommandCase extends InteractionCase {
   readonly verb: CommandVerb;
   readonly firstNoun?: string;
-}
-
-/** A local guaranteed resolution used after all specific Command Cases. */
-export interface CommandFallback {
-  readonly response: CommandResponse;
-  readonly operations?: readonly GameOperation[];
-  readonly sequence?: string;
 }
 
 /** The common interaction definition used by every world and Inventory Noun. */
@@ -111,7 +108,6 @@ export interface NounDefinition {
   readonly secondaryVerbs?: readonly PreferredVerbCase[];
   readonly objectVerbs?: readonly SelectedObjectVerbCase[];
   readonly cases: readonly CommandCase[];
-  readonly fallbacks?: Readonly<Partial<Record<CommandVerb, CommandFallback>>>;
 }
 
 /** Reports every local Noun Definition Authoring Diagnostic without a Game Project. */
@@ -154,12 +150,12 @@ export function validateNounDefinition(
     }
   });
   input.cases.forEach((candidate, index) => {
-    if (candidate.verb === "give" && candidate.firstNoun === undefined) {
+    if (candidate.verb === "give" && candidate.firstNoun === undefined && candidate.when !== undefined) {
       diagnostics.push({
         code: "definition.command-case.arity",
         family: "definition", owner: "interaction",
         path: childPath(path, `cases[${index}].firstNoun`),
-        message: "Give Command Cases always require a first Noun.",
+        message: "Give Command Cases require a first Noun unless they are the Verb's default.",
       });
     } else if (candidate.verb !== "give" && candidate.verb !== "use" && candidate.firstNoun !== undefined) {
       diagnostics.push({
@@ -203,12 +199,56 @@ export function validateNounDefinition(
     }
     validateCommandResponse(candidate.response, childPath(path, `cases[${index}].response`), diagnostics);
   });
-  for (const [verb, fallback] of Object.entries(input.fallbacks ?? {})) {
-    validateCommandResponse(fallback.response, childPath(path, `fallbacks.${verb}.response`), diagnostics);
-  }
+  validateCommandCaseOrder(input.cases, childPath(path, "cases"), diagnostics);
   return diagnostics;
 }
 
+
+/**
+ * @internal Whether a case is the default of its Verb: it names no first Noun
+ * and carries no Interaction Condition, so it answers every Command with that
+ * Verb the cases above it do not.
+ */
+function isVerbDefault(candidate: CommandCase): boolean {
+  return candidate.firstNoun === undefined && candidate.when === undefined;
+}
+
+/**
+ * @internal The case that answers a Verb when nothing more specific applies.
+ * A Noun declares it as the last case of that Verb; where it declares none,
+ * the Game Project's Command Fallback answers instead.
+ */
+function defaultCommandCase(
+  noun: NounDefinition,
+  verb: CommandVerb,
+): CommandCase | undefined {
+  return noun.cases.findLast((candidate) => candidate.verb === verb && isVerbDefault(candidate));
+}
+
+/**
+ * @internal Applies the shared ordering rule to every selector a Noun declares
+ * — one Verb against one first Noun — so that no case is hidden by an
+ * unconditional one above it. A selector that declares no unconditional case is
+ * left alone: its Verb is answered by the Game Project's Command Fallback, and
+ * the coverage rule reports the Verb that has neither.
+ */
+function validateCommandCaseOrder(
+  cases: readonly CommandCase[],
+  path: string,
+  diagnostics: AuthoringDiagnostic[],
+): void {
+  const selectors = new Map<string, CommandCase[]>();
+  for (const candidate of cases) {
+    const selector = `${candidate.verb} ${candidate.firstNoun ?? ""}`;
+    const declared = selectors.get(selector);
+    if (declared) declared.push(candidate);
+    else selectors.set(selector, [candidate]);
+  }
+  for (const group of selectors.values()) {
+    if (group.every(({ when }) => when !== undefined)) continue;
+    validateConditionalFallbackOrder(group, path, `'${group[0]!.verb}' Command Case`, diagnostics);
+  }
+}
 
 /** @internal Collects semantic Command Response diagnostics for composed definitions. */
 export function validateCommandResponse(
@@ -380,24 +420,15 @@ export function validateNounReferences(
     }
   });
   for (const verb of commandVerbs) {
-    const fallback = noun.fallbacks?.[verb];
-    if (!fallback && !view.commandFallbacks?.[verb]) {
-      diagnostics.push({
-        code: "definition.command.silent",
-        family: "definition",
-        owner: "interaction",
-        path: `${path}.fallbacks.${verb}`,
-        message: `Noun '${path}' needs a local or global '${verb}' Command Fallback.`,
-      });
-    }
-    if (!fallback) continue;
-    if (fallback.sequence !== undefined && !view.sequences.has(fallback.sequence)) {
-      diagnostics.push(interactionReference(
-        "reference.sequence",
-        `${path}.fallbacks.${verb}.sequence`,
-        `Sequence '${fallback.sequence}' does not exist.`,
-      ));
-    }
+    if (defaultCommandCase(noun, verb) || view.commandFallbacks?.[verb]) continue;
+    diagnostics.push({
+      code: "definition.command.silent",
+      family: "definition",
+      owner: "interaction",
+      path: `${path}.cases`,
+      message:
+        `Noun '${path}' needs an unconditional '${verb}' Command Case or a global '${verb}' Command Fallback.`,
+    });
   }
   return diagnostics;
 }
@@ -954,9 +985,13 @@ export function createInteraction(
         if (
           state.command.verb === "use" &&
           !state.command.firstNoun &&
+          // The Noun's `use` default is not an answer to using the Object by
+          // itself: it must not stop the Player from selecting the Object as
+          // the first Noun of a binary Use.
           !noun.cases.some((candidate) =>
             candidate.verb === "use" &&
             candidate.firstNoun === undefined &&
+            !isVerbDefault(candidate) &&
             conditionMatchesState(candidate.when, state)
           )
         ) {
@@ -1181,7 +1216,7 @@ export interface ResolvedInteraction {
   readonly line?: Line;
 }
 
-/** Interaction-owned selection of a Command Case or fallback. */
+/** Interaction-owned selection of the Command Case that answers a Command. */
 export function resolveCommandDefinition(input: {
   readonly noun: NounDefinition;
   readonly verb: CommandVerb;
@@ -1190,8 +1225,14 @@ export function resolveCommandDefinition(input: {
   readonly projectFallbacks?: Readonly<Partial<Record<CommandVerb, CommandResponse>>>;
 }): ResolvedInteraction | undefined {
   const { noun, verb, firstNoun, state, projectFallbacks } = input;
+  const verbDefault = defaultCommandCase(noun, verb);
   if (firstNoun && !state.inventory.objects.includes(firstNoun)) {
-    const response = noun.fallbacks?.[verb]?.response ?? projectFallbacks?.[verb];
+    // The Command cannot have happened, so the Verb's default is asked for its
+    // words alone: its Game Operations, and any Sequence it would start,
+    // belong to a Command that did.
+    if (verbDefault?.response) return { operations: [], response: verbDefault.response };
+    if (verbDefault?.line) return { operations: [], line: verbDefault.line };
+    const response = projectFallbacks?.[verb];
     return response ? { operations: [], response } : undefined;
   }
   const candidate = noun.cases.find((value) =>
@@ -1199,8 +1240,7 @@ export function resolveCommandDefinition(input: {
     value.firstNoun === firstNoun &&
     conditionMatchesState(value.when, state)
   );
-  const fallback = candidate ? undefined : noun.fallbacks?.[verb];
-  const resolution = candidate ?? fallback;
+  const resolution = candidate ?? verbDefault;
   if (!resolution) {
     const response = projectFallbacks?.[verb];
     return response ? { operations: [], response } : undefined;

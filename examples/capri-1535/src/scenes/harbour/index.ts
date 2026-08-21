@@ -124,10 +124,10 @@ export const harbour = ({
         }, {
           verb: "look-at",
           response: { text: "Un argano robusto. Sul mozzo manca la manovella." },
+        }, {
+          verb: "use",
+          response: { text: "Qui serve proprio la manovella recuperata dal pozzo." },
         }],
-        fallbacks: {
-          use: { response: { text: "Qui serve proprio la manovella recuperata dal pozzo." } },
-        },
       } satisfies NounDefinition),
     },
     fishingNets: {
@@ -196,10 +196,10 @@ export const harbour = ({
         }, {
           verb: "look-at",
           response: { text: "Le reti sono ammucchiate di lato; sotto non nascondono più nulla." },
+        }, {
+          verb: "pull",
+          response: { text: "Le reti sono già state tirate da parte." },
         }],
-        fallbacks: {
-          pull: { response: { text: "Le reti sono già state tirate da parte." } },
-        },
       } satisfies NounDefinition),
     },
     leftForeground: {

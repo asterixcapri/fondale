@@ -98,9 +98,12 @@ consumed. See [Object](authoring/object.md).
 Object, Scenery, background Hotspot or Passage. See
 [Interaction](authoring/interaction.md).
 
-**Command Case** — one ordered specific resolution of a Command.
+**Command Case** — one ordered resolution of a Command. A Noun declares them
+all in one list, read from the top; the last case of a Verb, carrying neither a
+first Noun nor a condition, is that Verb's default.
 
-**Command Fallback** — the local guaranteed answer after every case.
+**Command Fallback** — the Game Project's response-only guarantee for a Verb,
+used when a Noun declares no unconditional Command Case for it.
 
 **Command Lexicon** — the words and sentence patterns; the Engine never infers
 grammar.

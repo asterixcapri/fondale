@@ -34,10 +34,14 @@ export const oilFlask = ({
         verb: "look-at",
         response: { text: "Poco olio, ma abbastanza per una carrucola ostinata." },
       },
+      {
+        verb: "use",
+        response: { text: "Non spreco l'olio senza un meccanismo che ne abbia bisogno." },
+      },
+      {
+        verb: "give",
+        response: { text: "L'ampolla mi servirà ancora; non la cedo a caso." },
+      },
     ],
-    fallbacks: {
-      use: { response: { text: "Non spreco l'olio senza un meccanismo che ne abbia bisogno." } },
-      give: { response: { text: "L'ampolla mi servirà ancora; non la cedo a caso." } },
-    },
   } satisfies NounDefinition),
 } satisfies ObjectDefinition);
