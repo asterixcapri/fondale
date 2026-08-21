@@ -91,7 +91,7 @@ Fondale's Save Snapshot format version.
 | `SceneryDefinition` | depth-sorted visual | baseline, appearances, position, noun | initial Appearance required | Scenery diagnostics | [Scene](recipes/world.ts) |
 | `SceneEntrance` | named arrival | Ground Point and Facing | point must be walkable | entrance diagnostics | [Scene](recipes/world.ts) |
 | `ScenePassage` | directional transition | area, approach, noun, direction, destination | transition is atomic | passage diagnostics | [Scene](recipes/world.ts) |
-| `ArrivalSequenceRule` | post-Passage direction transfer | Sequence, optional Entrance and condition | at most one rule may apply; startup/restore are not arrivals | ambiguity/reference diagnostics | [Sequence](recipes/sequences.ts) |
+| `SceneOpeningCase` | how a Scene reacts to its own Scene Opening | optional condition and Entrance, at most one outcome, optional operations | read from the top, first eligible case applies; an Entrance filters to that door; restoration is never an opening | outcome/reference diagnostics | [Scene](recipes/world.ts) |
 | `PerspectiveScaleStop` | depth-scale sample | Scene Space y and positive scale | stops interpolate linearly | perspective diagnostic | [Scene](recipes/world.ts) |
 | `SceneDefinition` | declarative Scene | Background, optional size, region and optional structures | size defaults to Logical Resolution; registry key supplies identity | Scene/composition diagnostics | [Scene](recipes/world.ts) |
 | `Line` | Character-spoken phrase | text, Character, optional audio and Animation override | speaking role falls back to default | Line/Character/Animation diagnostics | [Command](recipes/commands.ts) |
@@ -142,7 +142,7 @@ Exact reachable fields also include `x`, `y`, `width`, `height`, `kind`,
 `appearance`, `sequence`, `groundPoint`, `baseline`, `position`, `approach`,
 `when`, `direction`, `destination`, `entrance`, `scale`, `background`, `size`,
 `walkableRegion`, `perspectiveScale`, `hotspots`, `entrances`, `passages`,
-`arrivalSequences`, `alternatives`, `fallback`, `steps`, `cases`, `skippable`,
+`alternatives`, `fallback`, `steps`, `cases`, `skippable`,
 `skipOutcome`, `subject`, `animation`, `animationStartedTick`, `startAfter`, `cue`, `duration`, `mode`,
 `point`, `from`, `to`, `directions`,
 `identity`, `version`,

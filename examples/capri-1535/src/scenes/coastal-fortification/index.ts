@@ -180,7 +180,7 @@ export const coastalFortification = ({
     atLookout: { groundPoint: { x: 850, y: 230 }, facing: "left" },
     fromDriftingBoat: { groundPoint: { x: 300, y: 1260 }, facing: "right" },
   },
-  arrivalSequences: [{
+  cases: [{
     entrance: "fromHarbour",
     when: { variable: "boatLanded", equals: false },
     sequence: "boatArrival",

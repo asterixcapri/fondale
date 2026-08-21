@@ -52,7 +52,7 @@ absent means the Scene simply does not offer that structure.
 | `hotspots` | ordered `HotspotDefinition` values | see [Interaction](interaction.md) |
 | `entrances` | named Ground Point and Facing | each Ground Point must lie inside the Walkable Region |
 | `passages` | ordered `ScenePassage` values | each carries its own Noun, a `PassageDirection`, and a destination Scene and Entrance |
-| `arrivalSequences` | ordered `ArrivalSequenceRule` values | at most one rule may apply to any arrival; startup and restoration are not arrivals |
+| `cases` | ordered `SceneOpeningCase` values | read from the top on every Scene Opening; the first eligible case applies |
 
 A Scene reserves no region for the HUD. Authored geometry may use the complete
 Scene Size, and the Engine draws its controls over whatever is there.
@@ -68,6 +68,32 @@ world never shows past its own edge, and translates on whole logical pixels.
 The Camera is derived, never authored and never saved. A Sequence may
 temporarily cut, move, hold, or follow another subject within the same Scene;
 completion and skip return it to following the Player Character.
+
+### Scene Opening
+
+A **Scene Opening** is the moment the Scene comes before the Player. A Scene
+declares what it does then in `cases`, the same list every conditional reaction
+in the Engine is written as: each case carries an optional `when`, at most one
+of a `line`, a `response` or a `sequence`, and `operations` alongside any of
+them. The Engine reads the list from the top and applies the first eligible
+case, so cases are written from the specific to the general, and a case with no
+`when` at the end of the list is the default.
+
+```ts
+cases: [
+  // Only the first time, and only for whoever comes up from the harbour.
+  { entrance: "fromHarbour", when: { variable: "boatLanded", equals: false }, sequence: "boatArrival" },
+  // Otherwise a single sentence, with no Sequence to declare.
+  { line: { character: "player", text: "The wind has not dropped." } },
+],
+```
+
+An `entrance` filters a case to the Player having come through that door. A
+case naming one therefore never applies where no door was used, and a case
+naming none applies to every Scene Opening.
+
+Restoring a Save Snapshot is never a Scene Opening: a returning Player is not
+shown the opening again.
 
 ### Perspective Scale
 
@@ -96,6 +122,8 @@ authoring path that failed.
 | `definition.scene-space.bounds` | authored geometry falls outside Scene Space |
 | `definition.perspective-scale.stop` | a stop declares a non-positive scale or an invalid `y` |
 | `definition.entrance.walkable` | an Entrance Ground Point is outside the Walkable Region |
+| `definition.command-case.textual-outcome` | a Scene Opening case declares more than one outcome |
+| `definition.command-case.empty` | a Scene Opening case declares no outcome at all |
 | `definition.approach.walkable` | an Approach Point is outside the Walkable Region |
 | `definition.approach.bounds` | an Approach Point falls outside Scene Space |
 | `reference.scene` | something names a Scene the Game Project does not declare |
@@ -104,6 +132,7 @@ authoring path that failed.
 | `reference.passage.entrance` | a Passage names an Entrance the destination Scene does not declare |
 | `reference.character.initial-scene` | a Character starts in a Scene that does not exist |
 | `reference.object.initial-scene` | an Object starts in a Scene that does not exist |
+| `reference.scene-opening.entrance` | a Scene Opening case names an Entrance the Scene does not declare |
 
 The complete list is in [Diagnostics](../diagnostics.md).
 
@@ -117,5 +146,5 @@ storeroom stays withdrawn until the lantern is lit.
 ## See also
 
 [Scenery](scenery.md) for what stands inside a Scene · [Interaction](interaction.md) for Hotspots, Nouns and
-Commands · [Character](character.md) for who walks in it · [Sequence](sequence.md) for arrival Sequences and
+Commands · [Character](character.md) for who walks in it · [Sequence](sequence.md) for the Sequences an opening starts and
 Camera direction

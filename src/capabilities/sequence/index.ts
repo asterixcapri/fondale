@@ -6,7 +6,7 @@ import {
 } from "../interaction";
 import {
   validateMotionDirection,
-  type ArrivalSequenceRule,
+  type SceneOpeningCase,
   type Facing,
   type Point,
 } from "../world";
@@ -156,15 +156,16 @@ export interface SequenceDefinition {
   readonly skipOutcome?: readonly GameOperation[];
 }
 
-/** Validates references from World arrival rules into Sequence definitions. */
-export function validateArrivalSequenceReferences(
+/** Validates references from Scene Opening cases into Sequence definitions. */
+export function validateSceneOpeningReferences(
   scene: string,
-  rules: readonly ArrivalSequenceRule[] | undefined,
+  cases: readonly SceneOpeningCase[] | undefined,
   sequences: Readonly<Record<string, SequenceDefinition>>,
 ): readonly AuthoringDiagnostic[] {
   const diagnostics: AuthoringDiagnostic[] = [];
-  rules?.forEach((rule, ruleIndex) => {
-    const path = `scenes.${scene}.arrivalSequences[${ruleIndex}].sequence`;
+  cases?.forEach((rule, ruleIndex) => {
+    if (rule.sequence === undefined) return;
+    const path = `scenes.${scene}.cases[${ruleIndex}].sequence`;
     const sequence = sequences[rule.sequence];
     if (!sequence) {
       diagnostics.push({

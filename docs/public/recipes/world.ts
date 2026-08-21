@@ -98,7 +98,7 @@ export const quay = ({
       destination: { scene: "storeroom", entrance: "fromQuay" },
     },
   ],
-  arrivalSequences: [{ sequence: "backOutside" }],
+  cases: [{ sequence: "backOutside" }],
 } satisfies SceneDefinition);
 
 const ledgerNoun = ({
@@ -150,5 +150,5 @@ export const storeroom = ({
       destination: { scene: "quay", entrance: "fromStoreroom" },
     },
   ],
-  arrivalSequences: [{ sequence: "firstLight", when: { variable: "sawTheStoreroom", equals: false } }],
+  cases: [{ sequence: "firstLight", when: { variable: "sawTheStoreroom", equals: false } }],
 } satisfies SceneDefinition);

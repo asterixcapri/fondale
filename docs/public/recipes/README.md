@@ -26,7 +26,7 @@ The whole game is four steps:
    the lantern changes Appearance, and the storeroom door appears on the right
    of the quay.
 4. **Click the lantern in the drawer again to put it back**, then click the
-   storeroom door. The Scene changes, the arrival Sequence plays, and a Choice
+   storeroom door. The Scene changes, the opening Sequence plays, and a Choice
    waits. Inside, look at the ledger, then take it: the game ends on the notice.
 
 Hold `Tab` at any point to see what is reachable.
@@ -36,7 +36,7 @@ Hold `Tab` at any point to see what is reachable.
   geometry, Hotspots, Entrances and a conditional Passage
 - [Two Characters](characters.ts) — four-Facing Appearances and Animation Roles
 - [One Object](lantern.ts) — the Scene and Inventory lifecycle of the lantern
-- [Two Sequences](sequences.ts) — an arrival with a Choice and a Skip Outcome
+- [Two Sequences](sequences.ts) — a Scene Opening with a Choice and a Skip Outcome
 - [A Detail View and the Ending](notice.ts)
 - [Commands and HUD](commands.ts) — the Lexicon, the fallbacks, the theme
 - [Save and restore](save.ts)

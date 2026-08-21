@@ -63,8 +63,8 @@ existing saves after a change that would make them meaningless.
 | `state` | the committed Game State |
 
 The presented Detail View is recorded as `detailView` in the state, beside
-`ended`. Restoring into a presented Detail View is not an arrival and starts no
-arrival Sequence. Restoring into an Ending resumes the finished game at its
+`ended`. Restoring into a presented Detail View is not a Scene Opening and
+starts no Sequence. Restoring into an Ending resumes the finished game at its
 Ending.
 
 ## Errors

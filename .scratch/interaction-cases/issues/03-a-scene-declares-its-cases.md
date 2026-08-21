@@ -16,7 +16,7 @@ unrelated to this.
 
 **Blocked by:** 01 — Extract the shared case outcome and its rules.
 
-**Status:** ready-for-agent
+**Status:** claimed
 
 - [ ] A Scene declares `cases`; the arrival-rule type and field are gone from
       the authored contract and from the public exports.

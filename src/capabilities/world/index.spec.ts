@@ -433,7 +433,7 @@ test("World separates local Scene geometry from composed entity membership", () 
   ]));
 });
 
-test("World diagnoses invalid Passage destinations and Arrival rules", () => {
+test("World diagnoses invalid Passage destinations and Scene Opening cases", () => {
   const passageNoun = {
     labels: [{ text: "Door" }],
     preferredVerbs: [{ verb: "walk-to" as const }],
@@ -450,24 +450,24 @@ test("World diagnoses invalid Passage destinations and Arrival rules", () => {
       direction: "right",
       destination: { scene: "missing", entrance: "nowhere" },
     }],
-    arrivalSequences: [{
+    cases: [{
       entrance: "missing",
       sequence: "first",
     }, {
-      sequence: "second",
+      when: { variable: "seen", equals: true },
     }],
   } as const satisfies SceneDefinition);
 
   expect(validateSceneDefinition(opening, "scenes.opening")).toEqual(expect.arrayContaining([
     expect.objectContaining({
-      code: "reference.arrival.entrance",
+      code: "reference.scene-opening.entrance",
       owner: "world",
-      path: "scenes.opening.arrivalSequences[0].entrance",
+      path: "scenes.opening.cases[0].entrance",
     }),
     expect.objectContaining({
-      code: "definition.arrival-sequence.ambiguous",
-      owner: "world",
-      path: "scenes.opening.arrivalSequences[1]",
+      code: "definition.command-case.empty",
+      owner: "interaction",
+      path: "scenes.opening.cases[1]",
     }),
   ]));
 
@@ -756,7 +756,7 @@ test("World advances Character, Object and Scenery Motion from shared local timi
   });
 });
 
-test("World resolves a Passage transition and its Arrival Sequence without mutating its input", () => {
+test("World resolves a Passage transition and its Scene Opening without mutating its input", () => {
   const passageNoun = {
     labels: [{ text: "Door" }],
     preferredVerbs: [{ verb: "walk-to" as const }],
@@ -778,7 +778,7 @@ test("World resolves a Passage transition and its Arrival Sequence without mutat
     background: "tower.png",
     walkableRegion: square,
     entrances: { fromOpening: { groundPoint: { x: 5, y: 6 }, facing: "left" } },
-    arrivalSequences: [{
+    cases: [{
       entrance: "fromOpening",
       sequence: "arrival",
       when: { variable: "firstVisit", equals: true },
@@ -815,7 +815,11 @@ test("World resolves a Passage transition and its Arrival Sequence without mutat
   expect(transition).toEqual({
     status: "transitioned",
     scene: "tower",
-    arrivalSequence: "arrival",
+    opening: {
+      entrance: "fromOpening",
+      sequence: "arrival",
+      when: { variable: "firstVisit", equals: true },
+    },
     state: {
       ...before,
       currentScene: "tower",
@@ -832,4 +836,29 @@ test("World resolves a Passage transition and its Arrival Sequence without mutat
   expect(state).toEqual(before);
   expect(world.transitionPassage(state, { passage: 0, character: "guide" }, () => false))
     .toEqual({ status: "unavailable" });
+});
+
+test("World selects a Scene Opening case only for the Entrance the Player came through", () => {
+  const hall = (validateTestSceneDefinition({
+    background: "hall.png",
+    walkableRegion: square,
+    entrances: { fromYard: { groundPoint: { x: 5, y: 6 }, facing: "left" } },
+    cases: [
+      { entrance: "fromYard", sequence: "throughTheDoor" },
+      { sequence: "however" },
+    ],
+  } satisfies SceneDefinition));
+  const world = createWorld({
+    initialScene: "hall",
+    scenes: { hall: { ...hall, size: { width: 100, height: 100 } } },
+    characters: {},
+    objects: {},
+  });
+  const state = world.initialState();
+  const always = () => true;
+
+  expect(world.sceneOpening(state, always, "fromYard")).toMatchObject({ sequence: "throughTheDoor" });
+  // No door was used, so the case that names one does not apply.
+  expect(world.sceneOpening(state, always)).toMatchObject({ sequence: "however" });
+  expect(world.sceneOpening(state, () => false)).toBeUndefined();
 });

@@ -90,13 +90,13 @@ export {
   type SetTrustOperation,
 } from "./capabilities/game-project";
 export {
-  type ArrivalSequenceRule,
   type CharacterDefinition,
   type Facing,
   type HotspotDefinition,
   type ObjectDefinition,
   type Point,
   type SceneDefinition,
+  type SceneOpeningCase,
   type SceneSize,
 } from "./capabilities/world";
 export {

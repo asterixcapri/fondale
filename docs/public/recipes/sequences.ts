@@ -1,7 +1,7 @@
 import { type SequenceDefinition } from "fondale";
 
 /**
- * The first arrival in the storeroom: narration, a Line, and a Choice.
+ * The first opening of the storeroom: narration, a Line, and a Choice.
  *
  * It is skippable, so it declares the outcome a skip must still commit — the
  * world ends the same whether the Player watched it or not.
@@ -38,7 +38,7 @@ export const firstLight = ({
   ],
 } satisfies SequenceDefinition);
 
-/** Every later arrival back on the quay: one line, and out of the way. */
+/** Every later opening of the quay: one line, and out of the way. */
 export const backOutside = ({
   scene: "quay",
   steps: [{ type: "narration", text: "The air off the water is colder than it was." }],
