@@ -40,7 +40,7 @@ export {
   type FakeDialoguePendingOutcome,
   type DialogueClaimCandidate,
   type ConversationAlternativeDefinition,
-  type ConversationHandoffDefinition,
+  type ConversationCase,
   type DialogueFactCandidate,
   type DialogueInterpretation,
   type DialogueInterpretationRequest,

@@ -84,12 +84,24 @@ The alternatives and the free-form field are presented together for the whole
 Conversation — except while an alternative's Sequence is playing, when the
 field is withdrawn.
 
-### Handoffs
+### Cases
 
-A `handoff` names a condition, a Sequence, and whether the Conversation
-`close`s or `resume`s afterwards. It is evaluated after an accepted free-form
-turn's effects commit, and it is how an exploratory conversation becomes an
-exact authored scene at the right moment.
+A Character declares in `cases` the Interaction Cases with which its
+Conversation gives way to an exact authored scene. Each case names a Sequence
+and whether the Conversation `close`s or `resume`s afterwards, under an optional
+condition. The list is read from the top and the first eligible case applies, so
+a last case carrying no condition is the Conversation's default.
+
+Cases are evaluated after an accepted free-form turn's effects commit, and again
+when the Player leaves the Conversation: an eligible case takes over instead of
+closing it. They are how an exploratory conversation becomes an exact authored
+scene at the right moment. The Engine chooses a case; the Player chooses an
+alternative.
+
+A case carrying no condition therefore applies every time, including when the
+Player leaves. Declare one that `resume`s only where its Sequence changes the
+Game State some earlier case is conditioned on, or the Player has no way out of
+the Conversation.
 
 ### Reflection
 
@@ -108,7 +120,7 @@ Game State.
 | `relationships` | Character-keyed Trust | directional: A's trust in B is not B's trust in A |
 | `personality`, `voice`, `behavior`, `state`, `biography` | qualitative portrayal | optional |
 | `alternatives` | authored questions | at most six eligible at once |
-| `handoffs` | condition, Sequence, `close` or `resume` | evaluated after an accepted turn commits |
+| `cases` | optional condition, Sequence, `close` or `resume` | read from the top, first eligible one applies; evaluated after an accepted turn commits |
 
 A project with any Character dialogue profile must declare a non-empty
 `narrativeContext` and supply exactly one provider connection —

@@ -102,7 +102,7 @@ finite boundary — a looping Animation or a `hold`/`follow` Camera needs the
 step's `duration` to bound it.
 
 Sequences may be started from a Command Case, from a Game Operation, from a
-Conversation alternative or handoff, or by a Scene Opening case — at the start
+Conversation alternative or case, or by a Scene Opening case — at the start
 of a game as well as after a Passage. An opening's Sequence takes control before
 the Player does. Restoration is never a Scene Opening, so it starts no
 Sequence.
