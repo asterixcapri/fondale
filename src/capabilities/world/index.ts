@@ -11,6 +11,7 @@ import {
   type CharacterAppearance,
 } from "../animation";
 import {
+  validateCommandResponse,
   validateInteractionCaseOutcome,
   type InteractionCase,
   type InteractionCondition,
@@ -396,6 +397,7 @@ export function validateSceneDefinition(
       ));
     }
     validateInteractionCaseOutcome(candidate, base, diagnostics);
+    validateCommandResponse(candidate.response, `${base}.response`, diagnostics);
   });
   input.hotspots?.forEach((hotspot, index) => {
     const base = childPath(path, `hotspots[${index}]`);

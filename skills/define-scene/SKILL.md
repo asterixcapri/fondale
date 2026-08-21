@@ -142,8 +142,8 @@ Write or update the `SceneDefinition` under `src/scenes/<scene>/`, beside the
 placeholder, following the contract read in Take stock: the Background, the Scene
 Size, the Walkable Region, the Perspective Scale stops, each Scenery element with
 the position, Baseline and Visual Anchor recorded in the plan, the Hotspots, the
-Approach Points, the Scene Entrances, the Scene Passages and any Arrival
-Sequence.
+Approach Points, the Scene Entrances, the Scene Passages and the cases with
+which the Scene answers its own Scene Opening.
 
 Then run the game and walk the Scene on the placeholder. Every coordinate this
 step authors is final: the rest of this skill replaces image files and nothing

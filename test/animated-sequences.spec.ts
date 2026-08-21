@@ -1251,6 +1251,19 @@ test("a Scene Opening case answers with a Line and its Game Operations without a
   });
 });
 
+test("a Scene Opening case answers with a Command Response", () => {
+  const session = createTestSession(arrivalProject(undefined, [
+    { response: { text: "The door falls shut behind you." } },
+  ]));
+  session.input({ type: "quick-passage", passage: 0 });
+  session.steps();
+
+  expect(session.effects().map((effect) =>
+    effect.type === "interaction-response" ? effect.text : "",
+  )).toContain("The door falls shut behind you.");
+  expect(session.snapshot().activity).toBeNull();
+});
+
 test("the first eligible Scene Opening case applies and the ones below it do not", () => {
   const session = createTestSession(arrivalProject(undefined, [
     {

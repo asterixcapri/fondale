@@ -163,17 +163,17 @@ export function validateSceneOpeningReferences(
   sequences: Readonly<Record<string, SequenceDefinition>>,
 ): readonly AuthoringDiagnostic[] {
   const diagnostics: AuthoringDiagnostic[] = [];
-  cases?.forEach((rule, ruleIndex) => {
-    if (rule.sequence === undefined) return;
-    const path = `scenes.${scene}.cases[${ruleIndex}].sequence`;
-    const sequence = sequences[rule.sequence];
+  cases?.forEach((candidate, caseIndex) => {
+    if (candidate.sequence === undefined) return;
+    const path = `scenes.${scene}.cases[${caseIndex}].sequence`;
+    const sequence = sequences[candidate.sequence];
     if (!sequence) {
       diagnostics.push({
         code: "reference.sequence",
         family: "reference",
         owner: "sequence",
         path,
-        message: `Sequence '${rule.sequence}' does not exist.`,
+        message: `Sequence '${candidate.sequence}' does not exist.`,
       });
     } else if (sequence.scene !== undefined && sequence.scene !== scene) {
       diagnostics.push({
@@ -181,7 +181,7 @@ export function validateSceneOpeningReferences(
         family: "reference",
         owner: "sequence",
         path,
-        message: `Sequence '${rule.sequence}' belongs to Scene '${sequence.scene}'.`,
+        message: `Sequence '${candidate.sequence}' belongs to Scene '${sequence.scene}'.`,
       });
     }
   });

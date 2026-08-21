@@ -77,7 +77,8 @@ in the Engine is written as: each case carries an optional `when`, at most one
 of a `line`, a `response` or a `sequence`, and `operations` alongside any of
 them. The Engine reads the list from the top and applies the first eligible
 case, so cases are written from the specific to the general, and a case with no
-`when` at the end of the list is the default.
+`when` is the default for everything below it. A Scene need not react at all,
+so the list may be empty, absent, or entirely conditional.
 
 ```ts
 cases: [
@@ -122,8 +123,9 @@ authoring path that failed.
 | `definition.scene-space.bounds` | authored geometry falls outside Scene Space |
 | `definition.perspective-scale.stop` | a stop declares a non-positive scale or an invalid `y` |
 | `definition.entrance.walkable` | an Entrance Ground Point is outside the Walkable Region |
-| `definition.command-case.textual-outcome` | a Scene Opening case declares more than one outcome |
-| `definition.command-case.empty` | a Scene Opening case declares no outcome at all |
+| `definition.command-case.textual-outcome` | a case declares more than one outcome |
+| `definition.command-case.empty` | a case declares no outcome at all |
+| `definition.command-response.text` | a case answers with an empty Command Response |
 | `definition.approach.walkable` | an Approach Point is outside the Walkable Region |
 | `definition.approach.bounds` | an Approach Point falls outside Scene Space |
 | `reference.scene` | something names a Scene the Game Project does not declare |
