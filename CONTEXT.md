@@ -618,9 +618,13 @@ _Avoid_: Interaction Response, dialogue text, generic tooltip, Sentence Line
 An authored conditional alternative through which something in the world reacts
 to a moment: eligible cases are considered in their declared order and the first
 one applies, producing at most one of a Line, a Command Response, a Sequence, or
-further Sequence steps, with optional Game Operations. The final case for a
-given selector carries no Interaction Condition and is therefore the default;
-no unconditional case may precede a conditional one.
+further Sequence steps, with optional Game Operations. A case carrying no
+Interaction Condition is the default for its selector, so no unconditional case
+may precede a conditional one and at most one may be declared. Whether a default
+is required is the container's own rule, not the concept's: a Verb must answer,
+a Scene need not react to its own opening. The Interaction Case is a pattern the
+containers share, not a type they inherit — each declares its own case in full,
+because they disagree on what an outcome is.
 _Avoid_: Handler, event listener, priority rule, trigger, fallback field
 
 **Command Case**:

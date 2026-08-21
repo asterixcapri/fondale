@@ -57,8 +57,11 @@ conditional one, but several may sit together at the end: the Player is offered
 them all.
 
 `branch` picks automatically: ordered `cases`, read from the top, the first
-eligible one taken. Like every Interaction Case list the Engine reads, its last
-case carries no condition and is the default, and it is the only one that may.
+eligible one taken. Like every Interaction Case list the Engine reads, no
+unconditional case may precede a conditional one and at most one may be
+declared. A branch must reach somewhere whatever the state, so unlike a Scene
+Opening or a Conversation it also requires that case: its last one carries no
+condition and is the default.
 
 `direction` starts concurrent visual directions and waits for every finite one
 to end.
