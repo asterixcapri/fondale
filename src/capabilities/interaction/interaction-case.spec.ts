@@ -1,0 +1,98 @@
+import { expect, test } from "@playwright/test";
+
+import type { AuthoringDiagnostic } from "../game-project";
+import {
+  validateConditionalFallbackOrder,
+  validateInteractionCaseOutcome,
+  type InteractionCase,
+} from "./index";
+
+function outcomeDiagnostics(candidate: InteractionCase): readonly AuthoringDiagnostic[] {
+  const diagnostics: AuthoringDiagnostic[] = [];
+  validateInteractionCaseOutcome(candidate, "cases[0]", diagnostics);
+  return diagnostics;
+}
+
+function orderDiagnostics(
+  values: readonly { readonly when?: InteractionCase["when"] }[],
+): readonly AuthoringDiagnostic[] {
+  const diagnostics: AuthoringDiagnostic[] = [];
+  validateConditionalFallbackOrder(values, "labels", "Noun Label", diagnostics);
+  return diagnostics;
+}
+
+test("an Interaction Case declaring one outcome beside Game Operations is accepted", () => {
+  expect(outcomeDiagnostics({
+    when: { variable: "opened", equals: true },
+    response: { text: "It is already open." },
+    operations: [{ type: "set-variable", variable: "seen", value: true }],
+  })).toEqual([]);
+  expect(outcomeDiagnostics({
+    operations: [{ type: "set-variable", variable: "seen", value: true }],
+  })).toEqual([]);
+});
+
+test("an Interaction Case declaring two outcomes is refused", () => {
+  expect(outcomeDiagnostics({
+    line: { character: "diver", text: "Locked." },
+    response: { text: "It is locked." },
+  })).toEqual([
+    expect.objectContaining({
+      code: "definition.command-case.textual-outcome",
+      owner: "interaction",
+      path: "cases[0]",
+    }),
+  ]);
+});
+
+test("a start-sequence Game Operation counts as a Sequence outcome", () => {
+  expect(outcomeDiagnostics({
+    line: { character: "diver", text: "Locked." },
+    operations: [{ type: "start-sequence", sequence: "opening" }],
+  })).toEqual([
+    expect.objectContaining({ code: "definition.command-case.textual-outcome" }),
+  ]);
+  expect(outcomeDiagnostics({
+    sequence: "opening",
+    operations: [{ type: "start-sequence", sequence: "opening" }],
+  })).toEqual([
+    expect.objectContaining({ code: "definition.command-case.textual-outcome" }),
+  ]);
+  expect(outcomeDiagnostics({
+    operations: [{ type: "start-sequence", sequence: "opening" }],
+  })).toEqual([]);
+});
+
+test("an Interaction Case declaring no outcome at all is refused", () => {
+  expect(outcomeDiagnostics({ when: { hasObject: "key" } })).toEqual([
+    expect.objectContaining({
+      code: "definition.command-case.empty",
+      owner: "interaction",
+      path: "cases[0]",
+    }),
+  ]);
+});
+
+test("exactly one unconditional entry in the final position is required", () => {
+  expect(orderDiagnostics([
+    { when: { variable: "opened", equals: true } },
+    {},
+  ])).toEqual([]);
+  expect(orderDiagnostics([
+    {},
+    { when: { variable: "opened", equals: true } },
+  ])).toEqual([
+    expect.objectContaining({
+      code: "definition.conditional-fallback",
+      owner: "interaction",
+      path: "labels",
+      message: "Noun Label variants require exactly one unconditional fallback in the final position.",
+    }),
+  ]);
+  expect(orderDiagnostics([{ when: { variable: "opened", equals: true } }])).toEqual([
+    expect.objectContaining({ code: "definition.conditional-fallback" }),
+  ]);
+  expect(orderDiagnostics([{}, {}])).toEqual([
+    expect.objectContaining({ code: "definition.conditional-fallback" }),
+  ]);
+});

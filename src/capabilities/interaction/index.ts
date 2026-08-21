@@ -10,6 +10,12 @@ import type {
   WorldTarget,
 } from "../world";
 import { conditionMatchesState } from "./state-queries";
+import {
+  declaresTextualOutcome,
+  validateConditionalFallbackOrder,
+  validateInteractionCaseOutcome,
+  type InteractionCase,
+} from "./interaction-case";
 export { conditionMatchesState };
 export {
   eligibleAlternativeIndexes,
@@ -17,6 +23,11 @@ export {
   maximumEligibleAlternatives,
   type ConditionalAlternative,
 } from "./alternative-eligibility";
+export {
+  validateConditionalFallbackOrder,
+  validateInteractionCaseOutcome,
+  type InteractionCase,
+} from "./interaction-case";
 
 /** The semantic actions available to authored Commands. */
 export const commandVerbs = [
@@ -80,15 +91,10 @@ export interface CommandResponse {
   readonly text: string;
 }
 
-/** An ordered specific resolution with at most one textual outcome. */
-export interface CommandCase {
+/** An Interaction Case selected by a Verb against one or two Nouns. */
+export interface CommandCase extends InteractionCase {
   readonly verb: CommandVerb;
   readonly firstNoun?: string;
-  readonly when?: InteractionCondition;
-  readonly line?: Line;
-  readonly response?: CommandResponse;
-  readonly operations?: readonly GameOperation[];
-  readonly sequence?: string;
 }
 
 /** A local guaranteed resolution used after all specific Command Cases. */
@@ -114,15 +120,15 @@ export function validateNounDefinition(
   path = "",
 ): readonly AuthoringDiagnostic[] {
   const diagnostics: AuthoringDiagnostic[] = [];
-  validateConditionalFallback(input.labels, childPath(path, "labels"), "Noun Label", diagnostics);
-  validateConditionalFallback(
+  validateConditionalFallbackOrder(input.labels, childPath(path, "labels"), "Noun Label", diagnostics);
+  validateConditionalFallbackOrder(
     input.preferredVerbs,
     childPath(path, "preferredVerbs"),
     "Preferred Verb",
     diagnostics,
   );
   if (input.secondaryVerbs) {
-    validateConditionalFallback(
+    validateConditionalFallbackOrder(
       input.secondaryVerbs,
       childPath(path, "secondaryVerbs"),
       "Secondary Verb",
@@ -130,7 +136,7 @@ export function validateNounDefinition(
     );
   }
   if (input.objectVerbs) {
-    validateConditionalFallback(
+    validateConditionalFallbackOrder(
       input.objectVerbs,
       childPath(path, "objectVerbs"),
       "Selected Object Verb",
@@ -163,30 +169,9 @@ export function validateNounDefinition(
         message: `The '${candidate.verb}' Verb is unary and cannot declare a first Noun.`,
       });
     }
-    const sequenceOutcomes = (candidate.sequence ? 1 : 0) +
-      (candidate.operations?.filter(({ type }) => type === "start-sequence").length ?? 0);
-    const outcomeCount = Number(candidate.line !== undefined) +
-      Number(candidate.response !== undefined) + sequenceOutcomes;
-    if (outcomeCount > 1) {
-      diagnostics.push({
-        code: "definition.command-case.textual-outcome",
-        family: "definition", owner: "interaction",
-        path: childPath(path, `cases[${index}]`),
-        message: "A Command Case can declare only one textual outcome: Line, Command Response, or Sequence.",
-      });
-    }
-    if (!candidate.line && !candidate.response && !(candidate.operations?.length) && !candidate.sequence) {
-      diagnostics.push({
-        code: "definition.command-case.empty",
-        family: "definition", owner: "interaction",
-        path: childPath(path, `cases[${index}]`),
-        message: "A Command Case must produce a Line, Command Response, Game Operation, or Sequence.",
-      });
-    }
+    validateInteractionCaseOutcome(candidate, childPath(path, `cases[${index}]`), diagnostics);
     if (
-      !candidate.line &&
-      !candidate.response &&
-      !candidate.sequence &&
+      !declaresTextualOutcome(candidate) &&
       candidate.operations?.some(({ type }) =>
         type === "collect-target-object" ||
         type === "place-selected-object" ||
@@ -1276,25 +1261,6 @@ export function preferredFirstNoun(
     candidate.firstNoun === selectedObject &&
     conditionMatchesState(candidate.when, state)
   ) ? selectedObject : undefined;
-}
-
-function validateConditionalFallback(
-  values: readonly { readonly when?: InteractionCondition }[],
-  path: string,
-  name: string,
-  diagnostics: AuthoringDiagnostic[],
-): void {
-  const unconditional = values
-    .map((value, index) => value.when === undefined ? index : -1)
-    .filter((index) => index >= 0);
-  if (unconditional.length !== 1 || unconditional[0] !== values.length - 1) {
-    diagnostics.push({
-      code: "definition.conditional-fallback",
-      family: "definition", owner: "interaction",
-      path,
-      message: `${name} variants require exactly one unconditional fallback in the final position.`,
-    });
-  }
 }
 
 function validatePattern(

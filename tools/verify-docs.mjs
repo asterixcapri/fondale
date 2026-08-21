@@ -30,6 +30,7 @@ const contractSources = [
   "src/capabilities/game-project/index.ts",
   "src/capabilities/dialogue/index.ts",
   "src/capabilities/interaction/index.ts",
+  "src/capabilities/interaction/interaction-case.ts",
   "src/capabilities/sequence/index.ts",
   "src/capabilities/hud/index.ts",
   "src/capabilities/game-project/diagnostics.ts",
@@ -38,16 +39,26 @@ const contractSources = [
 ];
 const contractNames = new Set();
 const contractFields = new Set();
-for (const relativePath of contractSources) {
+const contractStatements = contractSources.flatMap((relativePath) => {
   const path = join(repository, relativePath);
-  const source = ts.createSourceFile(path, readFileSync(path, "utf8"), ts.ScriptTarget.Latest, true);
-  for (const statement of source.statements) {
-    const exported = statement.modifiers?.some(({ kind }) => kind === ts.SyntaxKind.ExportKeyword);
-    const namedContract = ts.isInterfaceDeclaration(statement) ||
-      ts.isTypeAliasDeclaration(statement) || ts.isClassDeclaration(statement);
-    if (!exported || !namedContract || !statement.name || hasInternalTag(statement)) continue;
-    contractNames.add(statement.name.text);
-    collectFields(statement, contractFields);
+  return [...ts.createSourceFile(path, readFileSync(path, "utf8"), ts.ScriptTarget.Latest, true).statements];
+});
+// A public shape is everything an Author has to write, including the fields it
+// inherits from a base the Engine keeps to itself. Without the base, extracting
+// a shared shape would silently retire the gate on every field it absorbed.
+const declarationsByName = new Map(
+  contractStatements
+    .filter((statement) => ts.isInterfaceDeclaration(statement) && statement.name)
+    .map((statement) => [statement.name.text, statement]),
+);
+for (const statement of contractStatements) {
+  const exported = statement.modifiers?.some(({ kind }) => kind === ts.SyntaxKind.ExportKeyword);
+  const namedContract = ts.isInterfaceDeclaration(statement) ||
+    ts.isTypeAliasDeclaration(statement) || ts.isClassDeclaration(statement);
+  if (!exported || !namedContract || !statement.name || hasInternalTag(statement)) continue;
+  contractNames.add(statement.name.text);
+  for (const declaration of withInheritedDeclarations(statement, declarationsByName)) {
+    collectFields(declaration, contractFields);
   }
 }
 const undocumentedContracts = [...contractNames].filter((name) => !publicDocumentation.includes(`\`${name}\``));
@@ -283,6 +294,19 @@ function exportedNames(source) {
 
 function hasInternalTag(node) {
   return ts.getJSDocTags(node).some(({ tagName }) => tagName.text === "internal");
+}
+
+function withInheritedDeclarations(statement, declarationsByName, seen = new Set()) {
+  if (!ts.isInterfaceDeclaration(statement) || seen.has(statement)) return [];
+  seen.add(statement);
+  const inherited = (statement.heritageClauses ?? [])
+    .flatMap(({ types }) => types)
+    .flatMap(({ expression }) =>
+      ts.isIdentifier(expression) ? [declarationsByName.get(expression.text)] : []
+    )
+    .filter(Boolean)
+    .flatMap((base) => withInheritedDeclarations(base, declarationsByName, seen));
+  return [statement, ...inherited];
 }
 
 function collectFields(node, fields) {
