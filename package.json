@@ -3,6 +3,10 @@
   "version": "0.4.1",
   "description": "A web-native, TypeScript-first point-and-click adventure engine.",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/asterixcapri/fondale.git"
+  },
   "publishConfig": {
     "access": "public"
   },

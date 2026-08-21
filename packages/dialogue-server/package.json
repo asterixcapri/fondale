@@ -3,6 +3,11 @@
   "version": "0.4.0",
   "description": "The Node.js Dialogue Provider server for Fondale games.",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/asterixcapri/fondale.git",
+    "directory": "packages/dialogue-server"
+  },
   "publishConfig": {
     "access": "public"
   },
