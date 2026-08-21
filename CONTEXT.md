@@ -361,11 +361,10 @@ _Avoid_: Menu, disabled answer, arbitrary input prompt
 
 **Scene**:
 The explorable unit of the world that the Engine presents as one space. It may
-represent an interior or an outdoor location and may declaratively start a
-Sequence when a transition arrives, subject to the current Game State and an
-optional Scene Entrance filter. An applicable Sequence takes control before
-Player control resumes. Restoring a Save Snapshot already within the Scene is
-not an arrival; a Scene is not itself a controlled sequence of actions.
+represent an interior or an outdoor location and declares the Interaction Cases
+with which it reacts to its own Scene Opening, subject to the current Game State
+and an optional Scene Entrance filter. An applicable case takes control before
+Player control resumes. A Scene is not itself a controlled sequence of actions.
 _Avoid_: Room, sequence
 
 **Scene Space**:
@@ -382,6 +381,13 @@ _Avoid_: Room mask, screen-space hit area
 An authored Ground Point and facing in a Scene at which a Character can perform
 an Interaction with a target.
 _Avoid_: Click position, sprite position, implicit nearest point
+
+**Scene Opening**:
+The moment a Scene comes before the Player, whether by arriving through a Scene
+Passage or by the game beginning in that Scene. Restoring a Save Snapshot is
+never a Scene Opening: it resumes a Playthrough rather than presenting a Scene
+anew.
+_Avoid_: Arrival, startup, Scene Entrance, first frame
 
 **Scene Entrance**:
 A named arrival Ground Point and facing through which a Character enters a
@@ -578,14 +584,14 @@ _Avoid_: Identifier, hotspot label, target kind
 
 **Noun Label**:
 The localized player-facing text selected for a Noun from ordered conditional
-variants and a required fallback. Knowledge represented by a label belongs to
+variants whose final variant carries no condition. Knowledge represented by a label belongs to
 declared Game State rather than inference by the Engine.
 _Avoid_: Identifier, automatic discovery, rendered entity type
 
 **Noun Definition**:
 The declarative description of one Noun's labels, Preferred Verb, optional
-Secondary and Selected Object Verbs, Command Cases, and local fallbacks
-wherever that Noun is available to the Player. One Noun Definition belongs to
+Secondary and Selected Object Verbs, and Command Cases wherever that Noun is
+available to the Player. One Noun Definition belongs to
 its Character, Object, Scenery, background region, or Scene Passage.
 _Avoid_: Hotspot, entity definition, event handlers
 
@@ -604,16 +610,24 @@ The pointer-following presentation of one or two Contextual Action phrases,
 clamped within the Logical Resolution and visually separated from Scene art.
 _Avoid_: Interaction Response, dialogue text, generic tooltip, Sentence Line
 
+**Interaction Case**:
+An authored conditional alternative through which something in the world reacts
+to a moment: eligible cases are considered in their declared order and the first
+one applies, producing at most one of a Line, a Command Response, a Sequence, or
+further Sequence steps, with optional Game Operations. The final case for a
+given selector carries no Interaction Condition and is therefore the default;
+no unconditional case may precede a conditional one.
+_Avoid_: Handler, event listener, priority rule, trigger, fallback field
+
 **Command Case**:
-An authored conditional alternative for resolving a Verb against one or two
-Nouns; eligible cases are considered in their declared order and may produce a
-Line, Command Response, Game Operations, or a Sequence.
+An Interaction Case selected by a Verb against one or two Nouns.
 _Avoid_: Handler, event listener, priority rule
 
 **Command Fallback**:
-The guaranteed response used when no Command Case matches, resolved locally on
-a Noun before the Game Project's response-only fallback for that Verb.
-_Avoid_: Silent no-op, exception, implicit default
+The Game Project's response-only guarantee for a Verb, used when a Noun declares
+no unconditional Command Case for it. It makes a Command impossible to leave
+unanswered.
+_Avoid_: Silent no-op, exception, implicit default, local fallback field
 
 **Interaction Condition**:
 An authored proposition over the current Game State that determines whether an
