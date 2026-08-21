@@ -16,7 +16,7 @@ Sequence raises among its own operations and in its Skip Outcome.
 
 **Blocked by:** 03 — A Scene declares its cases.
 
-**Status:** ready-for-agent
+**Status:** claimed
 
 - [ ] A game whose initial Scene declares a case with no Entrance stages it when
       a new game begins.

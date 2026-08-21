@@ -117,7 +117,8 @@ resolves.
 
 **Scene Passage** — a directional transition to another Scene's Entrance.
 
-**Scene Opening** — the moment a Scene comes before the Player. A Scene answers
+**Scene Opening** — the moment a Scene comes before the Player, by arrival
+through a Scene Passage or by the game beginning in that Scene. A Scene answers
 it with its `cases`, and restoring a Save Snapshot is never one. See
 [Scene](authoring/scene.md).
 

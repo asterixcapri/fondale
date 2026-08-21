@@ -71,11 +71,12 @@ completion and skip return it to following the Player Character.
 
 ### Scene Opening
 
-A **Scene Opening** is the moment the Scene comes before the Player. A Scene
-declares what it does then in `cases`, the same list every conditional reaction
-in the Engine is written as: each case carries an optional `when`, at most one
-of a `line`, a `response` or a `sequence`, and `operations` alongside any of
-them. The Engine reads the list from the top and applies the first eligible
+A **Scene Opening** is the moment the Scene comes before the Player, whether
+the Player arrives through a Scene Passage or the game begins in that Scene. A
+Scene declares what it does then in `cases`, the same list every conditional
+reaction in the Engine is written as: each case carries an optional `when`, at
+most one of a `line`, a `response` or a `sequence`, and `operations` alongside
+any of them. The Engine reads the list from the top and applies the first eligible
 case, so cases are written from the specific to the general, and a case with no
 `when` is the default for everything below it. A Scene need not react at all,
 so the list may be empty, absent, or entirely conditional.
@@ -89,12 +90,18 @@ cases: [
 ],
 ```
 
-An `entrance` filters a case to the Player having come through that door. A
-case naming one therefore never applies where no door was used, and a case
-naming none applies to every Scene Opening.
+An `entrance` filters a case to the Player having come through that door. At
+the start of a game no door was used, so a case naming an Entrance never
+applies then, and a case naming none applies to every Scene Opening — the start
+of the game included. There is no separate field for the start: to open only
+once, condition the case on a Game Variable the Sequence raises among its own
+operations and in its Skip Outcome.
+
+A Sequence an opening starts takes control before the Player does, so no frame
+of play is reachable before the staging begins.
 
 Restoring a Save Snapshot is never a Scene Opening: a returning Player is not
-shown the opening again.
+shown the opening again, at the start of a game or anywhere else.
 
 ### Perspective Scale
 

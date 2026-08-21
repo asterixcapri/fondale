@@ -98,7 +98,9 @@ export const quay = ({
       destination: { scene: "storeroom", entrance: "fromQuay" },
     },
   ],
-  cases: [{ sequence: "backOutside" }],
+  // Coming back out of the storeroom, and only then: the start of the game is a
+  // Scene Opening too, and a case naming no Entrance would stage it there.
+  cases: [{ entrance: "fromStoreroom", sequence: "backOutside" }],
 } satisfies SceneDefinition);
 
 const ledgerNoun = ({

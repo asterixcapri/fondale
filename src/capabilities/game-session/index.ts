@@ -1119,7 +1119,7 @@ export function createCoreSession(
     const transition = world.transitionPassage(
       state,
       { passage: intent.passage, character: playerId },
-      (condition, worldState) => conditionMatchesState(condition, { ...state, ...worldState }),
+      worldStateConditionMatches,
     );
     if (transition.status === "unavailable") return;
     if (transition.status === "invalid") {
@@ -1465,6 +1465,18 @@ export function createCoreSession(
     return conditionMatchesState(condition, state);
   }
 
+  /**
+   * Answers World about a state it is only part of: a condition is decided
+   * against the whole Session state, with World's own view of the world laid
+   * over the committed one it is about to replace.
+   */
+  function worldStateConditionMatches(
+    condition: InteractionCondition | undefined,
+    worldState: Readonly<WorldState>,
+  ): boolean {
+    return conditionMatchesState(condition, { ...state, ...worldState });
+  }
+
   function failOperation(message: string, cause?: unknown): void {
     status = "failed";
     inputs.length = 0;
@@ -1479,6 +1491,13 @@ export function createCoreSession(
     ];
   }
 
+  // The start of a Playthrough is a Scene Opening in which no door was used, so
+  // no Entrance is passed and a case naming one cannot apply. Restoring a Save
+  // Snapshot is not one: a returning Player is not shown the opening again.
+  if (!restored) {
+    const opening = world.sceneOpening(state, worldStateConditionMatches);
+    if (opening) applySceneOpening(opening);
+  }
   advanceCamera();
   return session;
 }

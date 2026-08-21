@@ -62,6 +62,9 @@ existing saves after a change that would make them meaningless.
 | `projectVersion` | your Game Project's `version` |
 | `state` | the committed Game State |
 
+Restoring is never a Scene Opening: a Playthrough resumes where it left off,
+and the opening the initial Scene stages for a new game is not staged again.
+
 The presented Detail View is recorded as `detailView` in the state, beside
 `ended`. Restoring into a presented Detail View is not a Scene Opening and
 starts no Sequence. Restoring into an Ending resumes the finished game at its
