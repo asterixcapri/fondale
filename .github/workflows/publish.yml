@@ -36,6 +36,11 @@ jobs:
               ;;
           esac
 
+      # Node 22 ships npm 10, which cannot authenticate to the registry over
+      # OIDC. Trusted publishing — which is how this workflow publishes, hence
+      # `id-token: write` and `--provenance` — wants npm 11.5.1 or newer.
+      - run: npm install -g npm@latest
+
       - run: npm ci
 
       - name: Refuse a tag that disagrees with its package
