@@ -289,4 +289,9 @@ export const harbour = ({
     direction: "right",
     destination: { scene: "cloister", entrance: "fromHarbour" },
   }],
+  // The game begins here, and the start of a game is a Scene Opening like any
+  // other: this case names no Entrance, so it applies then as well as on every
+  // return from the cloister. The Variable its Sequence raises is what keeps it
+  // to the first time.
+  cases: [{ when: { variable: "harbourDawnSeen", equals: false }, sequence: "harbourDawn" }],
 } satisfies SceneDefinition);

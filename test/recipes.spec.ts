@@ -9,9 +9,11 @@ import {
   presentedLine,
   pressOn,
   revealedNouns,
+  skipSequence,
   stepUntil,
   selectObject,
   startCoreSession,
+  type CoreSession,
 } from "fondale/testing";
 
 import { project } from "../docs/public/recipes/game";
@@ -25,6 +27,21 @@ import { lantern } from "../docs/public/recipes/lantern";
  * Labels on screen and the answers it gives — which is the same vocabulary the
  * Testing guide teaches.
  */
+
+/**
+ * Starts the recipe game and reads through the opening it stages.
+ *
+ * The quay is the initial Scene and declares a Scene Opening case that names no
+ * Entrance, so every new session begins under a Sequence rather than in the
+ * Player's hands. Passing through it here is what an author adopting a Scene
+ * Opening has to do to their own suite, so the recipes' suite does it too.
+ */
+function startOnTheQuay(): CoreSession {
+  const session = startCoreSession(project);
+  pressOn(session);
+  return session;
+}
+
 test("the recipes are ordinary author-owned data, not Engine objects", () => {
   expect(Object.isFrozen(project)).toBe(false);
   expect(Object.isFrozen(player)).toBe(false);
@@ -32,15 +49,35 @@ test("the recipes are ordinary author-owned data, not Engine objects", () => {
   expect(project.playerCharacter).toBe("player");
 });
 
-test("the quay offers only what the Player can reach at the start", () => {
+test("the game opens on a staged quay before the Player has control", () => {
   const session = startCoreSession(project);
+
+  // No frame of play precedes the staging: the Sequence holds the Scene at the
+  // first tick, and only reading it through hands the quay to the Player.
+  expect(session.snapshot().activity).not.toBeNull();
+  pressOn(session);
+  expect(session.snapshot().activity).toBeNull();
+
+  // The opening raises its own Variable, so walking back onto the quay later
+  // does not replay it: that is the whole of the "only once" idiom.
+  expect(session.snapshot().variables.cameAshore).toBe(true);
+});
+
+test("the quay offers only what the Player can reach at the start", () => {
+  const session = startOnTheQuay();
 
   // The storeroom door is withdrawn: its Passage waits on a lit lantern.
   expect([...revealedNouns(session)].sort()).toEqual(["Brazier", "Keeper", "Lantern", "Notice"]);
 });
 
 test("the lantern is collected, lit, and opens the storeroom", () => {
+  // Escape is the other way through the opening. It cuts the Sequence short and
+  // hands the quay over with the same world committed, because the Skip Outcome
+  // repeats what the Sequence's own operations raise.
   const session = startCoreSession(project);
+  skipSequence(session);
+  pressOn(session);
+  expect(session.snapshot().variables.cameAshore).toBe(true);
 
   activateNoun(session, "Lantern");
   pressOn(session);
@@ -55,7 +92,7 @@ test("the lantern is collected, lit, and opens the storeroom", () => {
 });
 
 test("the first opening plays its Sequence and the ledger ends the game", () => {
-  const session = startCoreSession(project);
+  const session = startOnTheQuay();
 
   activateNoun(session, "Lantern");
   pressOn(session);
@@ -85,7 +122,7 @@ test("the first opening plays its Sequence and the ledger ends the game", () => 
 });
 
 test("the Keeper answers differently once the lantern is carried", () => {
-  const session = startCoreSession(project);
+  const session = startOnTheQuay();
 
   activateNoun(session, "Keeper");
   stepUntil(session, "the Keeper speaks", () => presentedLine(session) !== null);

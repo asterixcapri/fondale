@@ -7,7 +7,7 @@ import {
   walkTo,
 } from "fondale/testing";
 
-import { startExample } from "./support";
+import { continueSession, startExample, startExampleUnopened } from "./support";
 
 /**
  * The harbour Scene package, driven on its own.
@@ -18,6 +18,25 @@ import { startExample } from "./support";
  * the prologue that runs through it. The authored puzzle chain belongs to
  * `harbour-opening.spec.ts`.
  */
+
+test("the game opens on a staged harbour, and a reopened game does not", () => {
+  // The harbour is the initial Scene and declares a Scene Opening case, so the
+  // Sequence holds the quay at the very first tick: there is no frame in which
+  // the Player could move Michele before the staging begins.
+  const session = startExampleUnopened();
+  expect(session.snapshot().activity).not.toBeNull();
+  pressOn(session);
+  expect(session.snapshot().activity).toBeNull();
+  expect(session.snapshot().variables.harbourDawnSeen).toBe(true);
+
+  // A reopened game hands control straight back to the Player: the opening it
+  // already played is committed Game State and is not staged over the top of
+  // it. (That restoring never opens a Scene at all is the Engine's own
+  // property, pinned by the Engine's suite rather than reproved here.)
+  const resumed = continueSession(session);
+  expect(resumed.snapshot().activity).toBeNull();
+  expect(resumed.snapshot().variables.harbourDawnSeen).toBe(true);
+});
 
 test("the harbour package exposes its panoramic default state", () => {
   const session = startExample();

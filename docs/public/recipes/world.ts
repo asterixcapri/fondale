@@ -98,9 +98,16 @@ export const quay = ({
       destination: { scene: "storeroom", entrance: "fromQuay" },
     },
   ],
-  // Coming back out of the storeroom, and only then: the start of the game is a
-  // Scene Opening too, and a case naming no Entrance would stage it there.
-  cases: [{ entrance: "fromStoreroom", sequence: "backOutside" }],
+  // Written from the specific to the general, as every list of cases is.
+  cases: [
+    // Coming back out through that one door.
+    { entrance: "fromStoreroom", sequence: "backOutside" },
+    // Every other opening of the quay, the start of the game included: the quay
+    // is the initial Scene, and a case naming no Entrance applies then too.
+    // The Variable its Sequence raises is what keeps the opening to the first
+    // time; there is no separate field for "only at the start".
+    { when: { variable: "cameAshore", equals: false }, sequence: "firstMorning" },
+  ],
 } satisfies SceneDefinition);
 
 const ledgerNoun = ({

@@ -22,6 +22,13 @@ test("the recipe game runs through the installed public package", async ({ page 
   await expect(game.getByLabel("Speech volume")).toHaveCount(0);
   await page.keyboard.press("Escape");
 
+  // The quay is the initial Scene and stages an opening there, so the game
+  // begins under a Sequence and no click reaches the world until it is done.
+  // Escape skips it, exactly as it skips the storeroom's opening — and the
+  // click below is what proves control came back.
+  await expect(game).toContainText("First light");
+  await page.keyboard.press("Escape");
+
   await clickLogical(page, game, 545, 625);
   await expect(game).toContainText("Heavier than it looks");
 
@@ -29,8 +36,11 @@ test("the recipe game runs through the installed public package", async ({ page 
   const carriedLantern = game.locator('[data-fondale-inventory-object="lantern"]');
   await expect(carriedLantern).toBeVisible();
 
+  // The reopened game finds the quay as it was left, with no opening replayed
+  // over the top of it.
   await page.locator("#restore-choice").click();
   await expect(page.locator("[data-fondale-frame]")).toHaveCount(1, { timeout: 20_000 });
+  await expect(game).not.toContainText("First light");
   await game.locator("[data-fondale-inventory-trigger]").click();
   await expect(game.locator('[data-fondale-inventory-object="lantern"]')).toBeVisible();
 });

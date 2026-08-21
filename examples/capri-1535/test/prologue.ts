@@ -118,18 +118,19 @@ export function boardGozzo(session: CoreSession): void {
 /**
  * Repairs the winch and sails to the fortification landing.
  *
- * The directed arrival Sequence runs on landing; `skipArrival` cuts it short the
- * way Escape does, which is how a spec proves the skip commits the same world.
+ * The Scene Opening the landing starts runs its directed Sequence there;
+ * `skipOpening` cuts it short the way Escape does, which is how a spec proves
+ * the skip commits the same world.
  */
 export function repairWinchAndSail(
   session: CoreSession,
-  options: { readonly skipArrival?: boolean } = {},
+  options: { readonly skipOpening?: boolean } = {},
 ): void {
   recoverHandle(session);
   installHandle(session);
   answerRaffaele(session);
   boardGozzo(session);
-  if (options.skipArrival) skipSequence(session);
+  if (options.skipOpening) skipSequence(session);
   pressOn(session);
 }
 

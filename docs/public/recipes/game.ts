@@ -4,7 +4,7 @@ import { keeper, player } from "./characters";
 import { commandFallbacks, commandLexicon } from "./commands";
 import { lantern } from "./lantern";
 import { notice } from "./notice";
-import { backOutside, firstLight } from "./sequences";
+import { backOutside, firstLight, firstMorning } from "./sequences";
 import { quay, storeroom } from "./world";
 
 /**
@@ -23,9 +23,12 @@ export const project = ({
   characters: { player, keeper },
   playerCharacter: "player",
   objects: { lantern },
-  sequences: { firstLight, backOutside },
+  sequences: { firstMorning, firstLight, backOutside },
   detailViews: { notice },
-  variables: { lanternHeld: false, lanternLit: false, sawTheStoreroom: false, readTheLedger: false },
+  variables: {
+    cameAshore: false, lanternHeld: false, lanternLit: false,
+    sawTheStoreroom: false, readTheLedger: false,
+  },
   inventoryAppearanceSize: 64,
   initialScene: "quay",
   commandLexicon,

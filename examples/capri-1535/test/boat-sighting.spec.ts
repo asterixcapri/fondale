@@ -10,11 +10,11 @@ import { descendToBoat, observeSighting, repairWinchAndSail, scene } from "./pro
 import { continueSession, startExample } from "./support";
 
 /**
- * The fortification: a directed arrival and one sighting.
+ * The fortification: a directed Scene Opening and one sighting.
  *
  * The sighting is what turns the repaired winch into the inciting incident. What
- * the arrival Sequence draws while it plays is a matter for a human to watch; what
- * it commits is here.
+ * the opening Sequence draws while it plays is a matter for a human to watch;
+ * what it commits is here.
  */
 
 test("the boat arrival lands committed and the sighting unlocks the rocks stairway", async () => {
@@ -46,7 +46,7 @@ test("the boat arrival lands committed and the sighting unlocks the rocks stairw
 
 test("skipping the boat arrival commits the same sighting and transition", async () => {
   const session = startExample();
-  repairWinchAndSail(session, { skipArrival: true });
+  repairWinchAndSail(session, { skipOpening: true });
 
   // The skipped outcome lands the boat exactly as full playback does.
   activateNoun(session, "Mare al tramonto");

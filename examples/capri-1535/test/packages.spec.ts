@@ -16,6 +16,12 @@ import { startExampleAt } from "./support";
  * through the whole prologue keeps a Scene's own failure legible instead of
  * arriving as a broken journey — and proves the Scene works without the state the
  * prologue builds around it.
+ *
+ * Starting the Player at a Scene's Entrance is not arriving through it. Every
+ * session below begins in the Scene it drives, and beginning a game in a Scene
+ * is a Scene Opening in which no door was used — so the fortification's landing
+ * Sequence, whose case names `fromHarbour`, does not play here, and each Scene
+ * is met at rest rather than mid-staging.
  */
 
 test("the cloister answers, and its Passage leads back to the harbour", () => {

@@ -111,7 +111,7 @@ Families are `definition`, `reference`, `state`, `save`, `asset`, and
 ## Example
 
 The whole example is assembled in [`game.ts`](../recipes/game.ts): two Scenes,
-two Characters, one Object, two Sequences, a Detail View, the Command Lexicon
+two Characters, one Object, three Sequences, a Detail View, the Command Lexicon
 and the theme, handed to `startGame`.
 
 ## See also

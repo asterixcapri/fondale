@@ -1,5 +1,5 @@
 import { type GameProject } from "fondale";
-import { startCoreSession, type CoreSession } from "fondale/testing";
+import { pressOn, startCoreSession, type CoreSession } from "fondale/testing";
 
 import { prologueDialogue, type PrologueDialogue } from "./dialogue";
 import { project } from "../src/game";
@@ -9,15 +9,33 @@ export interface ExampleSession {
   readonly dialogue: PrologueDialogue;
 }
 
+/**
+ * Starts the Example and stops where the opening does, still holding the Scene.
+ *
+ * The harbour is the initial Scene and declares a Scene Opening case naming no
+ * Entrance, so a new game begins under a Sequence and no frame of Player
+ * control precedes it. Everything that plays from the beginning therefore reads
+ * through the opening first — `pressOn` below — which is exactly what an author
+ * adopting a Scene Opening has to do to their own suite. Only the spec that
+ * proves the opening stages starts here instead.
+ */
+export function startExampleUnopened(): CoreSession {
+  return startCoreSession(project, { dialogueProvider: prologueDialogue() });
+}
+
 /** Starts the Example with no renderer: the seam the browser adapter drives too. */
 export function startExample(): CoreSession {
-  return startCoreSession(project, { dialogueProvider: prologueDialogue() });
+  const session = startExampleUnopened();
+  pressOn(session);
+  return session;
 }
 
 /** Starts the Example and keeps the Dialogue Provider a spec can steer. */
 export function startExampleWithDialogue(): ExampleSession {
   const dialogue = prologueDialogue();
-  return { session: startCoreSession(project, { dialogueProvider: dialogue }), dialogue };
+  const session = startCoreSession(project, { dialogueProvider: dialogue });
+  pressOn(session);
+  return { session, dialogue };
 }
 
 /**
@@ -28,6 +46,13 @@ export function startExampleWithDialogue(): ExampleSession {
  * mean a bespoke stand-in Project per Scene. Moving the Player's starting point
  * instead drives the Scene the Players actually meet, with no second definition
  * of anything to drift out of step.
+ *
+ * Starting at an Entrance is not arriving through it. Beginning a game in a
+ * Scene is a Scene Opening in which no door was used, so a case naming an
+ * Entrance — the fortification's landing Sequence, for one — does not apply
+ * here, and each Scene is met in its resting state rather than mid-staging. A
+ * case naming no Entrance would apply, which is why the harbour, the only Scene
+ * that declares one, is driven through `startExample` instead.
  */
 export function startExampleAt(
   scene: string,

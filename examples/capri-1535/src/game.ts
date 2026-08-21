@@ -27,6 +27,7 @@ import { revealOilFlask } from "./sequences/reveal-oil-flask";
 import { sailorEncounter } from "./sequences/sailor-encounter";
 import { winchInstallation } from "./sequences/winch-installation";
 import { freeWell } from "./sequences/free-well";
+import { harbourDawn } from "./sequences/harbour-dawn";
 import { prologueConclusion } from "./sequences/prologue-conclusion";
 import { variables } from "./variables";
 
@@ -49,6 +50,7 @@ export const project = ({
     brotherEliaSmallTalk,
     deliverLetter,
     freeWell,
+    harbourDawn,
     raffaeleConversation,
     raffaeleSmallTalk,
     prologueConclusion,

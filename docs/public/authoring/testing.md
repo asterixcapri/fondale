@@ -40,6 +40,14 @@ session the browser adapter drives, accepting the `CoreInput` values a Player
 produces, emitting `CoreEffect` values through `takeEffects`, and answering
 `hitTest` with a `CoreWorldTarget`.
 
+If your initial Scene declares a [Scene Opening](scene.md#scene-opening) case
+that names no Entrance, a new session begins under the staging it names rather
+than in the Player's hands, so a test that addresses the Scene straight away
+finds a Sequence holding it. Pass through the opening first — `pressOn` reads it
+and `skipSequence` cuts it short — as the recipes' own suite does. A session
+started from a `restored` Save Snapshot needs none of this: restoring is never a
+Scene Opening.
+
 The helpers below are the vocabulary you should normally use. Reach for the raw
 session only when a test needs an input the vocabulary does not name.
 
