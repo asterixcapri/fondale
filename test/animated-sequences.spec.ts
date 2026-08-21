@@ -8,6 +8,7 @@ import {
   type NounDefinition,
   type ObjectDefinition,
   type SceneDefinition,
+  type SceneOpeningCase,
   type SequenceDefinition,
   type Appearance,
   type CharacterAppearance,
@@ -1057,7 +1058,7 @@ test("directed Character navigation and Object Motion commit their canonical des
   });
 });
 
-function arrivalProject(audio?: URL) {
+function arrivalProject(audio?: URL, openingCases?: readonly SceneOpeningCase[]) {
   const square = [
     { x: 0, y: 0 },
     { x: 100, y: 0 },
@@ -1089,7 +1090,7 @@ function arrivalProject(audio?: URL) {
     background: "tower.png",
     walkableRegion: square,
     entrances: { fromRoom: { groundPoint: { x: 5, y: 5 }, facing: "left" } },
-    arrivalSequences: [
+    cases: openingCases ?? [
       {
         entrance: "fromRoom",
         when: { variable: "arrived", equals: false },
@@ -1200,7 +1201,7 @@ test("CoreSession exposes defensive Sequence Line facts with URL audio", () => {
   expect(first.audio).not.toBe(second.audio);
 });
 
-test("a Scene arrival starts its Sequence after the passage commit and before player control", () => {
+test("a Scene Opening starts its Sequence after the passage commit and before player control", () => {
   const session = createTestSession(arrivalProject());
   session.input({ type: "quick-passage", passage: 0 });
   session.steps();
@@ -1228,4 +1229,70 @@ test("a Scene arrival starts its Sequence after the passage commit and before pl
   session.steps();
   expect(session.snapshot().currentScene).toBe("tower");
   expect(session.snapshot().activity).toBeNull();
+});
+
+test("a Scene Opening case answers with a Line and its Game Operations without a Sequence", () => {
+  const session = createTestSession(arrivalProject(undefined, [
+    {
+      line: { character: "player", text: "The tower is cold." },
+      operations: [{ type: "set-variable", variable: "arrived", value: true }],
+    },
+  ]));
+  session.input({ type: "quick-passage", passage: 0 });
+  session.steps();
+
+  expect(session.snapshot()).toMatchObject({
+    currentScene: "tower",
+    variables: { arrived: true },
+    activity: {
+      type: "line",
+      line: { character: "player", text: "The tower is cold." },
+    },
+  });
+});
+
+test("a Scene Opening case answers with a Command Response", () => {
+  const session = createTestSession(arrivalProject(undefined, [
+    { response: { text: "The door falls shut behind you." } },
+  ]));
+  session.input({ type: "quick-passage", passage: 0 });
+  session.steps();
+
+  expect(session.effects().map((effect) =>
+    effect.type === "interaction-response" ? effect.text : "",
+  )).toContain("The door falls shut behind you.");
+  expect(session.snapshot().activity).toBeNull();
+});
+
+test("the first eligible Scene Opening case applies and the ones below it do not", () => {
+  const session = createTestSession(arrivalProject(undefined, [
+    {
+      when: { variable: "arrived", equals: false },
+      line: { character: "player", text: "The first case." },
+    },
+    { line: { character: "player", text: "The case below it." } },
+  ]));
+  session.input({ type: "quick-passage", passage: 0 });
+  session.steps();
+
+  expect(session.snapshot().activity).toMatchObject({
+    type: "line",
+    line: { text: "The first case." },
+  });
+});
+
+test("a Scene Opening case naming a Scene Entrance that does not exist is refused", () => {
+  let error: unknown;
+  try {
+    arrivalProject(undefined, [{ entrance: "fromCellar", sequence: "arrival" }]);
+  } catch (cause) {
+    error = cause;
+  }
+  expect(error).toBeInstanceOf(AuthoringError);
+  expect((error as AuthoringError).diagnostics).toContainEqual(
+    expect.objectContaining({
+      code: "reference.scene-opening.entrance",
+      path: "scenes.tower.cases[0].entrance",
+    }),
+  );
 });

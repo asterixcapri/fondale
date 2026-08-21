@@ -54,7 +54,7 @@ test("the lantern is collected, lit, and opens the storeroom", () => {
   expect([...revealedNouns(session)]).toContain("Storeroom door");
 });
 
-test("the first arrival plays its Sequence and the ledger ends the game", () => {
+test("the first opening plays its Sequence and the ledger ends the game", () => {
   const session = startCoreSession(project);
 
   activateNoun(session, "Lantern");
@@ -68,7 +68,7 @@ test("the first arrival plays its Sequence and the ledger ends the game", () => 
   stepUntil(session, "the Player crosses into the storeroom",
     () => session.snapshot().currentScene === "storeroom");
 
-  // The arrival Sequence narrates and speaks, and pressOn stops at its Choice
+  // The opening Sequence narrates and speaks, and pressOn stops at its Choice
   // rather than pressing advance at something that is waiting for an answer.
   pressOn(session);
   chooseAlternative(session, "Say nothing");

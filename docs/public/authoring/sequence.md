@@ -4,7 +4,7 @@
 
 A Sequence is a finite, modal flow: while one runs it is the dominant Game
 Activity, and ordinary play waits. Use it for a cutscene, a scripted exchange,
-an arrival, or any moment where the game speaks and the Player mostly listens.
+a Scene Opening, or any moment where the game speaks and the Player mostly listens.
 
 A Sequence is a list of steps. Steps run in order; some of them branch, and one
 of them — the Direction Step — runs several visual things at once and waits for
@@ -102,8 +102,8 @@ finite boundary — a looping Animation or a `hold`/`follow` Camera needs the
 step's `duration` to bound it.
 
 Sequences may be started from a Command Case, from a Game Operation, from a
-Conversation alternative or handoff, or by an arrival rule after a Passage.
-Arrival rules never fire on startup or restoration: those are not arrivals.
+Conversation alternative or handoff, or by a Scene Opening case after a Passage.
+Restoration is never a Scene Opening, so it starts no Sequence.
 
 ## Errors
 
@@ -125,14 +125,13 @@ Arrival rules never fire on startup or restoration: those are not arrivals.
 | `definition.choice.limit` | more than six alternatives |
 | `definition.choice.player-character` | a spoken alternative has no Player Character to speak it |
 | `definition.line.text`, `definition.line.character`, `definition.narration.text` | empty text or a missing speaker |
-| `definition.arrival-sequence.ambiguous` | two arrival rules could both apply |
 | `reference.sequence`, `reference.sequence.scene`, `reference.sequence.subject`, `reference.sequence.subject-scene` | a Sequence, its Scene, or a directed subject does not resolve |
 | `reference.animation`, `reference.animation.cue`, `reference.animation.line` | a directed or overridden Animation does not exist |
 | `reference.camera.subject`, `reference.camera.subject-scene` | a followed subject does not exist or is elsewhere |
 
 ## Example
 
-The first arrival in the storeroom, in
+The first opening of the storeroom, in
 [`sequences.ts`](../recipes/sequences.ts), narrates, speaks a Line, offers a
 Choice, walks the Player with a Direction Step, and declares the Skip Outcome a
 skip must still commit.

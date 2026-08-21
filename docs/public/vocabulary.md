@@ -117,6 +117,10 @@ resolves.
 
 **Scene Passage** — a directional transition to another Scene's Entrance.
 
+**Scene Opening** — the moment a Scene comes before the Player. A Scene answers
+it with its `cases`, and restoring a Save Snapshot is never one. See
+[Scene](authoring/scene.md).
+
 ## State and flow
 
 **Game State** — every committed fact of one Game Session. See

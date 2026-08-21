@@ -63,8 +63,7 @@ reported before any asset is fetched.
 `definition.sequence.cue-order`, `definition.sequence.cue-source`,
 `definition.sequence.cue-name`, `definition.line.text`,
 `definition.line.character`, `definition.narration.text`,
-`definition.choice.limit`, `definition.choice.player-character`,
-`definition.arrival-sequence.ambiguous`.
+`definition.choice.limit`, `definition.choice.player-character`.
 
 **Motion and Camera** — `definition.motion.path`,
 `definition.motion.character-path`, `definition.motion.character-duration`,
@@ -107,7 +106,8 @@ reported before any asset is fetched.
 `reference.character`, `reference.character.initial-scene`,
 `reference.character.player`, `reference.object`,
 `reference.object.initial-scene`, `reference.hotspot.target`,
-`reference.detail-view`, `reference.variable`.
+`reference.detail-view`, `reference.scene-opening.entrance`,
+`reference.variable`.
 
 **Appearances and Animations** — `reference.appearance`,
 `reference.appearance.initial`, `reference.appearance.target`,

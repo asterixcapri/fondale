@@ -54,6 +54,7 @@ import {
   type ObjectLocation,
   type ObjectState,
   type Point,
+  type SceneOpeningCase,
   type WorldPresentation,
   type WorldState,
   type WorldTarget,
@@ -910,23 +911,29 @@ export function createCoreSession(
       decision.commandStateDisposition,
     )) return;
     if (decision.resolution.response) {
-      hud.notify({ type: "command-response", text: decision.resolution.response.text });
-      emitted.push({
-        type: "interaction-response",
-        text: decision.resolution.response.text,
-        response: decision.resolution.response,
-      });
+      notifyCommandResponse(decision.resolution.response);
     } else if (decision.resolution.line) {
-      const { audio, ...line } = decision.resolution.line;
-      state.activity = {
-        type: "line",
-        animationStartedTick: state.tick + 1,
-        line: {
-          ...line,
-          ...(audio ? { audio: audio instanceof URL ? audio.href : audio } : {}),
-        },
-      };
+      beginLineActivity(decision.resolution.line);
     }
+  }
+
+  /** Answers the Player with neutral explanatory text, on screen and in the effects. */
+  function notifyCommandResponse(response: CommandResponse): void {
+    hud.notify({ type: "command-response", text: response.text });
+    emitted.push({ type: "interaction-response", text: response.text, response });
+  }
+
+  /** Puts one spoken Line on screen, with its audio reference made storable. */
+  function beginLineActivity(spoken: Line): void {
+    const { audio, ...line } = spoken;
+    state.activity = {
+      type: "line",
+      animationStartedTick: state.tick + 1,
+      line: {
+        ...line,
+        ...(audio ? { audio: audio instanceof URL ? audio.href : audio } : {}),
+      },
+    };
   }
 
   function applySkipOutcome(operations: readonly GameOperation[]): void {
@@ -1120,11 +1127,28 @@ export function createCoreSession(
       return;
     }
     state = { ...state, ...transition.state, activity: null };
-    if (transition.arrivalSequence) {
-      state.activity = sequenceCapability.start(transition.arrivalSequence, state.currentScene);
-    }
     emitted.push({ type: "scene-changed", scene: state.currentScene });
-    if (state.activity?.type === "sequence") advanceSequence();
+    if (transition.opening) applySceneOpening(transition.opening);
+  }
+
+  /**
+   * Answers a Scene Opening with the case World selected: its Game Operations
+   * first, then its one outcome. A Sequence takes control before the Player
+   * does, so it is advanced here rather than left for the next frame.
+   */
+  function applySceneOpening(opening: SceneOpeningCase): void {
+    if (opening.operations?.length &&
+        !applyOperations(opening.operations, { kind: "background" })) return;
+    if (opening.sequence) {
+      state.activity = sequenceCapability.start(opening.sequence, state.currentScene);
+      advanceSequence();
+      return;
+    }
+    if (opening.response) {
+      notifyCommandResponse(opening.response);
+      return;
+    }
+    if (opening.line) beginLineActivity(opening.line);
   }
 
   function applyOperations(

@@ -62,7 +62,7 @@ import {
   type HUDTheme,
 } from "../hud";
 import {
-  validateArrivalSequenceReferences,
+  validateSceneOpeningReferences,
   validateLineReferences,
   validateSequenceStartReference,
   validateSequenceReferences,
@@ -107,7 +107,6 @@ import {
 } from "../world";
 export {
   type ApproachPoint,
-  type ArrivalSequenceRule,
   type BackgroundRegionAppearance,
   type CharacterDefinition,
   type EntityAppearance,
@@ -122,6 +121,7 @@ export {
   type SceneryDefinition,
   type SceneDefinition,
   type SceneEntrance,
+  type SceneOpeningCase,
   type ScenePassage,
   type SceneSize,
 } from "../world";
@@ -724,14 +724,14 @@ function validateProjectDefinitions(
         [sceneId],
       );
     }
-    diagnostics.push(...validateArrivalSequenceReferences(
-      sceneId,
-      scene.arrivalSequences,
-      sequences,
-    ));
-    scene.arrivalSequences?.forEach((rule, ruleIndex) => {
-      const base = `scenes.${sceneId}.arrivalSequences[${ruleIndex}]`;
-      condition(rule.when, `${base}.when`);
+    diagnostics.push(...validateSceneOpeningReferences(sceneId, scene.cases, sequences));
+    scene.cases?.forEach((candidate, caseIndex) => {
+      const base = `scenes.${sceneId}.cases[${caseIndex}]`;
+      condition(candidate.when, `${base}.when`);
+      line(candidate.line, `${base}.line`);
+      diagnostics.push(...operations(candidate.operations ?? [], `${base}.operations`, {
+        scenes: [sceneId],
+      }));
     });
     scene.hotspots?.forEach((hotspot, hotspotIndex) => {
       const base = `scenes.${sceneId}.hotspots[${hotspotIndex}]`;

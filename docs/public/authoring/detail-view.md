@@ -50,7 +50,7 @@ returns the world exactly as it was.
 
 The presented Detail View is committed Game State: it is saved, restored, and
 carried by the Continuation State, so reopening the browser returns to the same
-close-up. Restoring into one is not an arrival and starts no arrival Sequence.
+close-up. Restoring into one is not a Scene Opening and starts no Sequence.
 
 ### Endings
 

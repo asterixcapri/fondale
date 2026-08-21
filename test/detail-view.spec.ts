@@ -370,7 +370,7 @@ const mechanismHotspotNoun = {
   ],
 } satisfies NounDefinition;
 
-/** Arriving in the hold opens a close-up, so a restore can prove it is no arrival. */
+/** Arriving in the hold opens a close-up, so a restore can prove it is no Scene Opening. */
 const descend = {
   steps: [
     { type: "operations", operations: [{ type: "present-detail-view", detailView: "registry" }] },
@@ -407,7 +407,7 @@ const hold = {
   background: "hold.png",
   walkableRegion: square,
   entrances: { fromBoat: { groundPoint: { x: 20, y: 20 }, facing: "front" } },
-  arrivalSequences: [{ entrance: "fromBoat", sequence: "descend" }],
+  cases: [{ entrance: "fromBoat", sequence: "descend" }],
 } satisfies SceneDefinition;
 
 const project = {
@@ -872,7 +872,7 @@ test("a Save Snapshot carrying a malformed presented Detail View is refused", ()
   }));
 });
 
-test("restoring into a presented Detail View is not an arrival and starts no arrival Sequence", () => {
+test("restoring into a presented Detail View is not a Scene Opening and starts no Sequence", () => {
   const session = createTestSession(project);
   session.input({ type: "activate-passage", passage: 0 });
   session.steps(20);

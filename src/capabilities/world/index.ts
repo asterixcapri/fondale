@@ -10,7 +10,13 @@ import {
   type Appearance,
   type CharacterAppearance,
 } from "../animation";
-import type { InteractionCondition, NounDefinition } from "../interaction";
+import {
+  validateCommandResponse,
+  validateInteractionCaseOutcome,
+  type InteractionCase,
+  type InteractionCondition,
+  type NounDefinition,
+} from "../interaction";
 import type { PassageDirection } from "../hud";
 import type { DirectionStep, DirectedSubject, MotionDirection } from "../sequence";
 import type { CharacterDialogueDefinition } from "../dialogue";
@@ -184,11 +190,14 @@ export interface ScenePassage {
   readonly destination: { readonly scene: string; readonly entrance: string };
 }
 
-/** A conditional Sequence start evaluated after arrival through a Scene Passage. */
-export interface ArrivalSequenceRule {
-  readonly sequence: string;
+/**
+ * An Interaction Case with which a Scene reacts to its own Scene Opening. The
+ * optional Entrance is the selector: it filters the case to the Player having
+ * come through that door, so a case naming one never applies where no door was
+ * used.
+ */
+export interface SceneOpeningCase extends InteractionCase {
   readonly entrance?: string;
-  readonly when?: InteractionCondition;
 }
 
 export interface PerspectiveScaleStop {
@@ -206,7 +215,7 @@ export interface SceneDefinition {
   readonly hotspots?: readonly HotspotDefinition[];
   readonly entrances?: Readonly<Record<string, SceneEntrance>>;
   readonly passages?: readonly ScenePassage[];
-  readonly arrivalSequences?: readonly ArrivalSequenceRule[];
+  readonly cases?: readonly SceneOpeningCase[];
 }
 
 /** A Scene whose default Size has been resolved during composition. */
@@ -378,29 +387,17 @@ export function validateSceneDefinition(
       ));
     }
   }
-  input.arrivalSequences?.forEach((rule, ruleIndex) => {
-    const base = childPath(path, `arrivalSequences[${ruleIndex}]`);
-    if (rule.entrance !== undefined && !(rule.entrance in (input.entrances ?? {}))) {
+  input.cases?.forEach((candidate, caseIndex) => {
+    const base = childPath(path, `cases[${caseIndex}]`);
+    if (candidate.entrance !== undefined && !(candidate.entrance in (input.entrances ?? {}))) {
       diagnostics.push(worldReference(
-        "reference.arrival.entrance",
+        "reference.scene-opening.entrance",
         `${base}.entrance`,
-        `Scene Entrance '${rule.entrance}' does not exist.`,
+        `Scene Entrance '${candidate.entrance}' does not exist.`,
       ));
     }
-    input.arrivalSequences!.slice(0, ruleIndex).forEach((previous, previousIndex) => {
-      const entrancesOverlap = previous.entrance === undefined || rule.entrance === undefined ||
-        previous.entrance === rule.entrance;
-      const conditionsDisjoint = previous.when !== undefined && rule.when !== undefined &&
-        "variable" in previous.when && "variable" in rule.when &&
-        previous.when.variable === rule.when.variable && previous.when.equals !== rule.when.equals;
-      if (entrancesOverlap && !conditionsDisjoint) {
-        diagnostics.push(worldDefinition(
-          "definition.arrival-sequence.ambiguous",
-          base,
-          `Arrival Sequence rules ${previousIndex} and ${ruleIndex} can both apply to the same arrival.`,
-        ));
-      }
-    });
+    validateInteractionCaseOutcome(candidate, base, diagnostics);
+    validateCommandResponse(candidate.response, `${base}.response`, diagnostics);
   });
   input.hotspots?.forEach((hotspot, index) => {
     const base = childPath(path, `hotspots[${index}]`);
@@ -887,7 +884,8 @@ export type PassageTransitionResult =
       readonly status: "transitioned";
       readonly state: WorldState;
       readonly scene: string;
-      readonly arrivalSequence?: string;
+      /** The case the destination Scene reacts with, absent when none applies. */
+      readonly opening?: SceneOpeningCase;
     };
 
 /** World-owned spatial policy over one validated Game Project view. */
@@ -925,6 +923,19 @@ export interface World {
     request: PassageTransitionRequest,
     matches: WorldStateConditionMatches,
   ): PassageTransitionResult;
+  /**
+   * Selects the Interaction Case with which the state's current Scene reacts to
+   * being opened: the first eligible one wins, and a case naming a Scene
+   * Entrance applies only to the Entrance the Player came through. Both openings
+   * ask through here — the Passage transition, which reports the answer it got,
+   * and the beginning of a Playthrough, which passes no Entrance because no door
+   * was used.
+   */
+  sceneOpening(
+    state: Readonly<WorldState>,
+    matches: WorldStateConditionMatches,
+    entrance?: string,
+  ): SceneOpeningCase | undefined;
   hasDirectedSubject(state: Readonly<WorldState>, subject: DirectedSubject): boolean;
   pointForSubject(state: Readonly<WorldState>, subject: DirectedSubject): Point | undefined;
   canPlaceObject(scene: string, point: Point): boolean;
@@ -1148,22 +1159,22 @@ export function createWorld(view: WorldProjectView): World {
         groundPoint: { ...entrance.groundPoint },
         facing: entrance.facing,
       };
-      const arrivals = (destination.arrivalSequences ?? []).filter((rule) =>
-        (rule.entrance === undefined || rule.entrance === passage.destination.entrance) &&
-        matches(rule.when, next),
-      );
-      if (arrivals.length > 1) {
-        return {
-          status: "invalid",
-          message: "More than one Sequence is applicable to this Scene arrival.",
-        };
-      }
+      const opening = this.sceneOpening(next, matches, passage.destination.entrance);
       return {
         status: "transitioned",
         state: next,
         scene: passage.destination.scene,
-        ...(arrivals[0] ? { arrivalSequence: arrivals[0].sequence } : {}),
+        ...(opening ? { opening } : {}),
       };
+    },
+    sceneOpening(state, matches, entrance) {
+      // The authored case is handed back as authored rather than cloned: a Line
+      // may carry a URL, which the structured clone algorithm refuses, and the
+      // shape is read-only for everyone who receives it.
+      return view.scenes[state.currentScene]?.cases?.find((candidate) =>
+        (candidate.entrance === undefined || candidate.entrance === entrance) &&
+        matches(candidate.when, state),
+      );
     },
     hasDirectedSubject(state, subject) {
       if (subject.kind === "character") {

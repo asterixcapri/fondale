@@ -6,7 +6,7 @@ import {
 } from "../interaction";
 import {
   validateMotionDirection,
-  type ArrivalSequenceRule,
+  type SceneOpeningCase,
   type Facing,
   type Point,
 } from "../world";
@@ -156,23 +156,24 @@ export interface SequenceDefinition {
   readonly skipOutcome?: readonly GameOperation[];
 }
 
-/** Validates references from World arrival rules into Sequence definitions. */
-export function validateArrivalSequenceReferences(
+/** Validates references from Scene Opening cases into Sequence definitions. */
+export function validateSceneOpeningReferences(
   scene: string,
-  rules: readonly ArrivalSequenceRule[] | undefined,
+  cases: readonly SceneOpeningCase[] | undefined,
   sequences: Readonly<Record<string, SequenceDefinition>>,
 ): readonly AuthoringDiagnostic[] {
   const diagnostics: AuthoringDiagnostic[] = [];
-  rules?.forEach((rule, ruleIndex) => {
-    const path = `scenes.${scene}.arrivalSequences[${ruleIndex}].sequence`;
-    const sequence = sequences[rule.sequence];
+  cases?.forEach((candidate, caseIndex) => {
+    if (candidate.sequence === undefined) return;
+    const path = `scenes.${scene}.cases[${caseIndex}].sequence`;
+    const sequence = sequences[candidate.sequence];
     if (!sequence) {
       diagnostics.push({
         code: "reference.sequence",
         family: "reference",
         owner: "sequence",
         path,
-        message: `Sequence '${rule.sequence}' does not exist.`,
+        message: `Sequence '${candidate.sequence}' does not exist.`,
       });
     } else if (sequence.scene !== undefined && sequence.scene !== scene) {
       diagnostics.push({
@@ -180,7 +181,7 @@ export function validateArrivalSequenceReferences(
         family: "reference",
         owner: "sequence",
         path,
-        message: `Sequence '${rule.sequence}' belongs to Scene '${sequence.scene}'.`,
+        message: `Sequence '${candidate.sequence}' belongs to Scene '${sequence.scene}'.`,
       });
     }
   });

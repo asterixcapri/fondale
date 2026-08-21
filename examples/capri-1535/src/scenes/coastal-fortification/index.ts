@@ -62,7 +62,7 @@ const rockingFrames = [
 
 /**
  * The golden-hour vertical climb. The upper-left sea hosts the arriving
- * boat Scenery: it drifts in through the arrival Sequence and remains
+ * boat Scenery: it drifts in through the opening Sequence and remains
  * landed by the rocks once the sighting is committed.
  */
 export const coastalFortification = ({
@@ -180,7 +180,7 @@ export const coastalFortification = ({
     atLookout: { groundPoint: { x: 850, y: 230 }, facing: "left" },
     fromDriftingBoat: { groundPoint: { x: 300, y: 1260 }, facing: "right" },
   },
-  arrivalSequences: [{
+  cases: [{
     entrance: "fromHarbour",
     when: { variable: "boatLanded", equals: false },
     sequence: "boatArrival",
