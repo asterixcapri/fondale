@@ -39,7 +39,7 @@
   },
   "dependencies": {
     "@hono/node-server": "^2.1.0",
-    "@mastra/core": "^1.58.0",
+    "@mastra/core": "^1.78.0",
     "@mastra/memory": "^1.26.1",
     "@mastra/pg": "^1.20.0",
     "hono": "^4.13.1",
@@ -49,8 +49,8 @@
     "fondale": "0.4.0"
   },
   "devDependencies": {
-    "fondale": "file:../..",
     "@types/node": "^22.20.1",
+    "fondale": "file:../..",
     "tsx": "^4.23.12",
     "typescript": "^5.9.3",
     "vite": "^6.4.3"
